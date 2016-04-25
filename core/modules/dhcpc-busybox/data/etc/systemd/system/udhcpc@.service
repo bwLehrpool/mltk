@@ -1,0 +1,10 @@
+[Unit]
+Description=DHCP Client for %i
+After=systemd-tmpfiles-setup.service
+
+[Service]
+Type=forking
+PIDFile=/run/udhcpc/udhcpc.%I.pid
+ExecStart=/opt/openslx/scripts/systemd-udhcpc++ %I
+ExecStopPost=/opt/openslx/bin/rm /run/udhcpc/udhcpc.%I.pid
+

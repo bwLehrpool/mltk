@@ -1,0 +1,9 @@
+[Unit]
+Description=Sets up the virtual box environment
+Requires=vmchooser.service
+After=vmchooser.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/opt/openslx/scripts/systemd-qemukvm_env start

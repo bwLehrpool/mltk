@@ -1,0 +1,34 @@
+#tool/distro specific functions for fetching, building and installing dependencies
+
+fetch_source () {
+	download_untar "$URL" "src/"
+}	
+
+build () {
+	cd "src/$VERSION"
+	pinfo "Running configure"
+	./configure --prefix="/" --datarootdir="/usr/share" || perror "failed."
+	pinfo "Running make"
+	make || perror "failed."
+	pinfo "Running make install"
+	DESTDIR="${MODULE_BUILD_DIR}" make install || perror "failed."
+		
+	COPYLIST="list_dpkg_output"
+
+	[ -e "$COPYLIST" ] && rm "$COPYLIST"
+
+	list_packet_files >> "$COPYLIST"
+	tarcopy "$(cat "$COPYLIST" | sort -u)" "${MODULE_BUILD_DIR}"
+
+	cd -
+}
+
+post_copy() {
+	mkdir -p "${TARGET_BUILD_DIR}/var/lib/lightdm"
+	touch "${TARGET_BUILD_DIR}/var/lib/lightdm/.Xauthority" || perror "Cannot touch '${TARGET_BUILD_DIR}/var/lib/lightdm/.Xauthority'"
+	local LDMUID=$(add_user "lightdm")
+	local LDMGID=$(add_group "lightdm")
+	pinfo "lightdm user and group is $LDMUID $LDMGID"
+	chown -R "${LDMUID}:${LDMGID}" "${TARGET_BUILD_DIR}/var/lib/lightdm/" || perror "chowning '${TARGET_BUILD_DIR}/var/lib/lightdm/' failed."
+}
+

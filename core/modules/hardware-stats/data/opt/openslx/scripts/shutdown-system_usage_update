@@ -1,0 +1,12 @@
+#!/bin/ash
+
+. /opt/openslx/config
+[ -z "$SLX_REMOTE_LOG" ] && exit 0
+
+UUID=$(cat /run/system-uuid)
+
+[ -z "$UUID" ] && exit 1
+
+curl -s --data-urlencode "type=~poweroff" --data-urlencode "uuid=$UUID" \
+	"$SLX_REMOTE_LOG" > /dev/null 2>&1
+

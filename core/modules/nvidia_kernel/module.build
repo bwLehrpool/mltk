@@ -1,0 +1,56 @@
+fetch_source() {
+	mkdir -p src 2>/dev/null
+	cd src || perror "Could not change into src directory."
+	download "$REQUIRED_URL"
+}
+
+build() {
+	local ROOTUPPERDIR="$MODULE_DIR/rootupper"
+
+	local NVIDIA="$MODULE_WORK_DIR/src/$REQUIRED_NVIDIA"
+	local NVIDIAEXTRACTDIR="$ROOTUPPERDIR/NVIDIA"
+
+	[ -d "$NVIDIAEXTRACTDIR" ] && rm -rf "$NVIDIAEXTRACTDIR"
+	pinfo "Unpacking NVidia archive ($NVIDIA) ..."
+	sh "$NVIDIA" --extract-only --target "$NVIDIAEXTRACTDIR" ||	perror "Could not extract $NVIDIA to $NVIDIAEXTRACTDIR."
+
+	pinfo "Ready to chroot - compiling may take some time."
+	pdebug "--- chroot ---------------------------------------------------------------------"
+	pdebug "-                                                                              -"
+	pdebug "-   Notice: This may take a while!                                             -"
+	pdebug "-                                                                              -"
+	pdebug "-      Please keep note the Nvidia installer _will_ complain about             -"
+	pdebug "-      several warnings and errors. It will do this in any case.               -"
+	pdebug "-                                                                              -"
+	pdebug "-      This does _not_ mean the kernel module compilation was unsuccessful!    -"
+	pdebug "-                                                                              -"
+	pdebug "--------------------------------------------------------------------------------"
+
+	
+	chroot_run "$ROOTUPPERDIR" <<-EOF
+	/NVIDIA/nvidia-installer --no-nouveau-check --no-network --no-backup --no-rpms --no-runlevel-check --no-distro-scripts --no-cc-version-check --no-x-check --no-precompiled-interface --silent --kernel-source-path /"$KERNEL_HEADERS_DIR"	# Do the work!
+	# fake success since the installer will exit with an error due to the module not loading properly.
+	exit 0
+	EOF
+	pinfo "chroot terminated."
+
+	local file
+	local RESULT
+	local NVIDIA_MODULES="$MODULE_BUILD_DIR/lib/modules/nvidia/"
+	mkdir -p "$NVIDIA_MODULES"
+	pinfo "Copying kernel modules..."
+	for file in nvidia.ko nvidia-uvm.ko nvidia-modeset.ko; do
+		RESULT=$(find "$ROOTUPPERDIR/NVIDIA/kernel" -name "$file" | head -n 1)
+		[ -z "$RESULT" ] && perror "Could not find built module $file in ./NVIDIA/kernel"
+		pinfo "Fetching ${file}..."
+		strip -g "$RESULT" || pwarning "Could not strip $file"
+		cp "$RESULT" "$NVIDIA_MODULES" || perror "Could not copy $file"
+	done
+
+	rm -rf "$MODULE_BUILD_DIR/NVIDIA"
+}
+
+post_copy() {
+	:
+}
+

@@ -1,0 +1,25 @@
+#!/bin/sh
+
+IPTABLES=$(/usr/bin/which iptables)
+
+# reset
+"$IPTABLES" -F INPUT
+"$IPTABLES" -F FORWARD
+"$IPTABLES" -F OUTPUT
+
+if [ "x${USER}" = "xdemo" ]; then
+	# filter out the internetz
+	"$IPTABLES" -P INPUT DROP
+	"$IPTABLES" -P FORWARD DROP
+	"$IPTABLES" -P OUTPUT DROP
+
+	# block internetz
+	"$IPTABLES" -A INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
+	"$IPTABLES" -A OUTPUT -d 132.230.0.0/16 -j ACCEPT
+	"$IPTABLES" -A OUTPUT -d 10.0.0.0/8 -j ACCEPT
+else
+	"$IPTABLES" -P INPUT ACCEPT
+	"$IPTABLES" -P FORWARD ACCEPT
+	"$IPTABLES" -P OUTPUT ACCEPT
+		
+fi

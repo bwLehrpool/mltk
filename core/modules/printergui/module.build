@@ -1,0 +1,29 @@
+#!/bin/bash
+
+fetch_source() {
+	git clone "${REQUIRED_GIT}" src
+	cd src
+	git checkout "$REQUIRED_COMMIT"
+	cd ..
+}
+
+build() {
+	local SRCDIR="${MODULE_WORK_DIR}/src/"
+	local DESTDIR="$MODULE_BUILD_DIR/opt/openslx/cups"
+
+	# first activate qt 4
+	activate_qt 4
+
+	mkdir -p "$DESTDIR"
+	cd "$DESTDIR" || perror "Could not cd to $DESTDIR!"
+	pinfo "Running cmake"
+	cmake "$SRCDIR/" || perror "'cmake' failed (e.g. not installed)."
+	pinfo "Running make"
+	make || perror "'make' failed."
+	chmod 0700 "$DESTDIR/printpwgui"	# So picky cupsd won't drop privileges to lp
+
+}
+post_copy() {
+	:
+}
+

@@ -1,0 +1,9 @@
+[Unit]
+Description=Gnomes bloated 1000 dependency monster aka Disk Manager 2
+Documentation=man:udisks(8)
+
+[Service]
+Type=dbus
+BusName=org.freedesktop.UDisks2
+ExecStart=%UDISKSD% --no-debug
+

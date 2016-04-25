@@ -1,0 +1,33 @@
+#!/bin/ash
+
+source /inc/network.functions
+source /run/network.conf
+
+for i in 1 2 3 4 5 6 7 8; do
+	echo "<$i> Try to fix broken network"
+	echo -n "Take interface $IFACE down .. "
+
+	ip link set dev $IFACE down
+	usleep 1000
+
+	echo "and up again.."
+	ip link set dev $IFACE up
+	usleep 1000
+
+	wait_for_iface "$IFACE"
+
+	udhcpc $PARAM -O domain -O nissrv -O nisdomain -O wpad -O search -t 5 -T 2 -s "/inc/udhcpc-trigger" -f -n -q -i "$BRIDGE"
+
+	if [ $? -eq 0 ]; then
+		echo "Finally fixed IP config. Continue boot."
+		RET=0
+		break
+	else
+		RET=1
+	fi
+done
+
+[ $RET -gt 0 ] && drop_shell "Something is really broken.. Please check your network cable and reset your computer."
+
+# create correct return value
+[ $RET -eq 0 ] 

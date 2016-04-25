@@ -1,0 +1,7 @@
+REQUIRED_INSTALLED_PACKAGES="
+	usbutils
+"
+REQUIRED_CONTENT_PACKAGES="
+	usbutils
+"
+

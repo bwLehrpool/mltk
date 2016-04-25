@@ -1,0 +1,9 @@
+REQUIRED_INSTALLED_PACKAGES="
+	consolekit
+"
+REQUIRED_CONTENT_PACKAGES="
+	consolekit
+	libpam-ck-connector
+	libck-connector0
+"
+

@@ -1,0 +1,24 @@
+#!/bin/ash
+
+disable_tty_switch() {
+	cat <<EOF > /etc/X11/xorg.conf.d/50-no-tty.conf
+Section "ServerFlags"
+	Option "DontVTSwitch" "true"
+EndSection
+EOF
+}
+
+disable_openbox_menu() {
+	[ ! -e "/etc/xdg/openbox/rc.xml.safe" ] && \
+		echo "No rc.xml.safe template found." && return 1
+	cp "/etc/xdg/openbox/rc.xml" "/root/rc.xml.unsafe"
+	cp "/etc/xdg/openbox/rc.xml.safe" "/etc/xdg/openbox/rc.xml"
+}
+
+disable_magic_keys() {
+	echo 0 > /proc/sys/kernel/sysrq
+}
+
+disable_tty_switch
+disable_openbox_menu
+disable_magic_keys

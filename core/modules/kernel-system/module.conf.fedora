@@ -1,0 +1,6 @@
+REQUIRED_INSTALLED_PACKAGES="
+	kernel-headers
+"
+REQUIRED_CONTENT_PACKAGES="
+	kernel-headers
+"

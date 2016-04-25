@@ -1,0 +1,5 @@
+#!/bin/sh
+
+rm -- winres.exe
+i686-w64-mingw32-gcc -std=c99 -Os -Wl,--subsystem,windows -o winres.exe winres.c -lole32 -luuid -lgdi32 #-lws2_32
+strip winres.exe && echo "Successfully created winres.exe"

@@ -1,0 +1,14 @@
+REQUIRED_INSTALLED_PACKAGES="
+	sssd-common
+	sssd-ldap
+	libldb1
+	libnss-sss
+	libpam-sss
+"
+REQUIRED_CONTENT_PACKAGES="
+	sssd-common
+	sssd-ldap
+	libldb1
+	libnss-sss
+	libpam-sss
+"

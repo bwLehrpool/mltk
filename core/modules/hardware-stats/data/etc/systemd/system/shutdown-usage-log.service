@@ -1,0 +1,11 @@
+[Unit]
+Description=Gather statistics about this machine and send to boot server
+DefaultDependencies=no
+Before=shutdown.target
+RefuseManualStart=yes
+
+[Service]
+Type=oneshot
+ExecStart=/opt/openslx/scripts/shutdown-system_usage_update
+RemainAfterExit=yes
+

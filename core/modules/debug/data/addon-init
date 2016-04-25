@@ -1,0 +1,4 @@
+#!/bin/ash
+
+systemctl daemon-reload
+systemctl start debug-shell.service

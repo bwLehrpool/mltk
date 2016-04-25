@@ -1,0 +1,146 @@
+#!/bin/bash
+fetch_source() {
+	:
+}
+
+build() {
+	if [ ! -z "$REQUIRED_CONTENT_PACKAGES" ]; then
+		local COPYLIST="list_dpkg_output"
+		[ -e "${COPYLIST}" ] && rm "${COPYLIST}"
+		list_packet_files >> "${COPYLIST}"
+		tarcopy "$(cat "${COPYLIST}" | sort -u)" "${MODULE_BUILD_DIR}"
+	fi
+
+	local FILELIST="list_binaries_and_files"
+	[ -e "${FILELIST}" ] && rm "${FILELIST}"
+
+	# Compile rdns
+	mkdir -p "$MODULE_BUILD_DIR/opt/openslx/bin"
+	gcc -o "$MODULE_BUILD_DIR/opt/openslx/bin/rdns" "$MODULE_DIR/rdns.c" || perror "Compiling rdns failed."
+	# Get ldconfig
+	mkdir -p "$MODULE_BUILD_DIR/sbin"
+	local LOC=$(which ldconfig.real)
+	[ -z "$LOC" ] && LOC=$(which ldconfig)
+	[ -z "$LOC" ] && perror "Cannot find ldconfig"
+	pdebug "Picking ldconfig from $LOC"
+	cp "$LOC" "$MODULE_BUILD_DIR/sbin/ldconfig"
+
+	pinfo "Searching binaries from config file in system..."
+	for BIN in ${REQUIRED_BINARIES}
+	do
+		[ -n "$(find "$MODULE_BUILD_DIR" -name "$BIN")" ] && continue
+		BIN_LOCATION="$(which "$BIN")"
+		if [ ! -z "$BIN_LOCATION" -a -e "$BIN_LOCATION" ]; then
+			get_link_chain "$BIN_LOCATION" >> "$FILELIST"
+		else
+			perror "${BIN} not found on the system! Please install it."
+		fi
+	done
+
+	pinfo "Searching libraries from config file in system... (could take some time)"
+	for LIB in ${REQUIRED_LIBRARIES}
+	do
+		# lib + lib64: Ugly hack, will be replaced by a better solution
+		for LIB_LOCATION in $(find /lib/ /lib64/ -name "${LIB}.so*")
+		do
+			get_link_chain "${LIB_LOCATION}" >> "${FILELIST}"
+		done
+	done
+
+	for FILE in ${REQUIRED_DIRECTORIES}
+	do
+		[ ! -d ${FILE} ] && perror "Missing required directory $FILE"
+		echo ${FILE} >> "${FILELIST}"
+	done
+	for FILE in ${REQUIRED_FILES}
+	do
+		[ ! -f ${FILE} ] && perror "Missing required file $FILE"
+		echo ${FILE} >> "${FILELIST}"
+	done
+
+	local NUMFILES=$(cat "${FILELIST}" | wc -l)
+	if [ "x$NUMFILES" != "x" -a "x$NUMFILES" != "x0" ]; then
+		pinfo "File list generated at ${MODULE_BUILD_DIR}/${FILELIST} ($NUMFILES entries)"
+		pinfo "If something fails here, try to clean this module first."
+		tarcopy "$(cat "${FILELIST}")" "${MODULE_BUILD_DIR}"
+	fi
+}
+
+post_copy() {
+	# symlink for more
+	if [ ! -e "$TARGET_BUILD_DIR/bin/more" ]; then
+		[ -e "$TARGET_BUILD_DIR/bin/less" ] && ln -s /bin/less "$TARGET_BUILD_DIR/bin/more"
+		[ -e "$TARGET_BUILD_DIR/usr/bin/less" ] && ln -s /usr/bin/less "$TARGET_BUILD_DIR/bin/more"
+	fi
+	# same hack for mount
+	[ ! -e "$TARGET_BUILD_DIR/bin/mount" ] && ln -s /usr/bin/mount "$TARGET_BUILD_DIR/bin/mount"
+	
+	# make basic directory structure
+	mkdir -p "$TARGET_BUILD_DIR"/{bin,dev,proc,lib,etc,mnt,run,sys,var,opt/openslx/mnt}
+	ln -s -n -f -t "$TARGET_BUILD_DIR/var" "../run/lock" "../run"
+
+	# copy devices from running system
+	cp -a /dev/{console,kmsg,mem,null,shm,tty,tty0,tty1,tty9,urandom,zero} \
+		"${TARGET_BUILD_DIR}"/dev || perror "Copying devices from running system failed."
+
+	# set /etc/environment to include /opt/openslx/bin and /opt/openslx/sbin
+	#add_env PATH "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/openslx/sbin:/opt/openslx/bin"
+	add_env PATH "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/openslx/sbin:/opt/openslx/bin"
+	# set terminal to linux as it defaults to xterm which messes up ssh sessions
+	add_env TERM "linux"
+
+	# quick fix for /etc/fstab
+	[ ! -e "${TARGET_BUILD_DIR}/etc/fstab" ] && echo "# no configuration" > "${TARGET_BUILD_DIR}/etc/fstab"
+
+	# link /etc/mtab, needed for systemd
+	[ ! -e "${TARGET_BUILD_DIR}/etc/mtab" ] && ln -s "/proc/self/mounts" "${TARGET_BUILD_DIR}/etc/mtab"
+
+	# passwd, group, shadow
+	init_users_and_groups
+
+	# quick fix for missing group in /etc/group
+	add_group "lock"
+	add_group "nogroup"
+	add_user "nobody"
+
+	# setup root account
+	PASSWORD= USER=root add_user
+	DEMO_ID="$(USER=demo PASSWORD= USERHOME=/home/demo USERSHELL=/bin/bash add_user)"
+
+	mkdir -p "${TARGET_BUILD_DIR}/root"
+	mkdir -p "${TARGET_BUILD_DIR}/home/demo"
+	chown "$DEMO_ID:$DEMO_ID" "${TARGET_BUILD_DIR}/home/demo"
+	sed -i -r 's/^blacklist.*pcspkr/#&/g' "$TARGET_BUILD_DIR/etc/modprobe.d/blacklist.conf"
+
+	echo "minilinux-$(hostname)" > "${TARGET_BUILD_DIR}/etc/hostname"
+
+
+	# copy kernel, modules and firmware
+	copy_kernel_modules
+	copy_firmware
+	copy_kernel
+
+	# Try to fetch distro logo
+	if [ ! -s "$TARGET_BUILD_DIR/etc/distro.png" ]; then
+		local DIST=$(lsb_release -si)
+		if [ -n "$DIST" ]; then
+			[ -z "$CFG_DISTLOGO_URL" ] && CFG_DISTLOGO_URL='http://mltk-services.ruf.uni-freiburg.de/distro_logo.php?distro='
+			wget -t 3 -T 3 -O "$TARGET_BUILD_DIR/etc/distro.png" "${CFG_DISTLOGO_URL}${DIST}"
+			if [ ! -s "$TARGET_BUILD_DIR/etc/distro.png" ]; then
+				rm -f "$TARGET_BUILD_DIR/etc/distro.png"
+				pwarning "Could not download distro-logo"
+			fi
+		else
+			pwarning "Could not determine distribution"
+		fi
+	fi
+	# Create issue.template
+	local DIST=$(lsb_release -sd)
+	local GITC=$(git rev-parse --short HEAD)
+	local DATE=$(date "+%Y-%m-%d")
+	local VERSION=$(echo "bwLehrpool/$DIST   $DATE/$GITC" | escape_replace)
+	mkdir -p "$TARGET_BUILD_DIR/opt/openslx/etc"
+	sed "s/%version%/$VERSION/g" "$MODULE_DIR/templates/issue.template" > "$TARGET_BUILD_DIR/opt/openslx/etc/issue.template" || perror "Could not create issue template"
+
+}
+

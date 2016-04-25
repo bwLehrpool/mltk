@@ -1,0 +1,12 @@
+REQUIRED_INSTALLED_PACKAGES="
+	module-init-tools
+	alsa-utils
+	alsa-lib
+"
+REQUIRED_CONTENT_PACKAGES="
+	module-init-tools
+	alsa-utils
+	alsa-lib
+"
+
+# libasound2

@@ -1,0 +1,2 @@
+#!/bin/ash
+/usr/bin/udevadm monitor | /usr/bin/logger

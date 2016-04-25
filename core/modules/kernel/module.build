@@ -1,0 +1,146 @@
+# Customized kernel from system: fetch Distro's kernel sources, patch configuration, recompile
+
+# This overrides get_kernel_version from kernel.inc, so the variables will be set properly
+get_kernel_version() {
+	# Do not use MODULE_DIR here as this function might run when we process another module!
+	[ -n "${TARGET_KERNEL_LONG}" ] && return 0
+	[ ! -e "${ROOT_DIR}/tmp/work/kernel/ksrc/include/generated/utsrelease.h" ] && return 0
+	# determine kernel version that will be running in the generated system
+
+	# declare kernel version stuff
+	declare -rg TARGET_KERNEL_LONG=$(grep 'UTS_RELEASE' "${ROOT_DIR}/tmp/work/kernel/ksrc/include/generated/utsrelease.h" | awk -F '"' '{print $2}')
+	declare -rg TARGET_KERNEL_SHORT=$(echo "$TARGET_KERNEL_LONG" | grep -o -E '^[0-9\.]+')
+
+	# declare path to kernel headers and modules/firmware
+	declare -rg KERNEL_HEADERS_DIR="${ROOT_DIR}/tmp/work/kernel/ksrc"
+	declare -rg KERNEL_BASE_DIR="${ROOT_DIR}/tmp/work/kernel/build"
+
+	# print debug info
+	pinfo "TARGET_KERNEL_LONG: '$TARGET_KERNEL_LONG'"
+	pinfo "TARGET_KERNEL_SHORT: '$TARGET_KERNEL_SHORT'"
+	pdebug "KERNEL_BASE_DIR: '$KERNEL_BASE_DIR'"
+}
+
+fetch_source() {
+	pdebug "getting kernel sources via git ...."
+	[ -d ./ksrc ] && rm -rf ./ksrc
+	git clone --depth 1 "${REQUIRED_GIT}" -b "${REQUIRED_GIT_BRANCH}"  ksrc || perror "Could not clone kernel git."
+	# check for aufs
+	local RSL=$(find ksrc/ -type d -name aufs)
+	if [ -z "$RSL" ]; then
+		pinfo "aufs not found in kernel sources, patching it..."
+		patch_aufs
+	else
+		pinfo "aufs detected in kernel source :)"
+	fi
+	# remember the current kernel version
+	echo "${SYSTEM_KERNEL_LONG}" > ksrc/KVERSION
+}
+
+build() {
+	local TARGET_CONFIG_FILE="openslx.config"
+	rm -f "${TARGET_CONFIG_FILE}"
+	# update config and copy to ksrc
+	pinfo "Updating kernel config..."
+	update_config
+	cp "${TARGET_CONFIG_FILE}" "ksrc/.config"
+	# make kernel with the new config
+	cd ksrc || perror "Could not cd to ksrc, was the kernel source fetched properly?"
+	pinfo "Preparing kernel for new config ('make oldconfig')."
+	if [ "x$MLTK_QUIET" = "x1" ]; then
+		make olddefconfig || perror "make olddefconfig failed."
+	else
+		make oldconfig || perror "make oldconfig failed."
+	fi
+	make prepare || perror "make prepare failed."
+	make scripts || perror "make scripts failed."
+
+	pinfo "Compiling kernel... (this will take some time)"
+	# explicitly state number of cores here, as MAKEFLAGS seems to be overridden
+	make "-j$CPU_CORES" || perror "make failed."
+
+	# install modules to build directory
+	pinfo "Installing kernel modules..."
+	if [ -d "${MODULE_BUILD_DIR}/lib/modules" ]; then
+		rm -r "${MODULE_BUILD_DIR}/lib/modules" || pwarning "Could not clean old modules."
+	fi
+	make INSTALL_MOD_PATH="${MODULE_BUILD_DIR}" INSTALL_MOD_STRIP=1 modules_install || perror "make modules_install failed in ${MODULE_BUILD_DIR}."
+	cd - 2> /dev/null
+
+	# copy kernel to build
+	cp ksrc/arch/x86/boot/bzImage "${MODULE_BUILD_DIR}/kernel"
+	pinfo "Kernel was successfully built at ${MODULE_BUILD_DIR}/kernel"
+	[ -z "${KERNEL_BUILD_DIR}" ] && KERNEL_BUILD_DIR="${MODULE_BUILD_DIR}"
+}
+
+post_copy() {
+	:
+}
+
+# helper function to update the current kernel config with our parameters
+update_config() {
+
+	# first we need to update the current config
+	local BASE_CONFIG_FILE="/boot/config-$(uname -r)"
+	[ -e "${BASE_CONFIG_FILE}" ] || perror "$BASE_CONFIG_FILE could not be found! This should not happen."
+	
+	# check for our wanted config parameter
+	local OPENSLX_WANTED_CONFIG="${ROOT_DIR}/data/kernel.wanted.config"
+
+	[ -e "${OPENSLX_WANTED_CONFIG}" ] || perror "$OPENSLX_WANTED_CONFIG does not exist! Please add a list of wanted kernel config parameters."
+
+	# copy basic config file
+	cp "$BASE_CONFIG_FILE" "$TARGET_CONFIG_FILE"
+
+	for WANTED_CONFIG in $(cat $OPENSLX_WANTED_CONFIG|sort -u); do
+		local CONFIG_PARAM_NAME="$(echo $WANTED_CONFIG | awk -F "=" '{print $1}')"
+		local SEARCH_RESULT="$(grep -E "^\s*$(echo "$CONFIG_PARAM_NAME" | escape_search)=" "$BASE_CONFIG_FILE")"
+
+		#echo "Process: $SEARCH_RESULT"
+		# analyse results
+		if [ "x$SEARCH_RESULT" == "x" ]; then
+			# no match, add it
+			sed -i -r "s/^\s*#.*\s$(echo "$CONFIG_PARAM_NAME" | escape_search)[^_A-Z0-9].*$//" "$TARGET_CONFIG_FILE"
+			echo "$WANTED_CONFIG" >> "$TARGET_CONFIG_FILE"
+		else
+			# match, change to our setting if they differ
+			if [ "x$SEARCH_RESULT" != "x$WANTED_CONFIG" ]; then
+				sed -i "s/$(echo "$SEARCH_RESULT" | escape_search)/$(echo "$WANTED_CONFIG" | escape_replace)/" "$TARGET_CONFIG_FILE"
+			fi
+		fi
+	done
+}
+
+# helper to patch aufs
+patch_aufs() {
+	pinfo "Cloning aufs3 standalone git"
+	cd "$MODULE_WORK_DIR"
+	[ -d "aufs3-standalone/.git" ] && rm -rf "aufs3-standalone"		# if already there, kill it.
+	# git: --depth 1 won't work here due to later "checkout origin/branch"
+	git clone "git://aufs.git.sourceforge.net/gitroot/aufs/aufs3-standalone.git" || perror "Cloning aufs3 failed."
+	# get the needed version
+	[ ! -z ${SYSTEM_KERNEL_LONG} ] && local NEEDED_BRANCH=$(echo $SYSTEM_KERNEL_LONG | awk -F "." '{print $1"."$2}') \
+				|| perror "SYSTEM_KERNEL_LONG not set, this should not happen!"
+	pinfo "Getting branch origin/$NEEDED_BRANCH"
+	cd "$MODULE_WORK_DIR/aufs3-standalone" || perror "Could not CD to aufs3-standalone"
+	git checkout "origin/aufs$NEEDED_BRANCH" || perror "Could not checkout needed branch."
+	pinfo "Starting to patch... $NEEDED_BRANCH"
+	tarcopy "Documentation fs" "$MODULE_WORK_DIR/ksrc"
+
+	# Quick-and-dirty aufs_type.h copying:
+	[ -e "include/linux/aufs_type.h" ] && cp "include/linux/aufs_type.h" "$MODULE_WORK_DIR/ksrc/include/linux/"
+	[ -e "include/uapi/linux/aufs_type.h" ] && cp "include/uapi/linux/aufs_type.h" "$MODULE_WORK_DIR/ksrc/include/uapi/linux/"
+
+	cd "$MODULE_WORK_DIR/ksrc" || perror "Could not CD to kernel-source dir ksrc"
+
+	patch -p1 < "$MODULE_WORK_DIR/aufs3-standalone/aufs3-kbuild.patch" || perror "aufs3-standalone/aufs3-kbuild.patch failed!"
+	patch -p1 < "$MODULE_WORK_DIR/aufs3-standalone/aufs3-base.patch" || perror "aufs3-standalone/aufs3-base.patch failed!"
+
+	# this following 'if' is a burning shame - caused as patching under eg. openSuse 13.1 is always unsuccessful due to hunk failing
+	if [ -f "$MODULE_WORK_DIR/aufs3-standalone/aufs3-mmap.patch" ]; then
+			patch -p1 < "$MODULE_WORK_DIR/aufs3-standalone/aufs3-mmap.patch" || pwarning "Problem patching aufs3-mmap.patch: hunks failed?"
+	fi
+	pinfo "Patched kernel source with aufs-${NEEDED_BRANCH}"
+	cd "$MODULE_WORK_DIR"
+}
+

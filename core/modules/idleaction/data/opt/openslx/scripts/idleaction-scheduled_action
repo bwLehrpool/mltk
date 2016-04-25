@@ -1,0 +1,77 @@
+#!/bin/ash
+
+if [ "$(whoami)" != "root" ]; then
+	echo "Only root can call this"
+	exit 1
+fi
+
+if [ $# -ne 1 ]; then
+	echo "$0 <reboot|poweroff>"
+	exit 1
+fi
+
+MODE=$1
+
+if [ "$MODE" != "reboot" ] && [ "$MODE" != "poweroff" ]; then
+	slxlog "idleaction-failed-call" "Invalid call to idleaction-scheduled_action. Mode '$MODE' unknown."
+	exit 1
+fi
+
+NUM=$(who | wc -l)
+[ "$NUM" = "0" ] && $MODE # Easy way out - machine is idle
+
+# Someone logged in
+for MINUTES in 5 X X X X X X X 3 X X X 2 X X X 1 X X X; do
+	NUM=$(who | wc -l)
+	[ "$NUM" = "0" ] && break
+	if [ "$MINUTES" != "X" ]; then
+		USERS=0
+		if [ "$MODE" = "reboot" ]; then
+			MESSAGE="Das System wird in $MINUTES Minute(n) neugestartet, bitte beenden Sie Ihre Sitzung.
+The system will reboot in $MINUTES minute(s). Please save your work and end the session."
+		else
+			MESSAGE="Dieser Rechner wird in $MINUTES Minute(n) abgeschaltet, bitte beenden Sie Ihre Sitzung.
+The system will power off in $MINUTES minute(s). Please save your work and end the session."
+		fi
+		for d in $(who | awk '{print $2}' | sort -u); do
+			if [ "${d:0:1}" = ":" ]; then
+				# X11
+				export DISPLAY=$d
+				export XAUTHORITY=$(ps a | grep " $DISPLAY " | grep -o -- '-auth.*$' | grep -m1 -v grep | awk '{print $2}')
+				# TODO: Don't look... We need to pick a proper util for this
+				/opt/openslx/cups/printergui --error "$MESSAGE" &
+				unset DISPLAY XAUTHORITY
+				USERS=$(( $USERS + 1 ))
+			elif [ "${d:0:3}" = "tty" ]; then
+				# Regular tty
+				cat > "/dev/$d" <<-EOF
+				*
+				***************************
+				$MESSAGE
+				***************************
+				*
+				EOF
+				USERS=$(( $USERS + 1 ))
+			elif [ "${d:0:3}" = "pts" ]; then
+				# pts - xterm or ssh session
+				cat > "/dev/pts/${d:3}" <<-EOF
+				*
+				***************************
+				$MESSAGE
+				***************************
+				*
+				EOF
+				USERS=$(( $USERS + 1 ))
+			fi
+		done
+		FILE=$(mktemp)
+		who > "$FILE"
+		slxlog "idleaction-busy" "Postponed $MODE ($MINUTES minutes max.) - $USERS user(s) still active"
+		sleep 1
+		rm -- "$FILE"
+	fi
+	sleep 15
+done
+
+$MODE
+

@@ -1,0 +1,40 @@
+REQUIRED_INSTALLED_PACKAGES="
+"
+REQUIRED_CONTENT_PACKAGES="
+			xserver-xorg$UBUNTU_XORG_PKG_SUFFIX
+			xserver-xorg-core$UBUNTU_XORG_PKG_SUFFIX
+			libgl1-mesa-dri$UBUNTU_XORG_PKG_SUFFIX
+			libgl1-mesa-glx$UBUNTU_XORG_PKG_SUFFIX
+			xkb-data
+			x11-xkb-utils
+			x11-xserver-utils
+			xserver-xorg-input-evdev$UBUNTU_XORG_PKG_SUFFIX
+			xserver-xorg-input-mouse$UBUNTU_XORG_PKG_SUFFIX
+			xserver-xorg-input-vmmouse$UBUNTU_XORG_PKG_SUFFIX
+			xserver-xorg-video-intel$UBUNTU_XORG_PKG_SUFFIX
+			xserver-xorg-video-ati$UBUNTU_XORG_PKG_SUFFIX
+			xserver-xorg-video-vesa$UBUNTU_XORG_PKG_SUFFIX
+			xserver-xorg-video-mga$UBUNTU_XORG_PKG_SUFFIX
+			xserver-xorg-video-vmware$UBUNTU_XORG_PKG_SUFFIX
+			xserver-xorg-video-fbdev$UBUNTU_XORG_PKG_SUFFIX
+			xserver-xorg-video-radeon$UBUNTU_XORG_PKG_SUFFIX
+			xserver-xorg-video-sisusb$UBUNTU_XORG_PKG_SUFFIX
+			xserver-xorg-video-nouveau$UBUNTU_XORG_PKG_SUFFIX
+			@xserver-xorg-video-openchrome$UBUNTU_XORG_PKG_SUFFIX
+			@xserver-xorg-video-savage$UBUNTU_XORG_PKG_SUFFIX
+			@xserver-xorg-video-trident$UBUNTU_XORG_PKG_SUFFIX
+			@xserver-xorg-video-mach64$UBUNTU_XORG_PKG_SUFFIX
+			@xserver-xorg-video-qxl$UBUNTU_XORG_PKG_SUFFIX
+			@xserver-xorg-video-siliconmotion$UBUNTU_XORG_PKG_SUFFIX
+			@xserver-xorg-video-cirrus$UBUNTU_XORG_PKG_SUFFIX
+			@xserver-xorg-video-r128$UBUNTU_XORG_PKG_SUFFIX
+			@xserver-xorg-video-neomagic$UBUNTU_XORG_PKG_SUFFIX
+			@xserver-xorg-video-geode$UBUNTU_XORG_PKG_SUFFIX
+			@xserver-xorg-video-s3$UBUNTU_XORG_PKG_SUFFIX
+			@xserver-xorg-video-tdfx$UBUNTU_XORG_PKG_SUFFIX
+"
+
+REQUIRED_DIRECTORIES+="
+			/usr/lib
+"
+REQUIRED_FILES=""

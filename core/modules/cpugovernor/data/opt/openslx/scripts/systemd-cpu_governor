@@ -1,0 +1,62 @@
+#!/bin/ash
+# 
+# Script to set the CPU governor to ondemand on all cores
+#
+
+# source global config
+. /opt/openslx/config || \
+	{ echo "ERROR: Could not source /opt/openslx/config."; exit 1; }
+
+# set the governor to the one given in SLX_GOVERNOR
+TARGET_GOVERNOR=""
+if [ -n "$SLX_GOVERNOR" ]; then
+	TARGET_GOVERNOR="$SLX_GOVERNOR"
+else
+	# use 'ondemand' per default
+	TARGET_GOVERNOR="ondemand"
+fi
+echo "Trying to set CPU governor to $TARGET_GOVERNOR"
+# global information needed
+# CORES is the range of cores present, on bwpc4 it has the value '0-3'
+# thus the split: MINCORE=0 MAXCORE=3
+CORES="$(cat /sys/devices/system/cpu/present)"
+MINCORE="$(echo $CORES | awk -F "-" '{print $1}')"
+MAXCORE="$(echo $CORES | awk -F "-" '{print $2}')"
+
+# Helper function 'test_for_gov'
+# Usage:
+#	test_for_gov <governor>
+# Example:
+#	test_for_gov "ondemand"
+# Return 0 if it is supported by all cpus, 1 otherwise
+test_for_gov() {
+	# if no argument is given, print error and exit (yes exit the whole script!)
+	[ $# -ne 1 ] && echo "Usage: test_for_gov <governor>. No arguments given!" && exit 1
+	local GOVERNOR="$1"
+
+	# check for each cpu just to be safe
+	# ash-style loop ....
+	local i=$MINCORE
+	while [ $i -le $MAXCORE ]; do
+		# check if the given governor is supported
+		grep -q "${GOVERNOR}" /sys/devices/system/cpu/cpu${i}/cpufreq/scaling_available_governors 2>/dev/null || return 1;
+		# increment
+		true $(( i++ ))
+	done
+	return 0;
+}
+# now actually test the cpus for the 'ondemand' cpu governor
+if test_for_gov "${TARGET_GOVERNOR}"; then
+	# ok, so now set the governor to 'ondemand' for all cores
+	i=$MINCORE
+	while [ $i -le $MAXCORE ]; do
+		if ! echo "${TARGET_GOVERNOR}" > /sys/devices/system/cpu/cpu${i}/cpufreq/scaling_governor; then
+			echo "ERROR: Could not set the cpu governor to '${TARGET_GOVERNOR}'!"
+			exit 1
+		fi
+		true $(( i++ ))
+	done
+else
+	echo "ERROR: '${TARGET_GOVERNOR}' is not supported by this machine!"
+	exit 0
+fi

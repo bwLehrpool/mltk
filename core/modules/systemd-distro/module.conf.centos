@@ -1,0 +1,7 @@
+REQUIRED_CONTENT_PACKAGES="
+	systemd
+	systemd-libs
+"
+REQUIRED_SYSTEM_FILES+="
+	/usr/lib/systemd/system
+"

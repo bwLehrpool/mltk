@@ -1,0 +1,9 @@
+[Unit]
+Description=Sets up the virtualization environment
+Wants=graphical.target
+Before=graphical.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/opt/openslx/scripts/systemd-run_virt_env

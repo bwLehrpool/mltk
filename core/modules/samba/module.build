@@ -1,0 +1,26 @@
+fetch_source() {
+	:
+}
+
+build() {
+	COPYLIST="list_dpkg_output"
+	[ -e "$COPYLIST" ] && rm "$COPYLIST"
+
+	if [ "x$PACKET_MANAGER" == "xzypper" ]; then
+		if [ $(zypper lr | grep -ci filesystems) -eq 0 ]; then
+			zypper addrepo http://download.opensuse.org/repositories/filesystems/openSUSE_${SYS_VERSION} Filesystems
+			pinfo "Repository added: OpenSuse Build filesystems"
+		fi
+		# Ubuntu writes to /etc, Suse does not:
+		mkdir "$MODULE_BUILD_DIR"/etc/
+		cp /usr/share/doc/packages/smbnetfs/smbnetfs.conf "$MODULE_BUILD_DIR"/etc/
+	fi
+
+	list_packet_files >> "$COPYLIST"
+	tarcopy "$(cat "$COPYLIST" | sort -u)" "${MODULE_BUILD_DIR}"
+	return 0
+}
+
+post_copy() {
+	:
+}

@@ -1,0 +1,6 @@
+REQUIRED_INSTALLED_PACKAGES="
+	kernel-desktop-devel
+"
+REQUIRED_CONTENT_PACKAGES="
+	kernel-desktop-devel
+"

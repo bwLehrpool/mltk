@@ -1,0 +1,7 @@
+REQUIRED_CONTENT_PACKAGES="
+			dbus
+"
+REQUIRED_FILES+="
+			/etc/default/dbus
+"
+

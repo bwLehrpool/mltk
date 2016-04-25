@@ -1,0 +1,88 @@
+# kernel-system: Try to use the system's kernel without recompiling
+
+# overloaded get_kernel_version function from kernel.inc
+get_kernel_version(){
+	[ -z "${SYSTEM_KERNEL_LONG}" ] && perror "SYSTEM_KERNEL_LONG is not set, should be done by kernel.inc on startup. Aborting..."
+	[ -n "${TARGET_KERNEL_LONG}" ] && return
+
+	# set TARGET_KERNEL_LONG and TARGET_KERNEL_SHORT correctly
+	declare -rg TARGET_KERNEL_LONG="${SYSTEM_KERNEL_LONG}"
+	declare -rg TARGET_KERNEL_SHORT="$(echo ${SYSTEM_KERNEL_LONG} | grep -o -E '^[0-9\.]+')"
+
+	# figure out linux headers directory
+	local DIR
+	local RES=
+	for DIR in "/lib/modules/$SYSTEM_KERNEL_LONG/build" "/lib/modules/$SYSTEM_KERNEL_LONG/source" \
+			"/usr/src/linux-headers-$SYSTEM_KERNEL_LONG" "/usr/src/kernels/$SYSTEM_KERNEL_LONG"; do
+		[ -e "$DIR/include/linux/input" ] && RES=$DIR && break
+		# Sometimes the directory exists, but doesn't contain headers yet. Need a good way to
+		# figure that out. "include/linux/input" is a quick first idea that works on fedora and ubuntu. :)
+	done
+	# maybe fetch source did not install the headers correctly?
+	[ -z "$RES" ] && perror "kernel headers for $SYSTEM_KERNEL_LONG not found! Re-build the kernel-system module"
+	declare -rg KERNEL_HEADERS_DIR="$RES" 2>/dev/null
+
+	# check kernel modules/firmware	directory
+	if [ -d "/lib/modules/${SYSTEM_KERNEL_LONG}" -a -d "/lib/firmware" ]; then
+		# The expected paths exists, set KERNEL_BASE_DIR to /
+		declare -rg KERNEL_BASE_DIR="/" 2>/dev/null
+	else
+		perror "Could not find kernel modules / firmware for kernel version '$SYSTEM_KERNEL_LONG'. \
+			Does '/lib/modules/$SYSTEM_KERNEL_LONG' exist?"
+	fi
+
+	# print debug info
+	pinfo "TARGET_KERNEL_LONG: '$TARGET_KERNEL_LONG'"
+	pinfo "TARGET_KERNEL_SHORT: '$TARGET_KERNEL_SHORT'"
+	pdebug "KERNEL_BASE_DIR: '$KERNEL_BASE_DIR'"
+
+}
+
+
+
+fetch_source() {
+	:
+}
+
+build() {
+	
+	# simply copy the kernel from the running system
+	# to the build directory as it is.
+	local KERNEL_SYSTEM_PATH=""
+	local BOOT_IMAGE=""
+	
+	# 1st "parse" /proc/cmdline for the kernel name
+	for i in $(cat /proc/cmdline); do
+		[[ "$i" == BOOT_IMAGE=* ]] && BOOT_IMAGE="$(basename "${i#BOOT_IMAGE=}")"
+	done
+	[ -z "${BOOT_IMAGE}" ] && local BOOT_IMAGE="$(uname -r)"
+
+	# exit if KERNEL_SYSTEM_FILENAME is empty, should not happen
+	[ -z "${BOOT_IMAGE}" ] && perror "Could not determine the full path to the running kernel..."
+
+	# now find it in KERNEL_SYSTEM_SEARCH_PATH
+	# NOTE: this variable should be expanded in the future if new locations are to be searched
+	local KERNEL_SYSTEM_SEARCH_PATH="/boot"
+	local KERNEL_SYSTEM_SEARCH_RESULTS="$(find "${KERNEL_SYSTEM_SEARCH_PATH}" -type f -name "${BOOT_IMAGE}")"
+
+	if [ "$(echo $KERNEL_SYSTEM_SEARCH_RESULTS|wc -w)" -eq 1 ]; then
+		# we found the running kernel path
+		KERNEL_SYSTEM_PATH="${KERNEL_SYSTEM_SEARCH_RESULTS}"
+	else 
+		# we found more than one, shouldn't happen...
+		perror "Found no or more than one kernel named '${BOOT_IMAGE}' in '${KERNEL_SYSTEM_SEARCH_PATH}'."
+	fi
+
+	# at this point, we should definitly have KERNEL_SYSTEM_PATH, check just in case :)
+	[ -z "${KERNEL_SYSTEM_PATH}" ] && perror "KERNEL_SYSTEM_PATH isn't set, kernel not found. This shouldn't happen!"
+	pinfo "Live kernel path: $KERNEL_SYSTEM_PATH"
+
+	# copy kernel to build directory
+	cp "${KERNEL_SYSTEM_PATH}" "${MODULE_BUILD_DIR}/kernel" \
+		|| perror "Copy of kernel failed: From '${KERNEL_SYSTEM_PATH}' to '${MODULE_BUILD_DIR}/kernel'"
+}
+
+post_copy() {
+	:
+}
+

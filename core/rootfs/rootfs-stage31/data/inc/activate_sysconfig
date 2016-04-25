@@ -1,0 +1,98 @@
+#!/bin/ash
+
+echo "Configuring stage 3.2 ..."
+
+# first a few variables
+CONFIG="${FUTURE_ROOT}/opt/openslx/config"
+
+#########################################################################
+#
+# This function downloads the config containing environment variables
+#
+fetch_sysconfig() {
+	[ -e "$CONFIG" ] && grep -E '^#_RCONFIG_TAG$' "$CONFIG" > /dev/null \
+		&& echo "Config already fetched." && return 0
+
+	download "${SLX_BASE_PATH}/config" "${CONFIG}-remote" || return 1
+
+	echo "# Config fetched from $URL" >> "$CONFIG"
+	echo "#_RCONFIG_TAG" >> "$CONFIG"
+	cat "${CONFIG}-remote" >> "$CONFIG"
+}
+#########################################################################
+#
+# This function downloads the config.tgz and unpacks it to $TARGET_PATH <-- no it doesn't!
+#
+fetch_config_files() {
+	[ -e "${CONFIG}.tgz" ] && echo "config.tgz already downloaded." && return 0
+
+	download "${SLX_BASE_PATH}/config.tgz" "${CONFIG}.tgz"
+}
+
+
+#########################################################################
+#
+# This function updates the downloaded config with the IP information
+# received from /inc/setup_network <-- plus 500 other things
+update_sysconfig() {
+	# sanity checks
+	[ ! -e "${CONFIG}" ] && { echo "Cannot update. '$CONFIG' does not exist."; return 1; }
+
+	# write IP and SLX_SERVER configuration to $CONFIG
+cat >> "$CONFIG" <<HEREEND
+# IP Config written in stage31
+SLX_PXE_CLIENT_IP='$CLIENTIP'
+SLX_PXE_SERVER_IP='$SERVERIP'
+SLX_PXE_GATEWAY='$GATEWAY'
+SLX_PXE_DNS='$DNS_SERVER'
+SLX_PXE_MAC='$BRIDGEMAC'
+HEREEND
+
+	[ ! -e "${CONFIG}.tgz" ] && { echo "Cannot update. '$CONFIG' does not exist."; return 1; }
+
+	# setup hardware clock
+	. "${CONFIG}"
+	if [ "x$SLX_BIOS_CLOCK" == "xlocal" ]; then
+		hwclock -s -l
+	elif [ "x$SLX_BIOS_CLOCK" == "xutc" ]; then
+		hwclock -s -u
+	fi
+
+	local TEMP_EXTRACT_DIR="/tmp/config.tgz.tmp"
+	# TODO perserve existing directories permissions (but overwrite the permissions of files!)
+	mkdir -p "${TEMP_EXTRACT_DIR}"
+	tar xf "${CONFIG}.tgz" -C "${TEMP_EXTRACT_DIR}" || { echo "Could not untar ${CONFIG}.tgz to ${TEMP_EXTRACT_DIR}"; return 1; }
+	chown -R 0:0 "${TEMP_EXTRACT_DIR}" 2>/dev/null
+	cd "${TEMP_EXTRACT_DIR}"
+	# first we look for local config.tgz files, which we merge with the common
+	# config.tgz files
+	local LOCAL_CONFIG_DIR="openslx-configs/${SLX_LOCAL_CONFIG}"
+	if [ -n "${SLX_LOCAL_CONFIG}" -a -d "${LOCAL_CONFIG_DIR}" ]; then
+		tarcopy "${LOCAL_CONFIG_DIR}" "${TEMP_EXTRACT_DIR}"
+		echo "Merged local configuration files for '${SLX_LOCAL_CONFIG}'"
+	fi
+	# purge openslx-configs/*
+	rm -rf -- "openslx-configs/"
+	# now just tarcopy them to future root
+	tarcopy "${TEMP_EXTRACT_DIR}" "${FUTURE_ROOT}"
+	# cleanup the downloaded stuff
+	cd /
+	rm -rf -- "${TEMP_EXTRACT_DIR}"
+	[ $DEBUG -eq 0 ] && rm -f -- "${CONFIG}.tgz"
+	# Display branding logo if splash screen is shown
+	[ "x${MUTED_OUTPUT}" = "x1" ] && [ -e "${FUTURE_ROOT}/etc/branding.ppm" ] && fbsplash -s "${FUTURE_ROOT}/etc/branding.ppm" &
+	return 0
+}
+
+
+#########################################################################
+#
+# MAIN PART
+#
+
+fetch_sysconfig || drop_shell "Could not download remote config"
+. "${CONFIG}-remote" || drop_shell "Could not source remote config"
+fetch_config_files || drop_shell "Could not download config.tgz"
+update_sysconfig || drop_shell "Could not update sysconfig"
+true
+

@@ -1,0 +1,26 @@
+REQUIRED_INSTALLED_PACKAGES="
+	ncpfs
+	libncp
+"
+REQUIRED_CONTENT_PACKAGES="
+	ncpfs
+	libncp
+"
+REQUIRED_BINARIES+="
+	nwmsg
+	ncpmount
+	ncpumount
+	mount.ncp
+	mount.ncpfs
+"
+REQUIRED_DIRECTORIES+="
+	/usr
+"
+
+# For Debian 8: Both packages were dropped from official repos. Do not change the
+# order, as these packages will be installed via dpkg and depend on each other.
+REQUIRED_DOWNLOAD_URLS="
+	ftp.acc.umu.se/mirror/cdimage/snapshot/Debian/pool/main/n/ncpfs/libpam-ncp_2.2.6-9_amd64.deb
+	ftp.acc.umu.se/mirror/cdimage/snapshot/Debian/pool/main/n/ncpfs/libncp_2.2.6-9_amd64.deb
+	ftp.acc.umu.se/mirror/cdimage/snapshot/Debian/pool/main/n/ncpfs/ncpfs_2.2.6-9_amd64.deb
+"

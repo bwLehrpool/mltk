@@ -1,0 +1,5 @@
+#!/bin/ash
+
+[ -n "$SESSION_NAME" ] && slxlog ".vmchooser-session-name" "$SESSION_NAME"
+
+exit 0

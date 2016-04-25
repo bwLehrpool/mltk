@@ -1,0 +1,45 @@
+fetch_source() {
+	mkdir -p "src/kmod"
+	if [ ! -d "src/dnbd3" ]; then
+		git clone "$REQUIRED_GIT" "src/dnbd3" || perror "Could not clone dnbd3 git repo"
+	fi
+	cd src/dnbd3
+	#git checkout "$REQUIRED_BRANCH" || perror "Could not checkout requested branch $REQUIRED_BRANCH"
+	git checkout "$REQUIRED_COMMIT" || perror "Could not checkout requested commit $REQUIRED_COMMIT"
+	cd -
+	cp src/dnbd3/Kbuild.in src/dnbd3/src/*.{c,h} src/dnbd3/src/kernel/*.{c,h} src/kmod/ || perror "Could not copy kernel module source files"
+	cat > "src/kmod/Makefile" <<HEREEND
+include \$(PWD)/Kbuild.in
+
+ifndef KDIR
+	KDIR = /lib/modules/\$(shell uname -r)/build
+endif
+
+all:
+	make -C "\$(KDIR)" "M=\$(PWD)" modules
+
+clean:
+	make -C "\$(KDIR)" "M=\$(PWD)" clean
+HEREEND
+}
+
+build() {
+	cd "$MODULE_WORK_DIR/src/kmod" || perror "Could not CD to standalone dnbd3 kmod dir"
+	make MODULE_NAME=dnbd3 KDIR="$KERNEL_HEADERS_DIR" || perror "Could not compile kernel module"
+	mkdir -p "$MODULE_BUILD_DIR/lib/modules/dnbd3" || perror "Could not create lib/modules/dnbd3"
+	mkdir -p "$MODULE_BUILD_DIR/opt/openslx/bin" || perror "Coould not create opt/openslx/bin"
+	cp "$MODULE_WORK_DIR/src/kmod/dnbd3.ko" "$MODULE_BUILD_DIR/lib/modules/dnbd3/" || perror "could not cp dnbd3.ko"
+	cd "$MODULE_BUILD_DIR/opt/openslx/bin" || perror "Could not cd to build dir for client binary"
+	cmake "$MODULE_WORK_DIR/src/dnbd3" || perror "Could not cmake"
+	make dnbd3-client || perror "Could not make dnbd3-client"
+	make dnbd3-fuse || perror "Could not make dnbd3-fuse"
+	chown root:root "dnbd3-client" "dnbd3-fuse"
+	chmod +xs "dnbd3-client"
+	chmod +x "dnbd3-fuse"
+	cd "$MODULE_WORK_DIR"
+}
+
+post_copy() {
+	:
+}
+

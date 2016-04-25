@@ -1,0 +1,3 @@
+make mltk install sshd if its not installed
+
+Distros: Ubuntu, Suse, soon Arch!

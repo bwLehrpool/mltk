@@ -1,0 +1,8 @@
+REQUIRED_INSTALLED_PACKAGES="
+	ConsoleKit
+	ConsoleKit-x11
+"
+REQUIRED_CONTENT_PACKAGES="
+	ConsoleKit
+	ConsoleKit-x11
+"

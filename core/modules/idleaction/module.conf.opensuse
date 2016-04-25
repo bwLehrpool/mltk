@@ -1,0 +1,6 @@
+REQUIRED_INSTALLED_PACKAGES="
+	libX11-devel
+	libXScrnSaver-devel
+	xorg-x11-proto-devel
+"
+

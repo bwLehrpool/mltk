@@ -1,0 +1,4 @@
+#!/bin/sh
+
+exec /usr/bin/icewm &
+# exec /usr/bin/firefox

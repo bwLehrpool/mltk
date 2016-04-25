@@ -1,0 +1,6 @@
+REQUIRED_INSTALLED_PACKAGES="
+	qt-devel
+	libvncserver-devel
+"
+REQUIRED_CONTENT_PACKAGES="
+"

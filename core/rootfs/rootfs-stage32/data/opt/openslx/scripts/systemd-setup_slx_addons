@@ -1,0 +1,94 @@
+#!/bin/bash
+# Needs full bash
+#
+#	Script to be called by systemd
+#
+#	Downloads and appends addons per sqfs/aufs.
+#
+######################################################################################
+#
+#	Two modes for this script:
+#		- without any arguments, it will just go through the list of addons to
+#		  setup as given through the OpenSLX configuration file
+#		- with an argument, it will setup the addon given as $1
+#
+#
+######################################################################################
+
+export PATH=$PATH:/opt/openslx/bin:/opt/openslx/sbin
+
+# read global OpenSLX config
+. /opt/openslx/config || { echo "Could not source config!"; exit 23; }
+
+# source functions.inc for the download function
+. /opt/openslx/inc/functions || { echo "/opt/openslx/inc/functions not found!"; exit 1337; }
+
+# quick fix for the missing FUTURE_ROOT needed by /opt/openslx/etc/functions.inc
+export FUTURE_ROOT="/"
+
+# read openslx config, especially servers given by SLX_KCL_SERVERS and SLX_CONFIG_SERVERS
+if [ -z "${SLX_CONFIG_SERVERS}" ]; then
+	echo "SLX_CONFIG_SERVERS is not set in /opt/openslx/config. Will only try the base servers from the cmdline."
+	#[ -z "${SLX_KCL_SERVERS}" ] && SLX_KCL_SERVERS=$(read_from_cmdline "slxsrv")
+fi
+
+# read base slx servers from cmdline
+BASE_MOUNT_POINT="/opt/openslx/mnt"
+DOWNLOAD_DEST="/tmp/addons"
+mkdir -p "$DOWNLOAD_DEST" || { echo "Failed to create $DOWNLOAD_DEST"; exit 1; }
+
+######################################################################################
+#
+#				NO ARGUMENTS -> LOOP OVER ALL ADDONS
+#
+
+if [ $# -eq 0 ]; then
+	[ -z "${SLX_ADDONS}" ] && { echo "No addons configured. Nothing to do :-)."; exit 0; }
+	for ADDON in ${SLX_ADDONS}; do
+		systemctl start "setup-slx-addon@$ADDON" &
+	done
+fi
+
+######################################################################################
+#
+#				WITH ARGUMENTS -> SETUP ADDON
+#
+
+if [ $# -eq 1 ]; then
+	ADDON="$1"
+
+	# download the addon from the given URL
+	ADDON_TARGET_PATH="${DOWNLOAD_DEST}/$(basename "$ADDON").sqfs"
+	if ! download "${SLX_BASE_PATH}/${ADDON}.sqfs" "${ADDON_TARGET_PATH}"; then
+		slxlog --echo "addon-download" "Download of '${HTTP_BASE_PATH}/${ADDON}.sqfs' failed."
+		exit 1
+	fi
+
+	# now mount it to $BASE_MOUNT_POINT/<addon-name>
+	ADDON_MOUNT_POINT="${BASE_MOUNT_POINT}/$(basename "$ADDON")"
+	mkdir -p "$ADDON_MOUNT_POINT"
+	mount -t squashfs -o ro "$ADDON_TARGET_PATH" "$ADDON_MOUNT_POINT" || \
+		{ slxlog --echo "addon-mount" "Failed to mount $ADDON_TARGET_PATH."; exit 1; }
+
+	# now append it to /
+	echo "Appending ${ADDON_MOUNT_POINT} to /"
+	if ! mount -o "remount,ins:1:${ADDON_MOUNT_POINT}=rr" / ; then # ins:2 makes sure the addon is after tmpfs and stage32, but before stage4
+		slxlog --echo "addon-aufs" "Failed to append ${ADDON_MOUNT_POINT} to the aufs. Cleaning up..."
+		umount -l ${ADDON_MOUNT_POINT} || echo "Could not unmount ${ADDON_MOUNT_POINT}!"
+		exit 1
+	fi
+
+	# Run post-hook if available
+	if [ -x "$ADDON_MOUNT_POINT/addon-init" ]; then
+		"$ADDON_MOUNT_POINT/addon-init" || \
+			slxlog --echo "addon-init" "Warning: Could not execute addon-init of $ADDON"
+	fi
+	if ! grep -q '/opt/openslx/mnt/stage4' "/proc/mounts"; then
+		ldconfig 2> /dev/null || ldconfig.real 2> /dev/null
+	fi
+fi
+
+[ $# -gt 1 ] && { echo "Error - $0 only takes no or one argument. $# given." && exit 1; }
+
+exit 0
+

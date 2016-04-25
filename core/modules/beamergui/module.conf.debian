@@ -1,0 +1,8 @@
+REQUIRED_INSTALLED_PACKAGES="
+libqt4-dev
+libxrandr-dev
+"
+REQUIRED_CONTENT_PACKAGES="
+libqt4-dev
+libxrandr-dev
+"

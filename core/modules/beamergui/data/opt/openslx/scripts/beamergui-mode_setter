@@ -1,0 +1,165 @@
+#! /bin/bash
+# This script needs bash for the arrays
+
+# This script adds the common resolutions to the Xserver if and only if there
+# is a beamer connected. Additionally, if the preferred resolution is known,
+# (i.e. the Xserver received a proper EDID) the latter will be applied.
+
+################################################################################
+# Add or remove additional modes here.
+declare -a MODES
+MODES=("${MODES[@]}" "1280x800  83.50  1280 1352 1480 1680 800  803  809  831  -hsync +vsync")
+MODES=("${MODES[@]}" "1440x1050 106.50 1440 1528 1672 1904 900  903  909  934  -hsync +vsync")
+MODES=("${MODES[@]}" "1680x1200 146.25 1680 1784 1960 2240 1050 1053 1059 1089 -hsync +vsync")
+MODES=("${MODES[@]}" "1920x1200 193.25 1920 2056 2256 2592 1200 1203 1209 1245 -hsync +vsync")
+MODES=("${MODES[@]}" "1280x720  74.50  1280 1344 1472 1664 720  723  728  748  -hsync +vsync")
+MODES=("${MODES[@]}" "1368x768  85.25  1368 1440 1576 1784 768  771  781  798  -hsync +vsync")
+MODES=("${MODES[@]}" "1600x900  118.25 1600 1696 1856 2112 900  903  908  934  -hsync +vsync")
+MODES=("${MODES[@]}" "1920x1080 173.00 1920 2048 2248 2576 1080 1083 1088 1120 -hsync +vsync")
+MODES=("${MODES[@]}" "800x600   38.25  800  832  912  1024 600  603  607  624  -hsync +vsync")
+MODES=("${MODES[@]}" "1024x768  63.50  1024 1072 1176 1328 768  771  775  798  -hsync +vsync")
+MODES=("${MODES[@]}" "1152x864  81.75  1152 1216 1336 1520 864  867  871  897  -hsync +vsync")
+MODES=("${MODES[@]}" "1280x960  101.25 1280 1360 1488 1696 960  963  967  996  -hsync +vsync")
+MODES=("${MODES[@]}" "1280x1024 109.00  1280 1368 1496 1712  1024 1027 1034 1063 -hsync +vsync")
+################################################################################
+
+CONFIGFILE="/opt/openslx/beamergui/beamer.conf"
+
+################################################################################
+
+#DRIVER=$(lspci -nnk | grep -i vga -A3 | grep 'in use'| awk '{ print $NF }')
+XRANDR=$( xrandr )
+XRANDRV=$( xrandr --verbose )
+
+################################################################################
+
+echo "$XRANDR"
+#echo "$XRANDRV"
+
+# Get the names of the connected outputs
+# This is a rigid approach to determine the connected outputs
+declare -a OUTPUTNAMES
+while read line; do
+  OUTPUTNAMES+=("$(awk '{print $1}' <<<"$line" )")
+done < <( echo "$XRANDR" | grep -E "[[:digit:]]+mm x [[:digit:]]+mm" )
+echo -e "Connected outputs: \e[32m${OUTPUTNAMES[@]}\e[0m"
+
+# The goal is to add more modelines to the X server. While this is done the
+# screen is flickering. Hence this is just necessary if there is a beamer. Do
+# the flickering magic only if there are two outputs and one is a projector.
+
+#Two outputs?
+if [ ${#OUTPUTNAMES[@]} -eq 2 ]; then
+
+  echo "Two outputs detected."
+
+  # Either of them a projector?
+  BEAMER=
+  for i in 0 1; do
+      WIDTH=$(grep -E "^${OUTPUTNAMES[$i]}.*[0-9]+mm x [0-9]+mm" <<<"$XRANDR" | head -n 1 | grep -o -E ' [0-9]+mm x' | grep -o -E '[0-9]+')
+      if [ -z "$WIDTH" ] || [ "$WIDTH" -eq 0 ] || [ "$WIDTH" -gt 900 ]; then
+        echo "Screen $i is beamer, width is '$WIDTH'"
+        BEAMER=$i
+      fi
+  done
+  if [ -n "$BEAMER" ]; then
+    echo "${OUTPUTNAMES[$BEAMER]} is a beamer. "
+
+    # Create all modes, so that X knows them by name "<width>x<height>"
+    # Add the modes to the outputs, this means that, if this action is
+    # successful they can be applied to the screens.
+    for i in "${MODES[@]}"; do
+      if xrandr --current --newmode $i; then # > /dev/null 2>&1
+        echo -e "Created mode ${i%% *}."
+      else
+        echo -e "\e[31mFailed to create mode ${i%% *}!\e[0m"
+      fi
+
+      for j in "${OUTPUTNAMES[@]}"; do
+        if xrandr --current --addmode $j $(echo $i| awk '{print $1;}'); then
+          echo -e "Added mode ${i%% *} to $j."
+        else
+          echo -e "\e[31mFailed to add mode ${i%% *} to $j!\e[0m"
+          break
+        fi
+      done
+    done
+
+    # Finally, if the EDID is present, apply a proper resolution.
+    # Find out whether the beamer transmits reliable EDID data.
+    # The data in xrandr should be reliable if the EDID is present.
+    if echo "$XRANDRV" | grep -Pzo \
+      "^${OUTPUTNAMES[$BEAMER]}\N*\n((\ |\t)+\N*\n)+" \
+      | grep EDID > /dev/null ; then
+      echo "${OUTPUTNAMES[$BEAMER]} [Beamer] provides EDID."
+
+      # If the breamer transmits the EDID there shall be a preferred resolution.
+      OPTIMALRES=$(echo "$XRANDRV" \
+        | grep -Pzo "^${OUTPUTNAMES[$BEAMER]}\N*\n((\ |\t)+\N*\n)+" \
+        | grep preferred | awk '{print $1}')
+
+      # Apply the optimal resolution tho either of the outputs. The beamer has
+      # to be the secondary output.
+      if xrandr \
+        --output ${OUTPUTNAMES[$((1-$BEAMER))]} --mode $OPTIMALRES \
+        --primary \
+        --output ${OUTPUTNAMES[$BEAMER]} --mode $OPTIMALRES \
+        --same-as ${OUTPUTNAMES[$((1-$BEAMER))]}
+      then
+        echo "Applied optimal resolution successfully."
+      fi
+
+    elif [[ -f "$CONFIGFILE" ]]; then
+
+      echo "Config file found."
+
+      # Get local ip
+      . /opt/openslx/config
+
+      # Try to get a probed mode
+      PROBEDMODE=$(cat $CONFIGFILE | grep $SLX_PXE_CLIENT_IP | cut -d '=' -f2)
+
+      # If a probed mode was found, ..
+      if [[ -n "$PROBEDMODE" ]]; then
+        echo "Probed mode found in config file."
+        # Apply the probed mode from the config file
+        if xrandr \
+          --output ${OUTPUTNAMES[$((1-$BEAMER))]} --mode $PROBEDMODE \
+          --primary \
+          --output ${OUTPUTNAMES[$BEAMER]} --mode $PROBEDMODE \
+          --same-as ${OUTPUTNAMES[$((1-$BEAMER))]}
+        then
+          echo "Applied probed mode successfully."
+        fi
+      else
+        echo -e "\e[31mERROR: Beamer provides no EDID and no probed mode given in $CONFIGFILE.\e[0m"
+      fi
+    else
+      # Apply a fallback mode
+      echo -e "\e[31mERROR: Beamer provides no EDID and no config file found in $CONFIGFILE. Falling back to 1024x768.\e[0m"
+      xrandr \
+        --output ${OUTPUTNAMES[$((1-$BEAMER))]} --mode 1024x768 \
+        --primary \
+        --output ${OUTPUTNAMES[$BEAMER]} --mode 1024x768 \
+        --same-as ${OUTPUTNAMES[$((1-$BEAMER))]}
+    fi
+  else
+    # In case of two monitors just sort the outputs lexicographically and apply
+    # the preffered resolution
+    echo "Dualhead setup deteced. Sorting outputs lexicographically."
+    readarray -t OUTPUTNAMES \
+      < <(for a in "${OUTPUTNAMES[@]}"; do echo "$a"; done | sort)
+    echo ${OUTPUTNAMES[@]}
+    if xrandr \
+      --output ${OUTPUTNAMES[0]} --preferred \
+      --primary \
+      --output ${OUTPUTNAMES[1]} --preferred \
+      --right-of ${OUTPUTNAMES[0]}
+    then
+      echo "Successfully applied preferred modes on outputs in sorted order."
+    fi
+  fi
+else
+  echo "\e[32mOther than two outputs.\e[0m"
+fi
+

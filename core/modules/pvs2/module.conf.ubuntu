@@ -1,0 +1,11 @@
+REQUIRED_INSTALLED_PACKAGES="
+	libqt4-dev
+	libvncserver-dev
+"
+REQUIRED_CONTENT_PACKAGES="
+	libqt4-svg
+	libqtgui4
+"
+REQUIRED_DIRECTORIES="
+	/usr/lib/
+"

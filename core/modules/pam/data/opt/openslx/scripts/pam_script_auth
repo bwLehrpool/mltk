@@ -1,0 +1,146 @@
+#!/bin/ash
+
+# Needed as pam_script clears PATH
+export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/openslx/sbin:/opt/openslx/bin"
+
+# check if the script runs as root
+[ "x$(whoami)" != "xroot" ] && exit 0
+
+PASSWD=$(getent passwd "$PAM_USER")
+USER_NAME=$(echo "$PASSWD" | awk -F ':' '{print $1}')
+USER_UID=$(echo "$PASSWD" | awk -F ':' '{print $3}')
+USER_GID=$(echo "$PASSWD" | awk -F ':' '{print $4}')
+USER_HOME=$(echo "$PASSWD" | awk -F ':' '{print $6}')
+[ -n "$USER_NAME" ] && PAM_USER="$USER_NAME"
+[ -z "$USER_UID" ] && USER_UID=$(id -u "$PAM_USER")
+[ -z "$USER_GID" ] && USER_GID=$(id -g "$PAM_USER")
+[ -z "$USER_HOME" ] && USER_HOME="/home/$PAM_USER"
+if [ -z "$USER_UID" -o -z "$USER_GID" ]; then
+	slxlog "pam-get-ids" "Could not determine UID or GID for user '$PAM_USER'."
+	exit 1
+fi
+
+# The user's non-persistent home directory mount point, which should be their linux home
+TEMP_HOME_DIR="$USER_HOME"
+
+# check if PAM_USER is root and skip if it is the case
+[ "x${PAM_USER}" == "xroot" ] && exit 0
+
+###############################################################################
+#
+#                    Preparations for volatile /home/<user>
+#
+#
+# check if we already mounted the home directory
+if ! mount | grep -q -F " ${TEMP_HOME_DIR} "; then
+	# no home, lets create it
+	if ! mkdir -p "${TEMP_HOME_DIR}"; then
+		slxlog "pam-global-mktemphome" "Could not create '${TEMP_HOME_DIR}'."
+		exit 1
+	fi
+	# now make it a tmpfs
+	if ! mount -t tmpfs -o mode=700,size=1024m tmpfs "${TEMP_HOME_DIR}"; then
+		slxlog "pam-global-tmpfstemphome" "Could not make a tmpfs on ${TEMP_HOME_DIR}"
+		exit 1
+	fi
+fi
+
+###############################################################################
+#
+#                    Preparations for /home/<user>/PERSISTENT
+#
+#
+# Script to be sourced to mount the user's persistent home
+PERSISTENT_MOUNT_SCRIPT="/opt/openslx/scripts/pam_script_mount_persistent"
+# Script to be run in the user's context iff the persistent home could be mounted successfully
+PERSISTENT_MOUNT_USER_SCRIPT="/opt/openslx/scripts/pam_script_mount_persistent_user"
+# The user's persistent home directory mount point
+PERSISTENT_HOME_DIR="${TEMP_HOME_DIR}/PERSISTENT"
+
+# now lets see if we have a persistent directory mount script, and it's not already mounted
+if [ -e "${PERSISTENT_MOUNT_SCRIPT}" ] && ! mount | grep -q -F " ${PERSISTENT_HOME_DIR} "; then
+	# seems we should try to mount...
+	# create the PERSISTENT directory and give to user
+	if ! mkdir -p "${PERSISTENT_HOME_DIR}"; then
+		slxlog "pam-global-mkpersistent" "Could not create '${PERSISTENT_HOME_DIR}'."
+	elif ! chown "${USER_UID}:${USER_GID}" "${TEMP_HOME_DIR}"; then
+		slxlog "pam-global-chpersistent" "Could not chown '${TEMP_HOME_DIR}' to '${PAM_USER}'."
+	else
+		# everything seems ok, call mount script
+		. "${PERSISTENT_MOUNT_SCRIPT}" \
+			|| slxlog "pam-global-sourcepersistent" "Could not source '${PERSISTENT_MOUNT_SCRIPT}'."
+		if [ -n "${REAL_ACCOUNT}" ]; then
+			echo "${REAL_ACCOUNT}" > "${TEMP_HOME_DIR}/.account"
+			chmod 0644 "${TEMP_HOME_DIR}/.account"
+		fi
+	fi
+fi # end "mount-home-script-exists"
+
+
+# Just try to delete the persistent dir. If the mount was successful, it will not work
+# If it was not successful, it will be removed so the user doesn't think he can store
+# anything in there
+rmdir "${PERSISTENT_HOME_DIR}" 2> /dev/null
+
+# Write warning message to tmpfs home
+if [ -d "${PERSISTENT_HOME_DIR}" ]; then
+	# create a WARNING.txt for the user with hint to PERSISTENT
+	cat > "${TEMP_HOME_DIR}/WARNING.txt" <<EOF
+ATTENTION: This is the non-persistent home directory!
+Files saved here will be lost on shutdown.
+Your real home is under ${PERSISTENT_HOME_DIR}
+Please save your files there.
+EOF
+else
+	# create a WARNING.txt for the user, no PERSISTENT :-(
+	cat > "${TEMP_HOME_DIR}/WARNING.txt" <<EOF
+ATTENTION: This is a non-persistent home directory!
+Files saved here will be lost on shutdown.
+Please save your files on a USB drive or upload them
+to some web service.
+EOF
+fi
+chown "${USER_UID}" "${TEMP_HOME_DIR}/WARNING.txt"
+
+###############################################################################
+#
+#                    Preparations for /home/<user>/SHARE
+#
+#
+# Script to be sourced to mount the common share folder
+COMMON_SHARE_MOUNT_SCRIPT="/opt/openslx/scripts/pam_script_mount_common_share"
+# User specific mount point for the common share
+COMMON_SHARE_MOUNT_POINT="${TEMP_HOME_DIR}/SHARE"
+
+# check for common share mount script, exit if we don't have one
+if [ -e "${COMMON_SHARE_MOUNT_SCRIPT}" ] && ! mount | grep -q -F " ${COMMON_SHARE_MOUNT_POINT} "; then
+	# create the SHARE directory
+	if ! mkdir -p "${COMMON_SHARE_MOUNT_POINT}"; then
+		slxlog "pam-global-mkshare" "Could not create '${COMMON_SHARE_MOUNT_POINT}'."
+	elif ! chown "${USER_UID}:${USER_GID}" "${COMMON_SHARE_MOUNT_POINT}"; then
+		slxlog "pam-global-chshare" "Could not chown '${COMMON_SHARE_MOUNT_POINT}' to '${PAM_USER}'."
+	else
+		COMMON_SHARE_MOUNT_POINT="${COMMON_SHARE_MOUNT_POINT}" \
+			PAM_USER="${PAM_USER}" \
+			PAM_AUTHTOK="${PAM_AUTHTOK}" \
+			USER_UID="${USER_UID}" \
+			USER_GID="${USER_GID}" \
+			/bin/ash "${COMMON_SHARE_MOUNT_SCRIPT}" \
+			|| slxlog "pam-global-sourceshare" "Could not execute '${COMMON_SHARE_MOUNT_SCRIPT}'."
+	fi
+fi
+# Just try to delete the common share dir. If the mount was successful, it will not work
+rmdir "${COMMON_SHARE_MOUNT_POINT}" 2> /dev/null
+
+#
+# source the stuff in pam_script_auth.d, if it exists
+#
+if [ -d "/opt/openslx/scripts/pam_script_auth.d" ]; then
+	for HOOK in $(ls "/opt/openslx/scripts/pam_script_auth.d"); do
+		# source it, in case of failure do nothing since these scripts are non-critical
+		. "/opt/openslx/scripts/pam_script_auth.d/$HOOK" || slxlog "pam-source-hooks" "Could not source '$HOOK'."
+	done
+fi
+
+exit 0
+

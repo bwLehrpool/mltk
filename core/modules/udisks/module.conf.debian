@@ -1,0 +1,32 @@
+REQUIRED_INSTALLED_PACKAGES="
+	udisks
+"
+REQUIRED_CONTENT_PACKAGES="
+	udisks
+"
+# Override: Only udisks1 is available
+REQUIRED_BINARIES="
+	udisks-helper-linux-md-check
+	udisks-daemon
+	udisks-helper-change-luks-password
+	udisks-helper-create-partition-table
+	udisks-helper-mdadm-expand
+	udisks-helper-drive-benchmark
+	udisks-helper-drive-detach
+	udisks-helper-mkfs
+	udisks-helper-ata-smart-collect
+	udisks-helper-change-filesystem-label
+	udisks-helper-modify-partition
+	udisks-helper-delete-partition
+	udisks-helper-create-partition
+	udisks-helper-fstab-mounter
+	udisks-helper-linux-md-remove-component
+	udisks-helper-ata-smart-selftest
+	udisks-helper-drive-poll
+	udisks-dm-export
+	udisks-lvm-pv-export
+	udisks-part-id
+	udisks-probe-ata-smart
+	udisks-probe-sas-expander
+"
+

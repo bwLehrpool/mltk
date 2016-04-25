@@ -1,0 +1,6 @@
+REQUIRED_CONTENT_PACKAGES="	
+			rsyslog
+"
+REQUIRED_BINARIES+="
+			rsyslog-service-prepare
+"

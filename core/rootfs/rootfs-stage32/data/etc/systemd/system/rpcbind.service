@@ -1,0 +1,11 @@
+[Unit]
+Description=RPC Bind
+After=network.target
+Wants=rpcbind.target
+Before=rpcbind.target
+
+[Service]
+Type=forking
+EnvironmentFile=/etc/conf.d/nfs-common.conf
+ExecStart=/sbin/rpcbind $BIND_OPTS
+Restart=always

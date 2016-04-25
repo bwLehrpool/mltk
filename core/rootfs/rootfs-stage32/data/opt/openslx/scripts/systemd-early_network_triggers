@@ -1,0 +1,29 @@
+#!/bin/ash
+
+# This script will trigger several network targets if
+# applicable at an early point.
+# This happens if dhcp/network setup was successful in stage31
+
+# Main interface
+BRIDGE="br0"
+
+if [ ! -e "/sys/class/net/${BRIDGE}/operstate" -o "x$(cat "/sys/class/net/${BRIDGE}/operstate")" == "xup" ] && [ -e "/opt/openslx/uniontmp/etc/hostname" -o -e "/etc/resolv.conf" ]; then
+	echo "Triggering network.target"
+	touch "/run/network/network-ready"
+	systemctl start network.target &
+fi
+
+if [ -s "/etc/resolv.conf" ] && grep -q "^nameserver" "/etc/resolv.conf"; then
+	echo "Triggering network-dns.target"
+	touch "/run/network/dns-ready"
+	systemctl start network-dns.target &
+fi
+
+if route -n | grep -q -E '^0\.0\.0\.0.*U.*G'; then
+	echo "Triggering network-gateway.target"
+	touch "/run/network/gateway-ready"
+	systemctl start network-gateway.target &
+fi
+
+exit 0
+

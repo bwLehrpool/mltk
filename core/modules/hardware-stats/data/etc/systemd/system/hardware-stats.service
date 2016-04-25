@@ -1,0 +1,11 @@
+[Unit]
+Description=Gather statistics about this machine and send to boot server
+DefaultDependencies=no
+After=tmp.target multi-user.target
+Wants=tmp.target
+
+[Service]
+Type=oneshot
+ExecStart=/opt/openslx/scripts/systemd-hardware_stats
+RemainAfterExit=yes
+

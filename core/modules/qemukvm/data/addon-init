@@ -1,0 +1,8 @@
+#!/bin/ash
+
+systemctl daemon-reload
+systemctl start qemukvm.service
+
+# this seems to be necessary due to the misbehaviour of udevd
+# in view of the undetected ENV dev_type 
+systemctl restart systemd-udevd

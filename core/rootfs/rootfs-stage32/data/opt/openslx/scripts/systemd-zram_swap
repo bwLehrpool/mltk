@@ -1,0 +1,60 @@
+#!/bin/ash
+# Copyright (c) 2013 - OpenSLX GmbH
+#
+# This program is free software distributed under the GPL version 2.
+# See http://openslx.org/COPYING
+#
+# If you have any feedback please consult http://openslx.org/feedback and
+# send your feedback to feedback@openslx.org
+#
+# General information about OpenSLX can be found under http://openslx.org
+#
+# Local hard disk autodetection script for OpenSLX linux stateless clients,
+# detecting swap and special partitions
+
+#############################################################################
+
+
+# Add zram swap
+# Some older ubuntu kernels had a problem here, see https://bugs.launchpad.net/ubuntu/+source/linux-lts-raring/+bug/1217189
+# So make sure you're up to date
+
+make_swap () {
+	[ $# -ne 2 ] && echo "make_swap: Wrong parameter count $#" && exit 1
+	local USE="$1"
+	local DEV="$2"
+	echo "$USE" > "/sys/block/zram${DEV}/disksize"
+	mkswap "/dev/zram${DEV}"
+	swapon "/dev/zram${DEV}" -p 1000 # high priority (in case we have hdd swap 0x82, prefer zram)
+}
+
+CPUS=$(grep -c -E "^processor.*[0-9]+$" "/proc/cpuinfo")
+if [ -z "$CPUS" ]; then
+	echo "ERROR: Could not determine CPU core count"
+	exit 1
+fi
+
+[ "$CPUS" -gt "16" ] && CPUS=16 # zram can only handle up to 32 devices, the system can apparently even just handle 29 swap partitions, so use a reasonable upper limit
+if ! modprobe zram "num_devices=$CPUS"; then
+	echo "ERROR: Could not load zram module"
+	exit 1
+fi
+
+TOTAL=$(grep ^MemTotal /proc/meminfo | awk '{print $2}')
+USE=$(( $TOTAL / ( 2 * $CPUS ) ))
+echo "Have $CPUS cores, $TOTAL kb mem, use $USE kb zram swap per core"
+USE=$(( $USE * 1024 ))
+DEV=0
+while [ "$DEV" -lt "$CPUS" ]; do
+	make_swap "$USE" "$DEV" &
+	LAST=$!
+	DEV=$(( $DEV + 1 ))
+done
+
+# Wait, so we don't trigger swap.target too early
+while kill -0 "$LAST"; do
+	usleep 100000
+done
+
+exit 0
+

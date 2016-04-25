@@ -1,0 +1,15 @@
+[Unit]
+Description=Name Service Cache Daemon
+DefaultDependencies=no
+After=sysinit.target
+Before=shutdown.target
+
+[Service]
+ExecStart=/usr/sbin/nscd -d
+ExecStop=/usr/sbin/nscd --shutdown
+Restart=always
+StandardOutput=null
+
+[Install]
+WantedBy=basic.target
+Also=nscd.socket

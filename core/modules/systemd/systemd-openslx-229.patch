@@ -1,0 +1,11 @@
+--- basic/path-util.h.orig	2016-04-20 07:41:33.425103517 +0200
++++ basic/path-util.h	2016-04-20 07:42:27.192454435 +0200
+@@ -26,7 +26,7 @@
+ #include "macro.h"
+ #include "time-util.h"
+ 
+-#define DEFAULT_PATH_NORMAL "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin"
++#define DEFAULT_PATH_NORMAL "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/opt/openslx/sbin:/opt/openslx/bin"
+ #define DEFAULT_PATH_SPLIT_USR DEFAULT_PATH_NORMAL ":/sbin:/bin"
+ 
+ #ifdef HAVE_SPLIT_USR

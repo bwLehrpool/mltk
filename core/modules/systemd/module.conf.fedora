@@ -1,0 +1,11 @@
+REQUIRED_INSTALLED_PACKAGES="
+			intltool
+			gperf
+			libcap-devel
+			libudev-devel
+			dbus-devel
+			libxslt
+			libblkid-devel
+			libacl-devel
+			glib2-devel
+"

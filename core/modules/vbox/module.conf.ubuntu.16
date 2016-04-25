@@ -1,0 +1,23 @@
+# VBox version 5 branch:
+# REQUIRED_VBOX_OSCODE='Ubuntu~trusty'
+
+# VBox version 4 last branch:
+REQUIRED_VBOX_OSCODE='Ubuntu~wily'
+
+REQUIRED_VBOXBASEURL="http://download.virtualbox.org/virtualbox/${REQUIRED_VBOX_VERSION}/virtualbox-${REQUIRED_VBOX_VERSION_MAJOR}_${REQUIRED_VBOX_VERSION}-${REQUIRED_VBOX_VERSIONCODE}~${REQUIRED_VBOX_OSCODE}_${AMD64_I386}.deb"
+REQUIRED_VBOXEXTURL="http://download.virtualbox.org/virtualbox/${REQUIRED_VBOX_VERSION}/Oracle_VM_VirtualBox_Extension_Pack-${REQUIRED_VBOX_VERSION}-${REQUIRED_VBOX_VERSIONCODE}.vbox-extpack"
+
+
+REQUIRED_CONTENT_PACKAGES="
+				libsdl1.2debian
+				libpng12-0
+"
+
+REQUIRED_INSTALLED_PACKAGES="
+				libsdl1.2debian
+				libpng12-0
+"
+
+REQUIRED_LIBRARIES="
+				libpng12
+"

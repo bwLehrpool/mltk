@@ -1,0 +1,39 @@
+#!/bin/ash
+
+. /opt/openslx/config || exit 1
+
+[ -z "$SLX_VM_NFS" ] && exit 0
+
+# create target directory
+mkdir -p /mnt/vmstore
+
+OUTFILE=$(mktemp)
+
+# check if it is a CIFS-share or NFS-share
+# no bash, so this is a bit ugly...
+if [ "${SLX_VM_NFS#//}" = "${SLX_VM_NFS}" ]; then
+	# doesn't start with '//' -> assume NFS
+	/opt/openslx/bin/timeout -t 10 -s 9 mount -v -t nfs -o ro,async,nolock "$SLX_VM_NFS" /mnt/vmstore
+	RET=$?
+else
+	# starts with '//' -> assume CIFS
+	export USER="$SLX_VM_NFS_USER"
+	export PASSWD="$SLX_VM_NFS_PASSWD"
+	/opt/openslx/bin/timeout -t 10 -s 9 mount -v -t cifs -o ro,file_mode=0644,dir_mode=0755,uid=0,gid=0,forceuid,forcegid,sec=ntlm,nounix "$SLX_VM_NFS" /mnt/vmstore
+	unset USER
+	unset PASSWD
+	RET=$?
+fi > "$OUTFILE" 2>&1
+
+if [ $RET -ne 0 ]; then
+	if [ -s "$OUTFILE" ]; then
+		slxlog "mount-vmstore-fail" "Mounting '$SLX_VM_NFS' failed. VMs will not boot." "$OUTFILE"
+		sleep 1
+	else
+		slxlog "mount-vmstore-fail" "Mounting '$SLX_VM_NFS' failed. VMs will not boot."
+	fi
+fi
+
+rm -f -- "$OUTFILE"
+exit $RET
+

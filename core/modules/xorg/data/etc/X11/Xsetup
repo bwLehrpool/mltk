@@ -1,0 +1,16 @@
+#!/bin/ash
+#
+# /etc/X11/Xsetup
+#
+# Xsetup is executed once before the greeter starts (as root)
+# 
+
+export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/openslx/sbin:/opt/openslx/bin"
+
+SESSIONDIR="/etc/X11/Xsetup.d"
+
+if [ -d "$SESSIONDIR" ]; then
+	for file in $SESSIONDIR/*; do
+		. $file || slxlog "xsetup" "Xsetup: Could not source $file" "$file"
+	done
+fi

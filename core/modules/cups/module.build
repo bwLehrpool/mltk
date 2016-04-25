@@ -1,0 +1,24 @@
+#!/bin/bash
+
+fetch_source() {
+	:
+}
+
+build() {
+	local COPYLIST file
+	COPYLIST="list_dpkg_output"
+	[ -e "$COPYLIST" ] && rm "$COPYLIST"
+
+	list_packet_files >> "$COPYLIST"
+	tarcopy "$(cat "$COPYLIST" | sort -u)" "${MODULE_BUILD_DIR}"
+
+	# cups insists on overriding PATH, so we need to fix any scripts
+	for file in "${MODULE_BUILD_DIR}"/usr/lib/cups/{filter,backend}/*; do
+		head -n 1 "$file" | grep -q '^#!/' && sed -i '/^#!\//a . \/etc\/environment' "$file"
+	done
+}
+
+post_copy() {
+	:
+}
+

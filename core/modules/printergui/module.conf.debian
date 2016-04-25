@@ -1,0 +1,7 @@
+REQUIRED_INSTALLED_PACKAGES="
+	libcups2-dev
+	libqt4-dev
+"
+REQUIRED_CONTENT_PACKAGES="
+	libcups2-dev
+"

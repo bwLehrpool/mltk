@@ -1,0 +1,8 @@
+[Unit]
+Description=Naming services LDAP client daemon
+After=network.target
+
+[Service]
+Type=forking
+PIDFile=/var/run/nslcd/nslcd.pid
+ExecStart=%PATH%

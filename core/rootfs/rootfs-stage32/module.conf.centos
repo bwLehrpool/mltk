@@ -1,0 +1,16 @@
+REQUIRED_INSTALLED_PACKAGES="
+	nfs-utils
+	xfsprogs
+	squashfs-tools
+	curl
+	xvidtune
+	xterm
+"
+REQUIRED_CONTENT_PACKAGES="
+"
+REQUIRED_DIRECTORIES="
+	/usr/$LIB64/xtables
+"
+REQUIRED_FILES+="
+	/usr/share/X11/app-defaults/Xvidtune
+"

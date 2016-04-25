@@ -1,0 +1,25 @@
+#!/bin/ash
+#
+# /etc/X11/Xreset
+#
+# Xreset - run as root after session exits
+#
+
+export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/openslx/sbin:/opt/openslx/bin"
+
+set -e
+
+PROGNAME=Xreset
+SYSSESSIONDIR=/etc/X11/Xreset.d
+
+if [ ! -d "$SYSSESSIONDIR" ]; then
+  # Nothing to do, exiting
+  exit 0
+fi
+
+for SESSIONFILE in $SYSSESSIONDIR/*; do
+	. "$SESSIONFILE" || slxlog "xreset" "Xreset: Could not source $SESSIONFILE." "$SESSIONFILE" 
+done
+
+exit 0
+

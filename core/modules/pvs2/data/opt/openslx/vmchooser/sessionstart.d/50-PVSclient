@@ -1,0 +1,26 @@
+#!/bin/ash
+
+# SESSION_TYPE can be either 'VSESSION' or 'XSESSION' - currently not evaluated
+
+# detect session command of the PVS-Manager session by looking at the xsession file
+PVSMGR_SESSION_CMD=
+PVSMGR_XSESSION_FILE="pvs2mgr.desktop"
+# the second directory should not be needed, but lets be compatible with the old crap......
+for DIR in "/usr/share/xsessions" "/opt/openslx/xsessions/"; do
+	if [ -f "${DIR}/${PVSMGR_XSESSION_FILE}" ]; then
+		# extract the exact command string
+		PVSMGR_SESSION_CMD="$(grep -E "^Exec=.*$" "${DIR}/${PVSMGR_XSESSION_FILE}" |cut -c 6-)"
+		break
+	fi
+done
+if [ -n "${PVSMGR_SESSION_CMD}" ]; then
+	# do not start pvsclient if we are running the pvs manager session
+	[ "x${SESSION_CMD}" == "x${PVSMGR_SESSION_CMD}" ] && exit 0
+fi
+# If the ENV var PVS has been set by vmchooser start pvsclient
+if [ -n "$PVS_AUTO_CONNECT" -a "$PVS_AUTO_CONNECT" == "TRUE" ]; then
+  pvsclient --auto &
+else
+  pvsclient &
+fi
+exit 0

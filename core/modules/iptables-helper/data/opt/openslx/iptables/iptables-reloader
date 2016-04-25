@@ -1,0 +1,5 @@
+#!/bin/ash
+
+/opt/openslx/iptables/iptables-reloader-worker
+exec /opt/openslx/sbin/inotifyd /opt/openslx/iptables/iptables-reloader-worker /opt/openslx/iptables/rules.d:cndmy
+

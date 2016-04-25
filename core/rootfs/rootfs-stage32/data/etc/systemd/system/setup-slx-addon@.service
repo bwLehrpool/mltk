@@ -1,0 +1,10 @@
+[Unit]
+Description=Setup SLX addon %i
+DefaultDependencies=no
+Wants=tmp.target
+After=tmp.target
+
+[Service]
+Type=oneshot
+ExecStart=/opt/openslx/scripts/systemd-setup_slx_addons %I
+RemainAfterExit=yes

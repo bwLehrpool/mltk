@@ -1,0 +1,7 @@
+[Unit]
+Description=Enable SSH keys in authorized_keys.d/ folder
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/opt/openslx/scripts/systemd-ssh_auth_keys

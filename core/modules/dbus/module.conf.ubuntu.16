@@ -1,0 +1,9 @@
+REQUIRED_CONTENT_PACKAGES="
+			dbus
+			dbus-x11
+"
+REQUIRED_FILES+="
+"
+REQUIRED_DIRECTORIES="
+			/usr/share/dbus-1
+"

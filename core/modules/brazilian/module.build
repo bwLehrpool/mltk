@@ -1,0 +1,40 @@
+fetch_source() {
+	:
+}
+
+build() {
+	# Debian-like
+	if [ -e "/etc/locale.gen" ] &&  ! grep -q -E '^\s*pt_BR\.UTF-8' "/etc/locale.gen"; then
+		pinfo "Generating locales..."
+		echo 'pt_BR.UTF-8 UTF-8' >> "/etc/locale.gen"
+		locale-gen || perror "Could not generate locales (debian style)"
+	fi
+
+	# Ubuntu's version
+	if [ -d "/var/lib/locales/supported.d" ] && [ ! -d /usr/lib/locale/pt_BR.utf8 ]; then
+		pinfo "Generating locales..."
+		grep -q -E -r '^\s*pt_BR\.UTF-8' "/var/lib/locales/supported.d" || echo 'pt_BR.UTF-8 UTF-8' >> "/var/lib/locales/supported.d/openslx"
+		locale-gen --no-archive --purge "pt_BR.UTF-8" || perror "Could not generate locales (ubuntu style)"
+	fi
+
+	# Put everything we build or get from the system in build dir
+	local FILELIST="$MODULE_WORK_DIR/list_copy_build"
+	rm -f "$FILELIST"
+
+	# Copy required directories from source system to build dir
+	for FILE in ${REQUIRED_DIRECTORIES}; do
+		[ ! -d "${FILE}" ] && perror "Missing required directory $FILE"
+		echo ${FILE} >> "${FILELIST}"
+	done
+
+	# Done collecting file and directory names, copy everything
+	tarcopy "$(sort -u "$FILELIST")" "$MODULE_BUILD_DIR"
+
+}
+
+post_copy() {
+	for i in LANG LC_CTYPE LC_NUMERIC LC_TIME LC_COLLATE LC_MONETARY LC_MESSAGES LC_PAPER LC_NAME LC_ADDRESS LC_TELEPHONE LC_MEASUREMENT LC_IDENTIFICATION; do
+		add_env $i pt_BR.UTF-8 || perror "$i: add_env function failed."
+	done
+}
+

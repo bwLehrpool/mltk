@@ -1,0 +1,7 @@
+REQUIRED_CONTENT_PACKAGES="
+	alsa-utils
+	alsa-base
+	libasound2 
+	libasound2-data
+	libasound2-plugins
+"

@@ -1,0 +1,4 @@
+#!/bin/ash
+
+openbox &
+exec /opt/openslx/bin/pvsmgr

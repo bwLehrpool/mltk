@@ -1,0 +1,84 @@
+#########################################################################
+#
+#			COMMON HELPER FUNCTIONS
+#
+
+#########################################################################
+#
+# Function to drop a debug shell with an error message.
+#
+# Usage:
+#	drop_shell "This is your error message."
+#
+drop_shell() {
+	if [ -n "$MUTED_OUTPUT" ]; then
+		exec 1>&4 2>&5
+		reset
+	fi
+	[ $# -gt 0 ] && echo $@
+	echo "CTRL + D will continue booting."
+	setsid sh -c 'exec sh </dev/tty1 >/dev/tty1 2>&1'
+}
+
+#########################################################################
+#
+# Helper function to download given FILE_URL from servers in 'slxsrv'
+# as given through the kernel command line. File will be saved under TARGET_PATH
+#
+# Usage:
+#       download FILE_URL TARGET_PATH
+#
+# Example:
+#	download "config" "/opt/openslx/config"
+#
+# Note:
+#	FILE_URL can have subpath, e.g. "ubuntu-13.04-x64/config"
+#
+download() {
+	[ $# -ne 2 ] && echo "Error - 'download' requires 2 arguments, $# given." && return 1
+	
+	if [ -z "$SLX_KCL_SERVERS" ]; then
+		. "/opt/openslx/config" || echo "Error - could not source '/opt/openslx/config'"
+	fi
+	
+	local FILE_URL="$1"
+	local TARGET_PATH="$2"
+	
+	# Shuffle server list
+	local SERVERS=$(for SERVER in $SLX_CONFIG_SERVERS $SLX_KCL_SERVERS; do echo "$RANDOM $SERVER"; done | sort -u | sed -r 's/^[0-9]+ //')
+	
+	for TIMEOUT in 1 1 2 END; do
+		for SERVER in $SERVERS; do
+			rm -f -- "${TARGET_PATH}"
+			wget -T 5 -q -O "$TARGET_PATH" "http://${SERVER}/${FILE_URL}"
+			RET=$?
+			if [ "x$RET" != "x0" -o ! -e "$TARGET_PATH" ]; then
+				echo "Error - downloading 'http://$SERVER/$FILE_URL' via wget failed. Exit Code: $RET"
+				usleep 50000 # 50ms
+			else
+				echo "Successfully downloaded 'http://${SERVER}/$FILE_URL'."
+				return 0
+			fi
+		done
+		[ "$TIMEOUT" = "END" ] && break
+		echo "Trying again in $(($TIMEOUT * 250)) ms..."
+		usleep $(($TIMEOUT * 250000))
+	done
+	# Max retries reached, no success :-(
+	return 1
+}
+
+# Add benchmark event to var, including uptime as prefix
+bench_event() {
+	bench_result="${bench_result}$(cut -f 1 -d ' ' "/proc/uptime") $@
+"
+}
+
+# mini tarcopy <3
+# tarcopy <source_dir> <target_dir>
+tarcopy() {
+	[ -d "$1" -a -d "$2" ] || return 1
+	cd "$1"
+	tar -cp * | tar -xp -C "$2"
+	cd - &>/dev/null
+}

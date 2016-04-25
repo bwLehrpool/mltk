@@ -1,0 +1,5 @@
+[Unit]
+Requires=mount-stage4.service
+After=mount-stage4.service
+Description=OpenSLX Stage 4
+RefuseManualStart=yes

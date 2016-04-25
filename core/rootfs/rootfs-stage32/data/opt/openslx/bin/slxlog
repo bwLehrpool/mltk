@@ -1,0 +1,76 @@
+#!/bin/ash
+
+##################
+# Remote logging #
+##################
+#
+# Usage: slxlog [-e | --echo] "logtype" "Human readable string" ["file name which's contents should be sent too"]
+# -e or --echo will echo message to stdout too
+#
+
+export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/openslx/sbin:/opt/openslx/bin"
+
+. /opt/openslx/config
+[ -z "$SLX_REMOTE_LOG" ] && exit 3
+
+LOGCHECK="/tmp/remote_log_check"
+NOW=$(date +%s)
+
+if [ "x$1" = "x-e" -o "x$1" = "x--echo" ]; then
+	shift
+	echo "$@"
+fi
+
+[ $# -eq 0 ] && exit 0
+
+TYPE="$1"
+
+# Simple spamcheck. Not very tamper-proof, but if you'd want to spam the server
+# you could do it anyways. This is to protect from accidental loops calling this.
+if [ -r "$LOGCHECK" ]; then
+	# Allow max 150 messages in total
+	LINES=$(cat "$LOGCHECK" | wc -l)
+	[ "$LINES" -gt "150" ] && exit 1
+	# Allow max 5 of same type messages in 30 seconds
+	LINES=$(grep "$TYPE" "$LOGCHECK" | wc -l)
+	if [ "$LINES" -ge "5" ]; then
+		LAST=$(grep "$TYPE" "$LOGCHECK" | tail -n 5 | head -n 1 | awk '{print $1}')
+		if [ -n "$LAST" ]; then
+			DIFF="$(( $NOW - $LAST ))"
+			[ "$DIFF" -lt "30" ] && exit 2
+		fi
+	fi
+fi
+echo "$NOW $TYPE" >> "$LOGCHECK"
+chmod 0666 "$LOGCHECK" 2>/dev/null
+
+if [ $# -lt 2 ]; then
+	MSG="Missing text for $@"
+else
+	MSG="$2"
+fi
+USER=$(whoami)
+MSG="[$USER] $MSG"
+
+if [ $# -gt 2 ]; then
+	EXTRA="$3"
+fi
+
+if [ -n "$SLX_DEBUG" ]; then
+	CURLLOG="/tmp/slxlog.$USER"
+else
+	CURLLOG="/dev/null"
+fi
+
+if [ -n "$EXTRA" ] && [ -r "$EXTRA" -a -s "$EXTRA" ] && [ "$(stat -c %s "$EXTRA")" -lt "10000" ]; then # valid file attachment
+	curl --data-urlencode "type=$TYPE" --data-urlencode "description=$MSG" --data-urlencode "longdesc@$EXTRA" "$SLX_REMOTE_LOG" >> "$CURLLOG" 2>&1 &
+elif [ -z "$EXTRA" ]; then # no attachment
+	curl --data-urlencode "type=$TYPE" --data-urlencode "description=$MSG" "$SLX_REMOTE_LOG" >> "$CURLLOG" 2>&1 &
+elif [ -s "$EXTRA" ]; then # empty attachment file (or missing)
+	curl --data-urlencode "type=$TYPE" --data-urlencode "description=$MSG" --data-urlencode "longdesc=Attachment too large: $EXTRA" "$SLX_REMOTE_LOG" >> "$CURLLOG" 2>&1 &
+else # attachment file to big (more than 10k)
+	curl --data-urlencode "type=$TYPE" --data-urlencode "description=$MSG" --data-urlencode "longdesc=Attachment missing/empty: $EXTRA" "$SLX_REMOTE_LOG" >> "$CURLLOG" 2>&1 &
+fi
+
+exit 0
+

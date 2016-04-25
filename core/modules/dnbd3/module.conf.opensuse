@@ -1,0 +1,8 @@
+REQUIRED_CONTENT_PACKAGES="
+                                cmake
+"
+
+REQUIRED_INSTALLED_PACKAGES="
+                                cmake
+				zlib-devel
+"

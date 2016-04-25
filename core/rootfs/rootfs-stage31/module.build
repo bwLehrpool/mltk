@@ -1,0 +1,74 @@
+#!/bin/bash
+fetch_source() {
+	:
+}
+
+build() {
+	local COPYLIST BIN_LOCATION DRM_MODULES FILE BIN MODNAME PCI_FILE ALIAS VENDOR DEVICE LIB
+	COPYLIST="list_binaries_and_files"
+	[ -e "$COPYLIST" ] && rm -f "$COPYLIST"
+	for BIN in $REQUIRED_BINARIES; do
+		BIN_LOCATION=$(which "$BIN")
+		[ -z "$BIN_LOCATION" ] && perror "Cannot find $BIN"
+		get_link_chain "$BIN_LOCATION" >> "$COPYLIST"
+	done
+
+	mkdir -p "$MODULE_BUILD_DIR/lib"
+	find /lib /lib64 /usr/lib /usr/lib64 \( -name "libnss_dns*" -o -name "libresolv*" -o -name "libnss_files*" \) >> "$COPYLIST"
+
+	tarcopy "$(cat "$COPYLIST" | sort -u)" "$MODULE_BUILD_DIR"
+
+	# generate drm module loading database
+	pinfo "Generating PCI ID database for DRM drivers"
+	DRM_MODULES="$KERNEL_BASE_DIR/lib/modules/$TARGET_KERNEL_LONG/kernel/drivers/gpu/drm"
+	PCI_FILE="$MODULE_BUILD_DIR/drm.cfg"
+	[ -d "$DRM_MODULES" ] || perror "DRM dir not found at $DRM_MODULES"
+	cp "$MODULE_DIR/templates/drm.cfg" "$PCI_FILE" || perror "Could not copy drm.cfg from templates dir"
+	echo "# -- generated from kernel $TARGET_KERNEL_LONG modules:" >> "$PCI_FILE"
+	for FILE in $(find "$DRM_MODULES" -name "*.ko"); do
+		MODNAME=$(basename "$FILE")
+		MODNAME=${MODNAME%.ko}
+		[ -z "$MODNAME" ] && perror "$FILE equals empty modname"
+		echo "# $MODNAME" >> "$PCI_FILE"
+		for ALIAS in $(modinfo "$FILE" | grep '^alias:' | grep -o 'pci:v.*' | tr '[A-F]' '[a-f]'); do
+			VENDOR=$(echo $ALIAS | cut -c 10-13)
+			if [ "x$(echo $ALIAS | cut -c 15)" == "x*" ]; then
+				# device wildcard
+				grep -q -i "^${VENDOR}\s" "$PCI_FILE" && continue
+				echo "${VENDOR} $MODNAME" >> "$PCI_FILE"
+			else
+				# specific device
+				DEVICE=$(echo $ALIAS | cut -c 19-22)
+				grep -q -i "^${VENDOR}:${DEVICE}\s" "$PCI_FILE" && continue
+				echo "${VENDOR}:${DEVICE} $MODNAME" >> "$PCI_FILE"
+			fi
+		done
+	done
+}
+
+post_copy() {
+	pinfo "Generating rootfs for Stage 3.1 ..."
+	generate_rootfs
+
+	# copy kernel, modules and firmware
+	copy_kernel_modules
+	copy_firmware
+	copy_kernel
+}
+
+#
+# helper functions to generate the base rootfs
+#
+generate_rootfs() {
+	# create basic directory structure
+	mkdir -p "${TARGET_BUILD_DIR}"/{bin,dev,proc,run,etc,mnt,sys} \
+		|| perror "Cannot create basic directory structure in '${TARGET_BUILD_DIR}'"
+
+	# copy device files from running system
+	cp -a /dev/{console,kmsg,mem,null,tty,tty0,tty1,tty9,urandom,zero} \
+		"${TARGET_BUILD_DIR}"/dev || perror "Cannot copy devices from running system"
+
+	# copy libc and ld-linux
+	tarcopy "$(list_basic_libs)" "${TARGET_BUILD_DIR}"
+}
+

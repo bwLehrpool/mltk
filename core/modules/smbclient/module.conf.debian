@@ -1,0 +1,9 @@
+REQUIRED_INSTALLED_PACKAGES="
+	smbclient
+"
+REQUIRED_CONTENT_PACKAGES="
+	smbclient
+"
+REQUIRED_FILES="
+	/usr/lib/cups/backend/smb
+"

@@ -1,0 +1,25 @@
+#!/bin/ash
+
+[ -r "/run/system-uuid" ] || exit 0
+
+. /opt/openslx/config
+[ -z "$SLX_REMOTE_LOG" ] && exit 0
+
+UUID=$(cat "/run/system-uuid")
+
+[ -z "$UUID" ] && exit 1
+
+USED=0
+
+for SESSION in $(loginctl | awk '{print $1}'); do
+	unset Display Remote State
+	eval $(loginctl -p Display -p Remote -p State -p Class show-session "$SESSION")
+	if [ -n "$Display" ] && [ "$Remote" = "no" ] && [ "$State" = "active" ] && [ "$Class" = "user" ]; then
+		USED=1
+		break;
+	fi
+done
+
+curl -s --data-urlencode "type=~runstate" --data-urlencode "uuid=$UUID" --data-urlencode "used=$USED" \
+	"$SLX_REMOTE_LOG" > /dev/null 2>&1
+

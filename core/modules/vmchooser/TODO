@@ -1,0 +1,4 @@
+currently nothing to do.
+
+done:
+	adapt globals.cpp globals.h to adopt the new structure of openslx-files: everything we do under /opt/openslx

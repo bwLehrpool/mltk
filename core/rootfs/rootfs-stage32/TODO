@@ -1,0 +1,4 @@
+libmdns needed?
+/etc/modprobe.d/blacklist.conf needed?
+
+Support for rpc.statd and rpcbind for OpenSuSE

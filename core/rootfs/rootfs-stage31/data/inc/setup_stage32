@@ -1,0 +1,68 @@
+#!/bin/ash
+#
+#	This script sets up the stage 3.2.
+#		- downloads/mounts stage32.sqfs
+#		- merge it with current rootfs through aufs
+#		- will not download, if the "nfs=" is used in the
+#		  kernel command line
+#
+#########################################################################
+#
+# first check if an NFS-share was given per command line
+#
+if [ -n "$NFS" ]; then
+	echo "Mounting stage 3.2 as NFS..."
+	busybox mount -n -t nfs -o ro,async,nolock ${NFSSERVER}:${NFSPATH} /rorootfs \
+		|| drop_shell "Problem mounting NFS-Directory from ${NFSSERVER}:${NFSPATH}." \
+		|| return 1
+	return 0
+fi
+
+#########################################################################
+#
+#				MAIN PART
+#
+
+echo "Setting up stage 3.2 ..."
+
+STAGE32_TARGET_PATH="/stage32.sqfs"
+STAGE32_MOUNT_POINT="/rorootfs"
+
+# try to download it
+download "${SLX_BASE_PATH}/stage32.sqfs" "$STAGE32_TARGET_PATH" || drop_shell "Could not download stage32!"
+
+# "Delete" addon hook-script in aufs view
+touch "${FUTURE_ROOT}/.wh.addon-init"
+
+# try to mount it at STAGE32_MOUNT_POINT
+echo "Mounting stage 3.2 as SquashFS..."
+busybox mount -n -t squashfs "$STAGE32_TARGET_PATH" "$STAGE32_MOUNT_POINT" || drop_shell "Problem mounting Squashfs."
+
+echo "Building aufs ..."
+busybox mount -n -t aufs -o "br:${FUTURE_ROOT}:${STAGE32_MOUNT_POINT}=ro" none /mnt || drop_shell "Problem building aufs."
+mkdir -p /mnt/opt/openslx/uniontmp /mnt/tmp
+#busybox mount -n --move "$FUTURE_ROOT" /mnt/opt/openslx/uniontmp || drop_shell "Problem moving uniontmp." # Move needed?
+FUTURE_ROOT="/mnt"
+
+# Move network stuff
+cp /etc/hostname /etc/hosts   "${FUTURE_ROOT}/etc/"
+cp /etc/resolv.conf   "${FUTURE_ROOT}/opt/openslx/"
+[ -s "/run/config" ] && cat "/run/config" >> "${FUTURE_ROOT}/opt/openslx/config"
+
+# if booting with splash, suppress kernel output in stage32
+if [ $SPLASH -eq 1 ]; then
+	if grep -q -E "^ *kernel.printk" "${FUTURE_ROOT}/usr/lib/sysctl.d/50-default.conf"; then
+		sed -i 's/^ *kernel\.printk.*/kernel\.printk = 1 1 0 1/g' "${FUTURE_ROOT}/usr/lib/sysctl.d/50-default.conf"
+	else
+		echo "kernel.printk = 1 1 0 1" >> "${FUTURE_ROOT}/usr/lib/sysctl.d/50-default.conf"
+	fi
+fi
+
+# Kinda specific for virtualization environment: Autologin and run VM for benchmarks
+if [ -n "$SLX_BENCHMARK_VM" ]; then
+	# Enable KDM autologin for demo user
+	sed -i 's/^AutoLoginUser=.*//;s/^AutoLoginEnable=.*/AutoLoginEnable=true\nAutoLoginUser=demo/' "${FUTURE_ROOT}/etc/kde4/kdm/kdmrc"
+	# Running the VM automatically has to be taken care of by run-virt and vmchooser. SLX_BENCHMARK_VM should contain
+	# a numeric value for the index in vmchooser
+fi
+

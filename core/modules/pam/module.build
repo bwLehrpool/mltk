@@ -1,0 +1,40 @@
+#!/bin/bash
+
+fetch_source() {
+	# get pam-script source
+	download_untar "$REQUIRED_PAM_SCRIPT_URL" "src/"
+	# Distribution switch: openSuse 13.1 has no package nss-ldap:
+	if [ -n "$REQUIRED_NSS_LDAPD_URL" ]; then
+		pinfo "Downloading $REQUIRED_NSS_LDAPD_URL ..."
+		download_untar "$REQUIRED_NSS_LDAPD_URL" "src/"
+	fi
+	# Distribution switch: Ubuntu 14.04 dropped packages ncpfs and libncp:
+	if [[ "$SYS_DISTRIBUTION" == "ubuntu" && "$SYS_VERSION" == "14.04" ]]; then
+		for file in $REQUIRED_DOWNLOAD_URLS; do
+			local package="$(basename $file)"
+			pinfo "Downloading and installing package $package ..."
+			download_if_empty "$file" "src/$package"
+			dpkg -i "src/$package"	|| perror "Could not install package $package."
+		done
+	fi
+}
+
+build() {
+	mkdir -p "$MODULE_BUILD_DIR/opt/openslx/bin"
+	gcc -o "$MODULE_BUILD_DIR/opt/openslx/bin/sslconnect" "$MODULE_DIR/sslconnect.c" -lssl -lcrypto -O3 || perror "Could not compile sslconnect.c"
+	local COPYLIST="$MODULE_BUILD_DIR/list_packet_files"
+	# TODO: Hack for SUSE: Ignore file (/var/lib/nfs/state) that does not exist :(
+	list_packet_files | grep -v '/var/lib/nfs/state' | sort -u > "$COPYLIST"
+	tarcopy "$(cat "$COPYLIST")" "${MODULE_BUILD_DIR}"
+
+	# build pam-script separatly since we use a source tarball
+
+	# HACK: find pam_unix.so in MODULE_BUILD_DIR to see where to put pam_script at
+	cd "${MODULE_WORK_DIR}/src/pam-script-${REQUIRED_PAM_SCRIPT_VERSION}" || perror "Could not cd to ${MODULE_WORK_DIR}/src/pam-script-${REQUIRED_PAM_SCRIPT_VERSION}."
+	./configure --prefix=/ --sysconfdir=/etc/pam-script --libdir="$SYS_PAM_MODULES_PATH" || perror "pam-script: ./configure failed."
+	make DESTDIR="${MODULE_BUILD_DIR}" install || perror "pam-script: make install to ${MODULE_BUILD_DIR} failed."
+}
+
+post_copy() {
+	:
+}

@@ -1,0 +1,19 @@
+REQUIRED_INSTALLED_PACKAGES="
+			nfs-common
+			squashfs-tools
+			whois
+			xfsprogs
+			firmware-linux-free
+			curl
+			jfsutils
+			libssl-dev
+"
+REQUIRED_CONTENT_PACKAGES="
+	
+"
+REQUIRED_DIRECTORIES="
+			/lib/xtables
+"
+REQUIRED_FILES+="
+			/etc/X11/app-defaults/Xvidtune
+"

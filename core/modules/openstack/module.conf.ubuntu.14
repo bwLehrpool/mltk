@@ -1,0 +1,9 @@
+REQUIRED_INSTALLED_PACKAGES="
+	neutron-common
+	neutron-plugin-ml2
+	neutron-plugin-openvswitch-agent
+	nova-compute-kvm
+	python-guestfs
+	python-mysqldb
+"
+REQUIRED_CONTENT_PACKAGES="$REQUIRED_INSTALLED_PACKAGES"

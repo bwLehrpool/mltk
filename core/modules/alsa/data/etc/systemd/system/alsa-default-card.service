@@ -1,0 +1,11 @@
+[Unit]
+Description=Set default card ALSA will use
+DefaultDependencies=no
+After=tmp.target
+Wants=tmp.target
+
+[Service]
+Type=oneshot
+ExecStart=/opt/openslx/scripts/alsa-default_card
+RemainAfterExit=yes
+

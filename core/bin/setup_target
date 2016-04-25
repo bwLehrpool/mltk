@@ -1,0 +1,618 @@
+#!/bin/bash
+# -----------------------------------------------------------------------------
+#
+# Copyright (c) 2011..2016 - OpenSLX GmbH
+#
+# This program is free software distributed under the GPL version 2.
+# See http://openslx.org/COPYING
+#
+# If you have any feedback please consult http://openslx.org/feedback and
+# send your suggestions, praise, or complaints to feedback@openslx.org
+#
+# General information about OpenSLX can be found at http://openslx.org/
+# -----------------------------------------------------------------------------
+#
+#	This file contains the functions needed to setup a target.
+#	The main function is 'generate_target' which will go over all
+#	activated modules (symlinks found under core/targets/<target> or
+#	overlay/targets/<target>) and run the module-specific 'fetch_source',
+#	'build' and 'post_copy' functions of the modules.
+#
+#	The functions defined here are module-independent, meaning they
+#	can process any module, as long as following requirements are met:
+#
+#		- Modules need to have a build-script and a config file,
+#		  i.e. core/module/kernel/module.build
+#		  and  core/module/kernel/module.conf
+#		  as these will be read by 'process_module'.
+#
+#		- Modules do not change anything inside the module dirs anymore,
+#		  everything (triggerfiles, source download, build) is done in
+#		  tmp/work/<MODULE>
+#
+#		- Several information have to be set in the config file of
+#		  a module:
+#		    * REQUIRED_BINARIES - list of binaries
+#		    * REQUIRED_FILES - list of regular files
+#		    * REQUIRED_DIRECTORIES - list of directories
+#		    * REQUIRED_SYSTEM_FILES - files to be copied directly from the system
+#		    * REQUIRED_INSTALLED_PACKAGES - list of packages needed at build-time
+#		    * REQUIRED_CONTENT_PACKAGES - list of packages where the contents are to be copied
+#		    * (optional variables needed by the module-build-script)
+#
+#		  NOTE: REQUIRED_BINARIES, REQUIRED_FILES, REQUIRED_FILES will be ONLY looked
+#		        for in the module's own build directory!
+#
+#	Optionally, a module can have a static data directory under
+#	core/modules/<module>/data which will be copied as is to the target build directory.
+#
+#	Moreover modules do not need to specify the dynamic dependencies of given binaries
+#	as these will be determined automaticly by the helper function 'get_dynamic_dependencies'
+# -----------------------------------------------------------------------------
+#
+CORE_DIR="${ROOT_DIR}/core"
+OVERLAY_DIR="${ROOT_DIR}/overlay"
+EXPORT_DIR="/export/build"
+[ -z "$REMOTE_EXPORT_DIR" ] || EXPORT_DIR=$REMOTE_EXPORT_DIR
+# Keep track of processed modules so we don't
+# build a module multiple times when following dependencies
+PROCESSED_MODULES=""
+
+initial_checks () {
+	get_kernel_version
+	detect_distribution
+}
+
+set_target_dir () {
+	if [ -d "${OVERLAY_DIR}/targets/${TARGET}" ]; then
+		TARGET_DIR="${OVERLAY_DIR}/targets/${TARGET}"
+	elif [ -d "${CORE_DIR}/targets/${TARGET}" ]; then
+		TARGET_DIR="${CORE_DIR}/targets/${TARGET}"
+	fi
+}
+
+#
+# generic function to read the config file of the current $MODULE
+#
+read_config () {
+	# unset previous variables from other config files
+	for VARNAME in ${!REQUIRED_*}; do
+		unset $VARNAME
+	done
+
+	local MODULE_CONFIG="${MODULE_DIR}/module.conf"
+
+	# sanity checks
+	[ ! -e "${MODULE_CONFIG}" ] && perror "Config for '$MODULE' not found."
+	validate_config "$MODULE_CONFIG"
+	# source the config file
+	. "${MODULE_CONFIG}" || perror "Sourcing '${MODULE_CONFIG}' failed."
+	# sanity checks - no distribution specific things in the global config
+	local CHECK
+	for CHECK in REQUIRED_CONTENT_PACKAGES REQUIRED_INSTALLED_PACKAGES; do
+		[ -n "${!CHECK}" ] && perror "$CHECK is set in ${MODULE}.conf, but distribution specific config has to go to one of these files:\n$PRINT_SYS_VERSIONS"
+	done
+	local FILE
+	for FILE in $SYS_VERSIONS; do
+		if [ -e "${MODULE_CONFIG}.${FILE}" ]; then
+			# a specific tool.conf seems to exist, use it to override/extend certain vars
+			validate_config "${MODULE_CONFIG}.${FILE}"
+			. "${MODULE_CONFIG}.${FILE}" || perror "Sourcing '${MODULE_CONFIG}.${FILE}' failed."
+			pinfo "Sourced distribution specific config (${MODULE_CONFIG##*/}.${FILE})"
+			return # end function
+		fi
+	done
+	# reaching here means no specific config
+	pinfo "Sourced general module config only (${MODULE_CONFIG##*/})"
+}
+
+validate_config () {
+	local INVALID=$(grep -h -E -o '^\s*\w+=' "$1" | grep -v -E '^\s*REQUIRED_')
+	[ -z "$INVALID" ] && return 0
+	local i
+	for i in $INVALID; do
+		pwarning "Invalid variable $i"
+	done
+	perror "$1 contains invalid variables. All variables must start with REQUIRED_"
+}
+
+#
+# generic function to read the build script of the current $MODULE
+#
+read_build () {
+	local BUILD_SCRIPT="${MODULE_DIR}/module.build"
+
+	[ ! -e "${BUILD_SCRIPT}" ] && perror "Build script for specified tool not found."
+
+	. "${BUILD_SCRIPT}" || perror "Sourcing '${BUILD_SCRIPT}' failed."
+}
+
+export_builds() {
+	[ ! -d "${ROOT_DIR}/var/builds" ] && perror "No ${ROOT_DIR}/var/builds, nothing to export."
+	if mount|grep -q ${ROOT_DIR}/var/builds; then
+		pwarning "${ROOT_DIR}/var/builds already exported! Ignoring..."
+		return 1;
+	fi
+	pinfo "Mounting ${ROOT_DIR}/var/builds to ${EXPORT_DIR}."
+	pinfo "This will make the local var/builds syncable from another machine."
+	[ ! -d "${EXPORT_DIR}" ] && mkdir -p "${EXPORT_DIR}"
+	mount --bind ${ROOT_DIR}/var/builds ${EXPORT_DIR} || perror "Failed to bind mount ${ROOT_DIR}/var/builds to ${EXPORT_DIR}"
+}
+
+#
+# main function which copies all files, directories, binaries and external libraries to TARGET_BUILD_DIR
+# called after building the module
+#
+copy_files_with_deps () {
+
+	[ ! -d "$MODULE_BUILD_DIR" ] && pinfo "No build directory found, skipping dependency copying" && return 0
+	cd "$MODULE_BUILD_DIR"
+
+	local COPYFILES_LIST="${TARGET_BUILD_DIR}/opt/openslx/.mltk/${MODULE}.copy_files_with_deps"
+	rm -f -- "${COPYFILES_LIST}"
+
+	# from REQUIRED_BINARIES - follow symlinks and ldd the file
+	[ ! -z "${REQUIRED_BINARIES}" ] && pinfo "Gathering required binaries from config file..."
+	local OPTIONAL
+	for FILENAME in ${REQUIRED_BINARIES}; do
+		if [[ "$FILENAME" == @* ]]; then
+			OPTIONAL="yes"
+			FILENAME=$(echo "$FILENAME" | cut -c 2- )
+		else
+			OPTIONAL="no"
+		fi
+		local FILE_CANDIDATES=$( find . -name "${FILENAME}" -a \( -type f -o -type l \) )
+		local FINAL_LIST=""
+		# Check result of find
+		if [ "$(echo "$FILE_CANDIDATES" | wc -l)" -gt 1 ]; then
+			# More than one match for binary
+			pdebug "Candidates for $FILENAME are: $(echo $FILE_CANDIDATES)"
+			for FILE in $FILE_CANDIDATES; do
+				local TESTFILE="$(readlink -f "$FILE")"
+				pdebug "  $FILE leads to $TESTFILE"
+				[ -f "$TESTFILE" -a -x "$TESTFILE" ] && FINAL_LIST="$FINAL_LIST $FILE"
+			done
+			FINAL_LIST=$(trim "$FINAL_LIST")
+			if [ -z "$FINAL_LIST" ]; then
+				perror "\tNo binary found for ${FILENAME}. None of the candidates ($FILE_CANDIDATES) is executable."
+			fi
+			if [[ "$FINAL_LIST" == *" "* ]]; then
+				pdebug "Found more than one match for required file '$FILENAME': $FINAL_LIST"
+			else
+				pdebug "\tFound ${FILENAME} at ${FILE}"
+			fi
+		elif [ "$OPTIONAL" == "no" -a -z "$FILE_CANDIDATES" ]; then
+			# No candidate
+			perror "Could not find required binary $FILENAME"
+		else
+			# One candidate
+			local TESTFILE=$(readlink -f "$FILE_CANDIDATES")
+			if [ -f "$TESTFILE" -a -x "$TESTFILE" ]; then
+				FINAL_LIST=${FILE_CANDIDATES}
+			elif [ "$OPTIONAL" = "no" ]; then
+				perror "No executable regular file found for '$FILENAME' (potential match was $(echo $FILE_CANDIDATES))"
+			fi
+		fi
+		for FILE in $FINAL_LIST; do
+			pdebug "* $FILE"
+			get_link_chain "${MODULE_BUILD_DIR}/${FILE}" "${MODULE_BUILD_DIR}" >> "${COPYFILES_LIST}"
+			get_dynamic_dependencies -l "${MODULE_BUILD_DIR}" "${FILE}" >> "${COPYFILES_LIST}"
+		done
+	done
+
+	# from REQUIRED_LIBRARIES - like binaries, follow symlinks and ldd, but also expand the lib-name
+	# by looking for files named <libname>.so*
+	[ ! -z "$REQUIRED_LIBRARIES" ] && pinfo "Gathering required libraries from config file..."
+	for LIB in $REQUIRED_LIBRARIES; do
+		FILE_CANDIDATES=$(find . -name "${LIB}.so*")
+		[ -z "$FILE_CANDIDATES" ] && perror "Cannot find required library $LIB"
+		for LOCATION in $FILE_CANDIDATES; do
+			pdebug "* $LOCATION"
+			get_link_chain "${MODULE_BUILD_DIR}/${LOCATION}" "${MODULE_BUILD_DIR}"  >> "${COPYFILES_LIST}"
+			get_dynamic_dependencies -l "${MODULE_BUILD_DIR}" "${LOCATION}" >> "${COPYFILES_LIST}"
+		done
+	done
+
+	# from REQUIRED_DIRECTORIES - recursively copy given dirs, look for files that seem to be an elf
+	# binary and do the symlink+ldd trick on them
+	[ ! -z "${REQUIRED_DIRECTORIES}" ] && pinfo "Gathering required directories from config file..."
+	local ENTRY=""
+	for ENTRY in ${REQUIRED_DIRECTORIES}; do
+		[[ "$ENTRY" == /* ]] || perror "All entries in REQUIRED_DIRECTORIES have to start with a slash '/', but $ENTRY does not!"
+		[ -e "$ENTRY" -a ! -d "$ENTRY" ] && perror "$ENTRY is not a directory"
+		pdebug "* $ENTRY"
+		ENTRY=".${ENTRY}"
+		echo "${ENTRY}" >> "${COPYFILES_LIST}"
+		for BIN in $(find "${ENTRY}" -type f -a \( -executable -o -name '*.so*' \) -a -not -name '*.a'); do
+			[ -f "$BIN" ] || continue
+			#pdebug "\tSearching libs for ${BIN}..."
+			get_link_chain "${MODULE_BUILD_DIR}/${BIN}" "${MODULE_BUILD_DIR}" >> "${COPYFILES_LIST}"
+			get_dynamic_dependencies -l "${MODULE_BUILD_DIR}" "${BIN}" >> "${COPYFILES_LIST}"
+		done
+	done
+
+	# from REQUIRED_FILES - these are assumed to be simple files, so only follow symlinks
+	[ ! -z "${REQUIRED_FILES}" ] && pinfo "Gathering required files from config file..."
+	for ENTRY in ${REQUIRED_FILES}; do
+		get_link_chain "${MODULE_BUILD_DIR}/${ENTRY}" "${MODULE_BUILD_DIR}" >> "${COPYFILES_LIST}"
+	done
+
+	#copy to initramfsdir
+	pdebug "File list generated at ${COPYFILES_LIST}."
+	# empty?
+	if [ ! -s "$COPYFILES_LIST" ]; then
+		return
+	fi
+	# unchanged?
+	local OLD="${COPYFILES_LIST}.old"
+	if [ -s "$OLD" ] && diff "$OLD" "$COPYFILES_LIST"; then
+		return
+	fi
+	local CLISTCOUNT=$(cat "$COPYFILES_LIST" | wc -l)
+	pinfo "Copying $CLISTCOUNT files to '${TARGET_BUILD_DIR}'."
+	tarcopy "$(sort -u "$COPYFILES_LIST")" "${TARGET_BUILD_DIR}"
+	mv -f "$COPYFILES_LIST" "$OLD"
+}
+
+#
+#
+# If the system has no usr split, recreate the structure in the given
+# directory, otherwise, do nothing
+#
+#
+prepare_usr_split () {
+	local DIR DEST
+	local BASE=$1
+	[ -z "$BASE" ] && perror "prepare_usr_split called with empty base dir"
+	if [ "$USR_SPLIT" == "no" ]; then # no usr split, /bin /lib etc are symlinks
+		for DIR in lib lib32 lib64 bin sbin; do
+			[ -L "/${DIR}" ] || continue
+			DEST=$(readlink "/${DIR}")
+			if [ ! -L "/${DEST}" ]; then
+				mkdir -p "${BASE}/${DEST}" || perror "Could not create '${BASE}/${DEST}'"
+			fi
+			[ -L "${BASE}/${DIR}" ] || ln -s "${DEST}" "${BASE}/${DIR}" || perror "Could not symlink '${BASE}/${DIR}' to '${DEST}'"
+		done
+	fi
+}
+
+#
+#
+# main public function. Requires the TARGET to be given as argument.
+# this will simply go over all the modules as found in the core/target/<TARGET>
+# and run following functions:
+#
+#
+generate_target() {
+
+	initial_checks
+
+	TARGET=$1 && shift
+	set_target_dir
+	TARGET_BUILD_DIR="${ROOT_DIR}/var/builds/${TARGET}"
+	[ -e "${ROOT_DIR}/var/log/${TARGET}.size" ] && . "${ROOT_DIR}/var/log/${TARGET}.size" || echo "declare -A BUILD_SIZE" >> "${ROOT_DIR}/var/log/${TARGET}.size"
+
+	[ -d "$TARGET_DIR" ] || perror "Given target directory does not exist: $TARGET_DIR"
+
+	[[ "$TARGET" == "builds" || "$TARGET" == "modules" ]] && \
+		perror "Target directory cannot be named 'builds' or 'modules'."
+
+	pdebug "Generating '$TARGET_BUILD_DIR' for '$TARGET'"
+	mkdir -p "$TARGET_BUILD_DIR" || perror "Failed to create $TARGET_BUILD_DIR"
+	prepare_usr_split "${TARGET_BUILD_DIR}"
+
+	# if no arguments assume all.
+	if [ "x$1" = "x" -o "x$1" = "xall" ]; then
+		MODULES=$(ls ${TARGET_DIR})
+		set -- $MODULES
+	else
+		# tools = arguments given
+		MODULES=$@
+	fi
+
+	pinfo "Activated modules in '${TARGET}':"
+	pinfo "\t$(echo ${MODULES})"
+
+	# we need a bit of special logic for kernel specifically
+	# to check if the built version is corresponding to the
+	# current kernel version. If not we had a kernel update
+	# and need to tell the user
+	if [[ -e "${TARGET_DIR}/kernel" ]]; then
+		# if so, check what kernels have been built
+		if [ -e "${ROOT_DIR}/tmp/work/kernel/ksrc/KVERSION" ]; then
+			local BUILT_KERNEL_VERSION=$(cat "${ROOT_DIR}/tmp/work/kernel/ksrc/KVERSION")
+			if [[ "${BUILT_KERNEL_VERSION}" != "${SYSTEM_KERNEL_LONG}" ]]; then
+				pinfo "The built kernel (${BUILT_KERNEL_VERSION}) is older than the running one (${SYSTEM_KERNEL_LONG})!"
+				# cleaning the module is enough as it forces to rebuild.
+				[[ "${AUTO_UPDATE_KERNEL}" == 1 ]] && pinfo "Auto-Udpate Kernel..." && clean_kernel_module --force
+			fi
+		elif [ -e "${ROOT_DIR}/tmp/work/kernel/ksrc" ]; then
+			# check if ksrc is there, since that would be problematic
+			pwarning "${ROOT_DIR}/tmp/work/kernel/ksrc exists, but KVERSION is not found!"
+			pwarning "Kernel was probably built with an older version of mltk."
+			pwarning "If errors arise, either write your KVERSION manually or clean the kernel."
+		fi
+	fi
+
+	# copy basic libs
+	pinfo "Copying libc and ld-linux used by ${SHELL}"
+	tarcopy "$(list_basic_libs)" "${TARGET_BUILD_DIR}"
+
+	# now iterate over given tools and copy them
+	while (( "$#" )); do
+		process_module "$1"
+		shift
+	done
+
+	post_process_target
+
+	pinfo "Target completed. Total size: $(du -bsh "${TARGET_BUILD_DIR}" | awk 'END {print $1}')"
+	TOOL_STR=""
+}
+
+process_module() {
+	# Parse arguments
+	[ "$#" -lt "1" ] && perror "process_module: want >= 1 param."
+	if [ "x$1" = "x--dep-of" ]; then
+		shift
+		local DEPOF=" $1"
+		shift
+	else
+		local DEPOF=""
+	fi
+	local MODULE="$1"
+	[ -z "$MODULE" ] && perror "No module given when calling process_module"
+	[[ "$PROCESSED_MODULES" == *"!${MODULE}!"* ]] && return # Already processed this module
+	# Set up dirs ans variables
+	PROCESSED_MODULES="${PROCESSED_MODULES}!${MODULE}!"
+	local MODULE_DIR="${TARGET_DIR}/${MODULE}"
+	local MODULE_WORK_DIR="${ROOT_DIR}/tmp/work/${MODULE}"
+	local MODULE_BUILD_DIR="${MODULE_WORK_DIR}/build"
+	local TOOL_STR="[${MODULE}]"
+	local SOURCE_FLAG="$MODULE_BUILD_DIR/fetched_source.flag"
+	local BUILD_FLAG="$MODULE_BUILD_DIR/build_complete.flag"
+	local MD5FILE="${TARGET_BUILD_DIR}/opt/openslx/.mltk/${MODULE}.md5"
+	mkdir -p "${TARGET_BUILD_DIR}/opt/openslx/.mltk"
+	if [ ! -d "${MODULE_DIR}" ]; then
+		if [ -z "$DEPOF" ]; then
+			perror "Module directory for '$MODULE' not found in ${TAREGET_DIR}"
+		fi
+		perror "Module directory for '$MODULE' not found in ${TARGET_DIR} (is a dependency of${DEPOF})"
+		return
+	fi
+	mkdir -p "${MODULE_WORK_DIR}"
+	cd "${MODULE_DIR}" || perror "Module work dir '${MODULE_DIR}' seems to exist, but cd to it failed."
+	# Simple check for modified .build / .config, in which case we'll run a module clean first
+	if [ -f "$MD5FILE" ]; then
+		if ! md5sum --check "$MD5FILE"; then
+			# Mismatch
+			if [ "x$MODULE" = "xkernel" ]; then
+				pwarning " ** Kernel .build/.config changed, but won't autoclean."
+				pwarning " ** Check if cleaning should be done and use '-c kernel'"
+			else
+				pwarning "Module's .build/.config has changed, rebuilding!"
+				clean_module "${TARGET}:${MODULE}"
+			fi
+		elif [ ! -e "$SOURCE_FLAG" ] || [ ! -e "$BUILD_FLAG" ]; then
+			# One of the flags is missing, in this case delete the .md5 file
+			# which would prevent dependency copying etc. below
+			rm -f -- "$MD5FILE"
+		fi
+	fi
+	# Process module
+	pdebug "## Reading config of $MODULE"
+	read_config
+	# Prepare build directory
+	mkdir -p "${MODULE_BUILD_DIR}" || perror "Could not create build dir"
+	prepare_usr_split "${MODULE_BUILD_DIR}"
+	# Check if this module has a dependency that wasn't built yet:
+	if [ ! -z "$REQUIRED_MODULES" ]; then
+		pdebug "$MODULE depends on ${REQUIRED_MODULES}...."
+		for DEP in $REQUIRED_MODULES; do
+			process_module --dep-of "${MODULE}${DEPOF}" "$DEP"
+		done
+		# Read old config again, as it got overwritten by the deps
+		cd "${MODULE_WORK_DIR}" || perror "Tool dir '${MODULE_WORK_DIR}' seems to exist, but cd to it failed (after building deps)."
+		read_config
+	fi
+	[ -n "$DEPOF" ] && local DEPOF_STR="(dependency of${DEPOF})"
+	pinfo ">>>>>>>>>>>>>>>>> Processing module [ $MODULE ] $DEPOF_STR"
+	# Update size of target build dir
+	if [ -d "${TARGET_BUILD_DIR}" ]; then
+		TARGET_BUILD_SIZE=$(du -bc "${TARGET_BUILD_DIR}" | awk 'END {print $1}')
+	else
+		TARGET_BUILD_SIZE=0
+	fi
+	# Source .build script of module
+	pdebug "## Reading .build of $MODULE"
+	. "${CORE_DIR}/includes/clean_module_funcs.inc" # Clean all hooks, in case the module doesn't define them all
+	read_build # Read all the hooks from the module
+	# Install module's dependencies
+	pdebug "## Installing dependencies"
+	cd "${MODULE_DIR}" || perror "cd to '${MODULE_DIR}' failed."
+	install_dependencies
+	# update kernel version variables before running a module, as the last one might have been the kernel...
+	get_kernel_version
+	# Execute load-hook before anything else
+	module_load
+    cd "${MODULE_WORK_DIR}" || perror "cd to '${MODULE_WORK_DIR}' failed."
+	# Fetch source code
+	if [ ! -e "$SOURCE_FLAG" ]; then
+		pinfo "## Fetching source"
+		fetch_source
+		touch "$SOURCE_FLAG" || pwarning "Error setting source-flag"
+	fi
+	# Build
+	if [ ! -e "$BUILD_FLAG" ]; then
+		pinfo "## Building"
+		cd "${MODULE_WORK_DIR}" || perror "cd to '${MODULE_WORK_DIR}' failed."
+		build # calls perror if something fails, no need to do that here
+		strip_recursive "$MODULE_BUILD_DIR"
+		touch "$BUILD_FLAG" || pwarning "Error setting built-flag"
+	fi
+	# Remove *.la files as they might confuse libtool/linker of other tool packages
+	[ -d "${MODULE_BUILD_DIR}" ] && find "${MODULE_BUILD_DIR}" -name '*.la' -exec rm -f {} \;
+	# Only copy stuff from system or build dir if md5s didn't change
+	if [ ! -f "$MD5FILE" ]; then
+		pinfo "## Copying files with dependencies"
+		cd "${MODULE_DIR}" || perror "cd to '${MODULE_DIR}' failed."
+		copy_files_with_deps
+		if [ -n "$REQUIRED_SYSTEM_FILES" ]; then
+			pinfo "## Copying required system files" # REQUIRED_SYSTEM_FILES
+			cd "${MODULE_DIR}" || perror "cd to '${MODULE_DIR}' failed."
+			copy_system_files
+		fi
+	fi
+	# Always copy static data
+	if [ -d "${MODULE_DIR}/data" ]; then
+		pinfo "## Copying static module files"
+		copy_static_data
+	fi
+	# TODO: automatic copy of REQUIRED_CONTENT_PACKAGES
+	pinfo "## Post copy"
+	cd "${MODULE_DIR}" || perror "cd to '${MODULE_DIR}' failed."
+	post_copy
+	# Write new md5 file if not existent yet
+	if [ ! -f "$MD5FILE" ]; then
+		md5sum "$MODULE_DIR/module".* > "$MD5FILE" || perror "Could not create $MD5FILE"
+	fi
+	# Sanity checks
+	[ -e "$TARGET_BUILD_DIR/var/run" -a ! -L "$TARGET_BUILD_DIR/var/run" ] && perror "Messup datected: $TARGET_BUILD_DIR/var/run exists and is not a symlink!"
+	[ -e "$TARGET_BUILD_DIR/var/lock" -a ! -L "$TARGET_BUILD_DIR/var/lock" ] && perror "Messup datected: $TARGET_BUILD_DIR/var/lock exists and is not a symlink!"
+	[ -n "$(ls -A "$TARGET_BUILD_DIR/run" 2>> /dev/null)" ] && perror "Messup detected: $TARGET_BUILD_DIR/run is not empty. You cannot place static files there, use /etc/tmpfiles.d instead!"
+	# set MODULE_BUILD_SIZE
+	calc_size
+	pinfo "Module completed. Total size: ${MODULE_BUILD_SIZE}"
+}
+
+post_process_target() {
+	local TOOL_STR="$TOOL_STR post_process_target:"
+
+	# figure out all relevant ld-paths
+	pinfo "Running ldconfig"
+	cp -r -L /etc/ld.so.conf* "${TARGET_BUILD_DIR}/etc/"
+	ldconfig -v -r "${TARGET_BUILD_DIR}"
+}
+
+clean_modules() {
+
+	TARGET=$1
+	shift
+	TARGET_DIR="$(target_path ${TARGET})"
+	TARGET_BUILD_DIR="${ROOT_DIR}/var/builds/${TARGET}"
+	[ -d $TARGET_DIR ] || perror "Given target directory does not exist: $TARGET_DIR"
+
+	if [ "x$1" = "x" -o "x$1" = "xall" ]; then
+		if [ -e "${ROOT_DIR}/var/log/${TARGET}.size" ]; then
+			rm "${ROOT_DIR}/var/log/${TARGET}.size" || perror "Could not delete var/log/${TARGET}.size"
+		fi
+		if [ -d ${TARGET_BUILD_DIR} ]; then
+			pinfo "Cleaning '${TARGET_BUILD_DIR}'" \
+				&& rm -rf "${TARGET_BUILD_DIR}"/* \
+				|| perror "Error deleting $TARGET_BUILD_DIR"
+		fi
+		# exclude kernel on "all"
+		set -- $(ls ${TARGET_DIR} | grep -vE "^kernel$")
+	fi
+	cd "$TARGET_DIR"
+
+	while (( "$#" )); do
+		clean_module "${TARGET}:$1"
+		shift
+	done
+	cd - &> /dev/null
+
+	# libck-connector cleanup
+	rm -f "$TARGET_DIR/post-patch/ck-connector/libck-connector.so"
+}
+
+clean_module() {
+	[ -z "$1" ] && perror "No module given on clean_module()"
+    pinfo "## clean_module $1"
+
+	local TARGET=${1%:*}
+	local MODULE=${1#*:}
+	local MODULE_WORK_DIR="${ROOT_DIR}/tmp/work/${MODULE}"
+
+	# if kernel is to be cleaned, do it separately and return
+	[ "x$MODULE" == "xkernel" ] && clean_kernel_module "${TARGET}:${MODULE}" && return
+
+	pinfo "Cleaning '$1'..."
+	rm -rf -- "${MODULE_WORK_DIR}/build" || perror "Could not delete build path"
+	rm -rf -- "${MODULE_WORK_DIR}/src" || perror "Could not delete src path"
+	rm -f -- "${MODULE_WORK_DIR}/list_dpkg_output" || perror "Could not delete list_dpkg_output"
+	rm -f -- "${MODULE_WORK_DIR}/list_binaries_and_files" || perror "Could not delete list_binaries_and_files"
+	rm -f -- "${TARGET_BUILD_DIR}/opt/openslx/.mltk/${MODULE}."* # no space here!
+	# These are not in use anymore, but leave the cleanup here for upgraders
+	rm -f -- "${MODULE_WORK_DIR}/.built"
+	rm -f -- "${MODULE_WORK_DIR}/.fetched_source"
+}
+
+clean_kernel_module() {
+
+	local TARGET=${1%:*}
+	local MODULE=${1#*:}
+	local MODULE_WORK_DIR="${ROOT_DIR}/tmp/work/${MODULE}"
+
+	pinfo "Cleaning kernel module (including sources and compiled stuff)."
+	cd "${MODULE_WORK_DIR}" || perror "Could not cd to ${MODULE_WORK_DIR}"
+	if [ -e build ]; then
+		rm -rf build || pwarning "Could not delete ${MODULE_WORK_DIR}/build"
+	fi
+	# clean any git repos in nonstandard dirs
+	find . -maxdepth 1 -type d -name "linux-*" -exec rm -rf -- {} \;
+	# Clean aufs repo
+	find . -maxdepth 1 -type d -name "aufs*-*" -exec rm -rf -- {} \;
+	# clean the config generated and flag files
+	rm -f -- "openslx.config" ".fetched_source" ".built"
+	if [ -L "ksrc" ]; then
+		unlink "ksrc" || perror "Could not unlink ${MODULE_WORK_DIR}/ksrc."
+	elif [ -d "ksrc" ]; then
+		rm -rf -- "ksrc" || perror "Could not delete directory ${MODULE_WORK_DIR}/ksrc."
+	fi
+	pinfo "Done cleaning kernel."
+}
+
+# Recursively strip binaries and libraries in the given directory
+strip_recursive() {
+	local DIR="$1"
+	[ -n "$DIR" -a -d "$DIR" ] || perror "strip_recursive(): No such directory: '$DIR'"
+	# Will try to strip shell scripts too but shouldn't do any harm
+	find "$DIR" -type f -a \( -executable -o -name "*.so*" \) -exec strip {} \; 2> /dev/null
+}
+
+# copies static data files from <MODULE>/data/ to <TARGET_BUILD_DIR>
+copy_static_data() {
+	[ ! -d "${MODULE_DIR}/data" ] && pinfo "${MODULE} has no static 'data' directory." && return
+	cd "${MODULE_DIR}/data/" || perror "could not cd to '${MODULE_DIR}/data/'"
+	pinfo "tarcopy ${MODULE_DIR}/data/"
+	tarcopy "$(find . -type f -o -type l)" "${TARGET_BUILD_DIR}"
+	cd -
+}
+
+# Copies files with their absolute paths in $REQUIRED_SYSTEM_FILES to $TARGET_BUILD_DIR
+copy_system_files() {
+	[ ! -z "$REQUIRED_SYSTEM_FILES" ] && tarcopy "$REQUIRED_SYSTEM_FILES" "$TARGET_BUILD_DIR"
+}
+
+# Tries to calculate the size of modules - doesn't seem to work all the time
+calc_size() {
+
+	local CURRENT_BUILD_SIZE=$(du -bc "${TARGET_BUILD_DIR}" | awk 'END {print $1}')
+
+	[ ! -z "${BUILD_SIZE[$MODULE]}" ] && local OLD_MODULE_SIZE=${BUILD_SIZE[$MODULE]} || local OLD_MODULE_SIZE=0
+	local diff=$((CURRENT_BUILD_SIZE-TARGET_BUILD_SIZE+OLD_MODULE_SIZE))
+
+	if [ -z "${BUILD_SIZE[$MODULE]}" ]; then 
+		echo "BUILD_SIZE[$MODULE]=${diff}" >> "${ROOT_DIR}/var/log/${TARGET}.size"
+	else
+		sed -i "s/^BUILD_SIZE\[${MODULE}\]=.*$/BUILD_SIZE\[${MODULE}\]=${diff}/g" "${ROOT_DIR}/var/log/${TARGET}.size"
+	fi
+	
+	MODULE_BUILD_SIZE=$(echo $diff | awk '{ sum=$1; hum[1024^3]="GB"; hum[1024^2]="MB"; hum[1024]="KB"; 
+					for (x=1024^3; x>=1024; x/=1024){ 
+						if (sum>=x) { printf "%.2f %s\n",sum/x,hum[x]; break }
+					}
+				}')
+}
+

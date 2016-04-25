@@ -1,0 +1,20 @@
+#!/bin/ash
+
+ERR=0
+SRCDIR=/usr/lib/cups/backend
+DESTDIR=/opt/openslx/cups/backend
+PRINTPWGUI=/opt/openslx/cups/printpwgui
+
+if [ ! -d "$DESTDIR" ]; then
+	mkdir -p "$DESTDIR" || exit 1
+fi
+
+mv "$SRCDIR"/* "$DESTDIR"
+
+cd "$SRCDIR"
+for i in "$DESTDIR"/*; do
+        ln -sf "$PRINTPWGUI" $(basename "$i")
+done
+
+exit 0
+

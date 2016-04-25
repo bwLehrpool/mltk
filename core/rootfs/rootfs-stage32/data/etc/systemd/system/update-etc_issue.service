@@ -1,0 +1,9 @@
+[Unit]
+Description=Update /etc/issue
+Before=getty.target shutdown.target
+DefaultDependencies=no
+
+[Service]
+Type=oneshot
+ExecStart=/opt/openslx/scripts/openslx-create_issue
+RemainAfterExit=no

@@ -1,0 +1,10 @@
+[Unit]
+Description=Cron Daemon (cronie)
+After=auditd.service nss-user-lookup.target systemd-user-sessions.service time-sync.target ypbind.service
+
+[Service]
+ExecStart=/opt/openslx/sbin/crond -n
+Restart=on-failure
+ExecReload=/opt/openslx/bin/kill -HUP $MAINPID
+KillMode=process
+

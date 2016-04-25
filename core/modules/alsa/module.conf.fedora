@@ -1,0 +1,13 @@
+REQUIRED_INSTALLED_PACKAGES="
+	alsa-utils
+	alsa-lib
+"
+REQUIRED_CONTENT_PACKAGES="
+	alsa-utils
+	alsa-lib
+"
+REQUIRED_DIRECTORIES="
+	/usr/share/alsa
+"
+
+# libasound2

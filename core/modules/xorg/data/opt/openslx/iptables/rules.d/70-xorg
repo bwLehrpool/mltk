@@ -1,0 +1,4 @@
+#!/bin/ash
+
+# X11 port
+iptables -I ipt-helper-INPUT 1 -i br0 -p tcp --dport 6000 -j REJECT

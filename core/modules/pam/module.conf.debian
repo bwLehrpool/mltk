@@ -1,0 +1,57 @@
+REQUIRED_INSTALLED_PACKAGES="
+	libpam-ldap
+	libnss-ldapd
+	libpam-ck-connector
+	libpam-cap
+	krb5-user
+	krb5-config
+	libpam-krb5
+	libssl-dev
+	ldap-utils
+	libnfsidmap2
+	nfs-common
+	libpam0g-dev
+	ncpfs
+"
+REQUIRED_CONTENT_PACKAGES="
+	libpam0g
+	libpam-modules
+	libpam-ck-connector
+	libpam-cap
+	libldap-2.4-2
+	libpam-ldapd
+	libnss-ldapd
+	krb5-user
+	krb5-config
+	libpam-krb5
+	ldap-utils
+	libnfsidmap2
+	nfs-common
+	ncpfs
+"
+REQUIRED_BINARIES+="
+	nwmsg
+	ncpmount
+	ncpumount
+	mount.ncp
+	mount.ncpfs
+"
+REQUIRED_DIRECTORIES+="
+	/lib
+	/usr/lib
+"
+REQUIRED_SYSTEM_FILES+="
+	/etc/pam.conf
+	/etc/default/locale
+	/lib/security
+	/lib/${ARCH_TRIPLET}/security
+	/sbin/mkhomedir_helper
+"
+
+# For Debian 8: Both packages were dropped from official repos. Do not change the
+# order, as these packages will be installed via dpkg and depend on each other.
+REQUIRED_DOWNLOAD_URLS="
+	ftp.acc.umu.se/mirror/cdimage/snapshot/Debian/pool/main/n/ncpfs/libpam-ncp_2.2.6-9_amd64.deb
+	ftp.acc.umu.se/mirror/cdimage/snapshot/Debian/pool/main/n/ncpfs/libncp_2.2.6-9_amd64.deb
+	ftp.acc.umu.se/mirror/cdimage/snapshot/Debian/pool/main/n/ncpfs/ncpfs_2.2.6-9_amd64.deb
+"

@@ -1,0 +1,245 @@
+# -----------------------------------------------------------------------------
+# Copyright (c) 2009..2013 - OpenSLX GmbH
+#
+# This program/file is free software distributed under the GPL version 2.
+# See http://openslx.org/COPYING
+#
+# If you have any feedback please consult http://openslx.org/feedback and
+# send your feedback to feedback@openslx.org
+#
+# General information about OpenSLX can be found at http://openslx.org
+# -----------------------------------------------------------------------------
+# run-virt.include
+#    - Include script for running the QEMU/Linux KVM virtual machine on an 
+#      OpenSLX client via the run-virt.sh or run-vmgrid.sh
+################################################################################
+
+################################################################################
+### Script functions
+################################################################################
+
+setup_if ()
+{
+  kvmdev=$1
+  hostdev=$2
+  sudo /opt/openslx/rootfs/sbin/tunctl -t ${kvmdev} -u ${USER} >/dev/null 2>&1
+  sudo /opt/openslx/rootfs/bin/ip link set dev ${kvmdev} up
+  sudo /opt/openslx/rootfs/usr/sbin/brctl addif ${hostdev} ${kvmdev}
+}
+
+################################################################################
+### Declaration of default variables
+################################################################################
+
+VMCHOOSERQK="/opt/openslx/vmchooser/${self}"
+# create TMPDIR for all users
+mkdir -m 1777 /tmp/${self} 2>/dev/null
+# TMPDIR
+QKTMPDIR="/tmp/${self}/${USER}/${VM_ID}"
+# define dirs and files which can be removed after exit, be carefull!
+RMDIRS="${QKTMPDIR}"
+rm -rf ${RMDIRS} 2>/dev/null
+mkdir -m 1777 -p ${QKTMPDIR} 2>/dev/null
+# vmpath is the path to the vm, here an image (img|qcow*|vmdk)
+diskfile=${vmpath}
+
+# check the file type
+if echo ${imgname} | grep -iE "img|qcow|vmdk" >/dev/null 2>&1; then
+  imgtype=$(echo ${imgname##*.} | tr "[a-z]" "[A-Z]")
+else
+  writelog "${imgname} is not a valid image type (img|qcow*|vmdk), exiting!"
+  exit 1
+fi
+
+# set the emulator/virtualization options for various operating systems
+sound="es1370"
+case "${vmostype}" in
+  beos*)
+    VIRTCMDOPTS="qemu-system-i386 -machine accel=tcg"
+    sound="sb16"
+    if [ "${totalmem}" -ge "1000" ]; then
+      forcemem=512
+    else
+      forcemem=256
+    fi
+  ;;
+  win3*|win*3*|Win*3*)
+    VIRTCMDOPTS="qemu-system-i386 -machine accel=tcg"
+    sound="sb16"
+    forcemem=32
+  ;;
+  win95*|Win*95)
+    VIRTCMDOPTS="qemu-system-i386 -machine accel=tcg"
+    forcemem=96
+  ;;
+  win98)
+    VIRTCMDOPTS="qemu-system-i386 -machine accel=tcg"
+    forcemem=256
+  ;;
+  winme*|windowsme*)
+    VIRTCMDOPTS="qemu-system-i386 -machine accel=tcg"
+    sound="ac97"
+    forcemem=384
+  ;;
+	winxp*64|windowsxp*64)
+    VIRTCMDOPTS="qemu-system-x86_64 -machine accel=kvm"
+    sound="ac97"
+  ;;
+esac
+
+# hot keys ALT+CTRL+SHIFT (does not work properly!?)
+#VIRTCMDOPTS="${VIRTCMDOPTS} -alt-grab"
+
+# display name, remove blanks because of cmdline problems
+displayname=$(echo ${displayname} | sed -e "s, ,-,g;s,(,[,g;s,),],g")
+VIRTCMDOPTS="${VIRTCMDOPTS} -name ${displayname}"
+
+writelog "Directories:"
+writelog "\tTMPDIR:\t\t\t$QKTMPDIR"
+writelog "Diskimage:"
+writelog "\tDisk type:\t\t$imgtype"
+writelog "\tDisk file:\t\t$diskfile"
+
+################################################################################
+### Hardware checks
+################################################################################
+
+# memory part equal to vmware plugin
+# percentage of memory to use for virtualbox in standard case
+if [ -n "${forcemem}" ]; then
+  mem="${forcemem}"
+else
+  permem=30
+  if [ "${totalmem}" -ge "1600" ]; then
+    permem=40
+  fi
+#  # check if /tmp is on harddisk
+#  if grep -qe "/dev/.* /tmp " /proc/mounts ; then
+#    permem=60
+#    id44="1"
+#    #if [ "${totalmem}" -ge "2500" ]; then
+#      #permem=40
+#      #rmdir ${snapshotdir}
+#      #snapshotdirold=${snapshotdir}
+#      #snapshotdir=/dev/shm/${self}/${USER}/${VM_ID}
+#      #mkdir -p ${snapshotdir}
+#      #ln -sf ${snapshotdir} ${snapshotdirold}
+#    #fi
+#  fi
+  mem=$(expr ${totalmem} / 100 \* ${permem})
+  if [ "${id44}" = "1" ]; then
+    memhost=$(expr ${totalmem} - ${mem})
+  else
+    memhost=$(expr ${totalmem} - ${mem} - ${mem})
+  fi
+  # static first
+  permem=50
+  mem=$(expr ${totalmem} / 100 \* ${permem})
+  if [ "${mem}" -lt "256" ] || [ "${memhost}" -lt "256" ]; then
+    writelog "Memory out of range: ${mem} MB (guest) / ${memhost} MB (host)!"
+    writelog "Min. 256 MB for host and guest!"
+    exit 1
+  fi
+fi
+
+VIRTCMDOPTS="${VIRTCMDOPTS} -m ${mem}"
+
+# network adaptor alternatives: rtl8139, pcnet, e1000
+network_card=${network_card:=pcnet}
+VIRTCMDOPTS="${VIRTCMDOPTS} -net nic,macaddr=${macaddr},model=${network_card}"
+
+# define network kind and configure the interfaces
+case "${network_kind}" in
+  bridge*)
+    VIRTCMDOPTS="${VIRTCMDOPTS} -net tap,ifname=kvmnet0${VM_ID}"
+    setup_if kvmnet0${VM_ID} br0
+    POSTRUN="sudo /opt/openslx/rootfs/sbin/tunctl -d kvmnet0${VM_ID}"
+  ;;
+  nat)
+    VIRTCMDOPTS="${VIRTCMDOPTS} -net tap,ifname=kvmnet1${VM_ID}"
+    setup_if kvmnet1${VM_ID} nat1
+    POSTRUN="sudo /opt/openslx/rootfs/sbin/tunctl -d kvmnet1${VM_ID}"
+  ;;
+  host*)
+    VIRTCMDOPTS="${VIRTCMDOPTS} -net tap,ifname=kvmnet2${VM_ID}"
+    setup_if kvmnet2${VM_ID} vsw2
+    POSTRUN="sudo /opt/openslx/rootfs/sbin/tunctl -d kvmnet2${VM_ID}"
+  ;;
+  *)
+    network_kind="user"
+    VIRTCMDOPTS="${VIRTCMDOPTS} -net user"
+  ;;
+esac
+
+# translate boot, use if set else set to HardDisk
+if [ -n "${boot}" ]; then
+  case ${boot} in
+    n*) # usually support for a,c,d,n, stands for Floppy, HD, CD-ROM, Network
+      boot="n"
+      # TODO: does not work yet, can be removed if tap1 solution better
+      if [ "${network_kind}" = "user" ] && [ -n "${virtualbox_tftpdir}" ]; then
+        VIRTCMDOPTS="${VIRTCMDOPTS},tftp=${virtualbox_tftpdir}"
+      fi
+    ;;
+    # later maybe c|disk|hd*|sd*) for HD and d|cd*) for CD-ROM
+    *) 
+      boot="c"
+    ;;
+  esac
+else
+  boot="c"
+fi
+
+# external GUI port
+vncport="590${VM_ID}"
+
+# ide is expected default, test for the virtual disk image type should
+# be done while creating the runscripts ...
+ide="TRUE"
+hddrv="ide"
+
+# special feature for real and virtual floppy disks
+[ -n "${floppy_0}" ] && VIRTCMDOPTS="${VIRTCMDOPTS} -fda ${floppy_0}"
+VIRTCMDOPTS="${VIRTCMDOPTS} -fdb /opt/openslx/vmchooser/data/loopimg/fd.img"
+
+# add optical drive if available
+[ -n "${cdrom_0}" ] && VIRTCMDOPTS="${VIRTCMDOPTS} -cdrom ${cdrom_0}"
+
+# audio
+VIRTCMDOPTS="${VIRTCMDOPTS} -soundhw ${sound}"
+
+# serial
+[ "x${serial}" == "xttyS0" ] && VIRTCMDOPTS="${VIRTCMDOPTS} -serial /dev/ttyS0"
+
+writelog "Virtual Hardware:"
+writelog "\tGuest RAM:\t\t${mem} MB"
+# echo nur wenn memhost gesetzt
+[ -n "${memhost}" ] && writelog "\tHost RAM:\t\t${memhost} MB"
+writelog "\tMAC address:\t\t$macaddr"
+writelog "\tNetwork card:\t\t${network_card}"
+writelog "\tNetwork kind:\t\t${network_kind}"
+writelog "\tCD-ROM1:\t${cdrom0}"
+#writelog "\tCD-ROM2:\t${cdrom1}"
+writelog "\tFloppy_A:\t${floppy_0}"
+writelog "\tFloppy_B:\t/opt/openslx/vmchooser/data/loopimg/fd.img"
+#writelog "\tShared Folders 'home':\t/home/${USER}"
+
+################################################################################
+### finally set env for run-virt.sh
+################################################################################
+
+# using snapshots
+VIRTCMDOPTS="${VIRTCMDOPTS} -snapshot"
+
+# TODO: boot als var, -boot n, tftp...
+VIRTCMDOPTS="${VIRTCMDOPTS} -boot c"
+
+# set headless mode
+# define first, you do not want VIRTCMDOPTS from graphical start
+VIRTCMDHL=${VIRTCMD}
+VIRTCMDOPTSHL="${VIRTCMDOPTS} -nographic ${diskfile}"
+
+# graphical start
+# vga std/cirrus/vmware?
+#VIRTCMDOPTS="${VIRTCMDOPTS} -vga std -full-screen ${diskfile}"
+VIRTCMDOPTS="${VIRTCMDOPTS} ${diskfile}"

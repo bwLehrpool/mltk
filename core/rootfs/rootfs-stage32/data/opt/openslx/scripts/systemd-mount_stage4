@@ -1,0 +1,71 @@
+#!/bin/bash
+# Needs full bash
+
+. /opt/openslx/config
+PATH=$PATH:/opt/openslx/bin:/opt/openslx/sbin
+
+[ -z "${SLX_STAGE4}" ] && { echo "SLX_STAGE4 is not set in /opt/openslx/config." && exit 1; }
+
+MOUNTPOINT="/opt/openslx/mnt/stage4"
+mkdir -p "$MOUNTPOINT"
+
+if [[ "$SLX_STAGE4" == dnbd3* ]]; then
+	# dnbd3 it is
+	if [ -z "${SLX_DNBD3_SERVERS}${SLX_DNBD3_PRIO_SERVERS}" ]; then
+		slxlog --echo "mount-stage4" "dnbd3 stage4 configured, but SLX_DNBD3(_PRIO)_SERVERS empty or not set in /opt/openslx/config."
+		exit 1
+	fi
+	# Determine revision
+	if [ -z "$SLX_STAGE4_RID" ] || echo "$SLX_STAGE4_RID" | grep -v -q -E "^[0-9]+$"; then
+		SLX_STAGE4_RID="0"
+	fi
+	# Randomize list
+	SERVERS=$(for SERVER in $SLX_DNBD3_SERVERS; do echo "$RANDOM $SERVER"; done | sort -u | sed -r 's/^[0-9]+ //')
+	IMAGE=$(echo $SLX_STAGE4 | awk '{printf $2}')
+	[ -e /var/run/dnbd3.socket ] || sleep 2 # Ugly, service should only start when dnbd3 daemon is up and running
+	RET=1337
+	for SRV in $SLX_DNBD3_PRIO_SERVERS $SERVERS; do
+		echo "Requesting $IMAGE from $SRV"
+		dnbd3=$(dnbd3-client -h "$SRV" -i "$IMAGE" -r "$SLX_STAGE4_RID")
+		RET=$?
+		[ "$RET" -eq "0" ] && break
+		echo "... didn't work ($RET)"
+		sleep 1
+	done
+	if [ "$RET" -ne "0" ]; then
+		slxlog --echo "mount-stage4" "Could not get stage4 via dnbd3 ($IMAGE : $SLX_STAGE4_RID) ($SLX_DNBD3_PRIO_SERVERS / $SERVERS)"
+		exit $RET
+	fi
+	echo "Mounting $dnbd3 to $MOUNTPOINT"
+	if ! mount -t squashfs -o ro "$dnbd3" "$MOUNTPOINT"; then
+		slxlog --echo "mount-stage4" "Could not mount stage4 from '$dnbd3' to '$MOUNTPOINT' ($SRV, $IMAGE)"
+		exit 1
+	fi
+else
+	# Try nfs
+	echo "Mounting ${SLX_STAGE4} to $MOUNTPOINT"
+	if ! mount -t nfs -o ro,async,nolock,vers=3 "$SLX_STAGE4" "$MOUNTPOINT"; then
+		slxlog --echo "mount-stage4" "Could not mount stage4 from '$SLX_STAGE4' to '$MOUNTPOINT'"
+		exit 1
+	fi
+fi
+
+echo "Appending $MOUNTPOINT to /"
+if mount -o "remount,append:$MOUNTPOINT=ro" /; then
+
+	# addons can trigger ldconfig, hence
+	# make sure no ldconfig is running before copying the real ld cache
+	while ps aux|grep -v grep|grep -q ldconfig; do
+		sleep 1
+	done
+	cp -r "${MOUNTPOINT}/"etc/ld.* /etc/ || echo "Could not really copy full blown ldconfig from stage4 to live system"
+else
+	slxlog --echo "mount-stage4" "Could not append mounted stage4 at '$MOUNTPOINT' to aufs at /"
+	exit 1
+fi
+
+# dbus reload needed eg. for gnome etc. and perhaps other service files which stage4 needs:
+systemctl reload dbus.service
+
+exit 0
+

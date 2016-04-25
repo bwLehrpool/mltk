@@ -1,0 +1,6 @@
+[Desktop Entry]
+Encoding=UTF-8
+Name=Firefox
+Exec=/opt/openslx/scripts/firefox-session
+Icon=
+Type=Application

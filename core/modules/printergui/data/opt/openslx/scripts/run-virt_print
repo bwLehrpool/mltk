@@ -1,0 +1,67 @@
+#!/bin/ash
+
+# Called with $1=USERNAME $2=PRINTFILE
+
+USER="$1"
+FILE="$2"
+PRINTERGUI="/opt/openslx/cups/printergui"
+
+errlog () {
+	FD=0
+	[ -t 1 ] && FD=1
+	[ -t 2 ] && FD=2
+	if [ $FD -ne 0 ]; then
+		echo "$2" >&$FD
+	elif [ $# -gt 2 ]; then
+		slxlog "$1" "$2" "$3"
+		sleep 1
+	else
+		slxlog "$1" "$2"
+	fi
+	$PRINTERGUI --error "$2" &
+}
+
+if [ $# -ne 2 ]; then
+	# Bad usage
+	errlog "printergui-call" "Error: Wrong number of arguments (got $#) ($@)"
+	exit 1
+fi
+
+if [ ! -r "$FILE" ]; then
+	errlog "printergui-file" "Error: File '$FILE' not readable"
+	exit 1
+fi
+
+if [ ! -s "$FILE" ]; then
+	errlog "printergui-file" "Error: File '$FILE' is empty"
+	exit 1
+fi
+
+# Some basic error checking if we have ghostscript available
+if which gs 2>/dev/null; then
+	ERRLOG=$(mktemp)
+	[ -z "$ERRLOG" ] && ERRLOG="/tmp/tmp-$RANDOM-$$-$(whoami)"
+	gs -sDEVICE=nullpage -dNOPAUSE -dBATCH "$FILE" 2>"$ERRLOG"
+	RET=$?
+	if [ $RET -ne 0 ]; then
+		errlog "printergui-validate" "Error: Ghostscript choked on input file" "$ERRLOG"
+		rm -f -- "$ERRLOG"
+		exit 1
+	fi
+	rm -f -- "$ERRLOG"
+else
+	errlog "printergui-nogs" "Warning: Cannot validate file prior to printing: gs binary not found"
+fi
+
+# Try to print
+$PRINTERGUI "$USER" "$FILE"
+RET=$?
+if [ $RET -ne 0 -a $RET -ne 143 ]; then # SIGTERM results in 143, is sent by printpwgui
+	errlog "printergui-exec" "Error: printergui execution failed with exit code $RET"
+fi
+
+sleep 1
+rm -f -- "$FILE"
+
+exit $RET
+

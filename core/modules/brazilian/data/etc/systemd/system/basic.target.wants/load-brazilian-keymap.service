@@ -1,0 +1,10 @@
+[Unit]
+Description=Setup brazilian keyboard layout
+DefaultDependencies=no
+After=sysinit.target
+Before=shutdown.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/opt/openslx/scripts/systemd-load_brazilian_keymaps

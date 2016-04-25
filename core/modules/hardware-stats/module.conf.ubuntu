@@ -1,0 +1,12 @@
+REQUIRED_INSTALLED_PACKAGES="
+	msr-tools
+	dmidecode
+	util-linux
+"
+
+REQUIRED_CONTENT_PACKAGES="
+	msr-tools
+	dmidecode
+	util-linux
+"
+

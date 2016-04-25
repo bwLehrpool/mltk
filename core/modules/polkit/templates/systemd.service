@@ -1,0 +1,8 @@
+[Unit]
+Description=the cancer that is called PolKit
+
+[Service]
+Type=dbus
+BusName=org.freedesktop.PolicyKit1
+ExecStart=%POLKITD% --no-debug
+

@@ -1,0 +1,6 @@
+Howto:
+To display the splash screen, you need to add this
+module to your stage31 obviously, and also add
+vga=current quiet splash
+to your KCL. Feel free to copy this module
+and replace the splash.ppm with your own.

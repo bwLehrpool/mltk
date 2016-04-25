@@ -1,0 +1,92 @@
+# xkbutils, xkbprint, setxkbmap, xkbevd for 64-bit openSuse
+REQUIRED_INSTALLED_PACKAGES="
+			xorg-x11
+			xorg-x11-server
+			xorg-x11-driver-input
+			xorg-x11-driver-video
+			xf86-video-nouveau
+			xf86-video-vmware
+			xf86-video-ati
+			xf86-video-nv
+			xf86-video-intel
+			xf86-video-i128
+			xf86-video-geode
+			xf86-video-vesa
+			xf86-video-fbdev
+			xf86-video-modesetting
+			xf86-input-vmmouse
+			xf86-input-wacom
+			xf86-input-evdev
+			xf86-input-joystick
+			xf86-input-keyboard
+			xf86-input-mouse
+			xf86-input-synaptics
+			xf86-input-void
+			xkeyboard-config
+			xkbcomp
+			dejavu-fonts
+			kdm-branding-openSUSE
+			Mesa
+			xkbutils
+			xkbprint
+			setxkbmap
+			xkbevd
+			libpixman-1-0
+			xrandr
+			vaapi-intel-driver
+"
+REQUIRED_CONTENT_PACKAGES="
+			xorg-x11
+			xorg-x11-server
+			xorg-x11-driver-input
+			xorg-x11-driver-video
+			xf86-video-nouveau
+			xf86-video-vmware
+			xf86-video-ati
+			xf86-video-nv
+			xf86-video-intel
+			xf86-video-i128
+			xf86-video-geode
+			xf86-video-vesa
+			xf86-video-fbdev
+			xf86-video-modesetting
+			xf86-input-vmmouse
+			xf86-input-wacom
+			xf86-input-evdev
+			xf86-input-joystick
+			xf86-input-keyboard
+			xf86-input-mouse
+			xf86-input-synaptics
+			xf86-input-void
+			xkeyboard-config
+			xkbcomp
+			dejavu-fonts
+			libxcb-glx0
+			kdm-branding-openSUSE
+			Mesa
+			xkbutils
+			xkbprint
+			setxkbmap
+			xkbevd
+			libpixman-1-0
+			xrandr
+			vaapi-intel-driver
+"
+REQUIRED_LIBRARIES="
+			libxcb-glx
+			libIntelXvMC
+			i965_dri
+			vmwgfx_dri
+			i915_dri
+			i965_drv_video
+			libpixman-1
+"
+REQUIRED_DIRECTORIES+="
+			/usr/bin
+			/usr/lib/udev
+			/usr/$LIB64/xorg
+			/usr/share/fonts
+"
+REQUIRED_FILES="
+			/var/adm/fillup-templates/sysconfig.displaymanager-kdm
+"

@@ -1,0 +1,25 @@
+#!/bin/bash
+# Copyright (c) 2013, 2014 - bwLehrpool Projekt
+# Copyright (c) 2012 - OpenSLX GmbH
+#
+# This program is free software distributed under the GPL version 2.
+# See http://openslx.org/COPYING
+#
+# If you have any feedback please consult http://openslx.org/feedback and
+# send your feedback to feedback@openslx.org
+#
+# General information about OpenSLX can be found at http://openslx.org
+#
+# First script for initial ramfs for OpenSLX linux stateless clients
+#############################################################################
+PATH=$PATH:/opt/openslx/bin:/opt/openslx/sbin
+
+# Set greeting and add information about the booted system
+len=$(expr length "$(cat /etc/hostname)")
+while [ $len -le 56 ] ; do
+	space="$space "
+	len=$(($len + 1))
+done
+
+sed "s/%space%/$space/g" /opt/openslx/etc/issue.template > /etc/issue
+

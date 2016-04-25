@@ -1,0 +1,116 @@
+#!/bin/bash
+# Full bash required
+# -----------------------------------------------------------------------------
+# Copyright (c) 2007..2010 - RZ Uni FR
+# Copyright (c) 2007..2013 - OpenSLX GmbH
+#
+# This program is free software distributed under the GPL version 2.
+# See http://openslx.org/COPYING
+#
+# If you have any feedback please consult http://openslx.org/feedback and
+# send your suggestions, praise, or complaints to feedback@openslx.org
+#
+# General information about OpenSLX can be found at http://openslx.org/
+# -----------------------------------------------------------------------------
+# run-virt.sh
+#    - This is the generic wrapper for the several virtualization solutions.
+#      The idea is to setup a set of variables used by at least two different
+#      tools and then include the specific plugin which configures the speci-
+#      fied virtualization tool.
+################################################################################
+
+RUNVIRTINCLUDEDIR=/opt/openslx/scripts/includes
+xmlfile="$1"
+
+# Functions needed by vmchooser-run_virt (writelog(), cleanexit(), rv_clean_string())
+source ${RUNVIRTINCLUDEDIR}/vmchooser_runvirt_functions.inc && trap 'trap "" SIGINT SIGTERM; cleanexit' SIGINT SIGTERM
+# Define default dirs / get configs
+source ${RUNVIRTINCLUDEDIR}/set_runvirt_variables.inc
+# Function to detect whether we can use the new way (vmx via http) or the old way (legacy):
+source ${RUNVIRTINCLUDEDIR}/detect_legacy.inc # This yields LEGACY, IMGUUID, IMGVMX
+# For scanning for certain usb classes
+source "${RUNVIRTINCLUDEDIR}/usb_detector.inc"
+
+if [ "$LEGACY" ]; then
+	# check for important files used (filecheck()) - vestigial?
+	source ${RUNVIRTINCLUDEDIR}/check_runvirt_needed_files.inc
+	# Get XML file and dir, legacy (old way)
+	source ${RUNVIRTINCLUDEDIR}/get_xml_file_dir_legacy.inc		# xmlfile=$1
+	# xml file sanity checks, legacy
+	source ${RUNVIRTINCLUDEDIR}/check_runvirt_xml_sanity_legacy.inc
+	# print console logo
+	source ${RUNVIRTINCLUDEDIR}/print_runvirt_console_logo.inc
+	# Read needed variables from XML file
+	source ${RUNVIRTINCLUDEDIR}/get_xml_file_variables_legacy.inc
+	# Declaration of hardware relatedt variables
+	source ${RUNVIRTINCLUDEDIR}/set_runvirt_hardware_variables_legacy.inc
+	# Sound setup the rest of the environment and run the configured vm
+	source ${RUNVIRTINCLUDEDIR}/setup_sound.inc
+	# Start printer daemon
+	source ${RUNVIRTINCLUDEDIR}/setup_printer_lpd.inc
+	# Setup virtual floppy b: for windows guests with config.xml, openslx.exe etc.
+	source ${RUNVIRTINCLUDEDIR}/setup_virtual_floppy.inc
+	# Try to use dnbd3 to access the image, nfs/cifs fallback
+	source ${RUNVIRTINCLUDEDIR}/setup_image_access.inc
+	# Get all virtual machine specific stuff from the respective include file
+	source ${RUNVIRTINCLUDEDIR}/setup_vm_hypervisor.inc
+	# start a windowmanager for easier handling
+	source ${RUNVIRTINCLUDEDIR}/start_windowmanager.inc
+	# Start poolvideoswitch if DO_PROFILE has been set (WARNING: fixed IP!)
+	source ${RUNVIRTINCLUDEDIR}/start_pvs.inc
+	# Check if tcpsvd is running. Do not check immediately after spawning,
+	# as this could result in success even if it's not really working.
+	source ${RUNVIRTINCLUDEDIR}/check_lpd.inc
+else
+	# check for important files used (filecheck()) - vestigial?
+	# This include does not currently work. TODO.
+	# source ${RUNVIRTINCLUDEDIR}/check_runvirt_needed_files.inc && filecheck
+
+	# Read needed variables from XML file
+	source ${RUNVIRTINCLUDEDIR}/get_xml_file_variables.inc
+
+	# Sound setup the rest of the environment and run the configured vm
+	source ${RUNVIRTINCLUDEDIR}/setup_sound.inc
+
+	# Declaration of hardware relatedt variables
+	source ${RUNVIRTINCLUDEDIR}/set_runvirt_hardware_variables.inc
+
+	# Start printer daemon
+	source ${RUNVIRTINCLUDEDIR}/setup_printer_lpd.inc
+
+	# Setup virtual floppy b: for windows guests with config.xml, openslx.exe etc.
+	source ${RUNVIRTINCLUDEDIR}/setup_virtual_floppy.inc
+
+	# Get all virtual machine specific stuff from the respective include file
+	source ${RUNVIRTINCLUDEDIR}/setup_image_access.inc
+
+	# start a windowmanager for easier handling	
+	source ${RUNVIRTINCLUDEDIR}/setup_vm_hypervisor.inc
+
+	# Try to use dnbd3 to access the image, nfs/cifs fallback
+	source ${RUNVIRTINCLUDEDIR}/start_windowmanager.inc
+
+	# Start poolvideoswitch if DO_PROFILE has been set (WARNING: fixed IP!)
+	source ${RUNVIRTINCLUDEDIR}/start_pvs.inc
+
+	# Check if tcpsvd is running. Do not check immediately after spawning,
+	# as this could result in success even if it's not really working.
+	source ${RUNVIRTINCLUDEDIR}/check_lpd.inc
+
+fi
+
+# This will start the VM
+writelog "VM command: eval ${VIRTCMD} ${VIRTCMDOPTS}"
+
+# Transported from vmware-runvirt include
+sync
+
+eval ${VIRTCMD} ${VIRTCMDOPTS}
+writelog "Bye."
+
+# Postrun for commands after virtualization finishes
+if [ -n "${POSTRUN}" ]; then
+	eval ${POSTRUN}  >/dev/null 2>&1
+fi
+
+cleanexit 0

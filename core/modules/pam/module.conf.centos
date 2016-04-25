@@ -1,0 +1,36 @@
+# erase generic conf settings
+REQUIRED_BINARIES=""
+REQUIRED_FILES=""
+REQUIRED_INSTALLED_PACKAGES="
+	pam
+	pam-devel
+	pam_krb5
+	libnfsidmap
+	nss-mdns
+	openssl-devel
+	nfs-utils
+	glibc
+"
+REQUIRED_CONTENT_PACKAGES="
+	pam
+	pam-devel
+	pam_krb5
+	libnfsidmap
+	nss-mdns
+	nfs-utils
+	glibc
+"
+REQUIRED_LIBRARIES+="
+	libnss_compat
+	libnss_db
+	libnss_dns
+	libnss_files
+	libnss_nis
+"
+REQUIRED_DIRECTORIES+="
+	/$LIB64
+"
+REQUIRED_SYSTEM_FILES+="
+	$SYS_PAM_MODULES_PATH
+"
+

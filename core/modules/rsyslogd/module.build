@@ -1,0 +1,34 @@
+fetch_source() {
+	:
+}
+
+build() {
+	COPYLIST="list_dpkg_output"
+	[ -e "$COPYLIST" ] && rm "$COPYLIST"
+
+	list_packet_files >> "$COPYLIST"
+	tarcopy "$(cat "$COPYLIST" | sort -u)" "${MODULE_BUILD_DIR}"
+
+	return 0
+}
+
+post_copy() {
+
+
+	# pwd = module's build dir
+	mkdir -p "${TARGET_BUILD_DIR}"/var/spool/rsyslog
+
+	local RSL="$(find /usr/lib/ /lib/ -name rsyslog.service | head -1)"
+	[ -z "$RSL" -o ! -e "$RSL" ] && perror "rsyslog.service not found on vorlage"
+	[ ! -d "$TARGET_BUILD_DIR/etc/systemd/system" ] && mkdir -p "$TARGET_BUILD_DIR/etc/systemd/system"
+	cp -L "$RSL" "$TARGET_BUILD_DIR/etc/systemd/system/"
+	sed -i 's/\/bin\/systemctl/-\/usr\/bin\/systemctl/g' "${TARGET_BUILD_DIR}"/etc/systemd/system/rsyslog.service
+	sed -i 's/^Before=udev/#&/' "${TARGET_BUILD_DIR}"/etc/systemd/system/rsyslog.service
+	
+	# activate the service
+        ln -sf rsyslog.service "${TARGET_BUILD_DIR}"/etc/systemd/system/syslog.service
+	[ ! -d "${TARGET_BUILD_DIR}"/etc/systemd/system/basic.target.wants ] && mkdir -p "${TARGET_BUILD_DIR}"/etc/systemd/system/basic.target.wants
+	ln -sf ../syslog.service "${TARGET_BUILD_DIR}"/etc/systemd/system/basic.target.wants/syslog.service
+	# TODO: more checks
+	sed -i.bak '/^After\=var-run.mount/d;/^Requires\=var-run.mount/d;/^Before\=syslog.target/d' "$TARGET_BUILD_DIR/etc/systemd/system/rsyslog.service"
+}

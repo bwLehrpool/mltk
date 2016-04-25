@@ -1,0 +1,19 @@
+fetch_source() {
+	:
+}
+
+build() {
+	COPYLIST="list_dpkg_output"
+	[ -e "$COPYLIST" ] && rm "$COPYLIST"
+
+
+	# These shitty greps are 'excludes' for this high quality scientific linux.
+	list_packet_files	| grep -v "^/etc/asound.state" \
+				| grep -v "^/etc/modprobe.d/local.conf" >> "$COPYLIST"
+	tarcopy "$(cat "${COPYLIST}" | sort -u)" "${MODULE_BUILD_DIR}"
+
+}
+
+post_copy() {
+	:
+}

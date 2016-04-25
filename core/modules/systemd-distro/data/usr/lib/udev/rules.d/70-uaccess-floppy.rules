@@ -1,0 +1,8 @@
+ACTION=="remove", GOTO="floppy_extra_end"
+ENV{MAJOR}=="", GOTO="floppy_extra_end"
+
+# floppy devices
+SUBSYSTEM=="block", KERNEL=="fd[0-9]*", TAG+="uaccess"
+
+LABEL="floppy_extra_end"
+

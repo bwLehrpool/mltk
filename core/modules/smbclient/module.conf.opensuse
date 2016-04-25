@@ -1,0 +1,9 @@
+REQUIRED_INSTALLED_PACKAGES="
+	samba-client
+"
+REQUIRED_CONTENT_PACKAGES="
+	samba-client
+"
+REQUIRED_FILES="
+	/usr/lib/cups/backend/smb
+"

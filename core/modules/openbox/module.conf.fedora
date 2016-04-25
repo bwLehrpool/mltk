@@ -1,0 +1,11 @@
+REQUIRED_INSTALLED_PACKAGES="
+			openbox
+			pango
+"
+REQUIRED_CONTENT_PACKAGES="
+			openbox
+			pango
+"
+REQUIRED_DIRECTORIES+="	
+			/usr/$LIB64
+"

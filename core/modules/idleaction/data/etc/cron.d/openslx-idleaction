@@ -1,0 +1,7 @@
+# Trigger scripts that checks idle status of machine and triggers actions
+
+SHELL=/bin/ash
+PATH=/usr/sbin:/usr/bin:/sbin:/bin:/opt/openslx/sbin:/opt/openslx/bin
+
+*/5 *    * * *   root	/opt/openslx/scripts/idleaction-cron_script
+

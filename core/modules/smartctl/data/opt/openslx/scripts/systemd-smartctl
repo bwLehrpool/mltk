@@ -1,0 +1,33 @@
+#!/bin/ash
+
+# Check Reallocated_Sector_Ct and Spin_Retry_Count of local disk(s)
+
+. /opt/openslx/config
+
+[ -z "$SLX_SMARTCTL_MIN_REALLOC" ] && SLX_SMARTCTL_MIN_REALLOC=0
+FILES=
+
+for dev in /dev/sd?; do
+	FILE=$(mktemp)
+	FILES="$FILES $FILE"
+	smartctl -H -A -f "brief" "$dev" > "$FILE" || continue # should we report devices where smartctl doesn't work?
+	# parse
+	OVERALL=$(grep -o "test result: .*$" "$FILE" | cut -c 14-)
+	[ "x$OVERALL" = "xPASSED" ] && OVERALL=""
+	REALLOC=$(grep "^ *5 " "$FILE" | awk '{print $8}')
+	SPINRETRY_VAL=$(grep "^ *10 " "$FILE" | awk '{print $4}')
+	SPINRETRY_THR=$(grep "^ *10 " "$FILE" | awk '{print $6}')
+	# report if applicable
+	if [ -n "$OVERALL" ]; then
+		slxlog "smartctl-fail" "Failed HDD: $dev reports health as $OVERALL" "$FILE"
+	fi
+	if [ -n "$REALLOC" ] && [ "$REALLOC" -gt "$SLX_SMARTCTL_MIN_REALLOC" ]; then
+		slxlog "smartctl-realloc" "Failing HDD: $dev has $REALLOC reallocated sectors!" "$FILE"
+	fi
+	if [ -n "$SPINRETRY_VAL" ] && [ "$SPINRETRY_VAL" -le "$SPINRETRY_THR" ]; then
+		slxlog "smartctl-spinretry" "Failing HDD: $dev has bad spin retry count! ($SPINRETRY_VAL/$SPINRETRY_THR)" "$FILE"
+	fi
+done
+sleep 2 # give slxlog a little time, as it's running async
+[ -n "$FILES" ] && rm -f -- $FILES # list, no ""
+

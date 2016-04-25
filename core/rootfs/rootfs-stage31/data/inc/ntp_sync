@@ -1,0 +1,26 @@
+# Sync time via network
+
+func_sync_net_time() {
+	local SERVER
+	if [ -n "$SLX_NTP_SERVER" ]; then
+		for SERVER in $SLX_NTP_SERVER; do
+			if ntpdate -u -p 2 "$SERVER"; then
+				echo "Successfully queried $SERVER for time."
+				if [ "x$SLX_BIOS_CLOCK" = "xlocal" ]; then
+					usleep 100000
+					hwclock -l -w || echo "... but could not set BIOS clock to localtime"
+				elif [ "x$SLX_BIOS_CLOCK" = "xutc" ]; then
+					usleep 100000
+					hwclock -u -w || echo "... but could not set BIOS clock to UTC"
+				fi
+				break
+			fi
+			echo "Error querying $SERVER for current time."
+		done
+	fi
+}
+
+func_sync_net_time &
+
+true
+

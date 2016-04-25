@@ -1,0 +1,14 @@
+REQUIRED_INSTALLED_PACKAGES="
+	libqt4-devel
+	LibVNCServer-devel
+"
+
+REQUIRED_CONTENT_PACKAGES="
+	libqt4
+"
+
+REQUIRED_DIRECTORIES="
+	/usr/$LIB64/
+"
+
+# libqt4-svg

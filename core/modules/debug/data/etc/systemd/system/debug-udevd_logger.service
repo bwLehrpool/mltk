@@ -1,0 +1,8 @@
+[Unit]
+Description=Logger for udevd-messages via udevadmin monitor
+DefaultDependencies=no
+IgnoreOnIsolate=yes
+
+[Service]
+ExecStart=/opt/openslx/scripts/systemd-debug_udevd_logger
+

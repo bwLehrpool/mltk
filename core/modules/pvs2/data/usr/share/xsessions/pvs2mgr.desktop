@@ -1,0 +1,7 @@
+[Desktop Entry]
+Encoding=UTF-8
+Name=PVS Steuerkonsole
+Exec=/opt/openslx/scripts/setup-pvsmgr
+TryExec=/opt/openslx/bin/pvsmgr
+Icon=
+Type=Application

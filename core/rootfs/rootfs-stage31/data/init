@@ -1,0 +1,166 @@
+#!/bin/ash
+# Copyright (c) 2013, 2014 - bwLehrpool Projekt
+# Copyright (c) 2012 - OpenSLX GmbH
+#
+# This program is free software distributed under the GPL version 2.
+# See http://openslx.org/COPYING
+#
+# If you have any feedback please consult http://openslx.org/feedback and
+# send your feedback to feedback@openslx.org
+#
+# General information about OpenSLX can be found at http://openslx.org
+#
+# First script for initial ramfs for OpenSLX linux stateless clients
+#############################################################################
+
+# set PATH correctly
+export PATH=/bin:/sbin:/usr/bin:/usr/sbin
+
+# import common functions
+. "/inc/functions"
+
+# mount the important standard directories
+[ ! -f /proc/cpuinfo ] && busybox mount -n -t proc proc /proc
+bench_event "KERNEL" "Kernel initialized"
+[ ! -d /sys/class ] && busybox mount -n -t sysfs sysfs /sys
+
+# NOTE: busybox mount is only available through the busybox binary,
+# the link had to be dropped, to prevent bugs in the stage32.
+busybox mount -n -t devtmpfs -o 'rw,relatime,nosuid,noexec,mode=0755' initramfsdevs /dev
+busybox mount -n -t tmpfs -o 'mode=755' run "/run"
+
+# preparations for mounting stage3.2
+FUTURE_ROOT="/dev/shm/uniontmp"
+mkdir -p "$FUTURE_ROOT" /rorootfs
+busybox mount -n -t tmpfs -o 'mode=755' none "$FUTURE_ROOT"
+mkdir -p "$FUTURE_ROOT/opt/openslx"
+
+
+# Get all variables we care about from the KCL
+. /inc/parse_kcl
+
+# NOTE: this is only relevant when using the distro's kernel
+# load kernel modules as given in /etc/modules
+modprobe -a -b $(cat /etc/modules) 2>/dev/null
+
+# Load drm gfx drivers, if successful, check if splash screen should be shown, and do so
+. "/inc/drm.functions"
+if [ "$SPLASH" -eq 1 ]; then
+	if setup_gfx; then
+		echo "1 1 0 1" > /proc/sys/kernel/printk
+		exec 4>&1 5>&2 > /dev/null 2>&1
+		MUTED_OUTPUT=1
+		clear
+		echo -e "\033[?25l" >&4
+		if [ -e "/etc/splash.ppm.gz" ]; then
+			fbsplash -x -b -s "/etc/splash.ppm.gz" &
+		elif [ -e "/etc/splash.ppm" ]; then
+			fbsplash -x -b -s "/etc/splash.ppm" &
+		else
+			echo "Splash screen requested, but not found in initramfs..." >&4
+		fi
+	fi
+else
+	setup_gfx
+fi
+
+# suppress kernel output if DEBUG is set and no splash screen is requested
+if [ $SPLASH -eq 0 ]; then
+	[ $DEBUG -ge 1 ] && echo "4 4 1 7" > /proc/sys/kernel/printk || echo "1 1 0 1" >/proc/sys/kernel/printk
+fi
+
+[ $DEBUG -ge 4 ] && drop_shell "Requested Debug Shell: before network."
+
+. "/inc/setup_network" || . "/inc/setup_network_retry" || drop_shell "Error setting up network"
+bench_event "NETWORK" "Network up and running"
+
+[ $DEBUG -ge 3 ] && drop_shell "Requested Debug Shell: after network/before configuring."
+
+. "/inc/activate_sysconfig" || drop_shell "Could not source /inc/activate_sysconfig"
+bench_event "CONFIG" "Downloaded config"
+# From here on, we have all the vars from /opt/openslx/config
+
+# Sync time via NTP
+. "/inc/ntp_sync"
+
+[ $DEBUG -ge 2 ] && drop_shell "Requested Debug Shell: after configuration/before stage32."
+
+. "/inc/setup_stage32" || drop_shell "Problem setting up stage3.2"
+bench_event "STAGE32" "Downloaded stage 3.2"
+
+# copy files needed for stage3.2 to FUTURE_ROOT
+echo "Copying busybox etc. to stage32..."
+tar -cp /bin/* /sbin/* | tar -xp -C "${FUTURE_ROOT}/opt/openslx/"
+mkdir -p "${FUTURE_ROOT}/opt/openslx/inc"
+cp -a "/inc/functions" "${FUTURE_ROOT}/opt/openslx/inc/"
+
+# set the SLX_ROOT_PASS if given in config
+if [ ! -z "$SLX_ROOT_PASS" ]; then
+	sed -i "s#^root:[^:]*:#root:$SLX_ROOT_PASS:#" "${FUTURE_ROOT}/etc/shadow"
+fi
+# set the SLX_DEMO_PASS if given in config
+if [ ! -z "$SLX_DEMO_PASS" ]; then
+	sed -i "s#^demo:[^:]*:#demo:$SLX_DEMO_PASS:#" "${FUTURE_ROOT}/etc/shadow"
+fi
+
+# one last debug shell if activated
+[ $DEBUG -ge 1 ] && drop_shell "Requested Debug Shell: before switch_root."
+
+# Activate debug shell after switchroot?
+[ -n "$DEBUG_SHELL" ] && ln -s "../debug-shell.service" "${FUTURE_ROOT}/usr/lib/systemd/system/sysinit.target.wants/debug-shell.service"
+
+# need /proc for this ;)
+bench_event "PRESWITCH" "Switching to stage 3.2"
+
+# unmount filesystems
+for mnt in proc sys run ; do
+	busybox umount -f -l "/$mnt" 2>/dev/null
+done
+
+# HACK HACK: Klausurmodus
+# Putting this here as we're hopefully moving to the all new dracut solution soon
+# so there's no reason to make it pretty now
+if [ -n "$SLX_EXAM" ]; then
+	# Visual: Make kdm all orange
+	sed -i 's/#e3e4e9/#f9a72b/g' "${FUTURE_ROOT}/usr/share/desktop/themes/kdm/bwlehrpool/theme.xml"
+	# Set autologindelay to 0 to directly boot
+	sed -i 's/^AutoLoginDelay=.*/AutoLoginDelay=0/g' "${FUTURE_ROOT}/etc/kde4/kdm/kdmrc"
+	# Visual: Move splash screen to upper left corner
+	if [ -e "/etc/splash.ppm.gz" ]; then
+		fbsplash -b -s "/etc/splash.ppm.gz" &
+	elif [ -e "/etc/splash.ppm" ]; then
+		fbsplash -b -s "/etc/splash.ppm" &
+	fi
+	# Visual: ssh banner
+	echo "+ - - - - KLAUSURMODUS AKTIV - - - - +" >> "${FUTURE_ROOT}/etc/issue.net"
+	echo "++++++++++++++++++++++++++++++++++++++" >> "${FUTURE_ROOT}/etc/issue.net"
+	# Disable ctrl-alt-delete
+	rm -- "${FUTURE_ROOT}/usr/lib/systemd/system/ctrl-alt-del.target"
+	# No idleaction
+	rm -- "${FUTURE_ROOT}/etc/cron.d/openslx-idleaction"
+	# Ignore everything but power button
+	cat > "${FUTURE_ROOT}/etc/systemd/logind.conf" <<EOF
+[Login]
+NAutoVTs=0
+ReserveVT=0
+KillUserProcesses=no
+HandlePowerKey=poweroff
+HandleSuspendKey=ignore
+HandleHibernateKey=ignore
+HandleLidSwitch=ignore
+IdleAction=ignore
+EOF
+	# Link exam.service in sysinit.target
+	ln -s "../exam.service" "${FUTURE_ROOT}/etc/systemd/system/sysinit.target.wants/exam.service"
+fi
+
+echo "Switching root...."
+echo "$bench_result" > "${FUTURE_ROOT}/opt/openslx/.benchmark"
+# Prepare environment (HOME is needed as a hack for nss_ldap with ssl and no caching)
+unset BOOT_IMAGE initrd KCL ip slxbase slxsrv IPINFO vga ip MAC BOOTIF DEBUG OLDPWD MUTED_OUTPUT GFX
+export HOME=/
+export init="/usr/lib/systemd/systemd"
+export recovery=
+export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/openslx/sbin:/opt/openslx/bin"
+exec /sbin/switch_root -c /dev/console /mnt /usr/lib/systemd/systemd
+

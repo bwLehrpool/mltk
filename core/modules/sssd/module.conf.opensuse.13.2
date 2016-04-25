@@ -1,0 +1,23 @@
+REQUIRED_FILES="
+	/etc/sssd
+	/etc/systemd/system/sssd.service
+"
+
+REQUIRED_DIRECTORIES="
+        /$LIB64
+        /usr/lib
+	/usr/lib64
+"
+
+REQUIRED_INSTALLED_PACKAGES="
+	sssd
+	sssd-ldap
+	libldb1
+	libsss_nss_idmap0
+"
+REQUIRED_CONTENT_PACKAGES="
+	sssd
+	sssd-ldap
+	libldb1
+	libsss_nss_idmap0
+"

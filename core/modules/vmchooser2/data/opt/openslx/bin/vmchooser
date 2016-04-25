@@ -1,0 +1,36 @@
+#!/bin/ash
+
+# This script launches the real vmchooser (vmchooser.real)
+# It's here to pass the XML URL, coming from
+# /opt/openslx/config, as well as the pool filter (if any)
+
+. /opt/openslx/config
+
+if [ -n "$SLX_VMCHOOSER_BASE_URL" ]; then
+	URL="$SLX_VMCHOOSER_BASE_URL"
+elif [ -n "$SLX_PXE_SERVER_IP" ]; then
+	URL="http://$SLX_PXE_SERVER_IP/vmchooser/"
+else
+	slxlog "virt-vmchooser" "vmchooser: Could not determine URL to fetch VM list from! (need SLX_VMCHOOSER_BASE_URL)"
+	# TODO: Tell user
+fi
+
+MEM=$(grep -m1 '^MemTotal:' /proc/meminfo | awk '{print $2}')
+if [ -n "$SLX_VMCHOOSER_TAB" ] && [ "$SLX_VMCHOOSER_TAB" -ge 0 -a "$SLX_VMCHOOSER_TAB" -le 2 ] 2>/dev/null; then
+	TAB="$SLX_VMCHOOSER_TAB"
+elif [ "$MEM" -lt 3000000 ]; then # Check RAM size; if it's not that much, default to the native linux sessions
+	TAB=0
+else
+	TAB=2
+fi
+
+EXTRA=
+[ -n "$SLX_VMCHOOSER_TEMPLATES" ] && EXTRA="$EXTRA --template-mode $SLX_VMCHOOSER_TEMPLATES"
+[ -n "$SLX_VMCHOOSER_FORLOCATION" ] && EXTRA="$EXTRA --location-mode $SLX_VMCHOOSER_FORLOCATION"
+
+if [ -z "$SLX_LOCATIONS" ]; then
+	exec vmchooser.real "$@" --url "$URL" --fullscreen --tab "$TAB" $EXTRA
+fi
+
+exec vmchooser.real "$@" --url "$URL" --fullscreen --tab "$TAB" --locations "$SLX_LOCATIONS" $EXTRA
+

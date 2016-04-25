@@ -1,0 +1,7 @@
+This module requires that busybox udhcpc is present in stage 3.2
+
+The default setup builds busybox with udhcpc, puts it in stage 3.1
+which copies it to stage 3.2 before the switchroot happens. That's
+why there is no direct dependency in this module's .conf: busybox
+is not part of the stage 3.2 target.
+

@@ -1,0 +1,3 @@
+REQUIRED_GIT_BRANCH="openSUSE-${SYS_VERSION}"
+REQUIRED_GIT="git://kernel.opensuse.org/kernel.git"
+

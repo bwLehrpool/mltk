@@ -1,0 +1,9 @@
+[Unit]
+Description=Brings interface %i up
+Wants=dhcpc@%i.service
+Before=dhcpc@%i.service
+
+[Service]
+Type=simple
+ExecStart=/opt/openslx/sbin/ip link set dev %I up
+

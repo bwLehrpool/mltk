@@ -1,0 +1,93 @@
+#!/bin/ash
+
+exec >> /run/stdout
+exec 2>> /run/stderr
+set -x
+
+if [ "x$1" != "xbound" -a "x$1" != "xrenew" ] || [ "x$interface" != "xbr0" ] || [ -z "$ip" ]; then
+	exit 0
+fi
+
+# If we already got an IP from KCL, see if it differs, and remove first if so
+# We just try to prevent everything from breaking if the DHCP server doesn't
+# objey the renew request by the client and hands out a new address
+if [ -s "/run/firstip" ]; then
+	#...some address is already configured...
+	OLD=$(cat "/run/firstip")
+	if [ "x${OLD}" != "x${ip}" ]; then
+		#...it's a different one, reconfigure...
+		echo "..reconfiguring ${OLD} to ${ip}.."
+		# remove default route and let it be added again below, as it might get lost when changing the primary address on the interface
+		ip route del default 2>/dev/null
+		rm -f -- "/run/firstgw"
+		ip addr del "${OLD}" dev "${interface}" 2>/dev/null
+		ip addr add "${ip}/$(ipcalc -s -p "${ip}" "${subnet}" | sed s/.*=//)" dev "${interface}"
+	fi
+else
+	#...no address configured yet, just add...
+	echo "..adding ${ip}.."
+	ip addr add "${ip}/$(ipcalc -s -p "${ip}" "${subnet}" | sed s/.*=//)" dev "${interface}"
+fi
+echo -n "$ip" > "/run/firstip"
+
+# Same procedure for default gateway
+if [ -n "${router}" ]; then
+	if [ -s "/run/firstgw" ]; then
+		OLD=$(cat "/run/firstgw")
+		if [ "x${OLD}" != "x${router}" ]; then
+			echo "..reconfiguring default gw from ${OLD} to ${router}.."
+			ip route del default 2>/dev/null
+			ip route add default via "$router"
+		fi
+	else
+		ip route add default via "$router"
+	fi
+	echo -n "$router" > "/run/firstgw"
+fi
+
+rm -f -- "/etc/resolv.conf"
+
+# DNS/domain?
+if [ -n "$dns" ]; then
+	echo "..got DNS.."
+	echo "# From DHCP in stage 3.1" >> "/run/config"
+	echo "SLX_DNS='$dns'" >> "/run/config"
+fi
+for serv in $dns; do
+	echo "nameserver $serv" >> "/etc/resolv.conf"
+done
+if [ -z "$domain" ]; then
+	# try to get domain via reverse lookup if empty
+	echo "..trying to get domain via DNS, as DHCP didn't supply one.."
+	fqdn=$(timeout -t 3 nslookup "$ip" | grep -E "^Address +[0-9]+: +$ip " | head -n 1 | awk '{print $4}')
+	domain="${fqdn#*.}"
+fi
+if [ -n "$domain" ]; then
+	echo "domain $domain" >> "/etc/resolv.conf"
+fi
+if [ -n "$search" ]; then
+	echo "search $search" >> "/etc/resolv.conf"
+elif [ -n "$domain" ]; then
+	echo "search $domain" >> "/etc/resolv.conf"
+fi
+
+
+# Hostname
+if [ -z "$hostname" ]; then
+	# as with domain, if there's no hostname, try to get via DNS
+	echo "..trying to get hostname via DNS, as DHCP didn't supply one.."
+	[ -z "$fqdn" ] && fqdn=$(timeout -t 3 nslookup "$ip" | grep -E "^Address +[0-9]+: +$ip " | head -n 1 | awk '{print $4}')
+	hostname="${fqdn%%.*}"
+elif [ -n "$domain" ]; then
+	fqdn="${hostname}.${domain%% *}" # in case domain is a list
+fi
+if [ -n "$hostname" ]; then
+	[ -z "$fqdn" ] && fqdn="$hostname"
+	echo "..setting hostname $hostname (fqdn: $fqdn).."
+	echo "$hostname" > "/proc/sys/kernel/hostname"
+	echo "$hostname" > "/etc/hostname"
+	echo "127.0.0.1 localhost" > "/etc/hosts"
+	echo "127.0.1.1 $fqdn $hostname" >> "/etc/hosts"
+	echo "SLX_HOSTNAME='$hostname'" >> "/run/config"
+fi
+

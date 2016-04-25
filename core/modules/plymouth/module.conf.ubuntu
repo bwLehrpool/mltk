@@ -1,0 +1,7 @@
+REQUIRED_INSTALLED_PACKAGES="	
+	libpng-dev
+	libpango1.0-dev
+	libcairo-dev
+	libgtk2.0-dev
+	libdrm-dev
+"

@@ -1,0 +1,35 @@
+#!/bin/bash
+
+fetch_source() {
+	git clone "${REQUIRED_GIT}" src
+}
+
+build() {
+
+	local SRCDIR="${MODULE_WORK_DIR}/src/"
+	local BUILDDIR="$SRCDIR/build/"
+	local DESTDIR="$MODULE_BUILD_DIR/opt/openslx/bin"
+
+	# first activate qt 4
+	activate_qt 4
+
+	mkdir -p "$DESTDIR" || perror "Could not mkdir $DESTDIR!"
+	mkdir -p "$BUILDDIR" || perror "Could not mkdir $BUILDDIR!"
+	cd "$BUILDDIR" || perror "Could not cd to $BUILDDIR!"
+
+	pinfo "Running cmake"
+	cmake .. || perror "'cmake ..' failed."
+	pinfo "Running make"
+	make || perror "'make' failed."
+	mv pvsmgr pvsclient $DESTDIR
+	cd - > /dev/null
+
+	# needed for copying REQUIRED_CONTENT_PACKAGES to build/
+	COPYLIST="list_dpkg_output"
+	[ -e "$COPYLIST" ] && rm "$COPYLIST"
+	list_packet_files >> "$COPYLIST"
+	tarcopy "$(cat "$COPYLIST" | sort -u)" "${MODULE_BUILD_DIR}"
+}
+post_copy() {
+	:
+}

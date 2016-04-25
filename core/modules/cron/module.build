@@ -1,0 +1,32 @@
+#!/bin/bash
+
+
+fetch_source() {
+	[ -d "${MODULE_WORK_DIR}/src/.git" ] && return 0
+	rm -rf -- "${MODULE_WORK_DIR}/src"
+	git clone --depth 1 "${REQUIRED_GIT}" "${MODULE_WORK_DIR}/src" || perror "Could not create ${MODULE_WORK_DIR}/src"
+	cd "${MODULE_WORK_DIR}/src"
+	git checkout "${REQUIRED_COMMIT}" || perror "Could not switch to required commit"
+	cd -
+}
+
+build() {
+
+	# compilation
+	cd "${MODULE_WORK_DIR}/src" || perror "Could not cd to '${MODULE_WORK_DIR}/src'. Did fetch_source work?"
+	./autogen.sh || perror "Autogen failed"
+	./configure --disable-dependency-tracking --enable-syscrontab --prefix= --exec-prefix= --bindir=/opt/openslx/bin --sbindir=/opt/openslx/sbin || perror "configure failed"
+
+	make || perror "Could not compile cron using 'make'."
+
+	# NO MAKE INSTALL: Copy to build dir, since there are no shared libs linked in
+	mkdir -p "${MODULE_BUILD_DIR}/opt/openslx/sbin"
+	cp "${MODULE_WORK_DIR}/src/src/crond" "${MODULE_BUILD_DIR}/opt/openslx/sbin/" || perror "Could not copy crond binary to ${MODULE_BUILD_DIR}"
+
+	cd - &>/dev/null
+}
+
+post_copy() {
+	:
+}
+

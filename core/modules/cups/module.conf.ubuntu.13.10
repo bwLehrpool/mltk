@@ -1,0 +1,12 @@
+REQUIRED_INSTALLED_PACKAGES="
+		cups
+		cups-daemon
+		cups-filters
+		foomatic-filters
+"
+REQUIRED_CONTENT_PACKAGES="
+		cups
+		cups-daemon
+		cups-filters
+		foomatic-filters
+"

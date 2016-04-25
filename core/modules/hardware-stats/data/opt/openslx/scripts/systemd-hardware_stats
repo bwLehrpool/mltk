@@ -1,0 +1,211 @@
+#!/bin/bash
+# Use bash since ash can only do math on 32bit numbers, which is not sufficient for ID44 calculations
+# also for negative length to ${x:0:-1}
+
+# This script gathers information about the hardware and configuration and reports it back to the server
+
+. /opt/openslx/config
+export LANG=C
+export LC_ALL=C
+
+if [ -z "$SLX_REMOTE_LOG" ]; then
+	echo "No remote log url given, will not report"
+	exit 1
+fi
+
+# 1) Get MAC Address used for booting
+eval $(grep -Eo BOOTIF=\\S+ /proc/cmdline)
+if [ "${#BOOTIF}" -ne "20" ]; then
+	echo "Getting MAC from /proc/cmdline failed, using 'ip a'..."
+	BOOTIF=01-$(ip a | grep -A 1 ': br0' | grep -o 'ether ..:..:..:..:..:..' | cut -d' ' -f2 | sed s/:/-/g)
+	if [ "${#BOOTIF}" -ne "20" ]; then
+		echo "FAIL FAIL FAIL"
+		BOOTIF="99-88-77-66-55-44-33"
+	fi
+fi
+MAC=${BOOTIF:3}
+
+which dmidecode || sleep 5
+
+# 2) Get machine UUID, with fallback to MAC address if it fails for some reason
+UUID=$(dmidecode -s system-uuid)
+if [ "${#UUID}" -ne "36" ]; then
+	echo "Determined UUID (${UUID}) has not expected length of 36, falling back to MAC..."
+	UUID="000000000000000-$BOOTIF"
+fi
+
+# 3) Uptime in seconds
+UPTIME=$(grep -o -E '^[0-9]+' /proc/uptime)
+
+# 4) Number of real CPU cores
+CPUCORES=$(cat /sys/devices/system/cpu/cpu*/topology/thread_siblings_list | sort -u | wc -l)
+# Fallback 1...
+if [ -z "$CPUCORES" ] || [ "$CPUCORES" = "0" ]; then
+	for c in $(dmidecode -t 4 | grep 'Core Enabled' | awk -F ':' '{print $2}'); do
+		CPUCORES=$(( $CPUCORES + $c ))
+	done
+fi
+# Fallback 2...
+if [ -z "$CPUCORES" ] || [ "$CPUCORES" = "0" ]; then
+	CPUCORES=$(grep -E -e '^core id\s*:' -e '^physical\s*:' /proc/cpuinfo | xargs -l2 echo | sort -u | wc -l)
+fi
+
+# 5) CPU model name
+CPUMODEL=$(grep -m1 '^model name\s*:' /proc/cpuinfo | sed 's/^model name\s*:\s*//;s/\s\s*/ /g;s/^ //;s/ $//')
+
+# 6) RAM
+RAM=$(grep '^MemTotal:' /proc/meminfo | awk '{print $2}')
+RAM=$(( $RAM / 1024 ))
+if [ -z "$RAM" ] || [ "$RAM" -lt 500 ]; then
+	# Fallback to dmidecode
+	RAM=0
+	for c in $(dmidecode -t 17 | grep -o 'Size:.*MB$' | awk '{print $2}'); do
+		RAM=$(( $RAM + $c ))
+	done
+fi
+
+# 7) 64bit virtualization support
+VT="UNSUPPORTED"
+VIRTTYPE=$(grep -m1 '^flags\s*:' /proc/cpuinfo | grep -wo -e svm -e vmx)
+[ -n "$VIRTTYPE" ] && modprobe msr
+
+if [ "$VIRTTYPE" = "vmx" ]; then    # intel
+	BIT1=$(rdmsr --bitfield 0:0 0x3a 2>/dev/null || echo "fail")
+	BIT2=$(rdmsr --bitfield 2:2 0x3a 2>/dev/null || echo "fail")
+	if [ "$BIT1" = "fail" -o "$BIT2" = "fail" ]; then
+		VT="UNKNOWN"
+	elif [ "$BIT1" = "0" -o "$BIT2" = "1" ]; then
+		VT="ENABLED"
+	else
+		VT="DISABLED"
+	fi
+elif [ "$VIRTTYPE" = "svm" ]; then  # amd
+	BIT=$(rdmsr --bitfield 4:4 0xc0010114 2>/dev/null || echo "fail")
+	if [ "$BIT" = "fail" ]; then
+		VT="UNKNOWN"
+	elif [ "$BIT" = "0" ]; then
+		VT="ENABLED"
+	else
+		VT="DISABLED"
+	fi
+fi
+
+# 8) ID44 partition size
+ID44=0
+for c in $(fdisk -l | grep -E '[0-9]+[\-\+]?\s+44\s+' | awk '{print $1}'); do
+	val=$(blockdev --getsize64 "$c")
+	[ -z "$val" ] && continue
+	[ "$val" -gt "$ID44" ] && ID44=$val
+done
+ID44=$(( $ID44 / 1058576 )) # we'd rather underreport
+
+# 9) check smart values
+BADSECTORS=0
+if which smartctl; then
+	ALLSMART=$(mktemp)
+	FILE=$(mktemp)
+	[ -z "$FILE" ] && FILE="/tmp/smartctl.$$.$RANDOM.$RANDOM"
+	for dev in $(fdisk -l | grep -o '^Disk /dev/\S*:' | cut -c 6-); do
+		dev=${dev:0:-1}
+		smartctl -i -H -A -f "brief" "$dev" > "$FILE" || continue
+		echo "NEXTHDD=$dev" >> "$ALLSMART"
+		cat "$FILE" >> "$ALLSMART"
+		# parse
+		OVERALL=$(grep -o "test result: .*$" "$FILE" | cut -c 14-)
+		[ "x$OVERALL" = "xPASSED" ] && OVERALL=""
+		REALLOC=$(grep "^ *5 " "$FILE" | awk '{print $8}')
+		SPINRETRY_VAL=$(grep "^ *10 " "$FILE" | awk '{print $4}')
+		SPINRETRY_THR=$(grep "^ *10 " "$FILE" | awk '{print $6}')
+		[ -n "$OVERALL" ] && BADSECTORS=$(( $BADSECTORS + 100 ))
+		if [ -n "$REALLOC" ] && [ "$REALLOC" -gt "0" ]; then
+			BADSECTORS=$(( $BADSECTORS + $REALLOC ))
+		fi
+		if [ -n "$SPINRETRY_VAL" ] && [ "$SPINRETRY_VAL" -le "$SPINRETRY_THR" ]; then
+			BADSECTORS=$(( $BADSECTORS + 100 ))
+		fi
+	done
+	rm -f -- "$FILE"
+fi
+
+# A) Read system model and manufacturer
+dmidec() {
+	local MODEL=$(dmidecode "$@" | sed 's/\s\s*/ /g;s/^ //;s/ $//')
+	case "$MODEL" in
+		""|*"Product Name"*|*"be filled"*|"unknown"|*"product name"*)
+			MODEL="Unknown"
+			;;
+	esac
+	echo "$MODEL"
+}
+MODEL=$(dmidec -s system-product-name)
+MANUF=$(dmidec -s system-manufacturer)
+# Try fallback to baseboard
+if [ "$MODEL" = "Unknown" ]; then
+	MODEL=$(dmidec -s baseboard-product-name)
+	MANUF=$(dmidec -s baseboard-manufacturer)
+fi
+
+if [ "$MANUF" != "Unknown" ]; then
+	MODEL="$MODEL ($MANUF)"
+fi
+
+# n) Dump raw data to a file
+DATAFILE=$(mktemp)
+[ -z "$DATAFILE" ] && DATAFILE="/root/power-stats.$$"
+cat > "$DATAFILE" <<-EOF
+############################### CPU #####################################
+Sockets:       $(grep '^physical id' /proc/cpuinfo | sort -u | wc -l)
+Real cores:    $CPUCORES
+Virtual cores: $(grep '^processor' /proc/cpuinfo | sort -u | wc -l)
+######################## Partition tables ###############################
+EOF
+fdisk -l >> "$DATAFILE"
+cat >> "$DATAFILE" <<-EOF
+############################ PCI ID #####################################
+EOF
+lspci -n -m >> "$DATAFILE"
+cat >> "$DATAFILE" <<-EOF
+########################## dmidecode ####################################
+EOF
+dmidecode >> "$DATAFILE"
+if [ -n "$ALLSMART" ] && [ -s "$ALLSMART" ]; then
+	cat >> "$DATAFILE" <<-EOF
+	########################### smartctl ####################################
+	EOF
+	cat "$ALLSMART" >> "$DATAFILE"
+fi
+cat >> "$DATAFILE" <<-EOF
+#########################
+EOF
+
+[ -n "$ALLSMART" ] && rm -f -- "$ALLSMART"
+
+# Fire away
+for DELAY in 1 1 0; do
+	if curl --data-urlencode "type=~poweron" --data-urlencode "uuid=$UUID" --data-urlencode "macaddr=$MAC" \
+			--data-urlencode "uptime=$UPTIME" --data-urlencode "realcores=$CPUCORES" --data-urlencode "mbram=$RAM" \
+			--data-urlencode "kvmstate=$VT" --data-urlencode "cpumodel=$CPUMODEL" --data-urlencode "id44mb=$ID44" \
+			--data-urlencode "badsectors=$BADSECTORS" --data-urlencode "systemmodel=$MODEL" \
+			--data-urlencode "data@$DATAFILE" "$SLX_REMOTE_LOG" | grep -q "RESULT=0"; then
+		rm -f -- "$DATAFILE"
+		echo "$UUID" > "/run/system-uuid"
+		START=$(( $RANDOM % 5 ))
+		cat > "/etc/cron.d/usage_stats" <<-EOF
+			# Update usage statistics on server
+
+			SHELL=/bin/sh
+			PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin:/opt/openslx/sbin:/opt/openslx/bin
+
+			${START}-59/5 *   * * *    root    /opt/openslx/scripts/cron-system_usage_update
+		EOF
+		touch "/etc/cron.d" # Sometimes, aufs doesn't update the mtime of dirs when creating files,
+		# so cron would not rescan the cron directory
+		exit 0
+	fi
+	sleep "$DELAY"
+done
+
+echo "Server doesn't seem to support hardware/usage stats - disabling logging"
+rm -f -- "/etc/cron.d/usage_stats"
+exit 1
+

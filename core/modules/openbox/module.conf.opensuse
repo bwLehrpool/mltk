@@ -1,0 +1,13 @@
+REQUIRED_INSTALLED_PACKAGES="
+			openbox
+			libpango-1_0-0
+			pango-tools
+"
+REQUIRED_CONTENT_PACKAGES="
+			openbox
+			libpango-1_0-0
+			pango-tools
+"
+REQUIRED_DIRECTORIES+="	
+			/usr/$LIB64
+"

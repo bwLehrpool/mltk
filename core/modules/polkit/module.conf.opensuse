@@ -1,0 +1,12 @@
+REQUIRED_INSTALLED_PACKAGES="
+				libmozjs185-1_0
+"
+REQUIRED_CONTENT_PACKAGES="	
+				libmozjs185-1_0
+				polkit
+"
+REQUIRED_DIRECTORIES+="	
+			/usr/lib/polkit-1
+			/var/lib/polkit
+"
+

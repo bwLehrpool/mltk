@@ -1,0 +1,84 @@
+#!/bin/ash
+
+echo "Setting up network..."
+
+echo "Main MAC address is '$MAC'"
+
+# setup network
+source /inc/network.functions
+
+# set up loopback networking
+echo "Setting up loopback"
+ip link set dev lo up 2>/dev/null
+ip addr add 127.0.0.1/8 dev lo 2>/dev/null
+
+echo "Setting up bridge"
+BRIDGE="br0"
+
+# Following was supposed to prevent scripts from getting confused by multiple interfaces with same MAC - does not work though
+## Flip mac address of original interface - this var is not local so init sees the changes too
+#MAC="$(echo "$MAC" | awk -F ':' '{printf $1 ":" $2 ":" $5 ":" $3 ":" $6 ":" $4}')"
+#ip link set addr "$MAC" "$SLAVE"
+
+mkdir -p "${FUTURE_ROOT}/etc/udev/rules.d"
+
+#IP_OUT=$(ip a | sed -r ':a;N;$!ba;s/: ([a-z0-9]+): /####\1####/g;s/ether ([a-f0-9:]+) /####\1####/g'| grep -E -o '####[^ ]+####' | sed 's/#//g' | grep -B 1 ':')
+IP_OUT=$(ip a | grep -B 1 "/ether" | sed -r '/^--$/d;$!N;s#^[0-9]+: ([a-z0-9\.:]+): .*?/ether ([0-9a-fA-Z:]+) .*$#\1==\2#')
+
+if ! echo "$IP_OUT" | grep -q -- "$MAC"; then
+	drop_shell "Boot interface not found in interface list. NIC driver missing?"
+fi
+
+for LINE in $IP_OUT; do
+	IFACE=$(echo "$LINE" | awk -F '==' '{printf $1}')
+	IFMAC=$(echo "$LINE" | awk -F '==' '{printf $2}' | tr '[A-Z]' '[a-z]') # udev requires mac addesses to be lowercase (a-f), see http://www.debianhelp.co.uk/udev.htm
+	echo "${IFACE} = ${IFMAC}"
+	
+	if [ "x$IFMAC" == "x$MAC" ]; then
+		brctl addbr "$BRIDGE" || drop_shell "Could not create bridge $BRIDGE"
+		brctl stp "$BRIDGE" 0
+		brctl setfd "$BRIDGE" 0.000000000001
+		ip link set addr "$IFMAC" "$BRIDGE" || drop_shell "Could not set mac of $BRIDGE"
+		ip link set dev "$IFACE" up
+		wait_for_iface "$IFACE"
+		brctl addif "$BRIDGE" "$IFACE" || drop_shell "Could not add $IFACE to $BRIDGE"
+
+		# save our variables for retry on fail
+		echo "IFACE=$IFACE" > /run/network.conf
+
+		# analyze ip information from the kernel command line and put parts
+		# of it into several variables
+		if [ -n "$CLIENTIP" ] ; then
+			# set static ip address
+			ip addr add "$CLIENTIP/$(ipcalc -s -p "$CLIENTIP" "$SUBNET_MASK" | sed "s/.*=//")" broadcast "$BROADCAST_ADDRESS" dev "$BRIDGE"
+			ip link set dev "$BRIDGE" up
+			[ -n "$GATEWAY" ] && ip route add default via "$GATEWAY" dev "$BRIDGE"
+		else
+			NOIPYET="yes"
+		fi
+		# Ignore this device later on when systemd handles network interfaces (see hacked 99-systemd.rules in systemd data dir)
+		echo "SUBSYSTEM==\"net\", ACTION==\"add\", KERNEL==\"eth*\", ATTR{address}==\"$IFMAC\", TAG+=\"openslxignore\"" >> "${FUTURE_ROOT}/etc/udev/rules.d/01-ignore-boot-interface.rules"
+	fi
+	# youdev
+	echo "SUBSYSTEM==\"net\", ACTION==\"add\", DRIVERS==\"?*\", ATTR{address}==\"$IFMAC\", ATTR{dev_id}==\"0x0\", ATTR{type}==\"1\", KERNEL==\"eth*\", NAME=\"$IFACE\"" >> "${FUTURE_ROOT}/etc/udev/rules.d/70-net-boot-nic-name.rules"
+	# continue...
+	IFACE=""
+done
+
+wait_for_iface "$BRIDGE"
+
+# udhcpc
+PARAM=
+if [ -n "$CLIENTIP" ]; then
+	PARAM="-r $CLIENTIP"
+fi
+echo -n "$CLIENTIP" > "/run/firstip"
+echo -n "$GATEWAY" > "/run/firstgw"
+
+# save our variables for retry on fail ff.
+echo "CLIENTIP=$CLIENTIP" >> /run/network.conf
+echo "GATEWAY=$GATEWAY" >> /run/network.conf
+echo "BRIDGE=$BRIDGE" >> /run/network.conf
+
+udhcpc $PARAM -O domain -O nissrv -O nisdomain -O wpad -O search -t 5 -T 2 -s "/inc/udhcpc-trigger" -f -n -q -i "$BRIDGE"
+# udhcpc return value will be return value of this script

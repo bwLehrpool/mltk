@@ -1,0 +1,22 @@
+#!/bin/bash
+PATH=$PATH:/opt/openslx/bin:/opt/openslx/sbin
+PCIFILE=/tmp/lspci-output
+
+if ! lspci -n > "$PCIFILE"; then
+	echo "lspci -n failed..."
+	exit 1
+fi
+
+if grep -E ' (8086:0152|8086:0412|8086:0416|1002:6779)( |$)' "$PCIFILE" > /dev/null; then
+	echo "i915 - enable 3D"
+	echo -e "# Written by load-gfx-driver\nSLX_VMWARE_3D=yes" >> "/opt/openslx/config"
+fi
+
+if lsmod | grep -q '^nvidia\s'; then
+	# nvidia kernel module was loaded in stage31 - download libs
+	systemctl start setup-slx-addon@nvidia_libs &
+	echo -e "# Written by load-gfx-driver\nSLX_VMWARE_3D=yes" >> "/opt/openslx/config"
+fi
+
+exit 0
+

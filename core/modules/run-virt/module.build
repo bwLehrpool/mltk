@@ -1,0 +1,16 @@
+
+fetch_source () {
+	:
+}
+
+build () {
+	local COPYLIST="list_dpkg_output"
+	rm -f -- "$COPYLIST"
+	list_packet_files > "$COPYLIST"
+	tarcopy "$(cat "$COPYLIST" | sort -u)" "${MODULE_BUILD_DIR}"
+}
+
+post_copy() {
+	:
+}
+

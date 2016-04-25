@@ -1,0 +1,8 @@
+REQUIRED_INSTALLED_PACKAGES="
+qt-devel
+libXrandr-devel
+"
+REQUIRED_CONTENT_PACKAGES="
+qt-devel
+libXrandr
+"

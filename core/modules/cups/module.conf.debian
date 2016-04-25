@@ -1,0 +1,10 @@
+REQUIRED_INSTALLED_PACKAGES="
+		cups-daemon
+		ghostscript
+		foomatic-filters
+"
+REQUIRED_CONTENT_PACKAGES="
+		cups-daemon
+		ghostscript
+		foomatic-filters
+"

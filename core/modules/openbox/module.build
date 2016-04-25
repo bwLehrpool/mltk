@@ -1,0 +1,36 @@
+fetch_source() {
+	:
+}
+
+build() {
+	COPYLIST="list_dpkg_output"
+	[ -e "$COPYLIST" ] && rm "$COPYLIST"
+
+	list_packet_files >> "$COPYLIST"
+	# FIXME: Hack: openSUSE's rpm -ql lilsts non-existant pango.modules, which makes
+	# tarcopy fail. We probably can't fix that, so remove it using grep....
+	tarcopy "$(cat "$COPYLIST" | grep -v 'pango\.modules$' | sort -u)" "${MODULE_BUILD_DIR}"
+
+	return 0
+}
+
+post_copy() {
+	[ ! -d "$TARGET_BUILD_DIR/etc/pango" ] && mkdir -p "$TARGET_BUILD_DIR/etc/pango"
+
+	# little Workaround, as under e.g. 64bit Suse the binary is called
+	# pango-querymodules-64, not pango-querymodules.
+	which pango-querymodules 2>/dev/null 1>&2
+	ERR=$?
+	if [[ "$ERR" -eq 0 ]]; then
+		PANGO_QUERYMODULES_ARCH=pango-querymodules
+	else
+		which pango-querymodules-64 2>/dev/null 1>&2
+		ERR=$?
+		if [[ "$ERR" -eq 0 ]]; then
+			PANGO_QUERYMODULES_ARCH=pango-querymodules-64
+		else
+			perror "Could not find either pango-querymodules or pango-querymodules-64!"
+		fi
+	fi
+	$PANGO_QUERYMODULES_ARCH > "$TARGET_BUILD_DIR/etc/pango/pango.modules"
+}

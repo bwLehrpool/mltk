@@ -1,0 +1,6 @@
+[Unit]
+Description=Sets the CPU governor
+
+[Service]
+Type=oneshot
+ExecStart=/opt/openslx/scripts/systemd-cpu_governor

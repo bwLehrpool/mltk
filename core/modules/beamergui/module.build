@@ -1,0 +1,27 @@
+#!/bin/bash
+
+fetch_source() {
+	git clone "${REQUIRED_GIT}" src
+}
+
+build() {
+	local SRCDIR="${MODULE_WORK_DIR}/src/"
+	if [[ "$SYS_DISTRIBUTION" == "opensuse" && "$SYS_VERSION" == "13.2" ]]; then
+		QMAKE="/usr/$LIB64/qt4/bin/qmake"
+	else
+		QMAKE="$(which qmake-qt4)"
+	fi
+
+	# first activate qt 4
+	activate_qt 4
+
+	mkdir -p "$MODULE_BUILD_DIR/opt/openslx/bin"
+	cd "${MODULE_BUILD_DIR}/opt/openslx/bin" || perror "Could not cd!"
+	pinfo "Running qmake"
+	"$QMAKE" "$SRCDIR/src/beamergui.pro" -r -spec linux-g++ || perror "'qmake-qt4' failed (e.g. not installed)."
+	pinfo "Running make"
+	make || perror "'make' failed."
+}
+post_copy() {
+	:
+}

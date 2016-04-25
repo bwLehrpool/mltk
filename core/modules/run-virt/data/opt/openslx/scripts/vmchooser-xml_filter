@@ -1,0 +1,74 @@
+#!/bin/bash
+# Probably needs bash somewhere
+# -----------------------------------------------------------------------------
+# Copyright (c) 2007..2009 - RZ Uni FR
+# Copyright (c) 2007..2011 - OpenSLX GmbH
+#
+# This program is free software distributed under the GPL version 2.
+# See http://openslx.org/COPYING
+#
+# If you have any feedback please consult http://openslx.org/feedback and
+# send your suggestions, praise, or complaints to feedback@openslx.org
+#
+# General information about OpenSLX can be found at http://openslx.org/
+# -----------------------------------------------------------------------------
+# xmlfilter.sh
+#    - This script is invoked by the vmchooser tool. It simply filters xml-
+#      files (taking the path to these files in $1). You might modify it in any
+#      way to match your needs, e.g. ask some database instead. You can re-
+#      implement it in any other programming language too. You simply have to
+#      return a list of proper xml files to be interpreted by the vmchooser
+#      binary). Please check for vmchooser.sh too ...
+# -----------------------------------------------------------------------------
+
+# This script .
+#
+# currently:
+#     - filter for slxgrp (which comes from /etc/machine-setup)
+#
+
+# include default directories
+. /opt/openslx/config
+
+if [ -f "${OPENSLX_DEFAULT_CONFDIR}/plugins/vmchooser/vmchooser.conf" ]; then
+	. "${OPENSLX_DEFAULT_CONFDIR}/plugins/vmchooser/vmchooser.conf"
+fi
+
+function handlePersistentVM() {
+	if grep --extended-regexp -q "<persistent param=\"(|.+:)$USER(|:.+)\"" "$1"; then
+		# If this virtual machine is useable as persistent version for current
+		# user we provide an additional persistent version.
+		# TODO: This evil black magic needs to be rewritten some day (by someone who understands it)
+		local originalImagePath=$(grep -io '<image_name param=.*"' "$1" | sed -e "s/&.*;/; /g" | awk -F '"' '{ print $2 }')
+		local imageName=$(basename "$originalImagePath")
+		eval export SLX_VM_PERSISTENT_PATH="${SLX_VM_PERSISTENT_PATH}" && \
+			local imagePath="${SLX_VM_PERSISTENT_PATH}${imageName}"
+		local persistentConfigVersionFilePath="$(mktemp --directory)/$(basename "$1")"
+		local vmchooserFilePath="$(dirname "$0")/vmchooser-clc"
+		if [ ! -f "$vmchooserFilePath" ]; then
+			vmchooserFilePath='/opt/openslx/scripts/vmchooser-clc'
+		fi
+		"$vmchooserFilePath" "$1" "$persistentConfigVersionFilePath" \
+			--create-persistent-config "$imagePath" && \
+			echo "$persistentConfigVersionFilePath"
+	fi
+}
+	
+for FILE in $(find -L "$1" -iname "*.xml"); do
+	# filter all xmls which aren't set active
+	grep -i -q "<active param=.*true.*" "$FILE" || continue
+	# HACK: filter all virtualbox images, as vbox is not ready yet
+	grep -i -q "<virtualmachine param=.*virtualbox.*" "$FILE" && continue
+	if [ -n "${SLX_VM_POOL_FILTER}" ]; then
+		# filter all xmls with pool-param not equal to vmchooser::env
+		if [ $(grep "<pools param=\"${SLX_VM_POOL_FILTER}\"" "$FILE" | wc -l) -eq 1 ]; then
+			handlePersistentVM "$FILE"
+			echo "$FILE"
+		fi
+	else
+		handlePersistentVM "$FILE"
+		# if there is no pool set, just take all available xmls
+		echo "$FILE"
+	fi
+done
+

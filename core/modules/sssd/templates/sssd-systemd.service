@@ -1,0 +1,16 @@
+[Unit]
+Description=System Security Services Daemon
+# SSSD will not be started until syslog is
+After=syslog.target
+
+[Service]
+EnvironmentFile=-/etc/sysconfig/sssd
+ExecStart=%PATH% -D -f
+# These two should be used with traditional UNIX forking daemons
+# consult systemd.service(5) for more details
+Type=forking
+PIDFile=/var/run/sssd.pid
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

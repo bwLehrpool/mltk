@@ -1,0 +1,10 @@
+REQUIRED_INSTALLED_PACKAGES="
+	libX11-data
+"
+REQUIRED_CONTENT_PACKAGES="
+	libX11-data
+"
+REQUIRED_DIRECTORIES+="
+	/usr/lib/locale
+"
+

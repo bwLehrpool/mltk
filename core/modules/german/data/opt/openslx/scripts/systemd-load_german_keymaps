@@ -1,0 +1,22 @@
+#!/bin/ash
+# Script serves as container script for a systemd-call due to the buggyness of several
+# loadkeys-implementations <= kbd (Linux keyboard tools) 1.15.3.
+# This bug can be detected through failure of the command pipe 'dumpkeys|loadkeys' yielding
+# the message "unknown keysym 'compose'.
+
+# So we first try to insert a keymap including compose-lines:
+loadkeys /opt/openslx/keymaps/german_qwertz_compose_keyboard_translation.map
+ERR=$?
+
+# ... if this fails we enter a keymap without compose-lines:
+if [ "$ERR" -eq 0 ]; then
+	exit 0			# in that case everything went smooth - exit.
+fi
+
+loadkeys /opt/openslx/keymaps/german_qwertz_keyboard_translation.map		# insert a keymap without compose lines
+ERR=$?
+
+# if at this point the second keymap insertion failed we pass the errorlevel to
+# systemd - we cannot do more at this point.
+exit $ERR
+

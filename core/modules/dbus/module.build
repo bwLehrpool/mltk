@@ -1,0 +1,65 @@
+#!/bin/bash
+
+fetch_source() {
+	echo "Extracting from running system..."
+}
+
+build() {
+	COPYLIST="list_dpkg_output"
+	[ -e "${COPYLIST}" ] && rm "${COPYLIST}"
+	
+	list_packet_files >> "${COPYLIST}"
+	tarcopy "$(cat "${COPYLIST}" | sort -u)" "${MODULE_BUILD_DIR}"
+	
+	# Generate systemd files
+	mkdir -p "$MODULE_BUILD_DIR/etc/systemd/system"
+	# This is ugly, as the command line arguments changed over time. Try to do the right thing (whatever that is)
+	# Need to run dbus-uuidgen first?
+	local UUIDGEN="# This line intentionally left blank"
+	if files_contain "ExecStartPre.*uuidgen" "/lib/systemd/system/dbus.service" "/usr/lib/systemd/system/dbus.service"; then
+		UUIDGEN=$(find "$MODULE_BUILD_DIR" -name dbus-uuidgen -executable | head -n 1)
+		[ -z "$UUIDGEN" ] && perror "Could not determine dbus-uuidgen location"
+		UUIDGEN="ExecStartPre=/${UUIDGEN#$MODULE_BUILD_DIR} --ensure"
+	fi
+	# Figure out daemon location
+	local DAEMON=$(find "$MODULE_BUILD_DIR" -name dbus-daemon -executable | head -n 1)
+	[ -z "$DAEMON" ] && perror "Could not determine dbus-daemon location"
+	DAEMON="/${DAEMON#$MODULE_BUILD_DIR}"
+	local DAEMON_ARGS=""
+	# Daemon arguments
+	if files_contain "dbus-daemon.*nopidfile" "/lib/systemd/system/dbus.service" "/usr/lib/systemd/system/dbus.service"; then
+		DAEMON_ARGS+=" --nopidfile"
+	fi
+	if files_contain "dbus-daemon.*activation=systemd" "/lib/systemd/system/dbus.service" "/usr/lib/systemd/system/dbus.service"; then
+		DAEMON_ARGS+=" --activation=systemd"
+	fi
+	if files_contain "dbus-daemon.*systemd-activation" "/lib/systemd/system/dbus.service" "/usr/lib/systemd/system/dbus.service"; then
+		DAEMON_ARGS+=" --systemd-activation"
+	fi
+	# dbus-send location
+	local SEND=$(find "$MODULE_BUILD_DIR" -name dbus-send -executable | head -n 1)
+	[ -z "$SEND" ] && perror "Could not determine dbus-send location"
+	SEND="/${SEND#$MODULE_BUILD_DIR}"
+	sed "s,%UUIDGEN%,$UUIDGEN,g;s,%DAEMON%,$DAEMON,g;s,%SEND%,$SEND,g;s,%DAEMON_ARGS%,$DAEMON_ARGS,g" "${MODULE_DIR}/templates/dbus.service" \
+		> "$MODULE_BUILD_DIR/etc/systemd/system/dbus.service" \
+		|| perror "Could not generate $MODULE_BUILD_DIR/etc/systemd/system/dbus.service"
+	# This is REQUIRED, otherwise the session daemon won't start (can be empty, but has to exist...)
+	mkdir -p "${MODULE_BUILD_DIR}/etc/dbus-1/session.d"
+}
+
+post_copy() {
+	:
+}
+
+files_contain () {
+	[ $# -lt 2 ] && perror "files_contain needs at least 2 arguments (pattern, file)"
+	local PATTERN="$1"
+	shift
+	local FILE
+	for FILE in $@; do
+		[ -e "$FILE" ] || continue
+		grep -q "$PATTERN" "$FILE" && return 0 # Found
+	done
+	return 1
+}
+

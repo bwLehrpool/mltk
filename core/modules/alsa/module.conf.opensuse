@@ -1,0 +1,10 @@
+REQUIRED_CONTENT_PACKAGES="
+	alsa-utils
+	alsa
+	libasound2 
+"
+REQUIRED_INSTALLED_PACKAGES="
+	alsa-utils
+	alsa
+	libasound2 
+"

@@ -1,0 +1,20 @@
+#!/bin/bash
+PATH=$PATH:/opt/openslx/bin:/opt/openslx/sbin
+
+NET_IF="$1"
+NET_IP="$(ip addr show dev "${NET_IF}" | grep -m1 '^\s*inet ' | awk -F " " '{print $2}' | awk -F "/" '{print $1}')"
+
+UDHCPC_OPTS=""
+[ ! -z "$NET_IP" ] && UDHCPC_OPTS=" -r $NET_IP"
+
+mkdir -p /run/udhcpc || echo "Could not create '/run/udhcpc'."
+
+/opt/openslx/sbin/udhcpc $UDHCPC_OPTS -O domain -O nissrv -O nisdomain -O wpad -O search -t 8 -s /opt/openslx/scripts/udhcpc-openslx -i "$NET_IF" -p "/run/udhcpc/udhcpc.$NET_IF.pid"
+RET=$?
+
+if [ "$RET" != 0 ]; then
+	slxlog "udhcpc" "Could not run 'udhcpc${UDHCPC_OPTS}' on ${NET_IF}."
+fi
+
+exit "$RET"
+

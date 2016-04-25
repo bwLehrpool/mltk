@@ -1,0 +1,20 @@
+#!/bin/ash
+
+AUTH_KEYS_DIR="/root/.ssh/authorized_keys.d/"
+AUTH_KEYS_FILE="/root/.ssh/authorized_keys"
+
+# do we even have the directory?
+[ ! -d "$AUTH_KEYS_DIR" ] && echo "No such directory: $AUTH_KEYS_DIR" && exit 0
+
+mkdir -m 700 $(dirname "$AUTH_KEYS_FILE") 2>/dev/null
+
+# ok, lets cat them in the real file
+for KEY in "$AUTH_KEYS_DIR"/* ; do
+	if ! cat $KEY >> "$AUTH_KEYS_FILE" ; then
+		echo "Could not add '$KEY' to '$AUTH_KEYS_FILE'"
+		exit 1
+	fi
+done
+
+# all done, all good
+exit 0

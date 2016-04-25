@@ -1,0 +1,12 @@
+[Unit]
+Description=Transparent redirector of any TCP connection to proxy using your firewall
+DefaultDependencies=no
+
+[Service]
+Type=forking
+User=redsocks
+PIDFile=/run/redsocks/redsocks.pid
+ExecStart=/sbin/redsocks -c /etc/redsocks.conf -p /run/redsocks/redsocks.pid
+ExecStopPost=/opt/openslx/bin/rm -f /run/redsocks/redsocks.pid
+ExecStopPost=/opt/openslx/bin/rm -f /opt/openslx/iptables/rules.d/10-redoscks-proxy
+Restart=on-abort

@@ -1,0 +1,10 @@
+[Unit]
+Description=KDM Display Manager
+Conflicts=getty@tty7.service
+After=systemd-user-sessions.service getty@tty7.service setup-slx-addon@nvidia_libs.service setup-slx-addon@vmware.service
+
+[Service]
+ExecStartPre=-/opt/openslx/bin/killall fbsplash
+ExecStart=/usr/bin/kdm -nodaemon
+Restart=always
+IgnoreSIGPIPE=no

@@ -1,0 +1,20 @@
+#!/bin/bash
+
+fetch_source() {
+	download_untar "$REQUIRED_URL" "src/"
+}
+
+build() {
+	cd "src/$REQUIRED_VERSION"
+	pinfo "Running configure" 
+	./configure --enable-systemd-integration --disable-gtk --disable-static --prefix="$REQUIRED_PREFIX"|| perror "failed."
+	pinfo "Running make"
+	make || perror "failed"
+	pinfo "Running make install" 
+	DESTDIR="${MODULE_BUILD_DIR}" make install || perror "failed"
+	cd -
+}
+
+post_copy() {
+	:
+}

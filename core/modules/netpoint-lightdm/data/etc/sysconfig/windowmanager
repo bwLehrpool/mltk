@@ -1,0 +1,51 @@
+## Type:    string
+## Default:
+## Path: Desktop
+## Description: default mouse cursor theme
+#
+# Name of mouse cursor theme for X11. Possible themes can be found
+# in /usr/share/icons/
+#
+X_MOUSE_CURSOR="DMZ"
+## Path:	Desktop/Window manager
+## Description:	
+## Type:	string(gnome,kde4,kde,lxde,xfce,twm,icewm)
+## Default:	kde4
+## Config:      profiles,kde,susewm
+#
+# Here you can set the default window manager (kde, fvwm, ...)
+# changes here require at least a re-login
+# DEFAULT_WM="kde-plasma"
+DEFAULT_WM="xfce"
+
+## Type:	yesno
+## Default:	yes
+#
+# install the SuSE extension for new users
+# (theme and additional functions)
+#
+INSTALL_DESKTOP_EXTENSIONS="yes"
+## Path:        Desktop
+## Description: prepare global sycoca database for faster first startup
+## Type:        list(yes,initial,no)
+## Default:     initial
+#
+# building a global sycoca database, which can be used at first user
+# login in KDE
+#
+KDE_BUILD_GLOBAL_SYCOCA="initial"
+
+## Type:        yesno
+## Default:     yes
+#
+# To disable IPv6 support within KDE. It might solve large timeouts due to
+# broken servers which claim to have IPv6 support, but do not respond.
+#
+KDE_USE_IPV6="yes"
+
+## Type:        yesno
+## Default:     yes
+#
+# IDN support can get disabled to avoid DNS phishing for example.
+#
+KDE_USE_IDN="yes"

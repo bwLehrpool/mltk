@@ -1,0 +1,184 @@
+#!/bin/ash
+# -----------------------------------------------------------------------------
+# Copyright (c) 2007..2013 - RZ Uni FR
+# Copyright (c) 2007..2013 - OpenSLX GmbH
+#
+# This program is free software distributed under the GPL version 2.
+# See http://openslx.org/COPYING
+#
+# If you have any feedback please consult http://openslx.org/feedback and
+# send your suggestions, praise, or complaints to feedback@openslx.org
+#
+# General information about OpenSLX can be found at http://openslx.org/
+# -----------------------------------------------------------------------------
+# systemd-vmchooser_env
+#    - This is the preparation script for the configuration of the virtuali-
+#      zation tools used later on.
+################################################################################
+
+################################################################################
+### Define default dirs / get configs
+################################################################################
+
+export PATH=$PATH:/opt/openslx/bin:/opt/openslx/sbin
+
+# source config file with vars (e.g. ipaddr, macaddr, hostname)
+. /opt/openslx/config
+
+# from plugins/vmchooser/XX_vmchooser.sh
+VMCHOOSER_DIR="/opt/openslx/vmchooser"
+VMCHOOSER_CONF_DIR="$VMCHOOSER_DIR/config"
+
+mkdir -p "${VMCHOOSER_DIR}/data/loopimg"
+mkdir -p "${VMCHOOSER_DIR}/fd-loop" -m 1777
+
+# mount a clean tempfs (bug in UnionFS prevents loopmount to work)
+grep -qE "unionfs |aufs " /proc/mounts && \
+	mount -n -o size=1500k -t tmpfs vm-loopimg "${VMCHOOSER_DIR}/data/loopimg"
+
+# create an empty floppy image of 1.44 MByte size
+dd "if=/dev/zero" "of=${VMCHOOSER_DIR}/data/loopimg/fd.img" count=2880 bs=512 2>/dev/null
+chmod 0777 "${VMCHOOSER_DIR}/data/loopimg/fd.img"
+
+# use dos formatter copied into stage3
+mkdosfs "${VMCHOOSER_DIR}/data/loopimg/fd.img"
+mount -n -t msdos -o loop,umask=000 "${VMCHOOSER_DIR}/data/loopimg/fd.img" "${VMCHOOSER_DIR}/fd-loop"
+
+#pvs integration    
+#if [ $vmchooser_pvs -ne 0 ]; then
+#	sed -i /usr/share/xsessions/default.desktop \
+#            -e "s,vmchooser$,vmchooser --pvs,"
+#fi
+
+# setup more scratch space for virtual machines, if configured
+mkdir -p /tmp/virt /var/log/samba /run/samba
+
+chmod a+rwxt /tmp/virt
+
+# enable normal users to setup the extended virtual machine redo file space
+# and image source via network block device (NBD only at the moment)
+# allow to start/stop samba on virtual devices (latter one ignores multiple
+# independent daemons) 
+
+#cat >> /mnt/etc/sudoers << EOF
+# allow to start and stop the special /tmp redo file space (RAM + NBD/NFS server RAID)
+#ALL ALL=NOPASSWD: /sbin/losetup /dev/loop* 
+#ALL ALL=NOPASSWD: /sbin/mdadm -C /dev/md0 -l linear --raid-devices=2 /dev/loop* /dev/*
+#ALL ALL=NOPASSWD: /opt/openslx/rootfs/usr/sbin/nbd-client * * /dev/nbd*
+# allow to configure and start/stop samba services
+#ALL ALL=NOPASSWD: /opt/openslx/rootfs/bin/sed -i /etc/*/smb.conf -e *
+#ALL ALL=NOPASSWD: /usr/sbin/nmbd -s /etc/*/smb.conf
+#ALL ALL=NOPASSWD: /usr/sbin/smbd -s /etc/*/smb.conf
+#ALL ALL=NOPASSWD: /opt/openslx/rootfs/usr/bin/killall nmbd smbd
+#EOF
+
+################################################################################
+### Determine hardware configuration
+################################################################################
+
+# estimate free mem
+mem_free=$(grep -i "^memfree:" /proc/meminfo | awk '{print $2}')
+mem_cached=$(grep -i "^cached:" /proc/meminfo | awk '{print $2}')
+mem_swapcached=$(grep -i "^swapcached:" /proc/meminfo | awk '{print $2}')
+[ -z "$mem_free" ] && mem_free="2048000"
+[ -z "$mem_cached" ] && mem_cached="0"
+[ -z "$mem_swapcached" ] && mem_swapcached="0"
+totalmem="$(expr $(expr $mem_free + $mem_cached + $mem_swapcached) / 1024)"
+echo "totalmem=${totalmem}" > "${VMCHOOSER_CONF_DIR}/virtualization.conf"
+
+# determine number of cpu cores
+CPU_CORES=$(grep '^processor.*:' /proc/cpuinfo | wc -l)
+if [ "${CPU_CORES}" -gt "1" 2>/dev/null ]; then
+  echo "cpu_cores=${CPU_CORES}" >> "${VMCHOOSER_CONF_DIR}/virtualization.conf"
+else
+  echo 'cpu_cores=1' >> "${VMCHOOSER_CONF_DIR}/virtualization.conf"
+fi
+
+# general machine architecture (32/64bit)
+echo "host_arch=$(uname -m)" >> "${VMCHOOSER_CONF_DIR}/virtualization.conf"
+
+# check for VT enabled CPU
+if grep -q '^flags.*\<vmx\>' "/proc/cpuinfo"; then
+    echo "vtflag=1" >> "${VMCHOOSER_CONF_DIR}/virtualization.conf"
+    echo 'kvm_module="kvm_intel"' >> "${VMCHOOSER_CONF_DIR}/virtualization.conf"
+  elif grep -q '^flags.*\<svm\>' "/proc/cpuinfo"; then
+    echo "vtflag=1" >> "${VMCHOOSER_CONF_DIR}/virtualization.conf"
+    echo 'kvm_module="kvm_amd"' >> "${VMCHOOSER_CONF_DIR}/virtualization.conf"
+  else
+    echo "vtflag=0" >> "${VMCHOOSER_CONF_DIR}/virtualization.conf"
+fi
+
+# write mac
+if [ -n "$SLX_PXE_MAC" ]; then
+	echo "hostmacaddr=${SLX_PXE_MAC}" >> "${VMCHOOSER_CONF_DIR}/virtualization.conf"
+else ## Fallback:
+	echo "hostmacaddr=$(ip a | grep ether | grep -o -E -i '([0-9a-f]{2}:){5}[0-9a-f]{2}' | head -n 1)" >> "${VMCHOOSER_CONF_DIR}/virtualization.conf"
+fi
+# read in ip address
+echo "hostip=${SLX_PXE_CLIENT_IP}" >> "${VMCHOOSER_CONF_DIR}/virtualization.conf"
+# hostname
+echo "hostname=\"$(hostname -s)\"" >> "${VMCHOOSER_CONF_DIR}/virtualization.conf"
+
+# get further hw information and check for traces of available optical and floppy drives
+j=0
+for cdrom in $(dmesg|grep -i "Attached scsi CD-ROM sr" | sed "s,.*Attached scsi CD-ROM ,,"); do
+    echo "cdrom_$j=/dev/${cdrom}" >> "${VMCHOOSER_CONF_DIR}/virtualization.conf"
+    j=$(expr $j + 1)
+done
+
+j=0
+for floppy in $(dmesg|grep -i "Floppy drive"|sed "s,.*(s): ,,;s, is .*,,"); do
+    echo "floppy_$j=/dev/${floppy}" >> "${VMCHOOSER_CONF_DIR}/virtualization.conf"
+    j=$(expr $j + 1)
+done
+
+################################################################################
+### Setup VM networking
+################################################################################
+
+# there will be three types of network interfaces for virtual machines available
+# all will be configured for every type of virtualization tool
+# a) br0 is the direct host bridge into the local LAN (br0 already exists)
+#    vmnet0 for VMware
+#    vboxnet0 for VirtualBox
+#    kvmnet0* for Qemu/KVM
+# b) nat1 is an internal bridge which "NATes" into the local LAN (with DHCP)
+#    vmnet1 for VMware
+#    vboxnet1 for VirtualBox
+#    kvmnet1* for Qemu/KVM
+# c) vsw2 is an internal host bridge to connect software defined LANs to
+#    vmnet2 for VMware
+#    vboxnet2 for VirtualBox
+#    kvmnet2* for Qemu/KVM
+
+# creating and configuring nat0
+# 192.168.101.0/24 is vm nat. If you ever change this there are a couple of other files
+# where you'd need to make changes, so think twice before doing so. ;)
+brctl addbr nat1
+ip link set dev nat1 up
+ip addr add 192.168.101.1/24 dev nat1
+echo "1" >/proc/sys/net/ipv4/conf/nat1/forwarding
+echo "1" >/proc/sys/net/ipv4/conf/br0/forwarding 2>/dev/null
+# iptables masquerade rule is now inserted by /opt/openslx/iptables/rules.d/50-virt-nat1-masquerading
+### iptables -t nat -A POSTROUTING -o br0 -s 192.168.0.0/16 -j MASQUERADE
+
+for wait in 1 1 2 2 3 end; do
+	grep '^SLX_DNS' "/opt/openslx/config" > /dev/null && break
+	[ "$wait" == "end" ] && echo "No DNS config found, using google dns" && break
+	echo "Waiting for DNS config.."
+	sleep "$wait"
+done
+
+# read the DNS configuration and configure the udhcpd
+[ -z "${SLX_DNS}" ] && SLX_DNS="8.8.8.8"
+sed -i "s,DNSSERVER,${SLX_DNS},;s,DOMAIN,${SLX_NET_DOMAIN}," \
+  /opt/openslx/vmchooser/config/udhcpd-nat1.conf
+
+mkdir -p /var/lib/udhcpd
+udhcpd -S /opt/openslx/vmchooser/config/udhcpd-nat1.conf
+
+# creating and configuring vsw2
+brctl addbr vsw2
+ip link set dev vsw2 up
+echo "1" >/proc/sys/net/ipv4/conf/vsw2/forwarding
+

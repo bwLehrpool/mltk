@@ -1,0 +1,22 @@
+REQUIRED_INSTALLED_PACKAGES="
+			nfs-client
+			xfsprogs
+			squashfs
+			timezone
+			libcap2
+			jfsutils
+			curl
+"
+REQUIRED_CONTENT_PACKAGES="
+			timezone
+			libcap2
+"
+REQUIRED_DIRECTORIES="
+			/usr/$LIB64/xtables
+"
+REQUIRED_FILES+="
+			/usr/share/X11/app-defaults/Xvidtune
+"
+REQUIRED_KERNEL_MODULES+="
+			kernel/drivers/cdrom
+"

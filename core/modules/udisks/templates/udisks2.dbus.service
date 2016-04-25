@@ -1,0 +1,6 @@
+[D-BUS Service]
+Name=org.freedesktop.UDisks2
+Exec=%UDISKSD% --no-debug
+User=root
+SystemdService=udisks2.service
+

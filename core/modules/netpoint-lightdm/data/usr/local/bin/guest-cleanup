@@ -1,0 +1,8 @@
+#!/bin/sh
+
+IPTABLES=$(/usr/bin/which iptables)
+
+"$IPTABLES" -F
+"$IPTABLES" -P INPUT ACCEPT
+"$IPTABLES" -P FORWARD ACCEPT
+"$IPTABLES" -P OUTPUT ACCEPT

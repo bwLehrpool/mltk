@@ -1,0 +1,9 @@
+[Unit]
+Description=Load DRM GFX driver and 3D
+Before=sysinit.target shutdown.target
+DefaultDependencies=no
+
+[Service]
+Type=oneshot
+ExecStart=/opt/openslx/scripts/systemd-load_gfx_driver
+RemainAfterExit=yes

@@ -1,0 +1,16 @@
+#main {
+	background-color: white;
+}
+#sep {
+	-GtkWidget-wide-separators: 1;
+	-GtkWidget-separator-width: 5;
+	border-style: solid;
+	border-width: 2px;
+	color: grey;
+}
+#title {
+	border-top-style: solid;
+	border-bottom-style: double;
+	border-width: 3px;
+	border-color: grey;
+}

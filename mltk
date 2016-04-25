@@ -1,0 +1,250 @@
+#!/bin/bash
+# -----------------------------------------------------------------------------
+#
+# Copyright (c) 2014 - OpenSLX GmbH
+#
+# This program is free software distributed under the GPL version 2.
+# See http://openslx.org/COPYING
+#
+# If you have any feedback please consult http://openslx.org/feedback and
+# send your suggestions, praise, or complaints to feedback@openslx.org
+#
+# General information about OpenSLX can be found at http://openslx.org/
+# -----------------------------------------------------------------------------
+#
+#				Mini-Linux Toolkit
+#
+# -----------------------------------------------------------------------------
+
+declare -rg ARG0="$0"
+declare -rg SELF="$(readlink -f "$ARG0")"
+declare -rg ROOT_DIR="$(dirname "${SELF}")"
+declare -rg MLTK_PID="$$"
+declare -rg REMOTE_SETUP_TARGET="${ROOT_DIR}/core/bin/setup_target"
+
+
+# Make apt-get install non-interactive when it comes to postinstall questions
+# ie. kdm asking which dm you want to set as default
+export DEBIAN_FRONTEND=noninteractive
+
+qnd_exit() {
+	unset_quiet
+	kill "$MLTK_PID"
+	[ $# -ge 1 ] && kill "$1"
+	exit 1
+}
+
+# source all helper unit files that are found under helper/*.inc
+# or core/includes/*.inc
+# a helper unit may contain a function called "__init" which will be called
+# after all helpers have been sourced.
+for HELPER in "$ROOT_DIR"/core/includes/helper/*.inc "$ROOT_DIR"/core/includes/*.inc; do
+	SHORT=${HELPER%.inc}
+	SHORT="_init_${SHORT##*/}"
+	. <(sed "s/^__init/$SHORT/" "$HELPER") && continue
+	unset_quiet
+	echo "Could not source $HELPER"
+	qnd_exit
+done
+# called below, after initial_checks
+init_helpers () {
+	# in case the helers have init functions, call them now
+	for HELPER in "$ROOT_DIR"/helper/*.inc "$ROOT_DIR"/core/includes/*.inc; do
+		SHORT=${HELPER%.inc}
+		SHORT="_init_${SHORT##*/}"
+		type -t "$SHORT" | grep -q '^function$' && "$SHORT"
+	done
+}
+
+# Support sourcing a "config" where you can set up stuff like 'export http_proxy=...'
+[ -e "$ROOT_DIR/config" ] && . "$ROOT_DIR/config"
+
+banner () {
+	echo -e "\033[38;5;202m\t           __   __   __    "
+	echo -e "\033[38;5;202m\t.--------.|  | |  |_|  |--."
+	echo -e "\033[38;5;208m\t|        ||  |_|   _|    < "
+	echo -e "\033[38;5;214m\t|__|__|__||____|____|__|__|"
+	echo -e "\033[38;5;214m\t "
+	echo -e "\033[38;5;220m\t                     ** OpenSLX Project // 2013..2016 **"
+	echo -e "\033[38;5;226m\t                        http://lab.openslx.org/"
+	echo -e "\033[00m"
+}
+
+print_usage() {
+	echo -e ""
+	echo -e "Toolkit for creating preboot mini-linux for OpenSLX NG (mltk)"
+	echo -e "Usage: $ARG0 <target> [-d] [-c [module]*] [-b [module]*] [-n [name]]"
+	echo -e ""
+	echo -e "  Options:"
+	echo -e "     -d            activates debug output for the task (spamy)"
+	echo -e "     -b            build module(s) and copy them to the target build directory"
+	echo -e "     -c            clean build directory of module(s) and target dir"
+	echo -e "     -n            bind mount all the local builds (var/builds) to /export/builds;"
+	echo -e "                   the optional parameter name allows to change the default mount target"
+	echo -e "                    <name> -> /export/<name>"
+	echo -e ""
+	echo -e "  You can pass names of specific modules to clean/build (-c / -b)."
+	echo -e "  Otherwise, all modules will be cleaned/built."
+	echo -e ""
+	echo -e "  Examples:"
+	echo -e "     $ARG0 stage31 -c -b"
+	echo -e "          (clean and build all modules symlinked in core/targets/stage31)"
+	echo -e "     $ARG0 stage32 -c base sshd -b sshd ldm -d"
+	echo -e "          (clean base and sshd, build sshd and ldm, be verbose)"
+	echo -e "     $ARG0 -n"
+	echo -e "          (provides bind mount at /export/build for synchronizing)"
+	echo -e ""
+	echo -e "  Existing targets are:"
+	echo -e "    $(echo $(ls "${ROOT_DIR}/core/targets" "${ROOT_DIR}/overlay/targets" 2>/dev/null || echo "No targets found."))"
+	echo -e ""
+}
+
+check_devtools() {
+	# Checking for needed development tools, compilers etc.
+	# Required: m4 make gcc g++ binutils
+	# no qmake here, qmake (libqt4-devel) should be installed in a module!
+	local DEV_TOOLS="gcc g++ make cmake m4 strip git depmod patch pkg-config" # 'strip' as marker for binutils
+
+	# DEV_CHECK marks missing dev-tools
+	local DEV_TOOLS_MISSING=""
+	for i in $DEV_TOOLS; do
+		which "$i" 2>/dev/null 1>&2 || DEV_TOOLS_MISSING+="$i "
+	done
+
+	if [ -n "$DEV_TOOLS_MISSING" ]; then
+		pinfo "You appear to be missing following development tools."
+		pinfo "Missing tools are: $DEV_TOOLS_MISSING"
+		pinfo "For $SYS_DISTRIBUTION you probably need to run:"
+		case $SYS_DISTRIBUTION in
+			ubuntu | debian)
+				pinfo "apt-get install build-essential m4 squashfs-tools pkg-config cmake"
+				pinfo "to install missing development tools."
+				;;
+			# FIXME: Don't know how precise this filter works so we might want to have a better matching ...
+			opensuse)
+				pinfo "zypper install gcc gcc-c++ make m4 binutils git module-init-tools patch squashfs pkg-config cmake"
+				pinfo "to install missing development tools."
+				;;
+			fedora | scientific | centos)
+				pinfo "yum install redhat-lsb gcc-c++ gcc make m4 binutils pkgconfig patch cmake"
+				;;
+			*)
+				perror "No installation help for $SYS_DISTRIBUTION available."
+				;;
+		esac
+		perror "Please install missing dependencies (see above) and try again!"
+	fi
+}
+
+initial_checks() {
+	if [ "x$(whoami)" != "xroot" ]; then
+		perror "ERROR: You need to have root rights to install packages and do various other things."
+		exit 1
+	else
+		banner
+	fi
+
+	[ ! -e "${REMOTE_SETUP_TARGET}" ] && perror "Missing script core/bin/setup_target. Exiting."
+}
+
+read_params() {
+	local SUBMODE=""
+
+	# A target represents a set of modules to be build for a specific stage.
+	# i.e. a very basic stage31 target should includes:
+	#	- busybox
+	#	- kernel
+	#	- rootfs-stage31
+	# a basic stage32 target could add:
+	#	- systemd
+	#	- dbus
+	#	- pam
+	# for a GUI, you could add:
+	#	- xorg
+	#	- kdm
+	# 	- plymouth
+	TARGET=""
+	if [[ "$1" != -* ]]; then
+		TARGET="$1"
+		shift
+	elif [[ "$1" == "-h" || "$1" == "--help" ]]; then
+		print_usage
+		exit 1
+	elif [[ "$1" != "-n" ]]; then
+		perror "A target is required. None given."
+	fi
+
+	# handle rest of arguments
+	while [ "$#" -gt "0" ]; do
+		local PARAM="$1"
+		shift
+
+		# options to current target
+		if [[ "$PARAM" == -* ]]; then
+			case "$PARAM" in
+				-c)
+					SUBMODE="CLEAN"
+					;;
+				-b)
+					SUBMODE="BUILD"
+					;;
+				-d)
+					REMOTE_DEBUG=1
+					continue
+					;;
+				-n)
+					if [ -z "$1" ]; then 
+						REMOTE_EXPORT_DIR=/export/build
+					else
+						REMOTE_EXPORT_DIR="/export/$1"
+						shift
+					fi
+					REMOTE_EXPORT="1"
+					continue
+					;;
+				*)
+					pwarning "Unknown flag to target: $PARAM"
+					print_usage
+					exit 1
+					;;
+			esac
+			eval REMOTE_${SUBMODE}=1
+			continue
+		fi
+
+		# module name
+		[[ "$SUBMODE" != "CLEAN" && "$SUBMODE" != "BUILD" ]] && pwarning "Module name given, but no action specified (eg. build)" && print_usage && exit 1
+		eval "REMOTE_LIST_${SUBMODE}=\"\$REMOTE_LIST_${SUBMODE} \$PARAM\""
+	done
+
+	# exit if no command
+	[[ "$REMOTE_CLEAN" == 0 && "$REMOTE_BUILD" == 0 && "$REMOTE_EXPORT" == 0 ]] && print_usage && exit 1
+}
+
+run() {
+	if [[ $REMOTE_CLEAN == 1 || $REMOTE_BUILD == 1 || $REMOTE_EXPORT == 1 ]]; then
+		[[ $REMOTE_DEBUG == 1 ]] && unset_quiet || set_quiet
+		. "${REMOTE_SETUP_TARGET}" || perror "Cannot source ${REMOTE_SETUP_TARGET}"
+		[[ $REMOTE_CLEAN == 1 ]] && clean_modules $TARGET $REMOTE_LIST_CLEAN
+		[[ $REMOTE_BUILD == 1 ]] && generate_target $TARGET $REMOTE_LIST_BUILD
+		[[ $REMOTE_EXPORT == 1 ]] && export_builds
+	fi
+}
+
+REMOTE_DEBUG="0"
+REMOTE_CLEAN="0"
+REMOTE_BUILD="0"
+REMOTE_EXPORT="0"
+REMOTE_LIST_CLEAN=""
+REMOTE_LIST_BUILD=""
+REMOTE_AUTOMATIC_BUILD=0
+
+initial_checks
+read_params $@
+init_helpers
+
+check_devtools
+
+run
+exit 0
+

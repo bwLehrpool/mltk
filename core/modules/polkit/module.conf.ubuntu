@@ -1,0 +1,19 @@
+REQUIRED_INSTALLED_PACKAGES="
+				libmozjs185-1.0
+"
+REQUIRED_CONTENT_PACKAGES="
+				libmozjs185-1.0
+				policykit-1
+				policykit-desktop-privileges
+"
+REQUIRED_DIRECTORIES+="
+			/usr/lib/policykit-1
+			/usr${ARCH_LIB_DIR}/polkit-1
+			/var/lib/polkit-1
+"
+# Module specific: Root of dirstructs we need directly from system
+REQUIRED_DIR_STRUCT="
+	/var/lib/polkit-1
+	/etc/polkit-1
+"
+

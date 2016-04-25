@@ -1,0 +1,56 @@
+fetch_source() {
+	mkdir -p src
+	cd src || perror "Could not change into src directory."
+	download "$REQUIRED_URL"
+}
+
+build() {
+	local KERNELSRCDIR="$MODULE_WORK_DIR/../kernel/ksrc"	# kernel sources
+	local NVIDIA="$MODULE_WORK_DIR/src/$REQUIRED_NVIDIA"
+	local NVIDIAEXTRACTDIR="$MODULE_BUILD_DIR/NVIDIA"
+
+	pdebug "Unpacking NVidia-Installer ..."
+	[ -d "$NVIDIAEXTRACTDIR" ] && rm -rf "$NVIDIAEXTRACTDIR"
+	sh "$NVIDIA" --extract-only --target "$NVIDIAEXTRACTDIR" ||	perror "Could not extract $NVIDIA to $NVIDIAEXTRACTDIR."
+	
+	pinfo "Ready to chroot - may take some time."
+	pdebug "--- chroot ---------------------------------------------------------------------"
+	pdebug "-                                                                              -"
+	pdebug "-   Notice: This may take a while!                                             -"
+	pdebug "-                                                                              -"
+	pdebug "-      Please keep note the Nvidia installer _will_ complain about             -"
+	pdebug "-      several warnings and errors. It will do this in any case.               -"
+	pdebug "-                                                                              -"
+	pdebug "-      This does _not_ mean the library module compilation was unsuccessful!   -"
+	pdebug "-                                                                              -"
+	pdebug "--------------------------------------------------------------------------------"
+
+	chroot_run "${MODULE_BUILD_DIR}" <<-EOF
+	/NVIDIA/nvidia-installer --no-nouveau-check --no-network --no-backup --no-rpms --no-runlevel-check --no-distro-scripts --no-cc-version-check --no-x-check --no-precompiled-interface --silent --no-kernel-module
+	EOF
+	pinfo "chroot terminated, cleaning up"
+
+	# move whiteout list to its /opt/openslx/etc/nvidia.whiteout
+	if [ -e "${MODULE_BUILD_DIR}/overlay.whiteout.list" ]; then
+		mkdir -p "${MODULE_BUILD_DIR}/opt/openslx/etc"
+		mv "${MODULE_BUILD_DIR}/overlay.whiteout.list" "${MODULE_BUILD_DIR}/opt/openslx/etc/nvidia.whiteout"
+	fi
+	
+	#pdebug "Handling whiteouts ..."
+	#local WHITEOUT_LIST="${MODULE_BUILD_DIR}/opt/openslx/etc/nvidia.whiteout"
+	#rm -f -- "$WHOUTEOUT_LIST"
+	#mkdir -p "$(dirname "$WHITEOUT_LIST")" || perror "Could not create $(dirname "$WHITEOUT_LIST")"
+	#pdebug "Searching for overlayfs-whiteouts ..."
+	#for WHITEOUT in $(find "$MODULE_BUILD_DIR" -lname "(overlay-whiteout)"); do
+#		pdebug "Whiteout found: $WHITEOUT"
+#		echo "/./${WHITEOUT#$MODULE_BUILD_DIR}" >> "$WHITEOUT_LIST"
+#		rm -f -- "$WHITEOUT" || perror "Could not delete whiteout $WHITEOUT!"
+#	done
+	
+	rm -rf "$MODULE_BUILD_DIR/NVIDIA"
+}
+
+post_copy() {
+	:
+}
+

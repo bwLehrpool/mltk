@@ -1,0 +1,7 @@
+REQUIRED_INSTALLED_PACKAGES="
+	libpng12-devel
+	pango-devel
+	cairo-devel
+	gtk2-devel
+	libdrm-devel
+"

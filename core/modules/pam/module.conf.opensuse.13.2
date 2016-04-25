@@ -1,0 +1,48 @@
+REQUIRED_NSS_LDAPD_VERSION="nss-pam-ldapd-0.8.13"
+REQUIRED_NSS_LDAPD_URL="http://arthurdejong.org/nss-pam-ldapd/$REQUIRED_NSS_LDAPD_VERSION.tar.gz"
+
+REQUIRED_BINARIES+="
+	mkhomedir_helper
+"
+
+REQUIRED_INSTALLED_PACKAGES="
+	pam
+	pam_krb5
+	pam-devel
+	pam-modules
+	nss-mdns
+	libopenssl-devel
+	openldap2-client
+	nfsidmap
+	nfs-client
+	glibc
+	pam-devel
+	openldap2-devel
+	krb5-devel
+"
+REQUIRED_CONTENT_PACKAGES="
+	pam
+	pam_krb5
+	pam-devel
+	pam-modules
+	nss-mdns
+	openldap2-client
+	nfsidmap
+	nfs-client
+	glibc
+"
+REQUIRED_LIBRARIES+="
+	libnss_compat
+	libnss_db
+	libnss_dns
+	libnss_files
+	libnss_nis
+"
+REQUIRED_DIRECTORIES+="
+	/$LIB64
+	/usr/$LIB64
+"
+REQUIRED_SYSTEM_FILES+="
+	/$LIB64/security
+"
+

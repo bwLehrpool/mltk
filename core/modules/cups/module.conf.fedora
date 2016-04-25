@@ -1,0 +1,12 @@
+REQUIRED_INSTALLED_PACKAGES="
+		cups
+		cups-libs
+		foomatic-filters
+		ghostscript
+"
+REQUIRED_CONTENT_PACKAGES="
+		cups
+		cups-libs
+		foomatic-filters
+		ghostscript
+"

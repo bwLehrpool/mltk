@@ -1,0 +1,25 @@
+Hier die Installationsschritte für 14.04:
+
+apt-get install -y neutron-common neutron-plugin-ml2 neutron-plugin-openvswitch-agent nova-compute-kvm python-guestfs python-mysqldb
+
+* System konfigurieren:
+dpkg-statoverride  --update --add root root 0644 /boot/vmlinuz-$(uname -r)
+
+add to: /etc/sysctl.conf
+net.ipv4.conf.all.rp_filter=0
+net.ipv4.conf.default.rp_filter=0
+
+sysctl -p
+
+ovs-vsctl add-br br-int
+
+Configs:
+/etc/nova/api-paste.ini
+/etc/nova/nova.conf
+/etc/nova/nova-compute.conf
+
+/etc/neutron/api-paste.ini
+/etc/neutron/neutron.conf
+/etc/neutron/plugin/
+
+Ich denke die configs packen wir in die config.tgz

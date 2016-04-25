@@ -1,0 +1,40 @@
+REQUIRED_INSTALLED_PACKAGES="
+"
+REQUIRED_CONTENT_PACKAGES="	
+			xserver-xorg
+			xserver-xorg-core
+			libgl1-mesa-dri
+			libgl1-mesa-glx
+			xkb-data
+			x11-xkb-utils
+			x11-xserver-utils
+			xserver-xorg-input-evdev
+			xserver-xorg-input-mouse
+			xserver-xorg-input-vmmouse
+			xserver-xorg-video-intel
+			xserver-xorg-video-ati
+			xserver-xorg-video-vesa
+			xserver-xorg-video-mga
+			xserver-xorg-video-sisusb
+			xserver-xorg-video-vmware
+			xserver-xorg-video-fbdev
+			xserver-xorg-video-radeon
+			xserver-xorg-video-sisusb
+			xserver-xorg-video-nouveau
+			@xserver-xorg-video-openchrome
+			@xserver-xorg-video-savage
+			@xserver-xorg-video-trident
+			@xserver-xorg-video-mach64
+			@xserver-xorg-video-qxl
+			@xserver-xorg-video-siliconmotion
+			@xserver-xorg-video-cirrus
+			@xserver-xorg-video-r128
+			@xserver-xorg-video-neomagic
+			@xserver-xorg-video-geode
+			@xserver-xorg-video-s3
+			@xserver-xorg-video-tdfx
+"
+REQUIRED_DIRECTORIES+="
+			/usr/lib 
+"
+REQUIRED_FILES=""

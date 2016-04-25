@@ -1,0 +1,39 @@
+
+fetch_source() {
+	git clone "${REQUIRED_GIT}" src
+}
+
+build() {
+	local SRCDIR="${MODULE_WORK_DIR}/src/"
+
+	[ ! -d "${MODULE_BUILD_DIR}/${REQUIRED_PREFIX}" ] && mkdir -p "${MODULE_BUILD_DIR}/${REQUIRED_PREFIX}" 
+	cd "${MODULE_BUILD_DIR}/${REQUIRED_PREFIX}"
+
+	# patch globals.cpp and globals.h to use standardised paths /opt/openslx/...
+	if ! grep -q VMCHOOSER_SCRIPTS_PATH "$SRCDIR/src/globals.h"; then
+		sed -i 's/^#define VMCHOOSER_BIN_PATH.*/#define VMCHOOSER_BIN_PATH "\/opt\/openslx\/bin"/g' "${SRCDIR}"/src/globals.h
+		sed -i 's/^#define VMCHOOSER_ETC_BASE_PATH.*/#define VMCHOOSER_ETC_BASE_PATH "\/opt\/openslx\/vmchooser\/config"/g' "${SRCDIR}"/src/globals.h
+		sed -i 's/^#define VMCHOOSER_BIN_PATH.*/#define VMCHOOSER_BIN_PATH "\/opt\/openslx\/bin"\n#define VMCHOOSER_SCRIPTS_PATH "\/opt\/openslx\/scripts"/g' "${SRCDIR}"/src/globals.h
+		sed -i 's/^#define VMCHOOSER_THEME_BASE.*/#define VMCHOOSER_THEME_BASE "\/opt\/openslx\/vmchooser\/themes"/g' "${SRCDIR}"/src/globals.h
+	
+		sed -i 's/^QString binPath(VMCHOOSER_BIN_PATH);/QString binPath(VMCHOOSER_BIN_PATH);\nQString scriptsPath(VMCHOOSER_SCRIPTS_PATH);/g' "${SRCDIR}"/src/globals.cpp
+		sed -i 's/^QString runVmScript(binPath + "\/run-virt.sh");/QString runVmScript(scriptsPath + "\/vmchooser-run_virt");/g' "${SRCDIR}"/src/globals.cpp
+		sed -i 's/^QString filterScript(binPath + "\/xmlfilter.sh");/QString filterScript(scriptsPath + "\/vmchooser-xml_filter");/g' "${SRCDIR}"/src/globals.cpp
+		sed -i 's/^#define VMCHOOSER_VMPATH.*/#define VMCHOOSER_VMPATH "\/mnt\/vmstore"/g' "${SRCDIR}"/src/globals.h
+	fi
+
+	pinfo "Running cmake"
+
+	# activate qt 4
+	activate_qt 4
+
+	cmake "$SRCDIR" || perror "'cmake $SRCDIR' failed."
+	make || perror "'make' failed."
+
+	cd - &> /dev/null
+}
+
+post_copy() {	
+	:
+}
+

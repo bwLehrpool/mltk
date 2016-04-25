@@ -1,0 +1,13 @@
+[Unit]
+Description=D-Bus System Message Bus
+Wants=dbus.socket
+Requires=dbus.socket
+After=syslog.target
+
+[Service]
+%UUIDGEN%
+ExecStartPre=-/opt/openslx/bin/rm -f /var/run/dbus/pid
+ExecStart=%DAEMON% --system --address=systemd: --nofork %DAEMON_ARGS%
+ExecReload=%SEND% --print-reply --system --type=method_call --dest=org.freedesktop.DBus / org.freedesktop.DBus.ReloadConfig
+OOMScoreAdjust=-900
+

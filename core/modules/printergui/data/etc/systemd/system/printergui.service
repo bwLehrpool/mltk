@@ -1,0 +1,8 @@
+[Unit]
+Description=Printergui - bwLehrpool printing system
+Requires=network.target graphical.target
+After=network.target
+Before=cups.service
+
+[Service]
+ExecStart=/opt/openslx/scripts/systemd-printergui_preparation

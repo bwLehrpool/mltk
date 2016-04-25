@@ -1,0 +1,1 @@
+KERNEL=="dnbd*", SUBSYSTEM=="block", MODE="0664"

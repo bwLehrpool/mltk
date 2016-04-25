@@ -1,0 +1,9 @@
+#!/bin/ash
+#
+# /etc/X11/Xstartup
+#
+# Xstartup is executed on successful authentication, before the session is opened (as root)
+#
+
+export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/openslx/sbin:/opt/openslx/bin" 
+

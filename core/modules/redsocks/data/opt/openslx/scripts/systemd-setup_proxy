@@ -1,0 +1,65 @@
+#!/bin/bash
+# Needs full bash
+
+for wait in 1 1 2 3 4 6 8 10 end; do
+	grep '^#_RCONFIG_TAG$' /opt/openslx/config > /dev/null && echo "Config found!" && break
+	[ "$wait" == "end" ] && echo "Giving up!" && exit 1
+	echo "No config yet..."
+	sleep $wait
+done
+
+. /opt/openslx/config || echo "Error sourcing config for setup_proxy"
+
+[ -z "$SLX_PROXY_MODE" -o "x$SLX_PROXY_MODE" == "xoff" ] && echo "proxy mode disabled." && exit 0
+
+PROXY=off
+if [ "$SLX_PROXY_MODE" == "on" ]; then
+	PROXY=on
+elif [ "$SLX_PROXY_MODE" == "auto" -a -n "$SLX_PXE_CLIENT_IP" ]; then
+	# auto detection: check if it is actually needed
+	RET=$(curl -m 2 -s http://www.google.de/ | grep -o google | wc -l)
+	if [ $RET -lt 20 ]; then
+		sleep 4
+		RET=$(curl -m 5 -s http://www.google.de/ | grep -o google | wc -l)
+	fi
+	[ $RET -gt 20 ] && echo "Auto detect: Internet is reachable without proxy." && exit 0
+	PROXY=on
+fi
+
+[ "$PROXY" == "off" ] && echo "Proxy mode not required." && exit 0
+echo "Setting up transparent proxying via $SLX_PROXY_IP"
+
+sed -i "s/%%PROXY_IP%%/$SLX_PROXY_IP/g;s/%%PROXY_PORT%%/$SLX_PROXY_PORT/g;s/%%PROXY_TYPE%%/$SLX_PROXY_TYPE/g" /etc/redsocks.conf
+
+mkdir -p /run/redsocks
+chown redsocks:redsocks /run/redsocks
+systemctl start redsocks
+
+cat > "/opt/openslx/iptables/rules.d/10-redoscks-proxy" <<HEREDOCBROWN
+#!/bin/ash
+. /opt/openslx/config
+
+iptables -t nat -N REDSOCKS 2>/dev/null
+iptables -t nat -F REDSOCKS
+iptables -t nat -A REDSOCKS -d "\$SLX_PROXY_IP" -j RETURN
+iptables -t nat -A REDSOCKS -d 0.0.0.0/8 -j RETURN
+iptables -t nat -A REDSOCKS -d 10.0.0.0/8 -j RETURN
+iptables -t nat -A REDSOCKS -d 127.0.0.0/8 -j RETURN
+iptables -t nat -A REDSOCKS -d 169.254.0.0/16 -j RETURN
+iptables -t nat -A REDSOCKS -d 172.16.0.0/12 -j RETURN
+iptables -t nat -A REDSOCKS -d 192.168.0.0/16 -j RETURN
+iptables -t nat -A REDSOCKS -d 224.0.0.0/4 -j RETURN
+iptables -t nat -A REDSOCKS -d 240.0.0.0/4 -j RETURN
+if [ -n "\$SLX_PROXY_BLACKLIST" ]; then
+	for ADDR in \$SLX_PROXY_BLACKLIST; do
+		iptables -t nat -A REDSOCKS -d "\$ADDR" -j RETURN
+	done
+fi
+iptables -t nat -A REDSOCKS -p tcp -j REDIRECT --to-port 12345
+iptables -t nat -A PREROUTING -i nat1 -p tcp -j REDSOCKS
+iptables -t nat -A OUTPUT -o br0 -p tcp -j REDSOCKS
+#iptables -t nat -A POSTROUTING -o br0 -j MASQUERADE
+iptables -A INPUT -i br0 -p tcp --dport 12345 -j DROP
+HEREDOCBROWN
+chmod +x "/opt/openslx/iptables/rules.d/10-redoscks-proxy"
+

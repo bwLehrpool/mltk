@@ -1,0 +1,12 @@
+REQUIRED_INSTALLED_PACKAGES="
+				js-1.8.5
+"
+REQUIRED_CONTENT_PACKAGES="
+				js-1.8.5
+				polkit
+"
+REQUIRED_DIRECTORIES+="
+			/usr/lib/polkit-1
+			/var/lib/polkit
+"
+

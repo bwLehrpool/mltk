@@ -1,0 +1,74 @@
+diff --git a/miscutils/fbsplash.c b/miscutils/fbsplash.c
+index e3a55ca..daea60d 100644
+--- a/miscutils/fbsplash.c
++++ b/miscutils/fbsplash.c
+@@ -23,11 +23,12 @@
+  */
+ 
+ //usage:#define fbsplash_trivial_usage
+-//usage:       "-s IMGFILE [-c] [-x] [-d DEV] [-i INIFILE] [-f CMD]"
++//usage:       "-s IMGFILE [-c] [-x] [-b] [-d DEV] [-i INIFILE] [-f CMD]"
+ //usage:#define fbsplash_full_usage "\n\n"
+ //usage:       "	-s	Image"
+ //usage:     "\n	-c	Hide cursor"
+ //usage:     "\n	-x	Center image (if smaller than screen)"
++//usage:     "\n	-b	Fill background with color of top left pixel of image"
+ //usage:     "\n	-d	Framebuffer device (default /dev/fb0)"
+ //usage:     "\n	-i	Config file (var=value):"
+ //usage:     "\n			BAR_LEFT,BAR_TOP,BAR_WIDTH,BAR_HEIGHT"
+@@ -57,6 +58,7 @@ struct globals {
+ 	unsigned green_shift;
+ 	unsigned blue_shift;
+ 	bool bcenter_image;
++	bool bfill_background;
+ };
+ #define G (*ptr_to_globals)
+ #define INIT_G() do { \
+@@ -342,6 +344,23 @@ static void fb_drawprogressbar(unsigned percent)
+ 			G.nbar_colr, G.nbar_colg, G.nbar_colb);
+ }
+ 
++/**
++ * Fill screen around image with given color
++ */
++static void fb_fillbackground(unsigned char* pixel, const int xoffset, const int yoffset, const int width, const int height)
++{
++	int i, j;
++	unsigned thispix = fb_pixel_value(pixel[0], pixel[1], pixel[2]);
++
++	for (j = 0; j < G.scr_var.yres; j++) {
++		unsigned char *src = G.addr + j * G.scr_fix.line_length;
++
++		for (i = 0; i < G.scr_var.xres; i++) {
++			if ((j < yoffset || j >= yoffset + height) || (i < xoffset || i >= xoffset + width))
++				fb_write_pixel(src + i * G.bytes_per_pixel, thispix);
++		}
++	}
++}
+ 
+ /**
+  * Draw image from PPM file
+@@ -420,6 +439,10 @@ static void fb_drawimage(void)
+ 			bb_error_msg_and_die("bad PPM file '%s'", G.image_filename);
+ 		pixel = pixline;
+ 		src = G.addr + (j + yoffset) * G.scr_fix.line_length + xoffset;
++
++		if (G.bfill_background && j == 0)
++			fb_fillbackground(pixel, xoffset / G.bytes_per_pixel, yoffset, width, height);
++
+ 		for (i = 0; i < width; i++) {
+ 			unsigned thispix = fb_pixel_value(pixel[0], pixel[1], pixel[2]);
+ 			fb_write_pixel(src, thispix);
+@@ -484,10 +507,11 @@ int fbsplash_main(int argc UNUSED_PARAM, char **argv)
+ 	fb_device = "/dev/fb0";
+ 	cfg_filename = NULL;
+ 	fifo_filename = NULL;
+-	optret = getopt32(argv, "cxs:d:i:f:",
++	optret = getopt32(argv, "cxbs:d:i:f:",
+ 			&G.image_filename, &fb_device, &cfg_filename, &fifo_filename);
+ 	bCursorOff = 1 & optret;
+ 	G.bcenter_image = 2 & optret;
++	G.bfill_background = 4 & optret;
+ 
+ 	// parse configuration file
+ 	if (cfg_filename)

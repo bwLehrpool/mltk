@@ -1,0 +1,33 @@
+fetch_source() {
+	:
+}
+
+build() {
+	COPYLIST="list_dpkg_output"
+	[ -e "$COPYLIST" ] && rm "$COPYLIST"
+
+	list_packet_files >> "$COPYLIST"
+	tarcopy "$(cat "$COPYLIST" | sort -u)" "${MODULE_BUILD_DIR}"
+
+	local SSSD_PATH="$(which sssd)"
+	[ -z "$SSSD_PATH" ] && perror "'sssd' not found on this system. Should have been installed! Something is wrong..."
+
+	# Build nslcd service file
+	mkdir -p "${MODULE_BUILD_DIR}/etc/systemd/system"
+	sed "s,%PATH%,${SSSD_PATH},g" "${MODULE_DIR}/templates/sssd-systemd.service" > "${MODULE_BUILD_DIR}/etc/systemd/system/sssd.service" || perror "Could not fill sssd.service template"
+
+	# openSuse sssd does not start when /etc/sssd/sssd.conf is not root:root 600!
+	if [ "$SYS_DISTRIBUTION" == "opensuse" -a "$SYS_VERSION" == "13.2" ]; then
+		sed -i 's#ExecStart#ExecStartPre=/opt/openslx/bin/chmod 600 /etc/sssd/sssd.conf\nExecStart#g' \
+			"${MODULE_BUILD_DIR}/etc/systemd/system/sssd.service"
+	fi
+
+	return 0
+}
+
+post_copy() {
+	mkdir -p "${TARGET_BUILD_DIR}/var/log/sssd"
+	for DIR in mc pubconf/krb5.include.d db pipes/private; do
+		mkdir -p "${TARGET_BUILD_DIR}/var/lib/sss/$DIR"
+	done
+}

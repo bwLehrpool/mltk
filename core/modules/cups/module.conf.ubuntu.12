@@ -1,0 +1,16 @@
+REQUIRED_INSTALLED_PACKAGES="
+		ghostscript
+		cups
+		ghostscript-cups
+		cups-filters
+		foomatic-filters
+		libgs9-common
+"
+REQUIRED_CONTENT_PACKAGES="
+		ghostscript
+		cups
+		ghostscript-cups
+		cups-filters
+		foomatic-filters
+		libgs9-common
+"

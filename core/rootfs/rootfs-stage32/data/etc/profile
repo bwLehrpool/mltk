@@ -1,0 +1,56 @@
+# /etc/profile: system-wide .profile file for the Bourne shell (sh(1))
+# and Bourne compatible shells (bash(1), ksh(1), ash(1), ...).
+# XXX: Use `backticks` here instead of $(this stuff) as we don't know which shell is running...
+
+export UID=`id -u` 2> /dev/null
+
+# If running interactively, then:
+if [ "$PS1" ]; then
+
+	if [ "$BASH" ]; then
+		export PS1="[\u@\h \W]\\$ "
+	else
+		if [ "$UID" -eq 0 ]; then
+			export PS1='# '
+		else
+			export PS1='$ '
+		fi
+	fi
+
+	export HISTSIZE=1000
+	export HISTFILESIZE=1000
+	export PAGER='/bin/less'
+	export EDITOR='/bin/vi'
+	export INPUTRC=/etc/inputrc
+	#export DMALLOC_OPTIONS=debug=0x34f47d83,inter=100,log=logfile
+	export TERMINFO='/lib/terminfo'
+
+fi
+
+# Stuff we might wanna know
+PWENT=`getent passwd $USER`
+export USER=`echo "$PWENT" | awk -F ':' '{print $1}'`
+export GID=`echo "$PWENT" | awk -F ':' '{print $4}'`
+export HOME=`echo "$PWENT" | awk -F ':' '{print $6}'`
+export GROUP=`id -gn`
+export LOGNAME=$USER
+export HOSTNAME=`hostname`
+
+# set TERM to xterm on SSH sessions
+[ -n "$SSH_TTY" ] && export TERM=xterm
+
+# Source configuration files from /etc/profile.d
+for i in /etc/profile.d/*.sh ; do
+	if [ -r "$i" ]; then
+		. $i
+	fi
+done
+
+# Sourcing /etc/profile.local - please add custom stuff to profile.local
+# as /etc/profile may be overwritten by system updates
+test -s /etc/profile.local && . /etc/profile.local
+
+if [ -s "$HOME/.bashrc" ]; then
+	. "$HOME/.bashrc"
+fi
+

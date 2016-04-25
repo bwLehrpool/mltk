@@ -1,0 +1,11 @@
+REQUIRED_INSTALLED_PACKAGES="
+	curl
+	ltrace
+	nano
+	fontconfig
+	fonts-config
+	xset
+"
+REQUIRED_BINARIES+="
+	fonts-config
+"

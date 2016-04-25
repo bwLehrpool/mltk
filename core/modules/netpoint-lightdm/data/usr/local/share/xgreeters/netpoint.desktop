@@ -1,0 +1,5 @@
+[Desktop Entry]
+Name=Netpoint Grita
+Comment=Netpoint Grita
+Exec=/usr/local/bin/netpoint.py
+Type=Application

@@ -1,0 +1,58 @@
+#!/bin/ash
+
+getip () {
+	echo "${IPINFO}" | awk -F ':' "{print \$$1}"
+}
+parse_ip () {
+	local IPINFO=$1
+	CLIENTIP="$(getip 1)"
+	SERVERIP="$(getip 2)"
+	GATEWAY="$(getip 3)"
+	SUBNET_MASK="$(getip 4)"
+	BROADCAST_ADDRESS="$(ipcalc -s -b "$CLIENTIP" "$SUBNET_MASK" | sed s/.*=//)"
+	[ -z "$BROADCAST_ADDRESS" ] && BROADCAST_ADDRESS="255.255.255.255"
+	# we might have an idea of the dns server via preboot
+	DNS_SERVER="$(getip 5)"
+}
+
+# read kernel command line
+DEBUG=0
+SPLASH=0
+read KCL < "/proc/cmdline"
+for opts in ${KCL}; do
+	case "${opts}" in
+		debug=*)
+			DEBUG=${opts#debug=}
+			DEBUG_SHELL=set
+			;;
+		ip=*)
+			# process IP info
+			parse_ip ${opts#ip=} ;;
+		nfs=*) # TODO: Still working? Still needed? Also see related code in setup_stage32
+			NFS=${opts#nfs=}
+			NFSPATH=${NFS#*:}
+			NFSSERVER=${NFS%:/*}
+			;;
+		BOOTIF=*)
+			MAC="$( echo "$opts" | cut -b 11- | tr '-' ':' | tr '[A-Z]' '[a-z]' )" ;; # make mac lowercase for udev (see setup_network)
+		slxsrv=*)
+			SLX_KCL_SERVERS=$( echo "${opts#slxsrv=}" | tr ',' " " ) ;;
+		slxbase=*)
+			SLX_BASE_PATH=${opts#slxbase=} ;;
+		splash)
+			SPLASH=1 ;;
+		nvidia)
+			GFX=nvidia ;;
+		ati|amd)
+			GFX=amd ;;
+	esac
+done
+
+# If slxsrv was not given on command line, just use the PXE server's address
+[ -z "$SLX_KCL_SERVERS" ] && [ -n "$SERVERIP" ] && SLX_KCL_SERVERS="$SERVERIP"
+# Now save to config file
+echo "SLX_KCL_SERVERS='$SLX_KCL_SERVERS'" >> "${FUTURE_ROOT}/opt/openslx/config"
+echo "SLX_BASE_PATH='$SLX_BASE_PATH'" >> "${FUTURE_ROOT}/opt/openslx/config"
+
+true
+

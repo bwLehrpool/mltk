@@ -1,0 +1,8 @@
+# Check smart values at night. If the machine gets shut down at night,
+# this will not trigger, but we check it once on boot anyways.
+
+SHELL=/bin/ash
+PATH=/usr/sbin:/usr/bin:/sbin:/bin:/opt/openslx/sbin:/opt/openslx/bin
+
+4 4    * * *   root      /opt/openslx/scripts/systemd-smartctl
+

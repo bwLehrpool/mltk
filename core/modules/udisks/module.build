@@ -1,0 +1,50 @@
+
+fetch_source () {
+	:
+}
+
+build () {
+	COPYLIST="list_dpkg_output"
+	rm -f "$COPYLIST"
+
+	list_packet_files >> "$COPYLIST"
+	tarcopy "$(cat "$COPYLIST" | sort -u)" "$MODULE_BUILD_DIR"
+	mkdir -p "$MODULE_BUILD_DIR/etc/systemd/system/basic.target.wants" "$MODULE_BUILD_DIR/usr/share/dbus-1/system-services"
+	local FOUND=no
+	local BINARY=$(find "$MODULE_BUILD_DIR" -name udisksd -executable | head -n 1)
+	[ -z "$BINARY" ] && BINARY=$(find "$MODULE_BUILD_DIR" -name udisks2d -executable | head -n 1)
+	[ -z "$BINARY" ] && BINARY=$(find "$MODULE_BUILD_DIR" -name udisksd2 -executable | head -n 1)
+	VER=none
+	if [ -n "$BINARY" ]; then
+		VER=udisks
+		[[ "$BINARY" == *udisks2* || -d "$MODULE_BUILD_DIR/usr/lib/udisks2" ]] && VER=udisks2
+		create_udisks_service "$VER" "$BINARY"
+		FOUND=yes
+	fi
+	if [ "$VER" != "udisks" ]; then
+		BINARY=$(find "$MODULE_BUILD_DIR" -name udisks-daemon -executable | head -n 1)
+		[ "$VER" == "none" -a -z "$BINARY" ] && perror "Could not determine the udisks(1/2) daemon binary from inspecting $MODULE_BUILD_DIR"
+		[ -n "$BINARY" ] && create_udisks_service "udisks" "$BINARY"
+	fi
+}
+
+post_copy () {
+	:
+}
+
+create_udisks_service () {
+	[ $# -ne 2 ] && perror "Call create_udisks_service with TWO params!"
+	local BINARY="/${2#$MODULE_BUILD_DIR}"
+	if [ "$1" == "udisks2" ]; then
+		# assume udisks v2
+		sed "s,%UDISKSD%,$BINARY,g" ${MODULE_DIR}/templates/udisks2.systemd.service > "$MODULE_BUILD_DIR/etc/systemd/system/udisks2.service" || perror "Error creating systemd service for udisks2 $BINARY"
+		sed "s,%UDISKSD%,$BINARY,g" ${MODULE_DIR}/templates/udisks2.dbus.service > "$MODULE_BUILD_DIR/usr/share/dbus-1/system-services/org.freedesktop.UDisks2.service" || perror "Error creating dbus service for udisks2"
+		ln -s "../udisks2.service" "$MODULE_BUILD_DIR/etc/systemd/system/basic.target.wants/udisks2.service"
+	else
+		# assume udisks v1
+		sed "s,%UDISKSD%,$BINARY,g" ${MODULE_DIR}/templates/udisks.systemd.service > "$MODULE_BUILD_DIR/etc/systemd/system/udisks.service" || perror "Error creating systemd service for udisks $BINARY"
+		sed "s,%UDISKSD%,$BINARY,g" ${MODULE_DIR}/templates/udisks.dbus.service > "$MODULE_BUILD_DIR/usr/share/dbus-1/system-services/org.freedesktop.UDisks.service" || perror "Error creating dbus service for udisks"
+		ln -s "../udisks.service" "$MODULE_BUILD_DIR/etc/systemd/system/basic.target.wants/udisks.service"
+	fi
+}
+

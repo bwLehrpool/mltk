@@ -1,0 +1,112 @@
+#!/bin/ash
+
+# Reloads iptables rules by flushing the tables and applying everything
+# in /opt/openslx/iptables/rules.d again. Actions are delayed by 5 seconds
+# to coalesce changes, since inotifyd can trigger dozens of events in a row.
+#
+# This scriptis triggered by inotifyd, see openslx-iptables_reloader.service
+
+ALL_RULES="/run/iptables-reloader.cache"
+LOCK="/run/iptables-reloader.lock"
+
+# Expects $1 to be the contents of $LOCK
+reload_rules () {
+	if [ -z "$1" -o ! -s "$LOCK" ]; then
+		echo "'$1' empty or lock non-existent"
+		exit 0
+	fi
+	sleep 2
+	if [ "x$(cat "$LOCK")" != "x$1" ]; then
+		echo "Wrong lock, lost race"
+		exit 0
+	fi
+
+	rm -f -- "${ALL_RULES}.new"
+
+	for file in /opt/openslx/iptables/rules.d/*; do
+		[ -f "$file" ] || continue
+		cat "$file" >> "${ALL_RULES}.new"
+	done
+
+	# No change? Do nothing...
+	[ -s "${ALL_RULES}" -a -s "${ALL_RULES}.new" ] && diff "${ALL_RULES}" "${ALL_RULES}.new" && exit 0
+
+	# Reset
+	# Filter
+	for chain in INPUT FORWARD OUTPUT; do
+		iptables -w -t filter -P "$chain" ACCEPT
+		iptables -w -t filter -N "ipt-helper-$chain" 2>/dev/null
+		iptables -w -t filter -F "ipt-helper-$chain"
+		iptables -w -t filter -D "$chain" -j "ipt-helper-$chain" 2>/dev/null # make sure it's number one
+		iptables -w -t filter -I "$chain" 1 -j "ipt-helper-$chain"
+	done
+	# NAT
+	for chain in INPUT OUTPUT PREROUTING POSTROUTING; do
+		iptables -w -t nat -P "$chain" ACCEPT
+		iptables -w -t nat -N "ipt-helper-$chain" 2>/dev/null
+		iptables -w -t nat -F "ipt-helper-$chain"
+		iptables -w -t nat -D "$chain" -j "ipt-helper-$chain" 2>/dev/null # make sure it's number one
+		iptables -w -t nat -I "$chain" 1 -j "ipt-helper-$chain"
+	done
+	# Mangle
+	for chain in INPUT FORWARD OUTPUT PREROUTING POSTROUTING; do
+		iptables -w -t mangle -P "$chain" ACCEPT
+		iptables -w -t mangle -N "ipt-helper-$chain" 2>/dev/null
+		iptables -w -t mangle -F "ipt-helper-$chain"
+		iptables -w -t mangle -D "$chain" -j "ipt-helper-$chain" 2>/dev/null # make sure it's number one
+		iptables -w -t mangle -I "$chain" 1 -j "ipt-helper-$chain"
+	done
+
+	# Apply
+	local LOGFILE=$(mktemp)
+	local DISABLED="/opt/openslx/iptables/rules.d/disabled/"
+	for file in /opt/openslx/iptables/rules.d/*; do
+		[ -f "$file" ] || continue
+		if [ ! -x "$file" ]; then
+			slxlog "firewall-script-exec" "The firewall script '$file' is not executable (+x), moving to disabled/"
+			mkdir -p "$DISABLED"
+			mv "$file" "$DISABLED"
+			continue
+		fi
+		# patch chain names, add "-w"
+		sed -i -r 's/ (-A|--append|-I|--insert|-D|--delete) +(PREROUTING|INPUT|FORWARD|OUTPUT|POSTROUTING) / \1 ipt-helper-\2 /g;s/iptables +-/iptables -w -/g' "$file"
+		if ! "$file" > "$LOGFILE" 2>&1; then
+			slxlog "firewall-script-apply" "The firewall script '$file' had nonzero exit code. Moving to disabled/" "$LOGFILE"
+			mkdir -p "$DISABLED"
+			mv "$file" "$DISABLED"
+		fi
+	done
+
+	# Add default rule
+	for chain in INPUT FORWARD OUTPUT; do
+		iptables -w -t filter -A "ipt-helper-$chain" -j RETURN
+	done
+	# NAT
+	for chain in INPUT OUTPUT PREROUTING POSTROUTING; do
+		iptables -w -t nat -A "ipt-helper-$chain" -j RETURN
+	done
+	# Mangle
+	for chain in INPUT FORWARD OUTPUT PREROUTING POSTROUTING; do
+		iptables -w -t mangle -A "ipt-helper-$chain" -j RETURN
+	done
+
+	# Do not just move file from above, as we sed'ed above and contents might have changed
+	rm -f -- "${ALL_RULES}.new"
+	for file in /opt/openslx/iptables/rules.d/*; do
+		[ -f "$file" ] || continue
+		cat "$file" >> "${ALL_RULES}.new"
+	done
+	mv -f -- "${ALL_RULES}.new" "${ALL_RULES}"
+
+	echo "iptables rules successfully updated."
+	rm -f -- "$LOCK"
+	exit 0
+}
+
+
+ID="$$+$RANDOM"
+echo "$ID" > "$LOCK"
+reload_rules "$ID" &
+
+exit 0
+

@@ -1,0 +1,76 @@
+# -----------------------------------------------------------------------------
+# Copyright (c) 2009..2012 - RZ Uni Freiburg
+# Copyright (c) 2009..2013 - OpenSLX GmbH
+#
+# This program is free software distributed under the GPL version 2.
+# See http://openslx.org/COPYING
+#
+# If you have any feedback please consult http://openslx.org/feedback and
+# send your suggestions, praise, or complaints to feedback@openslx.org
+#
+# General information about OpenSLX can be found at http://openslx.org/
+# -----------------------------------------------------------------------------
+# run-virt.include
+#    - component for vmware/player of the vmchooser plugin vmchooser-run_virt
+################################################################################
+
+################################################################################
+### configuration writer functions
+### This needs bash, not dash or ash! (indented HEREDOC)
+################################################################################
+
+VMWAREINCLUDEDIR=/opt/openslx/vmchooser/vmware/includes
+vmostype=$(rv_clean_string "$vmostype")
+
+# declaration of default variables for vmware
+source "${VMWAREINCLUDEDIR}/set_vmware_include_variables.inc" && set_vmware_include_variables
+# General global openslx config
+source /opt/openslx/config
+
+# TODO: Where to put global helper functions that could be used in several units below?
+vmw_cap_hw_version() {
+	[ -z "$1" ] && writelog "cap_hw_version called without parameter!" && return 1
+	[ "$1" -lt "$maxhardwareversion" ] && maxhardwareversion="$1"
+}
+
+if [ "$LEGACY" ]; then
+	# hardware checks
+	source "${VMWAREINCLUDEDIR}/set_hardware_legacy.inc" && set_hardware_legacy
+	# write configuration files
+	# write_config_files calls:
+	#	set_vmhome_preferences_header
+	#	set_vmware_startup_file
+	source "${VMWAREINCLUDEDIR}/write_config_files_legacy.inc" && write_config_files_legacy
+else
+	# write configuration files
+	source "${VMWAREINCLUDEDIR}/write_config_files.inc"
+
+	# parse the given vmx file
+	source "${VMWAREINCLUDEDIR}/parse_vmx.inc"
+fi
+
+# logging and stdout
+# needs writelog() from vmchooser-run_virt
+source "${VMWAREINCLUDEDIR}/logging.inc" && logging
+
+# Apply $maxhardwareversion to final VMX
+HWVER=$(grep -i '^virtualHW.version *= *' "$conffile" | head -n 1 | awk -F '=' '{print $2}' | sed -r 's/[^0-9]//g')
+if [ -n "$HWVER" ] && [ "$HWVER" -gt "$maxhardwareversion" ]; then
+	writelog "Hardware version capped to $maxhardwareversion (was $HWVER)"
+	sed -i 's/^virtualHW\.version.*$/virtualHW.version = "'$maxhardwareversion'"/I' "$conffile"
+fi
+
+# See if there are any USB devices connected that we want to pass through immediately
+get_usb_devices 'usb.autoConnect.deviceXXXXX = "0x%VENDOR%:0x%PRODUCT%"' \
+	| sed -r 's/0x0+/0x/g' \
+	| awk '{sub(/XXXXX/,NR-1)}1' \
+	>> "$conffile"
+
+
+# For debugging
+cp "$conffile" "/tmp/vmware-last-config"
+
+# using the modified version of the wrapper script
+VIRTCMD="/opt/openslx/bin/vmplayer"
+VIRTCMDOPTS="${vmopt} ${conffile}"
+

@@ -1,0 +1,6 @@
+REQUIRED_INSTALLED_PACKAGES="
+	libx11-dev
+	libxss-dev
+	x11proto-scrnsaver-dev
+"
+

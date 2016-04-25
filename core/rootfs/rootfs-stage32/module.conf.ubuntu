@@ -1,0 +1,21 @@
+REQUIRED_INSTALLED_PACKAGES="
+			nfs-common
+			squashfs-tools
+			whois
+			xfsprogs
+			curl
+			openssl
+"
+REQUIRED_CONTENT_PACKAGES="
+			openssl
+"
+REQUIRED_BINARIES+="
+			openssl
+"
+REQUIRED_DIRECTORIES="
+			/lib/xtables
+"
+REQUIRED_FILES+="
+			/etc/X11/app-defaults/Xvidtune
+			/usr/lib/ssl/openssl.cnf
+"

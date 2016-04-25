@@ -1,0 +1,111 @@
+#tool/distro specific functions for fetching, building and installing dependencies
+
+fetch_source () {
+	# systemd
+	download_untar "$REQUIRED_URL" "src/"
+
+	# starting with systemd 212 a new way of setting global environment is supported
+	# meaning we don't have to apply the patch needed til that version.
+	# patch src/core/socket.c if activated in the config file
+	if [ "x$REQUIRED_XATTR_PATCH" = "xyes" ]; then
+		pinfo "Patching 'src/core/socket.c' ..."
+		# patch it
+		if [ -e "src/$REQUIRED_VERSION/src/core/socket.c" ]; then
+			sed -i 's/^#include <attr\/xattr.h>$/#include <sys\/xattr.h>\n#include <attr\/xattr.h>/g' "src/$REQUIRED_VERSION/src/core/socket.c" \
+				|| perror "Could not patch 'src/$REQUIRED_VERSION/src/core/socket.c'"
+		else
+			perror "'src/$REQUIRED_VERSION/src/core/socket.c' does not exist."
+		fi
+	fi
+	# now check if the old fix needs to be applied
+	# NOTE: only for systemd-204
+	if [ "x${REQUIRED_VERSION#systemd-}" = "x204" ]; then
+		# Patch PATH, HOME, USER environment
+		# TODO: Newer systemd versions support DefaultEnvironment=xxx in /etc/systemd/system.conf
+		# However, there were lots of changes after systemd 204, so we didn't update yet
+		# See http://cgit.freedesktop.org/systemd/systemd/tree/NEWS for changes.
+		patch -p0 src/systemd-*/src/core/main.c < ${MODULE_DIR}/systemd-openslx.patch || perror "Failed to apply openslx systemd patch."
+	elif  [ "x${REQUIRED_VERSION#systemd-}" = "x229" ]; then
+		patch -p0 src/systemd-*/src/basic/path-util.h < ${MODULE_DIR}/systemd-openslx-229.patch || perror "Failed to apply openslx systemd patch."
+	else
+		# TODO use the above hint for setting environmenet through /etc/systemd/system.conf
+		pinfo "Missing..."
+	fi
+
+	# libkmod
+	download_untar "$REQUIRED_LIBKMOD_URL" "src/"
+}
+
+build () {
+	#build libkmod
+	pinfo "Building libkmod"
+	cd "${MODULE_WORK_DIR}/src/$REQUIRED_LIBKMOD_VERSION"
+	./configure || perror "./configure kmod failed."
+	make || perror "kmod make failed."
+	DESTDIR="${MODULE_BUILD_DIR}" make install || perror "kmod make install failed."
+	cd - &> /dev/null
+
+	#build systemd
+	pinfo "Building systemd"
+	cd "${MODULE_WORK_DIR}/src/$REQUIRED_VERSION"
+	pinfo "calling configure in ${MODULE_WORK_DIR}/src/$REQUIRED_VERSION"
+
+	# Save potentially pre-used paths/flages
+	OLDLDFLAGS="$LDFLAGS"
+	OLDCPPFLAGS="$CPPFLAGS"
+	OLDPKG_CONFIG_PATH="$PKG_CONFIG_PATH"
+	OLDLD_LIBRARY_PATH="$LD_LIBRARY_PATH"
+
+	export LDFLAGS="$LDFLAGS -L${MODULE_BUILD_DIR}/usr/lib"
+	export CPPFLAGS="-I${MODULE_BUILD_DIR}/usr/include"
+	export PKG_CONFIG_PATH="${MODULE_BUILD_DIR}/usr/lib64/pkgconfig:${MODULE_BUILD_DIR}/usr/lib/pkgconfig"
+	export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:${MODULE_BUILD_DIR}/usr/lib:${MODULE_BUILD_DIR}/usr/lib64"
+
+	[ ! -e "./configure" ] && ./autogen.sh
+
+	./configure \
+		--disable-manpages \
+		--enable-split-usr \
+		--sysconfdir="/etc" \
+		--enable-gtk-doc-html=no \
+		--disable-nls \
+		--disable-microhttpd \
+		--disable-bootchart \
+		--disable-quotacheck \
+		--disable-hostnamed \
+		--disable-timedated \
+		--disable-localed \
+		--disable-coredump \
+		--disable-keymap \
+		--without-python \
+		--enable-blkid \
+		--enable-acl \
+		--enable-pam \
+		--enable-kmod \
+		--with-pamlibdir="$SYS_PAM_MODULES_PATH" \
+			|| perror "configure failed."
+
+	pinfo "calling make"
+	make || perror "make failed."
+	pinfo "calling make install"
+	DESTDIR="${MODULE_BUILD_DIR}" make install || perror "make install failed."
+	cd - &> /dev/null
+
+	# Restore used flags/paths:
+	export LDFLAGS="$OLDLDFLAGS"
+	export CPPFLAGS="$OLDCPPFLAGS"
+	export PKG_CONFIG_PATH="$OLDPKG_CONFIG_PATH"
+	export LD_LIBRARY_PATH="$OLDLD_LIBRARY_PATH"
+}
+
+post_copy() {
+	#old agetty version doesn't support --noclear option in getty service
+	if [ "x$(dpkg -s util-linux | grep Version: | cut -d' ' -f2)" == "x2.19.1-2ubuntu3" ]; then
+		sed -i "s/ExecStart=-\/sbin\/agetty --noclear %I 38400 linux/ExecStart=-\/sbin\/agetty %I 38400 linux/g" "${TARGET_BUILD_DIR}/usr/lib/systemd/system/getty@.service"
+	fi
+        # eg. systemd expects /bin/less:
+	if [ "$SYS_DISTRIBUTION" == "opensuse" -a "$SYS_VERSION" == "13.2" ]; then
+		ln -s /usr/bin/less "$TARGET_BUILD_DIR/bin/less"
+	fi
+}
+

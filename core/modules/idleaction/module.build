@@ -1,0 +1,16 @@
+fetch_source() {
+	:
+}
+
+build() {
+	# We ship xprintidle's source as suse doesn't have it in one of the default repos
+	# and its just too tiny to do anything fancy like fetching source from somewhere
+	mkdir -p "$MODULE_BUILD_DIR/opt/openslx/bin"
+	gcc -o "$MODULE_BUILD_DIR/opt/openslx/bin/xprintidle" "$MODULE_DIR/xprintidle.c" -lX11 -lXss -lXext \
+			|| perror "Compilation of xprintidle failed!"
+}
+
+post_copy() {
+	:
+}
+

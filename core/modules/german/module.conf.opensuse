@@ -1,0 +1,13 @@
+REQUIRED_INSTALLED_PACKAGES="
+	libX11-data
+	glibc-locale
+"
+REQUIRED_CONTENT_PACKAGES="
+	libX11-data
+"
+REQUIRED_DIRECTORIES+="
+	/usr/lib/locale/de_DE.utf8
+"
+REQUIRED_BINARIES=""
+REQUIRED_FILES=""
+

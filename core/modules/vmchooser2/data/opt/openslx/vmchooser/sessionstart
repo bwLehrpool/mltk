@@ -1,0 +1,18 @@
+#!/bin/ash
+
+SOURCEPATH="/opt/openslx/vmchooser/sessionstart.d"
+
+if [ -d "$SOURCEPATH" ]; then
+	for file in $SOURCEPATH/*; do
+		"$file"
+		RET=$?
+		if [ "$RET" != 0 ]; then
+			param="$file"
+			[ "$(head -n 1 "$file" | cut -b 1)" != "#" ] && param=
+			slxlog "vmchooser-sessionstart" "$file returned $RET at session start!" "$param"
+		fi
+	done
+fi
+
+exit 0
+

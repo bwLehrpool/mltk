@@ -1,0 +1,11 @@
+REQUIRED_INSTALLED_PACKAGES=" openbox
+			libpango-1_0-0"
+REQUIRED_CONTENT_PACKAGES="	openbox
+			libpango-1_0-0"
+REQUIRED_BINARIES="	openbox
+			openbox-session"
+REQUIRED_FILES="	/usr/share/xsessions/openbox.desktop"	
+REQUIRED_DIRECTORIES="	/etc
+			/usr/$LIB64
+			/usr/share/themes/Clearlooks"
+

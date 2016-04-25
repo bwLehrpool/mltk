@@ -1,0 +1,10 @@
+[Unit]
+Description=Setup zram swap partitions
+DefaultDependencies=no
+Wants=swap.target
+Before=swap.target
+
+[Service]
+Type=oneshot
+ExecStart=/opt/openslx/scripts/systemd-zram_swap
+RemainAfterExit=yes

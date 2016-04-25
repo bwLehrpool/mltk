@@ -1,0 +1,9 @@
+[Unit]
+Description=Proxy setup detection
+Before=shutdown.target
+DefaultDependencies=no
+
+[Service]
+Type=oneshot
+ExecStart=/opt/openslx/scripts/systemd-setup_proxy
+RemainAfterExit=yes

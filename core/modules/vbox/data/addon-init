@@ -1,0 +1,17 @@
+#!/bin/ash
+
+addgroup vboxusers
+nscd -i group
+# Will be done by PAM now: addgroup demo vboxusers
+
+if grep -q usb_device /proc/devices; then
+	mkdir -p -m 0750 /dev/vboxusb 2>/dev/null
+	chown root:vboxusers /dev/vboxusb 2>/dev/null
+fi
+
+systemctl daemon-reload
+systemctl start vbox.service
+
+# this seems to be necessary due to the misbehaviour of udevd
+# in view of the undetected ENV dev_type 
+systemctl restart systemd-udevd

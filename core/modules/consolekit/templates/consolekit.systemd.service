@@ -1,0 +1,9 @@
+[Unit]
+Description=ConsoleKit (Legacy)
+After=syslog.target
+
+[Service]
+Type=dbus
+BusName=org.freedesktop.ConsoleKit
+ExecStart=%DAEMON% --no-daemon
+

@@ -1,0 +1,112 @@
+#!/bin/ash
+#
+# /etc/X11/Xsession
+#
+# Xsession is executed to start the user's session (as the user)
+# 
+
+export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/openslx/sbin:/opt/openslx/bin"
+
+PROGNAME=Xsession
+
+message () {
+  # pretty-print messages of arbitrary length; use xmessage if it
+  # is available and $DISPLAY is set
+  MESSAGE="$PROGNAME: $*"
+  echo "$MESSAGE" | fold -s -w ${COLUMNS:-80} >&2
+  if [ -n "$DISPLAY" ] && which xmessage > /dev/null 2>&1; then
+    echo "$MESSAGE" | fold -s -w ${COLUMNS:-80} | xmessage -center -file -
+  fi
+}
+
+message_nonl () {
+  # pretty-print messages of arbitrary length (no trailing newline); use
+  # xmessage if it is available and $DISPLAY is set
+  MESSAGE="$PROGNAME: $*"
+  echo -n "$MESSAGE" | fold -s -w ${COLUMNS:-80} >&2;
+  if [ -n "$DISPLAY" ] && which xmessage > /dev/null 2>&1; then
+    echo -n "$MESSAGE" | fold -s -w ${COLUMNS:-80} | xmessage -center -file -
+  fi
+}
+
+errormsg () {
+  # exit script with error
+  message "$*"
+  exit 1
+}
+
+internal_errormsg () {
+  # exit script with error; essentially a "THIS SHOULD NEVER HAPPEN" message
+  # One big call to message() for the sake of xmessage; if we had two then
+  # the user would have dismissed the error we want reported before seeing the
+  # request to report it.
+  errormsg "$*" \
+           "Please report the installed version of the \"x11-common\"" \
+           "package and the complete text of this error message to" \
+           "<debian-x@lists.debian.org>."
+}
+
+# Workaround to start Xsession. The original Xsession script includes error handling functionality and sources other scrips from the Xsession.d/ directory.
+
+SESSIONDIR="/etc/X11/Xsession.d"
+
+if [ -d "$SESSIONDIR" ]; then
+	for file in $SESSIONDIR/*; do
+		. $file || slxlog "xsession" "Xsession: Could not source $file" "$file"
+	done
+fi
+
+# Make sure we source the global profile - needed for ssh-agent, etc.
+[ -e "/etc/profile" ] && source "/etc/profile"
+
+# start selected session
+case "$1" in
+	failsafe)
+		# Failsafe session was requested.
+		if [ -e /usr/bin/xterm ]; then
+			if [ -x /usr/bin/xterm ]; then
+				exec xterm -geometry +1+1
+			else
+				# fatal error
+				errormsg "unable to launch failsafe X session ---" \
+					"x-terminal-emulator not executable; aborting."
+			fi
+		else
+			# fatal error
+			errormsg "unable to launch failsafe X session ---" \
+				"x-terminal-emulator not found; aborting."
+		fi
+	;;
+	default)
+		# Specific program was requested.
+		SESSION="default"
+		if [ -e $HOME/.dmrc ]; then
+			SESSION=$(cat $HOME/.dmrc|grep "Session"| cut -d "=" -f2)
+		fi
+		# somehow .dmrc is cleared when logging in the first time after boot
+		if [ -e $HOME/.dmrc.real ]; then
+			SESSION=$(cat $HOME/.dmrc.real|grep "Session"| cut -d "=" -f2)
+		fi
+		[ "x$SESSION" == "xdefault" ] && SESSION="gnome"
+		CMD=$(cat /opt/openslx/xsessions/$SESSION.desktop|grep "Exec"| cut -d "=" -f2-99|head -n1)
+		exec $CMD
+	;;
+
+	*)
+		# Specific program was requested.
+		STARTUP_FULL_PATH=$(/opt/openslx/bin/which "${1%% *}" || true)
+		if [ -n "$STARTUP_FULL_PATH" ] && [ -e "$STARTUP_FULL_PATH" ]; then
+			if [ -x "$STARTUP_FULL_PATH" ]; then
+				exec $1
+			else
+				message "unable to launch \"$1\" X session ---" \
+					"\"$1\" not executable; falling back to default session."
+			fi
+		else
+			message "unable to launch \"$1\" X session ---" \
+				"\"$1\" not found; falling back to default session."
+		fi
+	;;
+
+esac
+

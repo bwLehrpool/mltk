@@ -1,0 +1,10 @@
+[Unit]
+Description=Mount VM store per NFS
+After=network.target
+Requires=network.target
+DefaultDependencies=no
+
+[Service]
+Type=oneshot
+ExecStart=/opt/openslx/scripts/systemd-mount_vm_store
+RemainAfterExit=yes

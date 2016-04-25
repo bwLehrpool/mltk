@@ -1,0 +1,254 @@
+#!/bin/bash
+# Needs bash for printf -v VARNAME
+# -----------------------------------------------------------------------------
+#
+# Copyright (c) 2011 - OpenSLX GmbH
+#
+# This program is free software distributed under the GPL version 2.
+# See http://openslx.org/COPYING
+#
+# If you have any feedback please consult http://openslx.org/feedback and
+# send your suggestions, praise, or complaints to feedback@openslx.org
+#
+# General information about OpenSLX can be found at http://openslx.org/
+# -----------------------------------------------------------------------------
+#
+#                               Mini-Linux Toolkit
+#
+# -----------------------------------------------------------------------------
+
+. /opt/openslx/config
+
+RESOLV_CONF="/opt/openslx/resolv.conf"
+THIS_RESOLV="/run/network/${interface}.resolv"
+
+rebuild_resolv_conf () {
+	# Don't do anything if the active resolv.conf is not ours
+	# Also this will not run resolvconf update.d... No idea if we should still do so...
+	[ -L "/etc/resolv.conf" ] || return 0
+	[ "x$(readlink "/etc/resolv.conf")" == "x${RESOLV_CONF}" ] || return 0
+	# Maybe make this smarter some time, if anyone is using clients that are on multiple networks at once etc...
+	# This is a little braindead but should work most of the time
+	sort -u /run/network/*.resolv > "$RESOLV_CONF" 2> /dev/null
+
+	# add support for resolv.conf update scripts // see man(8) resolvconf
+	if [ -d /etc/resolvconf/update.d ]; then
+		for s in $(ls -1 /etc/resolvconf/update.d/*.sh); do
+			$s
+		done
+	fi
+}
+
+escape_search() {
+	echo "$@" | sed -e 's/[]\/()$*.^|[]/\\&/g'
+}
+
+escape_replace() {
+	echo "$@" | sed -e 's/[\/&]/\\&/g'
+}
+
+check_env() {
+	if [ -z "$ip" -o -z "$subnet" -o -z "$interface" ]; then
+		echo "$1 event with missing data" >&2
+		echo "ip = '$ip'" >&2
+		echo "subnet = '$subnet'" >&2
+		echo "interface = '$interface'" >&2
+		exit 1
+	fi
+}
+
+if [ ! -d /run ]; then
+	echo -n "Waiting for /run." >&2
+	while [ ! -d /run ]; do
+		echo -n "." >&2
+		usleep 500000
+	done
+	echo "" >&2
+fi
+
+case "$1" in
+	bound|renew)
+		check_env "$1"
+		mkdir -p "/run/dhcpc"
+		# Set address on interface
+		ip addr add "$ip/$(ipcalc -s -p $ip $subnet|sed s/.*=//)" dev "$interface"
+		# Set default route, if given
+		if [ -n "$router" ]; then
+			ip route add default via "$router"
+		fi
+		
+		# get domain, hostname and thus fqdn from DNS
+		dns_fqdn=$(/opt/openslx/bin/busybox timeout -t 3 rdns "$ip")
+		dns_short="${dns_fqdn%%.*}"
+		# check if it is fqdn
+		if [ "$dns_fqdn" == "$dns_short" ]; then
+			unset dns_fqdn dns_short
+		fi
+
+		# Update resolver configuration file
+		CONF=""
+		if [ -n "$domain" ]; then
+			printf -v CONF "${CONF}domain $domain\n"
+		elif [ -n "$dns_fqdn" ]; then
+			domain="${dns_fqdn#*.}"
+			printf -v CONF "${CONF}domain $domain\n"
+			
+		elif [ -n "$SLX_NET_DOMAIN" ]; then
+			domain="$SLX_NET_DOMAIN"
+			printf -v CONF "${CONF}domain $domain\n"
+		fi
+		if [ -n "$search" ]; then
+			printf -v CONF "${CONF}search $search\n"
+		elif [ -n "$SLX_SEARCH_DOMAIN" ]; then
+			printf -v CONF "${CONF}search $SLX_SEARCH_DOMAIN\n"
+		elif [ -n "$SLX_NET_DOMAIN" ]; then
+			printf -v CONF "${CONF}search $SLX_NET_DOMAIN\n"
+		fi
+		for i in $dns; do
+			echo "$0: Adding DNS $i"
+			printf -v CONF "${CONF}nameserver $i\n"
+		done
+		
+		if [ -x "/sbin/resolvconf" ] && [ -L "/etc/resolv.conf" ] && [ -d "/etc/resolvconf/update.d" ]; then
+			# Automatic handling :-)
+			resolvconf --create-runtime-directories
+			resolvconf --enable-updates
+			echo -n "$CONF" | resolvconf -a "${interface}.udhcpc"
+		else
+			# Manual handling required :-(
+			echo -n "$CONF" > "$THIS_RESOLV"
+			rebuild_resolv_conf
+		fi
+
+		
+		# Things that should only happen for the main interface that was used for booting
+		if [ "$interface" == "br0" ]; then
+			# Update IP
+			sed -i "s/^\(SLX_PXE_CLIENT_IP=\).*$/\1'$ip'/" /opt/openslx/config
+			
+			# Only if network is not ready yet
+			if [ ! -e "/run/network/network-ready" ]; then
+				# Update hostname
+				if [ -z "$dns_fqdn" -a -n "$domain" -a -n "$hostname" ]; then
+					# fallback to what the dhcp told us
+					dns_fqdn="${hostname}.${domain}"
+				fi
+				if [ -z "$dns_fqdn" ]; then
+					# only if there is no /etc/hostname, we fall back (far back, that is)
+					[ ! -s "/etc/hostname" ] && dns_fqdn="slx-client"
+				fi
+				# finally, if dns_fqdn was set to anything, apply it
+				if [ -n "$dns_fqdn" ]; then
+					dns_short="${dns_fqdn%%.*}"
+					echo "$dns_short" > "/proc/sys/kernel/hostname"
+					echo "$dns_short" > "/etc/hostname"
+					if grep '^SLX_HOSTNAME=' /opt/openslx/config 2>/dev/null; then
+						sed -i "s/^\(SLX_HOSTNAME=\).*$/\1'$dns_short'/" /opt/openslx/config
+					else
+						echo "# Config written by openslx-dhcp-script (1)" >> /opt/openslx/config
+						echo "SLX_HOSTNAME='$dns_short'" >> /opt/openslx/config
+					fi
+				fi
+
+				# if domain is given from dhcp, save it to openslx config for later use in VMs
+				if [ -n "$domain" ]; then
+						# check if SLX_NET_DOMAIN is in the config at all
+					if grep '^SLX_NET_DOMAIN=' /opt/openslx/config 2>/dev/null; then
+						sed -i "s/^\(SLX_NET_DOMAIN=\).*$/\1'$domain'/" /opt/openslx/config
+					else
+						# not set, add it
+						echo "SLX_NET_DOMAIN='$domain'" >> /opt/openslx/config
+					fi
+				fi
+				# Update /etc/issue for proper spacing
+				/opt/openslx/scripts/openslx-create_issue
+				touch "/run/network/network-ready"
+				# Mark network target as reached
+				systemctl start network.target &
+			fi # end "network not ready yet"
+		fi # end "br0 only"
+		
+		# Hostname in /etc/hosts
+		touch "/etc/hosts"
+		hostlist=""
+		[ -n "$dns_fqdn" ] && hostlist="$dns_fqdn"
+		[ -n "$hostname" -a -n "$domain" -a "x${hostname}.${domain}" != "x$dns_fqdn" ] && hostlist="$hostlist ${hostname}.${domain}"
+		if [ -n "$hostlist" ]; then
+			for host in $hostlist; do
+				host_short="${host%%.*}"
+				[ "x$host_short" = "x$host" ] && host_short=""
+				sed -i -r "s/\s$(escape_search "$host")(\s|$)/ /g" /etc/hosts
+				[ -n "$host_short" ] && sed -i -r "s/\s$(escape_search "$host_short")(\s|$)/ /g" /etc/hosts
+				if grep -q -E "^$ip\s" /etc/hosts; then
+					sed -i "s/^$(escape_search "$ip")\s.*/$(escape_replace "$ip $host $host_short")/g" /etc/hosts
+				else
+					echo "$ip $host $host_short" >> /etc/hosts
+				fi
+			done
+		fi
+		# Get rid of orphaned lines in /etc/hosts
+		sed -i -r '/^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+\s*$/d' /etc/hosts
+		
+		# "dns ready" target
+		if [ -n "$dns" ] && [ ! -e "/run/network/dns-ready" ]; then
+			touch "/run/network/dns-ready"
+			# Write to openslx-config
+			echo "# Config written by openslx-dhcp-script (2)" >> /opt/openslx/config
+			echo "SLX_DNS='$dns'" >> /opt/openslx/config
+			systemctl start network-dns.target &
+		fi
+		# "default route exists" target
+		if [ -n "$router" ] && [ ! -e "/run/network/gateway-ready" ]; then
+			touch "/run/network/gateway-ready"
+			# Write to openslx-config
+			echo "# Config written by openslx-dhcp-script (3)" >> /opt/openslx/config
+			echo "SLX_DNS='$dns'" >> /opt/openslx/config
+			systemctl start network-gateway.target &
+		fi
+		
+			# Port redirection for printing happens in printergui module (iptables-helper rule)
+			####iptables -A INPUT -i br0 -p tcp --dport 515 -j DROP
+			####iptables -A INPUT -i br0 -p tcp --dport 5515 -j DROP
+			####iptables -t nat -A PREROUTING -s 192.168.0.0/16 -p tcp --dport 515 -j REDIRECT --to-port 5515
+	;;
+	
+	deconfig)
+		check_env "$1"
+		if [ $(grep -c "nfs=" /proc/cmdline) == 0 ]; then
+			echo 1 > "/proc/sys/net/ipv4/conf/$interface/promote_secondaries"
+			clientip=${ip%%:*}
+			ip addr del "$clientip/$(ipcalc -s -p $clientip $subnet|sed s/.*=//)" dev "$interface"
+			sed -i "/^$(escape_search "$ip")(\s|$)/d" /etc/hosts
+		else
+			echo "NFS is active, not removing old ip adress. warning: lease may expire after a while."
+		fi
+		
+		if [ -x /sbin/resolvconf ] && [ -L /etc/resolv.conf ] && [ -d /etc/resolvconf/update.d ]; then
+			# Automatic handling :-)
+			resolvconf -d "${interface}.udhcpc"
+		else
+			# Manual handling required :-(
+			rm -f -- "$THIS_RESOLV"
+			rebuild_resolv_conf
+		fi
+	;;
+	
+	leasefail)
+		echo "$0: Lease failed: $message" >&2
+		
+	;;
+	
+	nak)
+		echo "$0: Received a NAK: $message" >&2
+		
+	;;
+	
+	*)
+		echo "$0: Unknown udhcpc command: $1" >&2
+		exit 1
+		
+	;;
+esac
+
+exit 0
+

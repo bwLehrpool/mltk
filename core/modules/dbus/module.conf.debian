@@ -1,0 +1,9 @@
+REQUIRED_CONTENT_PACKAGES="
+			dbus
+"
+REQUIRED_DIRECTORIES+="		
+			/lib/systemd
+"
+REQUIRED_FILES="	
+			/etc/default/dbus
+"

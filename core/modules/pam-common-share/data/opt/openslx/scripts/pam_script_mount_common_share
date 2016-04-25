@@ -1,0 +1,183 @@
+###################################################################
+#
+#		This script is a part of the pam_script_auth script
+#		and is not stand-alone!
+#
+#		It will try to mount the common shares specified in the
+#		variables of the global slx config '/opt/openslx/config'.
+#		An arbitrary number of shares may be given. Every share
+#		requires following bundle of variables:
+#
+#
+#		SLX_SHARE_<id>_AUTH_TYPE		[guest|user|pam]
+#		SLX_SHARE_<id>_AUTH_USER		<username>
+#		SLX_SHARE_<id>_AUTH_PASS		<password>
+#		SLX_SHARE_<id>_PERM				[ro|rw]
+#		SLX_SHARE_<id>_PATH				<path_to_share>
+#
+#		Note: <id> is the identifier of the share.
+#
+#		Example:
+#			SLX_SHARE_0_PATH='//windows.server/sharename'
+#			SLX_SHARE_0_AUTH_TYPE='user'
+#			SLX_SHARE_0_AUTH_USER='shareuser'
+#			SLX_SHARE_0_AUTH_PASS='sharepass'
+#			SLX_SHARE_0_PERM='rw'
+#
+#		Note:	If AUTH_TYPE is set to 'pam' or 'guest', then
+#				there is no need to specify AUTH_USER or AUTH_PASS
+#				as it is obviously not needed.
+#
+###################################################################
+#
+# Internal helper function to mount a share
+# usage: mount_share <auth_type> <auth_user> <auth_password> <permissions> <path> <share_number>
+mount_share() {
+	# since we are (hopefully) the only one using this function, we know we need excatly 6 args
+	[ $# -ne 6 ] && { slxlog "pam-share-args" "Wrong number of arguments given! Need 6, $# given."; return; }
+
+	# lets check if we have our variables
+	local SHARE_AUTH_TYPE="$1"
+	local SHARE_AUTH_USER="$2"
+	local SHARE_AUTH_PASS="$3"
+	local SHARE_PERM="$4"
+	local SHARE_PATH="$5"
+	local SHARE_NUM="$6"
+
+	# unless specified otherwise, mount the share read-only
+	[ "x${SHARE_PERM}" != "xrw" ] && SHARE_PERM='ro'
+
+	# all good: now we can mount depending on the type
+	# supports: cifs?/nfs?
+	if [ "${SHARE_PATH:0:2}" = "//" ]; then
+		# '//' prefixed, assume windows share
+		# prepare common mount options for either authentication type
+		MOUNT_OPTS="-t cifs -o nounix,uid=${USER_UID},gid=${USER_GID},forceuid,forcegid,nobrl,noacl,$SHARE_PERM"
+
+		# now construct the mount options depending on the type of the share.
+		if [ "${SHARE_AUTH_TYPE}" = "guest" ]; then
+			MOUNT_OPTS="${MOUNT_OPTS},guest,file_mode=0777,dir_mode=0777"
+		elif [ "${SHARE_AUTH_TYPE}" = "pam" ]; then
+			export USER="${PAM_USER}"
+			export PASSWD="${PAM_AUTHTOK}"
+			MOUNT_OPTS="${MOUNT_OPTS},sec=ntlm,file_mode=0700,dir_mode=0700"
+		elif [ "${SHARE_AUTH_TYPE}" = "user" ]; then
+			# check if credentials are set
+			[ ! -z "${SHARE_AUTH_USER}" ] || \
+				{ slxlog "pam-share-noauthuser" "Share${SHARE_NUM}: No variable 'SLX_SHARE_${SHARE_NUM}_AUTH_USER' found in config!"; return; }
+			# now export them to the env
+			export USER="${SHARE_AUTH_USER}"
+			export PASSWD="${SHARE_AUTH_PASS}"
+			MOUNT_OPTS="${MOUNT_OPTS},sec=ntlm,file_mode=0700,dir_mode=0700"
+		else
+			slxlog "pam-share-auth" "Share${SHARE_NUM}: Auth type '${SHARE_AUTH_TYPE}' not supported."
+			return;
+		fi
+	else
+		# for now assume NFS-Share, start build options string with default options for all shares
+		MOUNT_OPTS="-t nfs -o async,nolock"
+
+		# TODO: here we will have to evaluate options of NFS-shares
+
+		# unless specified otherwise, mount the share read-only
+		[ "x${SHARE_PERM}" != "xrw" ] && SHARE_PERM='ro'
+		MOUNT_OPTS="${MOUNT_OPTS},${SHARE_PERM}"
+	fi
+
+	############################################################################
+	#
+	#  Following code is independent of the type of share.
+	#  The variable MOUNT_OPTS should have been set correctly
+	#  up to this point.
+	#
+	############################################################################
+
+	# we just mount it to the directory with the same name as the
+	# last directory in the path name of the share
+	# e.g. //windows.net/lehrpool -> ${COMMON_SHARE_MOUNT_POINT}/lehrpool
+	local TARGET_DIR="${COMMON_SHARE_MOUNT_POINT}/$(basename ${SHARE_PATH})"
+	# it exists, so let's create ${COMMON_SHARE_MOUNT_POINT}/lehrpool_${SHARE_NUM}
+	[ -d "${TARGET_DIR}" ] && TARGET_DIR="${TARGET_DIR}_${SHARE_NUM}"
+
+	# at this point is TARGET_DIR pointing to the right directory.
+	mkdir -p "${TARGET_DIR}" || \
+	{ slxlog "pam-share-mkdirfail" "Share${SHARE_NUM}: Could not create directory '${TARGET_DIR}'. Skipping share."; return; }
+
+	# flag for failure
+	SIGNAL=$(mktemp)
+	rm -f -- "${SIGNAL}"
+	# output of command
+	MOUNT_OUTPUT=$(mktemp)
+	# now try to mount it
+	( mount ${MOUNT_OPTS} "${SHARE_PATH}" "${TARGET_DIR}" > "${MOUNT_OUTPUT}" 2>&1 || touch "${SIGNAL}" ) &
+	MOUNT_PID=$!
+	for COUNTER in 1 1 2 4; do
+	kill -0 "${MOUNT_PID}" 2>/dev/null || break
+	sleep "${COUNTER}"
+	done
+
+	# check for failures
+	if [ -e "${SIGNAL}" ]; then
+	slxlog "pam-share-mount" "Mount of '${SHARE_PATH}' to '${TARGET_DIR}' failed. (Args: ${MOUNT_OPTS}" "${MOUNT_OUTPUT}"
+	rm -f -- "${SIGNAL}"
+	elif kill -9 "${MOUNT_PID}" 2>/dev/null; then
+	slxlog "pam-share-mount" "Mount of '${SHARE_PATH}' to '${TARGET_DIR}' timed out. (Args: ${MOUNT_OPTS}" "${MOUNT_OUTPUT}"
+	fi
+	( sleep 2; rm -f -- "${MOUNT_OUTPUT}" ) &
+
+	# always unset credentials
+	unset USER
+	unset PASSWD
+}
+
+############################################################################
+#
+#  MAIN LOGIC OVER ALL SHARES
+#
+############################################################################
+# at this point we need the slx config to do anything
+[ -e "/opt/openslx/config" ] || \
+	{ slxlog "pam-share-noconfig" "File '/opt/openslx/config' not found."; return; }
+
+# we have it as we should, source it
+. /opt/openslx/config || \
+	{ slxlog "pam-share-sourceconfig" "Could not source '/opt/openslx/config'."; return; }
+
+#
+#
+#
+# Since many shares can be specified, we need to identify how many we have first.
+# We just go over all SLX_SHARE_* variables and check for those ending in _PATH.
+# So e.g. for SLX_SHARE_0_PATH=<path> the SHARE variable would be equal to 'SLX_SHARE_0_PATH'
+# For each of those, a share was specified and we will try to mount it.
+for SHARE in $(grep -E '^SLX_SHARE_[0-9]+_PATH=.*$' /opt/openslx/config); do
+	# first let's check if we have already mounted it and skip if it is
+	# TODO: this should be good enough? stronger checks?
+	if mount | grep -q "$(echo ${SHARE} | awk -F '=' '{print $2}' | tr -d \'\")"; then
+		# already mounted, just skip
+		# this should not happen anyway, since the pam_script_auth script also exits
+		# if the temporary home user directory is already mounted...
+		continue
+	fi
+	# ok so we have the full declaration command in $SHARE,
+	# let's extract the number of the share.
+	# i.e. SLX_SHARE_0_PATH -> share number 0
+	# first just cut everything after '='
+	SHARE_ID="$(echo $SHARE | awk -F '=' '{print $1}')"
+	# now strip the leading SLX_SHARE_
+	SHARE_ID=${SHARE_ID#SLX_SHARE_}
+	# now remove the trailing _PATH
+	SHARE_ID=${SHARE_ID%_PATH}
+	# now it should be a number, TODO accept more than numbers? Doesn't really matter...
+	# this check is mostly to be sure that the variable splitting worked as it should
+	# ugly cause we need to be ash compatible ...
+	if ! echo "${SHARE_ID}" | grep -q -E '^[0-9]+$'; then
+		continue
+	fi
+	
+	# now do try to mount the share using the helper function defined on the top of this script
+	eval mount_share \""\$SLX_SHARE_${SHARE_ID}_AUTH_TYPE"\" \""\$SLX_SHARE_${SHARE_ID}_AUTH_USER"\" \""\$SLX_SHARE_${SHARE_ID}_AUTH_PASS"\" \""\$SLX_SHARE_${SHARE_ID}_PERM"\" \""\$SLX_SHARE_${SHARE_ID}_PATH"\" \""$SHARE_ID"\"
+	## unset USER and PASSWD just in case mount_share returned due to an error.
+	unset USER
+	unset PASSWD
+done

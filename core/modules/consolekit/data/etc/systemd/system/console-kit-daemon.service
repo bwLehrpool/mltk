@@ -1,0 +1,8 @@
+[Unit]
+Description=ConsoleKit
+
+[Service]
+Type=dbus
+BusName=org.freedesktop.ConsoleKit
+ExecStart=/usr/sbin/console-kit-daemon --no-daemon
+

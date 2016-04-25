@@ -1,0 +1,42 @@
+#!/bin/ash
+PATH=$PATH:/opt/openslx/sbin:/opt/openslx/bin
+
+PROC="/proc/asound/cards"
+
+if [ ! -r "$PROC" ]; then
+	echo "'${PROC}' not found or not readable."
+	exit 1
+fi
+
+if [ -w "/etc" ]; then
+	FILE="/etc/asound.conf"
+elif [ -n "$HOME" ]; then
+	FILE="${HOME}/.asoundrc"
+else
+	FILE="$(getent passwd root | awk -F ':' '{print $6}')/.asoundrc"
+fi
+
+if [ -e "${FILE}" -a "x$1" != "x--force" ]; then
+	echo "'${FILE}' already exists, use --force to overwrite."
+	exit 1
+fi
+
+# Try to filter HDMI cards first
+CARD=$(grep -v -i 'HDMI' "${PROC}" | grep -E -o '^[[:space:]]*[0-9]+[[:space:]]+' | head -n 1)
+# If empty, try again with all
+[ -z "${CARD}" ] && CARD=$(cat "${PROC}" | grep -E -o '^[[:space:]]*[0-9]+[[:space:]]+' | head -n 1)
+
+if [ -z "${CARD}" ]; then
+	echo "No sound card found."
+	exit 1
+fi
+
+cat > "${FILE}" <<HEREDOC
+defaults.pcm.!card $CARD
+defaults.ctl.!card $CARD
+
+defaults.pcm.!device 0
+defaults.ctl.!device 0
+
+HEREDOC
+
