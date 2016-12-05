@@ -43,7 +43,7 @@ check_kernel_base_dir () {
 }
 
 copy_kernel_modules () {
-	pinfo "Copying kernel modules for kernel ${SYSTEM_KERNEL_LONG}..."
+	pinfo "Copying kernel modules for kernel ${TARGET_KERNEL_LONG}..."
 	[ -z "${REQUIRED_KERNEL_MODULES}" ] && perror "REQUIRED_KERNEL_MODULES is empty. Check your config file."
 	[ -z "${KERNEL_HEADERS_DIR}" ] && perror "KERNEL_HEADERS_DIR is empty. Kernel headers appears to be missing."
 
