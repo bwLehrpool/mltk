@@ -1,4 +1,5 @@
-#!/bin/ash
+#!/bin/bash
+# bash because of {,} expansion
 
 TOOLS="
 	journalctl
@@ -8,6 +9,7 @@ TOOLS="
 	lsusb
 	lsmod
 	mount
+	dmidecode
 "
 
 URL="http://132.230.8.113/error_report.php"
@@ -30,37 +32,49 @@ if [ ! -d /tmp/debug-report ]; then
 	exit 1
 fi
 
-cd /tmp/debug-report
+if ! cd /tmp/debug-report; then
+	echo "Cannot go to /tmp/debug-report"
+	exit 1
+fi
 
 cat > err-desc <<HEREEND
 
 # Bitte hier kurz eine passende Fehlerbeschreibung eingeben, anschließend
-# Strg+O, ENTER, und Strg+X drücken.
+# Strg+O, ENTER, Strg+X, ENTER drücken.
 HEREEND
 
 nano -w err-desc
+
+if ! grep -vqE '(^$)|(^# )' err-desc; then
+	echo "Fehlerberichterstattung aufgrund leerer Beschreibung abgebrochen."
+	exit 1
+fi
 
 echo -n "Beginne mit dem Erstellen des Fehlerberichts..."
 
 . /opt/openslx/config
 
-echo "TIME INFORMATION:" > metadata
+echo "TIME INFORMATION (hwclock, date):" > metadata
 hwclock >> metadata
 date >> metadata
-for srv in 132.230.1.9 $SLX_NTP_SERVER 0.de.pool.ntp.org; do
-	ntpdate -u -q -p 2 -t 1 "$srv" >> metadata && break
+for srv in $SLX_NTP_SERVER 0.de.pool.ntp.org; do
+	ntpdate -u -q -p 2 -t 1 "$srv" >> metadata 2> /dev/null && break
 done
 echo -n "..."
 
 cp /opt/openslx/config /tmp/udhcpclog static/ 2> /dev/null
 echo -n "."
 
-find /tmp/vmware* -name "*.log" -exec cp {} static/ \; 2> /dev/null
+FILES=$(find /tmp/vmware* /tmp/virt /tmp/vmchooser* -type f \( -name "*.log" -o -name "*.conf" -o -name "*.xml" \) 2> /dev/null)
+if [ -n "$FILES" ]; then
+	tar ckf static/vm-related.tar $FILES
+fi
+
 echo -n "."
 
 cp /var/log/Xorg.0.lo* static/ 2> /dev/null
 cp /var/log/{auth.log,kdm.log,syslog,messages,user.log} static/ 2> /dev/null
-cp /proc/cpuinfo static/ 2> /dev/null
+cp /proc/{cpu,mem}info static/ 2> /dev/null
 echo -n "."
 
 for tool in $TOOLS; do
@@ -74,13 +88,15 @@ echo -n "."
 systemctl status > "generated/systemctl-status-out" 2> "generated/systemctl-status-err"
 echo -n "."
 
-ps aux > "generated/ps-out" 2> "generated/ps-err"
+ps auxf > "generated/ps-out" 2> "generated/ps-err"
 echo -n "."
+
+find generated/ -type f -name "*-err" -size 0 -delete > /dev/null 2>/dev/null
 
 echo "..fertig!"
 
 cd /tmp
-rm -f error-report.tar.gz
+rm -f -- error-report.tar.gz
 echo -n "Packe Fehlerbericht ein..."
 if ! tar czf error-report.tar.gz debug-report; then
 	echo "Fehler beim Packen des Berichts!" >&2

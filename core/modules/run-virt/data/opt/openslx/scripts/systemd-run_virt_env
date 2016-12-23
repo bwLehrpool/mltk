@@ -28,27 +28,7 @@ export PATH=$PATH:/opt/openslx/bin:/opt/openslx/sbin
 # from plugins/vmchooser/XX_vmchooser.sh
 VMCHOOSER_DIR="/opt/openslx/vmchooser"
 VMCHOOSER_CONF_DIR="$VMCHOOSER_DIR/config"
-
-mkdir -p "${VMCHOOSER_DIR}/data/loopimg"
-mkdir -p "${VMCHOOSER_DIR}/fd-loop" -m 1777
-
-# mount a clean tempfs (bug in UnionFS prevents loopmount to work)
-grep -qE "unionfs |aufs " /proc/mounts && \
-	mount -n -o size=1500k -t tmpfs vm-loopimg "${VMCHOOSER_DIR}/data/loopimg"
-
-# create an empty floppy image of 1.44 MByte size
-dd "if=/dev/zero" "of=${VMCHOOSER_DIR}/data/loopimg/fd.img" count=2880 bs=512 2>/dev/null
-chmod 0777 "${VMCHOOSER_DIR}/data/loopimg/fd.img"
-
-# use dos formatter copied into stage3
-mkdosfs "${VMCHOOSER_DIR}/data/loopimg/fd.img"
-mount -n -t msdos -o loop,umask=000 "${VMCHOOSER_DIR}/data/loopimg/fd.img" "${VMCHOOSER_DIR}/fd-loop"
-
-#pvs integration    
-#if [ $vmchooser_pvs -ne 0 ]; then
-#	sed -i /usr/share/xsessions/default.desktop \
-#            -e "s,vmchooser$,vmchooser --pvs,"
-#fi
+DHCP_NAT_CONF="/opt/openslx/vmchooser/config/udhcpd-nat1.conf"
 
 # setup more scratch space for virtual machines, if configured
 mkdir -p /tmp/virt /var/log/samba /run/samba
@@ -110,10 +90,20 @@ fi
 
 # write mac
 if [ -n "$SLX_PXE_MAC" ]; then
-	echo "hostmacaddr=${SLX_PXE_MAC}" >> "${VMCHOOSER_CONF_DIR}/virtualization.conf"
+	hostmacaddr="${SLX_PXE_MAC}"
 else ## Fallback:
-	echo "hostmacaddr=$(ip a | grep ether | grep -o -E -i '([0-9a-f]{2}:){5}[0-9a-f]{2}' | head -n 1)" >> "${VMCHOOSER_CONF_DIR}/virtualization.conf"
+	hostmacaddr="$(ip a | grep ether | grep -o -E -i '([0-9a-f]{2}:){5}[0-9a-f]{2}' | head -n 1)"
 fi
+echo "hostmacaddr='$hostmacaddr'" >> "${VMCHOOSER_CONF_DIR}/virtualization.conf"
+# TODO: We should only generate the suffix here (last 3 octets) as the first 3 are
+# dependant on the virtualizer/emulator. Check if any run-virt.include still relies on
+# $macguestpart/$macaddr. If so, fix it to use its specific first 3 bytes
+# and append $macaddrssuffix
+macaddrprefix='00:50:56'
+macaddrsuffix="$(echo "$hostmacaddr" | awk -F ":" '{print "%VMID%:" $(NF-1) ":" $NF}' | tr '[a-z]' '[A-Z]')"
+echo "macaddrprefix='$macaddrprefix'" >> "${VMCHOOSER_CONF_DIR}/virtualization.conf"
+echo "macaddrsuffix='$macaddrsuffix'" >> "${VMCHOOSER_CONF_DIR}/virtualization.conf"
+
 # read in ip address
 echo "hostip=${SLX_PXE_CLIENT_IP}" >> "${VMCHOOSER_CONF_DIR}/virtualization.conf"
 # hostname
@@ -131,6 +121,11 @@ for floppy in $(dmesg|grep -i "Floppy drive"|sed "s,.*(s): ,,;s, is .*,,"); do
     echo "floppy_$j=/dev/${floppy}" >> "${VMCHOOSER_CONF_DIR}/virtualization.conf"
     j=$(expr $j + 1)
 done
+
+# Serial ports
+echo "serial_ports='$(dmesg | grep -Eo 'ttyS[0-9]+' | sed 's,^,/dev/,' | tr '\n' ' ')'" >> "${VMCHOOSER_CONF_DIR}/virtualization.conf"
+# Parallel ports
+modprobe parport_pc
 
 ################################################################################
 ### Setup VM networking
@@ -163,19 +158,27 @@ echo "1" >/proc/sys/net/ipv4/conf/br0/forwarding 2>/dev/null
 ### iptables -t nat -A POSTROUTING -o br0 -s 192.168.0.0/16 -j MASQUERADE
 
 for wait in 1 1 2 2 3 end; do
-	grep '^SLX_DNS' "/opt/openslx/config" > /dev/null && break
-	[ "$wait" == "end" ] && echo "No DNS config found, using google dns" && break
-	echo "Waiting for DNS config.."
+	[ -n "$SLX_DNS" ] && [ -n "$SLX_NET_SEARCH" ] && break
+	if [ "$wait" == "end" ]; then
+		echo "No DNS config found, using google dns"
+		break
+	fi
+	echo "Waiting for DNS & search-domain config.."
 	sleep "$wait"
+	. /opt/openslx/config
 done
 
 # read the DNS configuration and configure the udhcpd
-[ -z "${SLX_DNS}" ] && SLX_DNS="8.8.8.8"
-sed -i "s,DNSSERVER,${SLX_DNS},;s,DOMAIN,${SLX_NET_DOMAIN}," \
-  /opt/openslx/vmchooser/config/udhcpd-nat1.conf
+[ -z "${SLX_DNS}" ] && SLX_DNS="8.8.8.8 8.8.4.4"
+[ -z "${SLX_NET_DOMAIN}" ] && SLX_NET_DOMAIN="virtual.site"
+[ -z "${SLX_NET_SEARCH}" ] && SLX_NET_SEARCH="virtual.site"
+sed -i "s#%DNSSERVER%#${SLX_DNS}#;s#%DOMAIN%#${SLX_NET_DOMAIN}#;s#%SEARCH%#${SLX_NET_SEARCH}#" "${DHCP_NAT_CONF}"
+
+# Make sure the primary vm running (we most likely never run more than one at a time anyways) always gets the same ip
+echo "static_lease $(echo "$macaddrprefix:$macaddrsuffix" | sed 's/%VMID%/01/') 192.168.101.20" >> "${DHCP_NAT_CONF}"
 
 mkdir -p /var/lib/udhcpd
-udhcpd -S /opt/openslx/vmchooser/config/udhcpd-nat1.conf
+udhcpd -S "${DHCP_NAT_CONF}"
 
 # creating and configuring vsw2
 brctl addbr vsw2

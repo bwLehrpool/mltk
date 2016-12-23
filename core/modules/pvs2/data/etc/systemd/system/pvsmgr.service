@@ -1,0 +1,12 @@
+[Unit]
+Description=Fetch up to date pvsmgr config
+DefaultDependencies=no
+After=tmp.target
+Wants=tmp.target
+Before=graphical.target
+
+[Service]
+Type=oneshot
+ExecStart=/opt/openslx/scripts/systemd-pvsmgr
+RemainAfterExit=yes
+

@@ -22,8 +22,8 @@ REQUIRED_DIRECTORIES+="
 "
 # non-standard vars
 REQUIRED_SYSTEM_FILES+="	
-	/usr/share/kde4/apps/kdm/pics/shutdown.png
 	/usr/share/fonts/truetype/ttf-dejavu/DejaVuSans.ttf
+	/usr/share/kde4/apps/kdm/pics/shutdown.png
 	/usr/share/icons/default/index.theme
 "
 

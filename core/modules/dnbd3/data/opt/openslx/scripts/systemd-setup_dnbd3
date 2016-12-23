@@ -10,7 +10,7 @@ for i in /dev/dnbd*; do
 	echo 8192 > "/sys/block/dnbd${i#/dev/dnbd}/queue/nr_requests"
 done
 
-exec /opt/openslx/bin/dnbd3-client --daemon
+exec dnbd3-client --daemon
 slxlog "dnbd3-daemon" "Error launching dnbd3-client daemon"
 exit 1
 

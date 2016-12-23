@@ -1,0 +1,218 @@
+#!/bin/ash
+#
+# This script is to be called by PAM (specifically pam_exec).
+# We expect the username in the form: username@organisation
+# If it is in that form, we will query the masterserver for the list
+# of supported IdPs and if one matches the user's organisation
+# we will try to authenticate against it.
+
+# fix PATH as PAM clears it
+export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/openslx/sbin:/opt/openslx/bin"
+
+# grab the password from stdin asap, since there is no guarantee some tool just reads it
+unset USER_PASSWORD
+if [ "x$PAM_TYPE" == "xauth" ]; then
+	read -r USER_PASSWORD > /dev/null 2>&1
+	readonly USER_PASSWORD
+	[ -z "$USER_PASSWORD" ] && echo "No password given." && exit 1
+fi
+
+if ! busybox which curl || ! busybox which mktemp; then
+	echo "'curl/mktemp' missing. This script won't work without it."
+	exit 1
+fi
+
+# redirect stdout/stderr to temporary logfile
+readonly LOGFILE="$(mktemp)"
+# URL to query masterserver for IDPs
+readonly IDP_QUERY_URL="https://bwlp-masterserver.ruf.uni-freiburg.de/webif/pam.php"
+readonly IDP_QUERY_CACHE="/run/openslx/bwlp-idp"
+
+# everything in a subshell in an effort to hide sensitive information
+# from this script's environment
+(
+# redirect stdout and stderr to logfile
+exec > "${LOGFILE}" 2>&1
+
+# check if we are allowed to run
+. /opt/openslx/config
+if [ "x${SLX_BWIDM_AUTH}" = "xyes" ]; then
+	: # Allow everything
+elif [ "x${SLX_BWIDM_AUTH}" = "xselective"  ]; then
+	if [ -z "${SLX_BWIDM_ORGS}" ]; then
+		echo "bwIDM selective mode with empty org list - exiting"
+		exit 1
+	fi
+else
+	echo "bwIDM login disabled in openslx-config."
+	exit 1
+fi
+
+# sanity check on PAM_USER: contains '@'?
+if [ -z "$PAM_USER" ] || [ "x${PAM_USER}" == "x${PAM_USER%@*}" ]; then
+	# no @ contained, invalid username, abort
+	echo "Invalid username '$PAM_USER'. Aborting."
+	exit 1
+fi
+
+# valid username, we can already split it here
+readonly USER_USERNAME="${PAM_USER%@*}"
+readonly USER_ORGANISATION="${PAM_USER#*@}"
+[ -z "$USER_ORGANISATION" ] && echo "Could not parse organisation from given login: ${PAM_USER}. Aborting." && exit 1
+[ -z "$USER_USERNAME" ] && echo "Could not parse user from given login: ${PAM_USER}. Aborting." && exit 1
+
+# Check if we're in selective mode and if so, whether the user's organization is whitelisted
+if [ "x${SLX_BWIDM_AUTH}" = "xselective" ]; then
+	FOUND=
+	for org in ${SLX_BWIDM_ORGS}; do
+		if [ "x$org" = "x$USER_ORGANISATION" ]; then
+			FOUND=ya
+			break
+		fi
+	done
+	if [ -z "$FOUND" ]; then
+		echo "bwIDM organization $USER_ORGANISATION not in whitelist, abort"
+		exit 1
+	fi
+fi
+
+# The given username is valid. Now we get the list of IdPs from the bwlp masterserver
+# and try to find the user's organisation
+
+mkdir -p /run/openslx
+
+# check if we have a (non-zero bytes) cached copy of the list
+if [ ! -s "${IDP_QUERY_CACHE}" ]; then
+	idpret="$(curl -w "%{http_code}" -o "${IDP_QUERY_CACHE}" --connect-timeout 5 --max-time 15 "$IDP_QUERY_URL")"
+	if [ "x$idpret" != "x200" ]; then
+		echo "Could not download the list of identity providers from '$IDP_QUERY_URL'. Aborting."
+		rm -f -- "$IDP_QUERY_CACHE"
+		exit 7
+	fi
+fi
+# here we have the cache for sure, search for the given organisation's ECP URL
+USER_ECP_URL="$(awk -v idp="${USER_ORGANISATION}" -F '=' '{if($1==idp) print $2}' < "$IDP_QUERY_CACHE")"
+[ -z "$USER_ECP_URL" ] && echo "Could not determine ECP URL for '${USER_ORGANISATION}'" && exit 1
+
+# recap: here we have validated
+#	- username
+#	- organisation
+#	- ECP URL for that organisation
+
+# now create the bwidm group: find the first free GID from 1000 "downwards" to 100
+BWIDM_GROUP="$(getent group bwidm)"
+if [ -z "$BWIDM_GROUP" ]; then
+	BWIDM_GID=999
+	while [ "$BWIDM_GID" -gt 100 ]; do
+		getent group "$BWIDM_GID" || break
+		let BWIDM_GID--
+	done
+	if [ "$BWIDM_GID" -eq 100 ]; then
+		# use demo's gid as a fallback
+		readonly BWIDM_GID="$(id -g "demo")"
+		[ -z "$BWIDM_GID" ] && echo "Could not determine the GID of 'demo'. Cannot use it as fallback. Aborting." && exit 1
+	fi
+
+	# now create the group
+	if ! echo "bwidm:x:$BWIDM_GID:" >> /etc/group; then
+		echo "Could not create 'bwidm' group with gid '$BWIDM_GID'. Aborting."
+		exit 1
+	fi
+else
+	readonly BWIDM_GID="$(echo $BWIDM_GROUP | cut -d: -f3)"
+fi
+if [ -z "$BWIDM_GID" ]; then
+	echo "Could not determine BWIDM-GID. Aborting."
+	exit 1
+fi
+readonly USER_GID="$BWIDM_GID"
+
+# path to the SOAP envelope we are gonna need soon
+readonly SOAP_ENVELOPE="/opt/openslx/bwidm_soap.xml"
+[ ! -f "${SOAP_ENVELOPE}" ] && echo "Failed to find the SOAP envelope at '${SOAP_ENVELOPE}'. Aborting." && exit 1
+
+# now the pam-type specific part starts
+if [ "x$PAM_TYPE" == "xauth" ]; then
+	HA='Accept: text/html; application/vnd.paos+xml'
+	HP='PAOS: ver="urn:liberty:paos:2003-08";"urn:oasis:names:tc:SAML:2.0:profiles:SSO:ecp"'
+	CT='Content-Type: application/vnd.paos+xml; charset=utf-8'
+	NOW=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
+	HOST=$(echo "${USER_ECP_URL}" | awk -F '/' '{print $3}')
+	RID="_c${RANDOM}a${RANDOM}f${RANDOM}f${RANDOM}e${RANDOM}e${RANDOM}"
+	RID="${RID:0:32}"
+	REQUEST=$(sed "s/%TIMESTAMP%/${NOW}/g;s/%REQUESTID%/${RID}/g" "${SOAP_ENVELOPE}")
+	NETRC=$(mktemp -p /run/)
+	[ -z "$NETRC" ] && NETRC="/run/netrc_$$_${USER}_${RANDOM}.tmp"
+	touch "$NETRC"
+	chmod 0600 "$NETRC"
+	# now we are ready to actually send the credentials to the IdP
+	# to be sure everything is working as expected
+	# we will first send a wrong password and expect a 401
+	echo "machine ${HOST} login ${USER_USERNAME} password ___invalid-INVALID++~" > "${NETRC}"
+	ret=$(curl --connect-timeout 5 --max-time 15 -o /dev/null -w "%{http_code}" -d "${REQUEST}" -H "$CT" -H "$HP" -H "$HA" --basic --netrc-file "$NETRC" "$USER_ECP_URL")
+
+	if [ "x$ret" != "x401" ]; then
+		# this means something else is bad, just exit
+		echo "False authentication attempt did not return 401 as expected but: $ret"
+		rm -- "${NETRC}"
+		exit 7
+	fi
+	# the fake auth call behaved as expected, do the actualy login
+	echo "machine ${HOST} login ${USER_USERNAME} password ${USER_PASSWORD}" > "${NETRC}"
+	ret=$(curl --connect-timeout 5 --max-time 15 -o /dev/null -w "%{http_code}" -d "${REQUEST}" -H "$CT" -H "$HP" -H "$HA" --basic --netrc-file "$NETRC" "$USER_ECP_URL")
+	echo "machine ${HOST} login ${USER_USERNAME} password ********************" > "${NETRC}" # It should be a tmpfs but you never know
+	rm -- "${NETRC}"
+	
+	if [ "x$ret" == "x200" ]; then
+		# auth succeeded, lets create a local user representing the bwIDM user
+		echo "Login for '$USER_USERNAME' on '$USER_ORGANISATION' succeeded."
+		# create a random 6digit UID
+		LOOPS=0
+		while [ "$LOOPS" -lt 5 ]; do
+			USER_UID="$(( 100000 + $RANDOM ))"
+			# check existence of this UID, if its free, use it
+			getent passwd "$USER_UID" || break
+			let LOOPS++
+		done
+		if [ "$LOOPS" -eq 5 ]; then
+			# could not find an empty random 6-digit UID, so we will use demo's UID...
+			USER_UID="$(id -u demo)"
+			[ -z "$USER_UID" ] && echo "Could not use UID of 'demo' as a fallback, aborting..." && exit 1
+		fi
+
+		# we have a uid, gid, lets just create the local user now
+		if ! grep -q "^${PAM_USER}:" /etc/passwd; then
+			echo "${PAM_USER}:x:${USER_UID}:${USER_GID}:${PAM_USER}:/home/${PAM_USER}:/bin/bash" >> /etc/passwd
+		fi
+		exit 0
+	elif [ "x$ret" != "x401" ]; then
+		# not 200, not 401, some other kind of error occured, inform slx-admin
+		echo "Unexpected http response code for the login attempt: $ret"
+		exit 7
+	fi
+	exit 1
+fi
+
+if [ "x$PAM_TYPE" == "xaccount" ]; then
+	# the sanity checks we did before reacting to PAM_TYPE is enough to validate
+	# the given username as a valid bwIDM username
+	# ('@' contained and IdP found in the idp list fetched from the masterserver)
+	# so just "accept"
+	exit 0
+fi
+
+# script should never get to the following line
+echo "$0 called for unsupported PAM_TYPE '$PAM_TYPE'. Aborting."
+exit 1
+)
+## main script
+mainret=$?
+if [ "x$mainret" == "x7" ]; then
+	# exit code 7 is our marker to push the logfile to the sat
+	slxlog --delete "pam-bwidm" "Internal error during bwIDM authentication" "${LOGFILE}"
+	exit 1
+else
+	rm -- "${LOGFILE}"
+fi
+exit "${mainret}"
+

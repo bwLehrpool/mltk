@@ -375,7 +375,7 @@ process_module() {
 	mkdir -p "${TARGET_BUILD_DIR}/opt/openslx/.mltk"
 	if [ ! -d "${MODULE_DIR}" ]; then
 		if [ -z "$DEPOF" ]; then
-			perror "Module directory for '$MODULE' not found in ${TAREGET_DIR}"
+			perror "Module directory for '$MODULE' not found in ${TARGET_DIR}"
 		fi
 		perror "Module directory for '$MODULE' not found in ${TARGET_DIR} (is a dependency of${DEPOF})"
 		return
@@ -435,7 +435,7 @@ process_module() {
 	get_kernel_version
 	# Execute load-hook before anything else
 	module_load
-    cd "${MODULE_WORK_DIR}" || perror "cd to '${MODULE_WORK_DIR}' failed."
+	cd "${MODULE_WORK_DIR}" || perror "cd to '${MODULE_WORK_DIR}' failed."
 	# Fetch source code
 	if [ ! -e "$SOURCE_FLAG" ]; then
 		pinfo "## Fetching source"
@@ -498,7 +498,9 @@ clean_modules() {
 
 	TARGET=$1
 	shift
-	TARGET_DIR="$(target_path ${TARGET})"
+	# TODO: what was the idea of target path? presumably something to do with the 'overlays' folder?
+	#TARGET_DIR="$(target_path ${TARGET})"
+	TARGET_DIR="${CORE_DIR}/targets/${TARGET}"
 	TARGET_BUILD_DIR="${ROOT_DIR}/var/builds/${TARGET}"
 	[ -d $TARGET_DIR ] || perror "Given target directory does not exist: $TARGET_DIR"
 

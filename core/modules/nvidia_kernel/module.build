@@ -39,7 +39,7 @@ build() {
 	local NVIDIA_MODULES="$MODULE_BUILD_DIR/lib/modules/nvidia/"
 	mkdir -p "$NVIDIA_MODULES"
 	pinfo "Copying kernel modules..."
-	for file in nvidia.ko nvidia-uvm.ko nvidia-modeset.ko; do
+	for file in nvidia.ko nvidia-uvm.ko nvidia-modeset.ko nvidia-drm.ko; do
 		RESULT=$(find "$ROOTUPPERDIR/NVIDIA/kernel" -name "$file" | head -n 1)
 		[ -z "$RESULT" ] && perror "Could not find built module $file in ./NVIDIA/kernel"
 		pinfo "Fetching ${file}..."

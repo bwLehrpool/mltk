@@ -55,13 +55,28 @@ if [ ${#OUTPUTNAMES[@]} -eq 2 ]; then
 
   # Either of them a projector?
   BEAMER=
+  MAYBEAMER=
+  SMALL=
   for i in 0 1; do
-      WIDTH=$(grep -E "^${OUTPUTNAMES[$i]}.*[0-9]+mm x [0-9]+mm" <<<"$XRANDR" | head -n 1 | grep -o -E ' [0-9]+mm x' | grep -o -E '[0-9]+')
-      if [ -z "$WIDTH" ] || [ "$WIDTH" -eq 0 ] || [ "$WIDTH" -gt 900 ]; then
-        echo "Screen $i is beamer, width is '$WIDTH'"
-        BEAMER=$i
-      fi
+    WIDTH=$(grep -E "^${OUTPUTNAMES[$i]}.*[0-9]+mm x [0-9]+mm" <<<"$XRANDR" | head -n 1 | grep -o -E ' [0-9]+mm x' | grep -o -E '[0-9]+')
+    if [ -z "$WIDTH" ] || [ "$WIDTH" -eq 0 ] || [ "$WIDTH" -gt 900 ]; then
+      echo "Screen $i is beamer, width is '$WIDTH'"
+      BEAMER=$i
+    elif [ -n "$WIDTH" ] && [ "$WIDTH" -gt 700 ]; then
+      MAYBEAMER=$i
+    elif [ -n "$WIDTH" ] && [ "$WIDTH" -lt 550 ]; then
+      SMALL=yes
+    fi
   done
+  if [ -z "$BEAMER" ] && [ -n "$MAYBEAMER" ] && [ -n "$SMALL" ]; then
+    # This is a hack on top of the other hack; we already treat outputs reporting a sufficiently large width
+    # as beamers, as we have encountered such devices in the wild. However, we might have just a large TV connected
+    # that is intended to be used just like a beamer to present the screen to the audience. So if we have a screen
+    # that is at least 70cm wide and the other one is no wider than 55cm we treat this as a beamer setup aswell.
+    # The reasoning here is that if it were a dual screen setup, the screens should be roughly the same size.
+    echo "Treating $MAYBEAMER as beamer as size difference is big enough"
+    BEAMER=$MAYBEAMER
+  fi
   if [ -n "$BEAMER" ]; then
     echo "${OUTPUTNAMES[$BEAMER]} is a beamer. "
 
@@ -160,6 +175,6 @@ if [ ${#OUTPUTNAMES[@]} -eq 2 ]; then
     fi
   fi
 else
-  echo "\e[32mOther than two outputs.\e[0m"
+  echo -e "\e[32mOther than two outputs.\e[0m"
 fi
 

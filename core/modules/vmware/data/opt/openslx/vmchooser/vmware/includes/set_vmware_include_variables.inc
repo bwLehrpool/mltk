@@ -3,8 +3,6 @@
 #####################################################################
 
 set_vmware_include_variables() {
-	[ "$mem" -gt 3800 -a "$(uname -m)" != "x86_64" ] && mem=3800
-	
 	# temporary disk space for logs, etc...
 	redodir="/tmp/virt/vmware/${USER}.$$"
 	
@@ -13,9 +11,6 @@ set_vmware_include_variables() {
 	
 	# configfile
 	conffile="${confdir}/run-vmware.conf"
-	
-	# diskfile
-	diskfile="${vmpath}"
 	
 	# users vmware config folder
 	[ -z "${HOME}" ] && HOME=$(getent passwd "$(whoami)" | awk -F ':' '{print $6}')

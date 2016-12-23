@@ -1,4 +1,5 @@
 REQUIRED_INSTALLED_PACKAGES="
+	ttf-dejavu
 "
 REQUIRED_CONTENT_PACKAGES="	
 			xserver-xorg
@@ -33,8 +34,9 @@ REQUIRED_CONTENT_PACKAGES="
 			@xserver-xorg-video-geode
 			@xserver-xorg-video-s3
 			@xserver-xorg-video-tdfx
+			ttf-dejavu
 "
 REQUIRED_DIRECTORIES+="
-			/usr/lib 
+			/usr/lib
 "
 REQUIRED_FILES=""

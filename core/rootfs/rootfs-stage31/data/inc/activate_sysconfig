@@ -66,10 +66,15 @@ HEREEND
 	cd "${TEMP_EXTRACT_DIR}"
 	# first we look for local config.tgz files, which we merge with the common
 	# config.tgz files
-	local LOCAL_CONFIG_DIR="openslx-configs/${SLX_LOCAL_CONFIG}"
-	if [ -n "${SLX_LOCAL_CONFIG}" -a -d "${LOCAL_CONFIG_DIR}" ]; then
-		tarcopy "${LOCAL_CONFIG_DIR}" "${TEMP_EXTRACT_DIR}"
-		echo "Merged local configuration files for '${SLX_LOCAL_CONFIG}'"
+	if [ -n "${SLX_LOCAL_CONFIG}" ]; then
+		local MOD
+		for MOD in ${SLX_LOCAL_CONFIG}; do
+			local LOCAL_CONFIG_DIR="openslx-configs/${MOD}"
+			if [ -d "${LOCAL_CONFIG_DIR}" ]; then
+				tarcopy "${LOCAL_CONFIG_DIR}" "${TEMP_EXTRACT_DIR}"
+				echo "Merged local configuration files for '${MOD}'"
+			fi
+		done
 	fi
 	# purge openslx-configs/*
 	rm -rf -- "openslx-configs/"
@@ -91,6 +96,17 @@ HEREEND
 #
 
 fetch_sysconfig || drop_shell "Could not download remote config"
+if ! ash -n "${CONFIG}-remote"; then
+	echo -e "\n\tFATAL: Could not download configuration!"
+	echo -e "\tAborting boot since the system would be in an unusable state."
+	echo -en "\tRebooting in 60 seconds"
+	timeout=60
+	while [ $(( timeout-- )) -gt 0 ]; do
+		echo -n "."
+		sleep 1
+	done
+	echo b > /proc/sysrq-trigger
+fi
 . "${CONFIG}-remote" || drop_shell "Could not source remote config"
 fetch_config_files || drop_shell "Could not download config.tgz"
 update_sysconfig || drop_shell "Could not update sysconfig"

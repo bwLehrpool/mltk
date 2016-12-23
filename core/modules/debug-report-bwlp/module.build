@@ -1,0 +1,23 @@
+fetch_source() {
+	:
+}
+
+build() {
+
+	for BIN in $REQUIRED_BINARIES; do
+		OPT="${BIN:0:1}"
+		[[ "$BIN" == @* ]] && BIN=$(echo "$BIN" | cut -c 2-)
+		BIN_LOCATION=$(which ${BIN})
+		if [ ! -z ${BIN_LOCATION} -a -e ${BIN_LOCATION} ]; then
+			tarcopy "$(get_link_chain ${BIN_LOCATION})" "${MODULE_BUILD_DIR}"
+		elif [ "$OPT" != "@" ]; then
+			perror "'${BIN}' not found on system."
+		else
+			pwarning "'${BIN}' not found on the system."
+		fi
+	done
+}
+
+post_copy() {
+	:
+}

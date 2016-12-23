@@ -11,10 +11,14 @@
 # -----------------------------------------------------------------------------
 # Include file (general template) for run-virt.include of the virtualbox plugin
 
+# TODO: Move this server side (just like vmware)
+# !! A lot of variable names have changed and are NOT updated here !!
+# Oh and for the love of god remove the above comment when this works again
+
 cat << EOF > "${machconfig}"
 <?xml version="1.0"?>
 <VirtualBox xmlns="http://www.innotek.de/VirtualBox-settings" version="1.14-linux">
-  <Machine uuid="{${machineuuid}}" name="${vm_name}" OSType="${vmostype}">
+  <Machine uuid="{${machineuuid}}" name="${VM_DISPLAYNAME}" OSType="${VM_OS_TYPE}">
     <MediaRegistry>
       <HardDisks>
         <HardDisk uuid="{${diskuuid}}" location="${diskfile}" format="${imgfmt}" type="${imgtype}"/>

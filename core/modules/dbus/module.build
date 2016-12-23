@@ -7,10 +7,10 @@ fetch_source() {
 build() {
 	COPYLIST="list_dpkg_output"
 	[ -e "${COPYLIST}" ] && rm "${COPYLIST}"
-	
+
 	list_packet_files >> "${COPYLIST}"
 	tarcopy "$(cat "${COPYLIST}" | sort -u)" "${MODULE_BUILD_DIR}"
-	
+
 	# Generate systemd files
 	mkdir -p "$MODULE_BUILD_DIR/etc/systemd/system"
 	# This is ugly, as the command line arguments changed over time. Try to do the right thing (whatever that is)

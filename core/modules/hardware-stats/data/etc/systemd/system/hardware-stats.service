@@ -1,7 +1,7 @@
 [Unit]
 Description=Gather statistics about this machine and send to boot server
 DefaultDependencies=no
-After=tmp.target multi-user.target
+After=tmp.target
 Wants=tmp.target
 
 [Service]

@@ -8,6 +8,31 @@
 export LANG=C
 export LC_ALL=C
 
+mktemp() {
+	/bin/mktemp && return 0
+	/opt/openslx/bin/mktemp && return 0
+	local FN DIR
+	for DIR in "tmp" "tmp" "tmp" "run/user/$UID" "run"; do
+		FN="/${DIR}/${RANDOM}-${$}-${UID}-$(date +%N)"
+		[ -e "$FN" ] && continue
+		touch "$FN" || continue
+		chmod 0600 "$FN" || continue
+		echo "$FN"
+		return 0
+	done
+}
+
+fdisk() {
+	local binary RET
+	for binary in "/opt/openslx/sbin/fdisk" "busybox fdisk" "fdisk"; do
+		$binary "$@"
+		RET=$?
+		[ "$RET" = "127" ] && continue # command not found
+		return $RET
+	done
+	return 127
+}
+
 if [ -z "$SLX_REMOTE_LOG" ]; then
 	echo "No remote log url given, will not report"
 	exit 1
@@ -25,10 +50,8 @@ if [ "${#BOOTIF}" -ne "20" ]; then
 fi
 MAC=${BOOTIF:3}
 
-which dmidecode || sleep 5
-
 # 2) Get machine UUID, with fallback to MAC address if it fails for some reason
-UUID=$(dmidecode -s system-uuid)
+UUID=$(dmidecode -q -s system-uuid | grep -v '^#' | head -n 1)
 if [ "${#UUID}" -ne "36" ]; then
 	echo "Determined UUID (${UUID}) has not expected length of 36, falling back to MAC..."
 	UUID="000000000000000-$BOOTIF"
@@ -37,7 +60,10 @@ fi
 # 3) Uptime in seconds
 UPTIME=$(grep -o -E '^[0-9]+' /proc/uptime)
 
-# 4) Number of real CPU cores
+# 4) Number of real and virtual CPU cores
+# Virtual, cheap way
+VCORES=$(grep '^processor\s' /proc/cpuinfo | sort -u | wc -l)
+# Real cores
 CPUCORES=$(cat /sys/devices/system/cpu/cpu*/topology/thread_siblings_list | sort -u | wc -l)
 # Fallback 1...
 if [ -z "$CPUCORES" ] || [ "$CPUCORES" = "0" ]; then
@@ -54,7 +80,7 @@ fi
 CPUMODEL=$(grep -m1 '^model name\s*:' /proc/cpuinfo | sed 's/^model name\s*:\s*//;s/\s\s*/ /g;s/^ //;s/ $//')
 
 # 6) RAM
-RAM=$(grep '^MemTotal:' /proc/meminfo | awk '{print $2}')
+RAM=$(grep -m1 '^MemTotal:' /proc/meminfo | awk '{print $2}')
 RAM=$(( $RAM / 1024 ))
 if [ -z "$RAM" ] || [ "$RAM" -lt 500 ]; then
 	# Fallback to dmidecode
@@ -92,20 +118,32 @@ fi
 
 # 8) ID44 partition size
 ID44=0
-for c in $(fdisk -l | grep -E '[0-9]+[\-\+]?\s+44\s+' | awk '{print $1}'); do
-	val=$(blockdev --getsize64 "$c")
-	[ -z "$val" ] && continue
-	[ "$val" -gt "$ID44" ] && ID44=$val
-done
-ID44=$(( $ID44 / 1058576 )) # we'd rather underreport
+# Try df first, make sure device starts with /dev
+read -r df_dev df_size df_used df_avail df_usepercent df_mountpoint df_crap < <(df /tmp | grep ' /tmp$')
+if [ -n "${df_size}" ] && [ "${df_dev:0:5}" = "/dev/" ]; then
+	# df reports kbytes, convert to MB
+	ID44=$(( df_size / 1024 ))
+fi
+if [ "$ID44" = 0 ]; then
+	# fdisk fallback
+	for c in $(fdisk -l | grep -E '[0-9]+[\-\+]?\s+44\s+' | awk '{print $1}'); do
+		val=$(blockdev --getsize64 "$c")
+		[ -z "$val" ] && continue
+		[ "$val" -gt "$ID44" ] && ID44=$val
+	done
+	# blockdev reports bytes, convert to MB
+	ID44=$(( $ID44 / 1058576 )) # we'd rather underreport
+fi
 
 # 9) check smart values
+FDISK=$(mktemp)
+fdisk -l > "$FDISK"
 BADSECTORS=0
 if which smartctl; then
 	ALLSMART=$(mktemp)
 	FILE=$(mktemp)
 	[ -z "$FILE" ] && FILE="/tmp/smartctl.$$.$RANDOM.$RANDOM"
-	for dev in $(fdisk -l | grep -o '^Disk /dev/\S*:' | cut -c 6-); do
+	for dev in $(cat "$FDISK" | grep -o '^Disk /dev/\S*:' | cut -c 6-); do
 		dev=${dev:0:-1}
 		smartctl -i -H -A -f "brief" "$dev" > "$FILE" || continue
 		echo "NEXTHDD=$dev" >> "$ALLSMART"
@@ -129,37 +167,38 @@ fi
 
 # A) Read system model and manufacturer
 dmidec() {
-	local MODEL=$(dmidecode "$@" | sed 's/\s\s*/ /g;s/^ //;s/ $//')
-	case "$MODEL" in
+	local RETVAL=$(dmidecode "$@" 2>/dev/null | grep -v '^#' | grep -v '^Invalid' | sed 's/\s\s*/ /g;s/^ //;s/ $//')
+	case "$RETVAL" in
 		""|*"Product Name"*|*"be filled"*|"unknown"|*"product name"*)
-			MODEL="Unknown"
+			RETVAL="Unknown"
 			;;
 	esac
-	echo "$MODEL"
+	echo "$RETVAL"
 }
-MODEL=$(dmidec -s system-product-name)
-MANUF=$(dmidec -s system-manufacturer)
+
+HW_MODEL=$(dmidec -q -s system-product-name)
+HW_MANUF=$(dmidec -q -s system-manufacturer)
 # Try fallback to baseboard
-if [ "$MODEL" = "Unknown" ]; then
-	MODEL=$(dmidec -s baseboard-product-name)
-	MANUF=$(dmidec -s baseboard-manufacturer)
+if [ "$HW_MODEL" = "Unknown" ]; then
+	HW_MODEL=$(dmidec -q -s baseboard-product-name)
+	HW_MANUF=$(dmidec -q -s baseboard-manufacturer)
 fi
 
-if [ "$MANUF" != "Unknown" ]; then
-	MODEL="$MODEL ($MANUF)"
+MODEL="$HW_MODEL"
+if [ "$HW_MANUF" != "Unknown" ]; then
+	MODEL="$MODEL ($HW_MANUF)"
 fi
 
 # n) Dump raw data to a file
 DATAFILE=$(mktemp)
-[ -z "$DATAFILE" ] && DATAFILE="/root/power-stats.$$"
 cat > "$DATAFILE" <<-EOF
 ############################### CPU #####################################
 Sockets:       $(grep '^physical id' /proc/cpuinfo | sort -u | wc -l)
 Real cores:    $CPUCORES
-Virtual cores: $(grep '^processor' /proc/cpuinfo | sort -u | wc -l)
+Virtual cores: $VCORES
 ######################## Partition tables ###############################
 EOF
-fdisk -l >> "$DATAFILE"
+cat "$FDISK" >> "$DATAFILE"
 cat >> "$DATAFILE" <<-EOF
 ############################ PCI ID #####################################
 EOF
@@ -179,6 +218,27 @@ cat >> "$DATAFILE" <<-EOF
 EOF
 
 [ -n "$ALLSMART" ] && rm -f -- "$ALLSMART"
+
+# Put some info in local file for later use
+HDDCOUNT=0
+for size in $(cat "$FDISK" | grep -E '^Disk /dev.*[0-9]{11,} bytes' | grep -o -E '[0-9]{11,}'); do
+	[ "$size" -gt 50000000000 ] && HDDCOUNT=$(( HDDCOUNT + 1 ))
+done
+bashesc () {
+	sed s/\'/\'\"\'\"\'/g <<<$*
+}
+HW_MANUF=$(bashesc "$HW_MANUF")
+HW_MODEL=$(bashesc "$HW_MODEL")
+cat > "/run/hwinfo" <<HORST
+HW_KVM='${VT}'
+HW_ID44='${ID44}'
+HW_MBRAM='${RAM}'
+HW_HDDCOUNT='${HDDCOUNT}'
+HW_MANUF='${HW_MANUF}'
+HW_MODEL='${HW_MODEL}'
+HW_CORES='${CPUCORES}'
+HW_THREADS='${VCORES}'
+HORST
 
 # Fire away
 for DELAY in 1 1 0; do

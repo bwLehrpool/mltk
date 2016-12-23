@@ -18,7 +18,7 @@ build() {
 	fi
 
 	# Put everything we build or get from the system in build dir
-	local FILELIST="$MODULE_WORK_DIR/list_copy_build"
+	local FILELIST="${MODULE_WORK_DIR}/list_copy_build"
 	rm -f "$FILELIST"
 
 	# Copy required directories from source system to build dir

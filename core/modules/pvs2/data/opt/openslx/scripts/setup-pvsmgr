@@ -1,4 +1,30 @@
 #!/bin/ash
 
+. /opt/openslx/config
+
+# Try to get fresh version from server
+CONF=
+if [ -n "$SLX_PVS_CONFIG_URL" ]; then
+	DST="$(mktemp)"
+	wget -T 5 -O "${DST}" "$SLX_PVS_CONFIG_URL"
+	[ -s "${DST}" ] && CONF="--config=${DST}"
+fi
+
 openbox &
-exec /opt/openslx/bin/pvsmgr
+
+timediff=5
+counter=0
+
+while [ $timediff -gt 3 ]; do
+	start="$(date +%s)"
+	/opt/openslx/bin/pvsmgr "$CONF" "$@"
+	ret=$?
+	[ "$ret" == "0" ] && break
+	end="$(date +%s)"
+	timediff=$(( end - start ))
+	counter=$(( counter + 1 ))
+	[ $counter -gt 8 ] && break
+done
+
+exit $ret
+

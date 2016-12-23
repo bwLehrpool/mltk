@@ -118,12 +118,13 @@ mount_share() {
 
 	# check for failures
 	if [ -e "${SIGNAL}" ]; then
-	slxlog "pam-share-mount" "Mount of '${SHARE_PATH}' to '${TARGET_DIR}' failed. (Args: ${MOUNT_OPTS}" "${MOUNT_OUTPUT}"
-	rm -f -- "${SIGNAL}"
+		slxlog --delete "pam-share-mount" "Mount of '${SHARE_PATH}' to '${TARGET_DIR}' failed. (Args: '${MOUNT_OPTS}')" "${MOUNT_OUTPUT}"
+		rm -f -- "${SIGNAL}"
 	elif kill -9 "${MOUNT_PID}" 2>/dev/null; then
-	slxlog "pam-share-mount" "Mount of '${SHARE_PATH}' to '${TARGET_DIR}' timed out. (Args: ${MOUNT_OPTS}" "${MOUNT_OUTPUT}"
+		slxlog --delete "pam-share-mount" "Mount of '${SHARE_PATH}' to '${TARGET_DIR}' timed out. (Args: '${MOUNT_OPTS}')" "${MOUNT_OUTPUT}"
+	else
+		rm -f -- "${MOUNT_OUTPUT}"
 	fi
-	( sleep 2; rm -f -- "${MOUNT_OUTPUT}" ) &
 
 	# always unset credentials
 	unset USER

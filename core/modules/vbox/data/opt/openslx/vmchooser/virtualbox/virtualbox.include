@@ -11,7 +11,7 @@
 # -----------------------------------------------------------------------------
 # Include file (general template) for run-virt.include of the virtualbox plugin
 
-cat << EOF > "${confdir}/VirtualBox.xml"
+cat << EOF > "${VBOX_ROOT}/VirtualBox.xml"
 <VirtualBox xmlns="http://www.innotek.de/VirtualBox-settings" version="1.12-linux">
   <Global>
     <ExtraData>
@@ -27,7 +27,7 @@ cat << EOF > "${confdir}/VirtualBox.xml"
       <ExtraDataItem name="GUI/TrayIcon/Enabled" value="false"/>
     </ExtraData>
     <MachineRegistry>
-      <MachineEntry uuid="{${machineuuid}}" src="Machines/${vm_shortname}/${vm_shortname}.xml"/>
+      <MachineEntry uuid="{${machineuuid}}" src="Machines/${VM_NAME_CLEAN}/${VM_NAME_CLEAN}.xml"/>
     </MachineRegistry>
     <MediaRegistry>
       <HardDisks>

@@ -58,11 +58,9 @@ if [ $SPLASH -eq 1 ]; then
 	fi
 fi
 
-# Kinda specific for virtualization environment: Autologin and run VM for benchmarks
-if [ -n "$SLX_BENCHMARK_VM" ]; then
+# Auto login to demo user requested?
+if [ -n "$SLX_AUTOLOGIN" ]; then
 	# Enable KDM autologin for demo user
 	sed -i 's/^AutoLoginUser=.*//;s/^AutoLoginEnable=.*/AutoLoginEnable=true\nAutoLoginUser=demo/' "${FUTURE_ROOT}/etc/kde4/kdm/kdmrc"
-	# Running the VM automatically has to be taken care of by run-virt and vmchooser. SLX_BENCHMARK_VM should contain
-	# a numeric value for the index in vmchooser
 fi
 

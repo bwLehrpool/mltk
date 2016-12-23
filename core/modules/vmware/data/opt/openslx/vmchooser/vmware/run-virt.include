@@ -20,7 +20,7 @@
 ################################################################################
 
 VMWAREINCLUDEDIR=/opt/openslx/vmchooser/vmware/includes
-vmostype=$(rv_clean_string "$vmostype")
+VM_OS_TYPE=$(rv_clean_string "$VM_OS_TYPE")
 
 # declaration of default variables for vmware
 source "${VMWAREINCLUDEDIR}/set_vmware_include_variables.inc" && set_vmware_include_variables
@@ -33,39 +33,23 @@ vmw_cap_hw_version() {
 	[ "$1" -lt "$maxhardwareversion" ] && maxhardwareversion="$1"
 }
 
-if [ "$LEGACY" ]; then
-	# hardware checks
-	source "${VMWAREINCLUDEDIR}/set_hardware_legacy.inc" && set_hardware_legacy
-	# write configuration files
-	# write_config_files calls:
-	#	set_vmhome_preferences_header
-	#	set_vmware_startup_file
-	source "${VMWAREINCLUDEDIR}/write_config_files_legacy.inc" && write_config_files_legacy
-else
-	# write configuration files
-	source "${VMWAREINCLUDEDIR}/write_config_files.inc"
+# get information from downloaded vmx
+source "${VMWAREINCLUDEDIR}/parse_vmx.inc"
 
-	# parse the given vmx file
-	source "${VMWAREINCLUDEDIR}/parse_vmx.inc"
-fi
+# determine limitations wrt RAM and CPU count of VM
+source "${VMWAREINCLUDEDIR}/determine_hardware_limitations.inc"
 
-# logging and stdout
-# needs writelog() from vmchooser-run_virt
-source "${VMWAREINCLUDEDIR}/logging.inc" && logging
+# create file and directory structure for vmware setup
+source "${VMWAREINCLUDEDIR}/create_static_directory_structure.inc"
 
-# Apply $maxhardwareversion to final VMX
-HWVER=$(grep -i '^virtualHW.version *= *' "$conffile" | head -n 1 | awk -F '=' '{print $2}' | sed -r 's/[^0-9]//g')
-if [ -n "$HWVER" ] && [ "$HWVER" -gt "$maxhardwareversion" ]; then
-	writelog "Hardware version capped to $maxhardwareversion (was $HWVER)"
-	sed -i 's/^virtualHW\.version.*$/virtualHW.version = "'$maxhardwareversion'"/I' "$conffile"
-fi
+# create preferences file ${vmhome}/preferences
+source "${VMWAREINCLUDEDIR}/create_vmhome_preferences_file.inc" && create_vmhome_preferences_file
 
-# See if there are any USB devices connected that we want to pass through immediately
-get_usb_devices 'usb.autoConnect.deviceXXXXX = "0x%VENDOR%:0x%PRODUCT%"' \
-	| sed -r 's/0x0+/0x/g' \
-	| awk '{sub(/XXXXX/,NR-1)}1' \
-	>> "$conffile"
+# parse the given vmx file
+source "${VMWAREINCLUDEDIR}/write_final_vmx.inc"
 
+# print summary - needs writelog() from vmchooser-run_virt
+source "${VMWAREINCLUDEDIR}/log_config_summary.inc"
 
 # For debugging
 cp "$conffile" "/tmp/vmware-last-config"

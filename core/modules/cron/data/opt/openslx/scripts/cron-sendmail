@@ -10,16 +10,14 @@ if [ "x$SLX_CRON_MAIL" = "xslxlog" ]; then
 	SUBJ=$(grep '^Subject: .*$' "$TMP" | cut -c 10-)
 
 	if [ -n "$SUBJ" ]; then
-		slxlog "cron" "$SUBJ" "$TMP"
+		slxlog --delete "cron" "$SUBJ" "$TMP"
 	fi
-
-	rm -f -- "$TMP"
 elif [ -n "$SLX_CRON_MAIL" ] && [ -x "$SLX_CRON_MAIL" ]; then
 	# see if SLX_CRON_MAIL is a valid binary and use that
-	$SLX_CRON_MAIL $@
+	$SLX_CRON_MAIL "$@"
 elif which sendmail 2> /dev/null; then
 	# fallback to sendmail
-	sendmail $@
+	sendmail "$@"
 elif which logger 2> /dev/null; then
 	# nothing worked, write to syslog if logger is present
 	TMP=$(mktemp /tmp/cron.XXXXXXXX)

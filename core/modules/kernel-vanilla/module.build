@@ -4,21 +4,22 @@
 get_kernel_version() {
 	# Do not use MODULE_DIR here as this function might run when we process another module!
 	[ -n "${TARGET_KERNEL_LONG}" ] && return 0
-	[ ! -e "${TARGET_DIR}/kernel/ksrc/include/generated/utsrelease.h" ] && return 0
+	[ ! -e "${ROOT_DIR}/tmp/work/kernel/ksrc/include/generated/utsrelease.h" ] && pinfo "No UTS information" && return 0
 	# determine kernel version that will be running in the generated system
 
 	# declare kernel version stuff
-	declare -rg TARGET_KERNEL_LONG=$(grep 'UTS_RELEASE' "${TARGET_DIR}/kernel/ksrc/include/generated/utsrelease.h" | awk -F '"' '{print $2}')
+	declare -rg TARGET_KERNEL_LONG=$(grep 'UTS_RELEASE' "${ROOT_DIR}/tmp/work/kernel/ksrc/include/generated/utsrelease.h" | awk -F '"' '{print $2}')
 	declare -rg TARGET_KERNEL_SHORT=$(echo "$TARGET_KERNEL_LONG" | grep -o -E '^[0-9\.]+')
 
 	# declare path to kernel headers and modules/firmware
-	declare -rg KERNEL_HEADERS_DIR="${TARGET_DIR}/kernel/ksrc"
-	declare -rg KERNEL_BASE_DIR="${TARGET_DIR}/kernel/build"
+	declare -rg KERNEL_HEADERS_DIR="${ROOT_DIR}/tmp/work/kernel/ksrc"
+	declare -rg KERNEL_BASE_DIR="${ROOT_DIR}/tmp/work/kernel/build"
 
 	# print debug info
 	pinfo "TARGET_KERNEL_LONG: '$TARGET_KERNEL_LONG'"
 	pinfo "TARGET_KERNEL_SHORT: '$TARGET_KERNEL_SHORT'"
 	pdebug "KERNEL_BASE_DIR: '$KERNEL_BASE_DIR'"
+	pdebug "KERNEL_HEADERS_DIR: '$KERNEL_HEADERS_DIR'"
 }
 
 fetch_source() {
@@ -123,7 +124,7 @@ patch_aufs() {
 	local KERNEL_MAJOR=${REQUIRED_KERNEL%%.*}
 	local AUFS="aufs${KERNEL_MAJOR}"
 	pinfo "Cloning ${AUFS} standalone git"
-	cd "$MODULE_WORK_DIR"
+	cd "${MODULE_WORK_DIR}"
 	[ -d "${AUFS}-standalone/.git" ] && rm -rf "${AUFS}-standalone"		# if already there, kill it.
 	# git: --depth 1 won't work here due to later "checkout origin/branch"
 	if [ "$KERNEL_MAJOR" = "3" ]; then
@@ -135,7 +136,7 @@ patch_aufs() {
 	[ -n "${SYSTEM_KERNEL_LONG}" ] && local NEEDED_BRANCH=$(echo $REQUIRED_KERNEL | awk -F "." '{print $1"."$2}') \
 				|| perror "REQUIRED_KERNEL not set, this should not happen!"
 	pinfo "Getting branch origin/$NEEDED_BRANCH"
-	cd "$MODULE_WORK_DIR/${AUFS}-standalone" || perror "Could not CD to ${AUFS}-standalone"
+	cd "${MODULE_WORK_DIR}/${AUFS}-standalone" || perror "Could not CD to ${AUFS}-standalone"
 	git checkout "origin/aufs$NEEDED_BRANCH" || git checkout "origin/aufs4.x-rcN" || perror "Could not checkout needed branch."
 	pinfo "Starting to patch... $NEEDED_BRANCH"
 	tarcopy "Documentation fs" "$MODULE_WORK_DIR/ksrc"
@@ -160,6 +161,5 @@ patch_aufs() {
 	done
 	pinfo "Patched kernel source with aufs-${NEEDED_BRANCH}"
 	cd "$MODULE_WORK_DIR"
-
 }
 

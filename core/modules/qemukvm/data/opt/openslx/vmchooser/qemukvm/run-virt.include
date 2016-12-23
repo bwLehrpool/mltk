@@ -44,16 +44,16 @@ mkdir -m 1777 -p ${QKTMPDIR} 2>/dev/null
 diskfile=${vmpath}
 
 # check the file type
-if echo ${imgname} | grep -iE "img|qcow|vmdk" >/dev/null 2>&1; then
-  imgtype=$(echo ${imgname##*.} | tr "[a-z]" "[A-Z]")
+if echo ${IMG_BASENAME} | grep -iE "img|qcow|vmdk" >/dev/null 2>&1; then
+  imgtype=$(echo ${IMG_BASENAME##*.} | tr "[a-z]" "[A-Z]")
 else
-  writelog "${imgname} is not a valid image type (img|qcow*|vmdk), exiting!"
+  writelog "${IMG_BASENAME} is not a valid image type (img|qcow*|vmdk), exiting!"
   exit 1
 fi
 
 # set the emulator/virtualization options for various operating systems
 sound="es1370"
-case "${vmostype}" in
+case "${VM_OS_TYPE}" in
   beos*)
     VIRTCMDOPTS="qemu-system-i386 -machine accel=tcg"
     sound="sb16"
@@ -91,8 +91,8 @@ esac
 #VIRTCMDOPTS="${VIRTCMDOPTS} -alt-grab"
 
 # display name, remove blanks because of cmdline problems
-displayname=$(echo ${displayname} | sed -e "s, ,-,g;s,(,[,g;s,),],g")
-VIRTCMDOPTS="${VIRTCMDOPTS} -name ${displayname}"
+VM_DISPLAYNAME=$(echo ${VM_DISPLAYNAME} | sed -e "s, ,-,g;s,(,[,g;s,),],g")
+VIRTCMDOPTS="${VIRTCMDOPTS} -name ${VM_DISPLAYNAME}"
 
 writelog "Directories:"
 writelog "\tTMPDIR:\t\t\t$QKTMPDIR"

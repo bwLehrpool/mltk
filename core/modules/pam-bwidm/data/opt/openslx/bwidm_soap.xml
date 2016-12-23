@@ -1,0 +1,14 @@
+<S:Envelope xmlns:S="http://schemas.xmlsoap.org/soap/envelope/">
+  <S:Body>
+    <samlp:AuthnRequest 
+        xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol"
+        AssertionConsumerServiceURL="https://bwlp-masterserver.ruf.uni-freiburg.de/Shibboleth.sso/SAML2/ECP"
+        ID="%REQUESTID%"
+        IssueInstant="%TIMESTAMP%"
+        ProtocolBinding="urn:oasis:names:tc:SAML:2.0:bindings:PAOS"
+        Version="2.0">
+      <saml:Issuer xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion">https://bwlp-masterserver.ruf.uni-freiburg.de/shibboleth</saml:Issuer>
+      <samlp:NameIDPolicy AllowCreate="1"/>
+    </samlp:AuthnRequest>
+  </S:Body>
+</S:Envelope>

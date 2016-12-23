@@ -1,0 +1,25 @@
+#!/bin/ash
+
+timediff=5
+counter=0
+
+. /opt/openslx/config
+EXAM=
+if [ -n "$SLX_EXAM" ]; then
+	EXAM="--exam-mode"
+fi
+
+while [ $timediff -gt 3 ]; do
+	start="$(date +%s)"
+	pvsclient $EXAM "$@"
+	ret=$?
+	end="$(date +%s)"
+	/opt/openslx/pvs2/kb-unlock.sh
+	[ "$ret" == "0" ] && break
+	timediff=$(( end - start ))
+	counter=$(( counter + 1 ))
+	[ $counter -gt 8 ] && break
+done
+
+exit $ret
+

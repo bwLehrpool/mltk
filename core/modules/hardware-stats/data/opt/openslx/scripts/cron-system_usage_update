@@ -10,16 +10,76 @@ UUID=$(cat "/run/system-uuid")
 [ -z "$UUID" ] && exit 1
 
 USED=0
+Name=
 
 for SESSION in $(loginctl | awk '{print $1}'); do
 	unset Display Remote State
-	eval $(loginctl -p Display -p Remote -p State -p Class show-session "$SESSION")
-	if [ -n "$Display" ] && [ "$Remote" = "no" ] && [ "$State" = "active" ] && [ "$Class" = "user" ]; then
-		USED=1
-		break;
+	eval $(loginctl -p Display -p Remote -p State -p Class -p Name show-session "$SESSION")
+	if [ "$Display" = ":0" ] && [ "$Remote" = "no" ] && [ "$State" = "active" -o "$State" = "online" ] && [ "$Class" = "user" ]; then
+		USED=1 # We only consider sessions on the primary display, which should always be the case
+		break
 	fi
 done
 
+# Also report usage of /tmp and swap
+TMP=$(df -P /tmp | grep -m1 ' /tmp$')
+TMP_SIZE=$(echo $TMP | awk '{print $2}')
+TMP_FREE=$(echo $TMP | awk '{print $4}')
+SWAP_FREE=$(grep -m1 ^SwapFree: /proc/meminfo | awk '{print $2}')
+
 curl -s --data-urlencode "type=~runstate" --data-urlencode "uuid=$UUID" --data-urlencode "used=$USED" \
-	"$SLX_REMOTE_LOG" > /dev/null 2>&1
+	--data-urlencode "user=$Name" --data-urlencode "tmpsize=$TMP_SIZE" --data-urlencode "tmpfree=$TMP_FREE" \
+	--data-urlencode "swapfree=$SWAP_FREE" "$SLX_REMOTE_LOG" > /dev/null 2>&1
+
+# Warn user if tmp or swap usage is high; system might crash soon
+WARN=
+if [ "$SWAP_FREE" -gt 0 ] && [ "$SWAP_FREE" -lt 500000 ]; then # less than 500MB swap
+	WARN="$WARN
+Der Arbeitsspeicher des Computers ist fast voll.
+The computer is running out of RAM."
+fi
+if [ -n "$TMP_FREE" ] && [ "$TMP_FREE" -lt 500000 ]; then
+	WARN="$WARN
+Es verbleibt wenig temporärer Speicher für die Arbeitsdaten der laufenden VM.
+Little temporary storage is left for the current VM."
+fi
+
+if [ -n "$WARN" ]; then
+	WARN="$WARN
+
+Bitte sichern Sie Ihre Arbeit und starten Sie den PC neu.
+Please save your work and reboot this machine.
+
+Sie können einen bwLehrpool-Admin bitten, eine größere ID-44-Partition einzurichten.
+You could ask a bwLehrpool administrator to create a larger ID-44 partition."
+		for d in $(who | awk '{print $2}' | sort -u); do
+			if [ "${d:0:1}" = ":" ]; then
+				# X11
+				export DISPLAY=$d
+				export XAUTHORITY=$(ps a | grep " $DISPLAY " | grep -o -- '-auth.*$' | grep -m1 -v grep | awk '{print $2}')
+				notify-send -u critical "System instabil" "$WARN"
+				unset DISPLAY XAUTHORITY
+			elif [ "${d:0:3}" = "tty" ]; then
+				# Regular tty
+				cat > "/dev/$d" <<EOF
+				*
+				***************************
+				$WARN
+				***************************
+				*
+EOF
+			elif [ "${d:0:3}" = "pts" ]; then
+				# pts - xterm or ssh session
+				cat > "/dev/pts/${d:3}" <<EOF
+				*
+				***************************
+				$WARN
+				***************************
+				*
+EOF
+			fi
+		done
+fi
+
+exit 0
 

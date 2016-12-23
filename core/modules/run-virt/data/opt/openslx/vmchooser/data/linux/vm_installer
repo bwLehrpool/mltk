@@ -1,0 +1,87 @@
+#!/bin/bash
+
+PS=$(which ps)
+GREP=$(which grep)
+LOGGER=$(which logger)
+MKDIR=$(which mkdir)
+MOUNT=$(which mount)
+MOUNTDIR=/mnt/diskmount/
+SERVICEFILE=openslx-scriptinstall.service
+
+# systemd erkennen
+case $(${PS} --pid 1 -o comm h) in
+	systemd) echo "openslx praeinstaller: systemd detected."
+		if [ -d /etc/systemd/system ]; then
+			SERVICEDIR=/etc/systemd/system/
+		else
+			SERVICEDIR=/usr/lib/systemd/system/
+		fi
+		echo "openslx praeinstaller: installing systemd service file to ${SERVICEDIR}/${SERVICEFILE}."
+
+		cat <<-HEREDOC > "$SERVICEDIR"/"$SERVICEFILE"
+			[Unit]
+			Description=openSLX script installer
+			Before=display-manager.service graphical.target
+			
+			[Service]
+			Type=oneshot
+			ExecStartPre=${MKDIR} -p /mnt/diskmount
+			ExecStartPre=-${MOUNT} /dev/fd1 /mnt/diskmount
+			ExecStart=${LOGGER} "openslx service file: started."
+			ExecStart=${MOUNTDIR}/linux/vm_runtime
+			ExecStart=${LOGGER} "openslx service file: done."
+			RemainAfterExit=no
+		HEREDOC
+
+		[ ! -d /etc/systemd/system/graphical.target.wants ]	&& mkdir /etc/systemd/system/graphical.target.wants 2>/dev/null
+		[ ! -d /etc/systemd/system/basic.target.wants ]		&& mkdir /etc/systemd/system/basic.target.wants 2>/dev/null
+
+		ln -s "${SERVICEDIR}"/"${SERVICEFILE}" /etc/systemd/system/graphical.target.wants/"${SERVICEFILE}"
+		ln -s "${SERVICEDIR}"/"${SERVICEFILE}" /etc/systemd/system/basic.target.wants/"${SERVICEFILE}"
+
+		echo "openslx praeinstaller: doing systemd reload."
+		systemctl daemon-reload
+		;;
+	init)	echo "openslx praeinstaller: init(V) detected."
+		SERVICEDIR=/etc/init.d/
+		[ ! -d "${SERVICEDIR}" ] && { echo "openslx praeinstaller: No init directory $SERVICEDIR found, exiting."; exit 1; }
+		SERVICEFILE=openslx-scriptinstall
+		echo "openslx praeinstaller: installing init service file to ${SERVICEDIR}/${SERVICEFILE}."
+		cat <<-THEREDOC > "${SERVICEDIR}"/"${SERVICEFILE}"
+			#!/bin/sh -e
+			### BEGIN INIT INFO
+			# Provides: openSLX_scriptinstaller
+			# Required-Start: 2 3 4 5
+			# Required-Stop: 0 1 6
+			# Default-Start: 2 3 4 5
+			# Default-Stop: 0 1 6
+			# X-Interactive: false
+			# Short-Description: openSLX script package starter.
+			### END INIT INFO
+			#
+			# Starts via Xsetup patching the openSLX script package
+			# to correct screen resolution and mount network shares
+			# when Xsetup is started.
+			
+			case "\$1" in
+				start)  ${LOGGER} "openslx init file: started."
+					${MKDIR} -p /mnt/diskmount
+				        ${MOUNT} | ${GREP} -q /mnt/diskmount || ${MOUNT} /dev/fd1 /mnt/diskmount
+				        ${MOUNTDIR}/linux/vm_runtime
+					${LOGGER} "openslx init file: done."
+				        ;;
+				stop|restart|force-reload) exit 0 ;;
+				*)      echo "Usage: $0 {start}" >&2; exit 1 ;;
+			esac
+		THEREDOC
+		chmod +x "${SERVICEDIR}"/"${SERVICEFILE}"
+		echo "openslx praeinstaller: enabling ${SERVICEFILE}."
+		update-rc.d "${SERVICEFILE}" defaults
+		;;
+	*)	echo "openslx praeinstaller: Could not determine mother-of-all-processes (not systemd, not init)."
+		echo "openslx praeinstaller: Giving up, exiting."
+		exit 1
+esac
+
+exit 0
+

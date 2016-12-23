@@ -1,26 +1,27 @@
 REQUIRED_INSTALLED_PACKAGES="
 		qemu
 		qemu-kvm
+		vgabios
 "
 
 REQUIRED_CONTENT_PACKAGES="
 		qemu
 		qemu-kvm
-		ipxe-qemu          
-		qemu-keymaps       
-		qemu-system        
-		qemu-system-arm    
-		qemu-system-common 
-		qemu-system-mips   
-		qemu-system-misc   
-		qemu-system-ppc    
-		qemu-system-sparc  
-		qemu-system-x86    
-		qemu-user          
+		ipxe-qemu
+		qemu-keymaps
+		qemu-system
+		qemu-system-arm
+		qemu-system-common
+		qemu-system-mips
+		qemu-system-misc
+		qemu-system-ppc
+		qemu-system-sparc
+		qemu-system-x86
+		qemu-user
 		qemu-utils
 		seabios
 		vgabios
-		cpu-checker 
+		cpu-checker
 		kvm-ipxe
 		libaio1
 		libboost-thread1.49.0

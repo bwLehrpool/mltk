@@ -1,6 +1,6 @@
 
 fetch_source() {
-	git clone "${REQUIRED_GIT}" src
+	git clone "${REQUIRED_GIT}" "${MODULE_WORK_DIR}/src"
 }
 
 build() {

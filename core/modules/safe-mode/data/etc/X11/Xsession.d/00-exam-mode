@@ -1,0 +1,9 @@
+#!/bin/ash Being sourced but hey
+
+. /opt/openslx/config
+
+if [ "x$SLX_EXAM" = "xyes" ]; then
+	# Force usage of vmchooser
+	set -- "$(which vmchooser)"
+fi
+

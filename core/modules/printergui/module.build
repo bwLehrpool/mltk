@@ -1,15 +1,15 @@
 #!/bin/bash
 
 fetch_source() {
-	git clone "${REQUIRED_GIT}" src
-	cd src
+	git clone "${REQUIRED_GIT}" "${MODULE_WORK_DIR}/src"
+	cd "{MODULE_WORK_DIR}/src"
 	git checkout "$REQUIRED_COMMIT"
-	cd ..
+	cd - &>/dev/null
 }
 
 build() {
 	local SRCDIR="${MODULE_WORK_DIR}/src/"
-	local DESTDIR="$MODULE_BUILD_DIR/opt/openslx/cups"
+	local DESTDIR="${MODULE_BUILD_DIR}/opt/openslx/cups"
 
 	# first activate qt 4
 	activate_qt 4

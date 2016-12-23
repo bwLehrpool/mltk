@@ -9,8 +9,8 @@
   <item label="Terminal">
     <action name="Execute"><execute>xterm</execute></action>
   </item>
-  <item label="VM Chooser">
-    <action name="Execute"><execute>vmchooser -c /etc/openslx/vmchooser/vmchooser.conf</execute></action>
+  <item label="VMChooser">
+    <action name="Execute"><execute>vmchooser</execute></action>
   </item>
   <!-- This requires the presence of the 'menu' package to work -->
   <menu id="/Debian" />

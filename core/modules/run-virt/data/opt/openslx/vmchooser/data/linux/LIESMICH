@@ -1,0 +1,24 @@
+Dieses Paket besteht aus folgenden Skripten:
+
+vm_installer:	Dieses Skript einmalig in einer lokalen, permanenten (also 
+		nicht innerhalb des Poolsystems) Virtuellen Maschine ausführen. 
+		Es schreibt eine systemd-Servicedatei und verlinkt diese, um 
+		beim Systemstart per vm_runtime die Skripte zu Auflösungsan- 
+		passung und Einhängung eventuell übergebener Netzlaufwerke 
+		nach Hochladung der VM in das Poolsystem automatisch zu starten. 
+		Das Skript kann von der gemounteten (Pseudo-)Diskette /dev/fd1 
+		aus oder einzelstehend 	gestartet werden.
+		Unterstützung für init-basierte Systeme folgt noch.
+vm_runtime:	Dieses Skript wird beim booten der VM aufgerufen und patcht 
+		Xsetup, um beim grafischen Start der VM die Skripte shares 
+		und resolution aufzurufen.
+mnt_shares: 	Liest die auf Pseudodiskette gegebene shares.dat aus und hängt 
+		ggf. darin angegebene Netzlaufwerke ein.
+resolution:	Stellt die Auflösung der VM anhand der übergebenen Auflösung 
+		des Grundsystems ein.
+
+resolution_standalone: Einzelstehende Version des resolution-Skriptes, die 
+		keine Vorarbeiten seitens systemd bzw. vm_runtime benötigt.
+		Für geeignete Einbindung innerhalb der VM muss daher selbst 
+		gesorgt werden.
+

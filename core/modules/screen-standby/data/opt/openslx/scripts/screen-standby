@@ -1,0 +1,29 @@
+#!/bin/ash
+
+# This is usually sourced by Xstartup/session/reset
+
+do_standby_stuff () {
+	. /opt/openslx/config
+	# Make sure SLX_SCREEN_STANDBY_TIMEOUT is numeric
+	TO=${SLX_SCREEN_STANDBY_TIMEOUT}
+	[ -z "${TO}" ] && TO=0
+	[ "${TO}" -gt 0 ] || [ "${TO}" -lt 100 ] || TO=600
+	[ "${TO}" -lt 0 ] && TO=0
+	MIN=$(( TO / 60 ))
+	[ "$MIN" -gt 60 ] && MIN=60
+	# Set
+	setterm -blank "$MIN"
+	setterm -powerdown "$MIN"
+	if [ "${TO}" = 0 ]; then
+		# Off
+		xset s "${TO}" "${TO}"
+		xset s off -dpms
+	else
+		xset +dpms
+		xset s "${TO}" "${TO}"
+	fi
+}
+
+do_standby_stuff &
+true
+

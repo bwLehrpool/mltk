@@ -5,10 +5,10 @@ fetch_source() {
 
 build() {
 	local COPYLIST BIN_LOCATION DRM_MODULES FILE BIN MODNAME PCI_FILE ALIAS VENDOR DEVICE LIB
-	COPYLIST="list_binaries_and_files"
+	local COPYLIST="list_binaries_and_files"
 	[ -e "$COPYLIST" ] && rm -f "$COPYLIST"
 	for BIN in $REQUIRED_BINARIES; do
-		BIN_LOCATION=$(which "$BIN")
+		local BIN_LOCATION=$(which "$BIN")
 		[ -z "$BIN_LOCATION" ] && perror "Cannot find $BIN"
 		get_link_chain "$BIN_LOCATION" >> "$COPYLIST"
 	done
@@ -20,13 +20,13 @@ build() {
 
 	# generate drm module loading database
 	pinfo "Generating PCI ID database for DRM drivers"
-	DRM_MODULES="$KERNEL_BASE_DIR/lib/modules/$TARGET_KERNEL_LONG/kernel/drivers/gpu/drm"
-	PCI_FILE="$MODULE_BUILD_DIR/drm.cfg"
+	local DRM_MODULES="$KERNEL_BASE_DIR/lib/modules/$TARGET_KERNEL_LONG/kernel/drivers/gpu/drm"
+	local PCI_FILE="$MODULE_BUILD_DIR/drm.cfg"
 	[ -d "$DRM_MODULES" ] || perror "DRM dir not found at $DRM_MODULES"
 	cp "$MODULE_DIR/templates/drm.cfg" "$PCI_FILE" || perror "Could not copy drm.cfg from templates dir"
 	echo "# -- generated from kernel $TARGET_KERNEL_LONG modules:" >> "$PCI_FILE"
 	for FILE in $(find "$DRM_MODULES" -name "*.ko"); do
-		MODNAME=$(basename "$FILE")
+		local MODNAME=$(basename "$FILE")
 		MODNAME=${MODNAME%.ko}
 		[ -z "$MODNAME" ] && perror "$FILE equals empty modname"
 		echo "# $MODNAME" >> "$PCI_FILE"

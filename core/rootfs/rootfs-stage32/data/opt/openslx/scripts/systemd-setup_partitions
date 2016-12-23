@@ -15,53 +15,61 @@
 #############################################################################
 
 # Mount point for persistent scratch partition (type 45)
-PERSISTENT="/opt/openslx/persistent"
+MOUNT_POINT_45="/opt/openslx/persistent"
+PARTITION_FILE="/run/openslx/partitions"
+readonly MOUNT_POINT_45 PARTITION_FILE
+mkdir -p "/run/openslx"
 
 # General formatter for the /tmp partition on a local harddisk
-diskfm () {
-	mopt="" # Global var!
+format_disk () {
+	MOUNT_OPTIONS_SET_BY_FORMAT_DISK="" # Global var!
 	local target="$1"
 	local fslist="xfs jfs ext3 ext2 ext4"
 	local fs
 	local path
 	[ $# -ge 2 ] && fslist="$2"
 	for fs in $fslist ; do
-		unset available
-		case $(cat /proc/filesystems) in
-			*${fs}*) available=yes;;
-			*) modprobe "${fs}" && available=yes;;
-		esac
-		if [ -n "${available}" ]; then
-			unset found
-			if which "mkfs.$fs" ; then
-				found=yes
-				case "mkfs.$fs" in
-					mkfs.xfs)
-						fopt="-f -b size=4k -s size=4k -l size=512b" # fastest formatting possible :)
-						mopt="-o noexec"
-					;;
-					mkfs.ext2)
-						fopt="-Fq"
-						mopt="-o nocheck,noexec"
-					;;
-					mkfs.ext3|mkfs.ext4)
-						fopt="-Fq"
-						mopt="-o noexec"
-					;;
-					mkfs.reiserfs)
-						fopt="-f"
-						mopt="-o noexec"
-					;;
-					mkfs.jfs)
-						fopt="-q"
-						mopt="-o noexec"
-					;;
-				esac
-				mkfs.$fs ${fopt} "${target}"
-			fi
-			[ -n "$found" ] && break
+		if grep -q "\\b${fs}\\b" "/proc/filesystems"; then
+			# Filesystem already supported by running kernel
+			:
+		elif modprobe "${fs}"; then
+			# Filesystem module could be loaded and should be supported now
+			:
+		else
+			# Not supported, try next one
+			continue
+		fi
+		if which "mkfs.$fs" ; then
+			case "$fs" in
+			xfs)
+				fopt="-f -b size=4k -s size=4k -l size=512b" # fastest formatting possible :)
+				MOUNT_OPTIONS_SET_BY_FORMAT_DISK="-o noexec"
+				;;
+			ext2)
+				fopt="-Fq"
+				MOUNT_OPTIONS_SET_BY_FORMAT_DISK="-o nocheck,noexec"
+				;;
+			ext3|ext4)
+				fopt="-Fq"
+				MOUNT_OPTIONS_SET_BY_FORMAT_DISK="-o noexec"
+				;;
+			reiserfs)
+				fopt="-f"
+				MOUNT_OPTIONS_SET_BY_FORMAT_DISK="-o noexec"
+				;;
+			jfs)
+				fopt="-q"
+				MOUNT_OPTIONS_SET_BY_FORMAT_DISK="-o noexec"
+				;;
+			*)
+				fopt=
+				MOUNT_OPTIONS_SET_BY_FORMAT_DISK=
+				;;
+			esac
+			mkfs.$fs ${fopt} "${target}" && return 0 # Success!
 		fi
 	done
+	return 1
 }
 
 mount_temp () {
@@ -89,33 +97,46 @@ mount_temp_fallback () {
 	return 0
 }
 
-fdisk -l | sed -n "/^\/dev\//p" > "/etc/disk.partition"
+fdisk -l | grep '^/dev/' > "$PARTITION_FILE"
 
-if [ ! -s "/etc/disk.partition" ]; then
+if [ ! -s "$PARTITION_FILE" ]; then
+	udevadm trigger
 	sleep 3
-	fdisk -l | sed -n "/^\/dev\//p" > "/etc/disk.partition"
+	udevadm settle
+	fdisk -l | grep '^/dev/' > "$PARTITION_FILE"
 fi
 
 echo "Partitions:"
-cat "/etc/disk.partition"
+cat "$PARTITION_FILE"
+
+# Get all partitions with given id (list of /dev/sdXX)
+get_all_with_id () {
+	[ -z "$1" ] && return
+	local ID=$1
+	awk '{if (($2 == "*" && $6 == "'$ID'") || ($2 != "*" && $5 == "'$ID'")) print $1}' "$PARTITION_FILE" # watch out for non-spaced '$ID'
+}
 
 # Check for standard swap partitions and make them available to the system
 HAVE_SWAP=no
-for hdpartnr in $(sed -n -e "/ 82 /p" "/etc/disk.partition" | sed -e "s/[[:space:]].*//"); do
-	echo -e "$hdpartnr\tswap\t\tswap\t\tdefaults\t 0 0" >> "/etc/fstab"
-	swapon "$hdpartnr" -p 10 && HAVE_SWAP=yes # low priority, in case we have zram swap, prefer that)
+for PART_DEV in $(get_all_with_id 82) '/dev/disk/by-partlabel/Linux\x20swap'; do
+	[ -e "$PART_DEV" ] || continue # Since Linux\x20swap is hard-coded and might not exist
+	if swapon "$PART_DEV" -p 10; then
+		HAVE_SWAP=yes # low priority, in case we have zram swap, prefer that)
+		echo -e "$PART_DEV\tswap\t\tswap\t\tdefaults\t 0 0" >> "/etc/fstab"
+	fi
 done
 
 # We use special non assigned partition type (id44) for harddisk scratch
 # space, thus no normal filesystem will be incidentally deleted or
 # corrupted
 HAVE_TEMP=no
-for hdpartnr in $(sed -n -e "/ 44 /p" "/etc/disk.partition" | sed -e "s/[[:space:]].*//"); do
+for PART_DEV in $(get_all_with_id 44) '/dev/disk/by-partlabel/OpenSLX-ID44'; do
+	[ -e "$PART_DEV" ] || continue # Since OpenSLX-ID44 is hard-coded and might not exist
 	# check for supported filesystem and formatter
-	if diskfm "$hdpartnr"; then
-		# echo "$hdpartnr is mounted to /mnt/tmp at $(sysup)" >/tmp/tmpready
-		mount_temp "$mopt" "$hdpartnr" || continue
-		echo -e "${hdpartnr}\t/tmp\t\tauto\t\tnoexec\t 0 0" >> "/etc/fstab"
+	if format_disk "$PART_DEV"; then
+		# echo "$PART_DEV is mounted to /mnt/tmp at $(sysup)" >/tmp/tmpready
+		mount_temp "$MOUNT_OPTIONS_SET_BY_FORMAT_DISK" "$PART_DEV" || continue
+		echo -e "${PART_DEV}\t/tmp\t\tauto\t\tnoexec\t 0 0" >> "/etc/fstab"
 		HAVE_TEMP=yes
 		break
 	else
@@ -123,44 +144,52 @@ for hdpartnr in $(sed -n -e "/ 44 /p" "/etc/disk.partition" | sed -e "s/[[:space
 	fi # Made this non-forking, systemd should handle it - 2013-05-28
 done
 
-# Put detected linux partitions (83) into /etc/fstab with "noauto", special
-# partition 45 (persistent scratch) to /var/scratch and 46 to /var/openslx
-HAVE_PERSISTENT=no
-for partid in 83 45 46 ; do
-	for hdpartnr in $(sed -n -e "/ ${partid} /p" "/etc/disk.partition" | sed -e "s/[[:space:]].*//"); do
-		if [ "${partid}" -eq 83 ]; then
-			mkdir -p "/media/${hdpartnr#/dev/*}"
-			echo -e "${hdpartnr}\t/media/${hdpartnr#/dev/*}\tauto\t\tnoauto,noexec\t 0 0" >> "/etc/fstab"
-		elif [ "${partid}" -eq 45 -a "$HAVE_PERSISTENT" = "no" ]; then
-			mkdir -p "$PERSISTENT"
-			if ! mount -t auto -o noexec "${hdpartnr}" "$PERSISTENT"; then
-				diskfm "$hdpartnr" "jfs xfs ext3" || continue
-				mount -t auto -o noexec "${hdpartnr}" "$PERSISTENT" || continue
-			fi
-			HAVE_PERSISTENT=yes
-			echo -e "${hdpartnr}\t${PERSISTENT}\tauto\t\tnoauto,noexec\t\t 0 0" >> "/etc/fstab"
-		elif [ "${partid}" -eq 46 ]; then
-			mkdir -p "/media/${hdpartnr#/dev/*}"
-			#mount -t auto ${hdpartnr} /mnt/media/${hdpartnr#/dev/*} \n\
-			#test -d /mnt/media/${hdpartnr#/dev/*}/home && \
-			#  ln -sf /media/${hdpartnr#/dev/*} /var/home
-			echo -e "${hdpartnr}\t/media/${hdpartnr#/dev/*}\tauto\t\tnoauto\t\t 0 0" >> "/etc/fstab"
-		fi
-	done
+# Put detected linux partitions (83) into /etc/fstab with "noauto"
+HAVE_PARTITION_45=no
+for PART_DEV in $(get_all_with_id 83); do
+	mkdir -p "/media/${PART_DEV#/dev/*}"
+	echo -e "${PART_DEV}\t/media/${PART_DEV#/dev/*}\tauto\t\tnoauto,noexec\t 0 0" >> "/etc/fstab"
 done
-[ "$HAVE_PERSISTENT" = "no" -a -d "$PERSISTENT" ] && rm -f "$PERSISTENT"
+
+# special partition 45 (persistent scratch) to $MOUNT_POINT_45
+for PART_DEV in $(get_all_with_id 45); do
+	mkdir -p "$MOUNT_POINT_45"
+	if ! mount -t auto -o noexec "${PART_DEV}" "$MOUNT_POINT_45"; then
+		format_disk "$PART_DEV" "ext4 xfs jfs ext3" || continue
+		mount -t auto -o noexec "${PART_DEV}" "$MOUNT_POINT_45" || continue
+	fi
+	echo -e "${PART_DEV}\t${MOUNT_POINT_45}\tauto\t\tnoauto,noexec\t\t 0 0" >> "/etc/fstab"
+	HAVE_PARTITION_45=yes
+	break
+done
+
+# and 46 to /media/devXX
+for PART_DEV in $(get_all_with_id 46); do
+	mkdir -p "/media/${PART_DEV#/dev/*}"
+	#mount -t auto ${PART_DEV} /mnt/media/${PART_DEV#/dev/*} \n\
+	#test -d /mnt/media/${PART_DEV#/dev/*}/home && \
+	#  ln -sf /media/${PART_DEV#/dev/*} /var/home
+	echo -e "${PART_DEV}\t/media/${PART_DEV#/dev/*}\tauto\t\tnoauto\t\t 0 0" >> "/etc/fstab"
+done
+if [ "$HAVE_PARTITION_45" = "no" ] && [ -d "$MOUNT_POINT_45" ]; then
+	rm -f -- "$MOUNT_POINT_45"
+fi
 
 mount -a
 
-# Make huge tmpfs if nothing could be mounted for /tmp
+# Make tmpfs if nothing could be mounted for /tmp
+# 2016-10-12: Use a sane size of 66% which should be generous enough and prevent the machine from
+# just crashing if RAM is too full. We previously hugely oversized since vmware wants at least as
+# much free space as the VMs RAM; however, this requirement can be disabled with a vmx setting,
+# which we're now doing.
 if [ "$HAVE_TEMP" = "no" ]; then
-	 mount_temp -t tmpfs -o size=60G none
-	 slxlog "partition-temp" "Running /tmp on tmpfs only!" "/etc/disk.partition"
+	mount_temp -t tmpfs -o size=66% none
+	slxlog "partition-temp" "Running /tmp on tmpfs only!" "$PARTITION_FILE"
 fi
 if [ "$HAVE_SWAP" = "no" ]; then
 	TOTAL_RAM=$(grep ^MemTotal /proc/meminfo | awk '{print $2}')
 	if [ -n "$TOTAL_RAM" ] && [ "$TOTAL_RAM" -lt "3000000" ]; then
-		slxlog "partition-swap" "Have no (formatted) swap partition, using zram swap only!" "/etc/disk.partition"
+		slxlog "partition-swap" "Have no (formatted) swap partition, using zram swap only!" "$PARTITION_FILE"
 	fi
 fi
 

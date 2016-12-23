@@ -1,7 +1,11 @@
 REQUIRED_INSTALLED_PACKAGES="
 	usbutils
+	mtools
+	xmlstarlet
 "
 REQUIRED_CONTENT_PACKAGES="
 	usbutils
+	mtools
+	xmlstarlet
 "
 

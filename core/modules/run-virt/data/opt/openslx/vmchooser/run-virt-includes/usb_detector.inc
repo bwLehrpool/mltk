@@ -1,0 +1,77 @@
+# Helper function that will scan /dev/bus/usb for devices matching specific classes
+# and then output the corresponding device ids. This can be used for selective
+# handover of devices to a virtual machine
+
+declare -rg PASSTHROUGH_USB_DEVICES="2 0:5 0:6 0:7 0:14 0:16 0:17 239"
+
+# $1: expression to fill with device information.
+#     valid placeholders are:
+#     %VENDOR%  - device vendor id
+#     %PRODUCT% - device product id
+# $2-n: device classes to include in output
+get_usb_devices_int() {
+	[ -z "$TMPDIR" ] && TMPDIR="/tmp"
+	local EXP=$1
+	shift
+	if [ -z "$EXP" ]; then
+		writelog --quiet "No ouput expression template passed to get_usb_devices"
+		cleanexit 1
+	fi
+	if [ $# -eq 0 ]; then
+		writelog --quiet "No device classes given to get_usb_devices"
+		cleanexit 1
+	fi
+	local MATCH=';'
+	while [ $# -gt 0 ]; do
+		MATCH+="$1;"
+		[[ "$1" != *:* ]] && MATCH+="0:$1;"
+		shift
+	done
+	local dev=
+	local key value trailing
+	trailing=
+	local tmp="${TMPDIR}/lsusb.$$.$RANDOM"
+	for dev in /dev/bus/usb/*/*; do
+		if ! lsusb -D "$dev" > "$tmp" 2>/dev/null; then
+			writelog --quiet "Cannot lsusb $dev"
+			continue
+		fi
+		local DC=
+		local OK=
+		local VENDOR=
+		local PRODUCT=
+		while read -r key value trailing || [ -n "$key" ]; do
+			if [[ "$key" == "idVendor" ]]; then
+				[[ "$value" == 0x* ]] && VENDOR="${value:2}"
+			elif [[ "$key" == "idProduct" ]]; then
+				[[ "$value" == 0x* ]] && PRODUCT="${value:2}"
+			elif [ -z "$DC" ]; then
+				# No bDeviceClass seen yet
+				if [[ "$key" == "bDeviceClass" ]]; then
+					DC="$value"
+					[[ "$MATCH" == *";${DC};"* ]] && OK=yo
+				fi
+			else
+				# #DeviceClass is generic, look at sub class
+				if [[ "$key" == "bInterfaceClass" ]]; then
+					[[ "$MATCH" == *";${DC}:${value};"* ]] && OK=yo
+				fi
+			fi
+			if [ -n "$OK" -a -n "$VENDOR" -a -n "$PRODUCT" ]; then
+				echo "$EXP" | sed "s/%VENDOR%/${VENDOR}/g;s/%PRODUCT%/${PRODUCT}/g"
+				break
+			fi
+		done < "$tmp"
+	done
+	rm -f -- "$tmp"
+}
+
+get_usb_devices() {
+	if which lsusb 2>/dev/null >&2 && lsusb --help 2>&1 | grep -q -- '-D' 2>/dev/null; then
+		[ $# -eq 1 ] && set -- "$1" $PASSTHROUGH_USB_DEVICES # no quotes here!
+		get_usb_devices_int "$@" | sort -u
+	else
+		writelog --quiet "Cannot scan usb bus: lsusb not found or doesn't support -D"
+	fi
+}
+

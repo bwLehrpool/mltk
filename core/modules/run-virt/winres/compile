@@ -1,0 +1,13 @@
+#!/bin/sh
+
+rm -- winres.exe
+i686-w64-mingw32-windres -i winres.rc -o resource.res -O coff
+i686-w64-mingw32-gcc -Wall -Wextra -pedantic -Wno-unused-parameter -flto -std=c99 -Os -Wl,--subsystem,windows -o winres.exe winres.c resource.res -lole32 -luuid -lgdi32 -lws2_32 -lshell32 -lmpr -lshlwapi
+rm -- resource.res
+if strip winres.exe; then
+	echo "Successfully created winres.exe"
+	echo "It has NOT been moved to data/.../openslx.exe"
+else
+	echo "FAIL FAIL FAIL no EXE generated!"
+fi
+

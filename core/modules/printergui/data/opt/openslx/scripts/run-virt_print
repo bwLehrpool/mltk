@@ -53,6 +53,12 @@ else
 	errlog "printergui-nogs" "Warning: Cannot validate file prior to printing: gs binary not found"
 fi
 
+# Set username prefix if found
+. /opt/openslx/config
+if [ -n "$SLX_PRINT_USER_PREFIX" ]; then
+	export PWGUI_USERPREFIX="$SLX_PRINT_USER_PREFIX"
+fi
+
 # Try to print
 $PRINTERGUI "$USER" "$FILE"
 RET=$?

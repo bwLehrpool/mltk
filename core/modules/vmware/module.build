@@ -1,12 +1,12 @@
 fetch_source() {
-	[ -e "${MODULE_WORK_DIR}/src" -a -d "${MODULE_WORK_DIR}/src" ] && \
+	[ -d "${MODULE_WORK_DIR}/src" ] && \
 		{ rm -r "${MODULE_WORK_DIR}/src"	|| perror "Could not delete old src dir."; }
 	mkdir -p "${MODULE_WORK_DIR}/src"	|| perror "Could not mkdir src"
-	cd "${MODULE_WORK_DIR}/src"			|| perror "cd fail."
+	cd "${MODULE_WORK_DIR}/src"			|| perror "cd to '${MODULE_WORK_DIR}/src' failed."
 
 	# Get directory listing
 	wget -O "index.html" "$REQUIRED_DOWNLOAD_BASE" || perror "Could not download vmware dir index"
-	
+
 	VMWARE_BUNDLE_FILE=$(grep -E -o -i "href=\"VMware-$REQUIRED_TYPE-[^\"]+[\._\-]$ARCHREGEX[\._\-][^\"]+\"" "index.html" | head -n 1 | awk -F '"' '{printf $2}')
 	[ -z "$VMWARE_BUNDLE_FILE" ] && perror "Could not determine vmware $REQUIRED_TYPE bundle file for current arch from $MODULE_WORK_DIR/src/index.html"
 	# Download file
@@ -34,11 +34,11 @@ build() {
 
 	# prepare the build directory with the files needed during the chroot
 	cp "${MODULE_WORK_DIR}/src/$VMWARE_BUNDLE_FILE" "${MODULE_BUILD_DIR}/$VMWARE_BUNDLE_FILE"
-	cp -r "${MODULE_WORK_DIR}/patches" "${MODULE_BUILD_DIR}"
+	cp -r "${MODULE_DIR}/patches" "${MODULE_BUILD_DIR}"
 
 	# sanity check to see if KERNEL_HEADERS_DIR is set and exists
 	[ -z "${KERNEL_HEADERS_DIR}" -o ! -e "${KERNEL_HEADERS_DIR}" ] && perror "KERNEL_HEADERS_DIR ('"${KERNEL_HEADERS_DIR}"') not found. Was the kernel module built?"
-	
+
 	# build in two steps, to be able to use mltk function while patching modules
 	pinfo "Installing vmware per chroot..."
 	chroot_run "${MODULE_BUILD_DIR}" <<-EOF
@@ -54,7 +54,7 @@ build() {
 	for KMOD in *.tar; do
 		SHORT="${KMOD%%.tar}"
 		[ -e ".${SHORT}.patched" ] && continue
-		for PATCH in $(find "${MODULE_WORK_DIR}/patches/" -name "${SHORT}__*__*.patch"); do
+		for PATCH in $(find "${MODULE_DIR}/patches/" -name "${SHORT}__*__*.patch"); do
 			parse_patch_name "$PATCH"
 			[ -z "${MIN_KERN}" -o -z "${MAX_KERN}" ] && perror "Could not parse patch filename"
 			if version_lt "$TARGET_KERNEL_SHORT" "$MIN_KERN" || version_gt "$TARGET_KERNEL_SHORT" "$MAX_KERN"; then
@@ -101,7 +101,7 @@ build() {
 	# This file was formerly stored in data/opt/openslx/vmchooser/vmware/vmware.conf.
 
 	mkdir -p "${MODULE_BUILD_DIR}/opt/openslx/vmchooser/vmware/" || perror "could not mkdir "${MODULE_BUILD_DIR}/opt/openslx/vmchooser/vmware/"."
-	
+
 	cat > "${MODULE_BUILD_DIR}/opt/openslx/vmchooser/vmware/vmware.conf" <<-EOF
 	# configuration file written by vmware/module.build
 	vmnet0=true
@@ -127,7 +127,7 @@ post_copy() {
 	tarcopy "$(find /usr/lib/ /usr/lib64 -name gconv -type d)" "$TARGET_BUILD_DIR"
 
 	# Update Icon cache for vmplayer
-	gtk-update-icon-cache-3.0 "${TARGET_BUILD_DIR}/usr/share/icons/hicolor/" || pwarning "update-icon-cache-3.0 failed."	
+	gtk-update-icon-cache-3.0 "${TARGET_BUILD_DIR}/usr/share/icons/hicolor/" || pwarning "update-icon-cache-3.0 failed."
 
 	# fix vmware-usbarbitrator bug
 	date +'%Y.%m.%d' >"${TARGET_BUILD_DIR}/etc/arch-release"

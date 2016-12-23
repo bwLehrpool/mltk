@@ -6,6 +6,8 @@ export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/o
 # can only work if script is run as root
 [ "x$(whoami)" = "xroot" ] || exit 0
 
+[ "x${PAM_SERVICE%greeter}" != "x${PAM_SERVICE}" ] && exit 0
+
 # NSA needs to know
 if [ "x$PAM_SERVICE" != "xsu" -a "x$PAM_SERVICE" != "xsudo" ]; then
 	. /opt/openslx/config

@@ -1,5 +1,4 @@
 #!/bin/ash
-PATH=$PATH:/opt/openslx/sbin:/opt/openslx/bin
 
 PROC="/proc/asound/cards"
 

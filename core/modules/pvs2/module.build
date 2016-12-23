@@ -1,28 +1,37 @@
 #!/bin/bash
 
 fetch_source() {
-	git clone "${REQUIRED_GIT}" src
+	git clone "${REQUIRED_GIT}" "${MODULE_WORK_DIR}/src"
 }
 
 build() {
-
 	local SRCDIR="${MODULE_WORK_DIR}/src/"
-	local BUILDDIR="$SRCDIR/build/"
-	local DESTDIR="$MODULE_BUILD_DIR/opt/openslx/bin"
+	local BUILDDIR="${SRCDIR}/build/"
+	local DESTDIR="${MODULE_BUILD_DIR}/opt/openslx/bin"
 
 	# first activate qt 4
 	activate_qt 4
 
-	mkdir -p "$DESTDIR" || perror "Could not mkdir $DESTDIR!"
-	mkdir -p "$BUILDDIR" || perror "Could not mkdir $BUILDDIR!"
-	cd "$BUILDDIR" || perror "Could not cd to $BUILDDIR!"
+	mkdir -p "${DESTDIR}" || perror "Could not mkdir ${DESTDIR}!"
+	mkdir -p "${BUILDDIR}" || perror "Could not mkdir ${BUILDDIR}!"
+	cd "${BUILDDIR}" || perror "Could not cd to ${BUILDDIR}!"
 
 	pinfo "Running cmake"
 	cmake .. || perror "'cmake ..' failed."
 	pinfo "Running make"
 	make || perror "'make' failed."
-	mv pvsmgr pvsclient $DESTDIR
-	cd - > /dev/null
+	mv pvsmgr pvsclient "${DESTDIR}"
+	cd ..
+
+	# copy external scripts under 'sample_configuration'
+	mkdir -p "${MODULE_BUILD_DIR}/opt/openslx/pvs2/"
+	if [ -d "${SRCDIR}/sample_configuration" ]; then
+		# Do not copy lockDesktop.sh - we ship a modified one
+		cp "${SRCDIR}/sample_configuration"/{kb-lock,kb-unlock,switchToManager,switchBack}.sh "${MODULE_BUILD_DIR}/opt/openslx/pvs2/" \
+			|| perror "Could not copy external scripts to '${MODULE_BUILD_DIR}/opt/openslx/pvs2/'!"
+		chmod +x "${MODULE_BUILD_DIR}/opt/openslx/pvs2"/*.sh \
+			|| perror "Could not set executable bit for external scripts."
+	fi
 
 	# needed for copying REQUIRED_CONTENT_PACKAGES to build/
 	COPYLIST="list_dpkg_output"

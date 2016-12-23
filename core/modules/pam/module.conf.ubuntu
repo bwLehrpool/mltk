@@ -9,8 +9,8 @@ REQUIRED_INSTALLED_PACKAGES="
 	libnfsidmap2
 	nfs-common
 	libpam0g-dev
-	ncpfs
 	cifs-utils
+	libpam-modules-bin
 "
 REQUIRED_CONTENT_PACKAGES="
 	libpam0g
@@ -25,15 +25,11 @@ REQUIRED_CONTENT_PACKAGES="
 	ldap-utils
 	libnfsidmap2
 	nfs-common
-	ncpfs
 	cifs-utils
+	libpam-modules-bin
 "
 REQUIRED_BINARIES+="
 	nwmsg
-	ncpmount
-	ncpumount
-	mount.ncp
-	mount.ncpfs
 	mount.cifs
 "
 REQUIRED_DIRECTORIES+="

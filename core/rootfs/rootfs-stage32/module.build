@@ -47,10 +47,16 @@ build() {
 		done
 	done
 
-	for FILE in ${REQUIRED_DIRECTORIES}
+	for FILE in /etc/ssl/certs
 	do
 		[ ! -d ${FILE} ] && perror "Missing required directory $FILE"
 		echo ${FILE} >> "${FILELIST}"
+		(
+			IFS=$'\n'
+			for file in $(find "${FILE}" -type l); do
+				get_link_chain "${file}" >> "${FILELIST}"
+			done
+		)
 	done
 	for FILE in ${REQUIRED_FILES}
 	do

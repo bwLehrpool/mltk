@@ -3,6 +3,10 @@ fetch_source () {
 }
 
 build () {
+	if ! which systemd >/dev/null; then
+		pwarning "No systemd binary found in PATH. "
+		perror "Make sure the system uses systemd before using this module."
+	fi
 	COPYLIST="list_dpkg_output"
 	[ -e "$COPYLIST" ] && rm "$COPYLIST"
 	list_packet_files >> "$COPYLIST"

@@ -1,0 +1,33 @@
+#!/bin/ash
+
+if which xscreensaver; then
+	[ -z "$UID" ] && UID=$(id -u)
+	[ -z "$HOME" ] && HOME="$(getent passwd "$UID" | head -n 1 | awk -F ':' '{print $6}')"
+	if ! [ -s "$HOME/.xscreensaver" ]; then
+		. /opt/openslx/config
+		NUM=${SLX_SCREEN_STANDBY_TIMEOUT}
+		if [ -n "$NUM" ] && [ "$NUM" -gt 60 ]; then
+			SECS=0$(( NUM % 60 ))
+			MINS=0$(( ( NUM / 60 ) % 60 ))
+			HRS=0$(( ( NUM / 3600 ) % 60 ))
+			STANDBY="${HRS:$(( ${#HRS} - 2 )):2}:${MINS:$(( ${#MINS} - 2 )):2}:${SECS:$(( ${#SECS} - 2 )):2}"
+		else
+			STANDBY=0:00:00
+		fi
+		cat > "$HOME/.xscreensaver" <<EOF
+mode:         blank
+timeout:      24:00:00
+lock:         True
+lockTimeout:  0:00:10
+fade:         False
+unfade:       False
+dpmsEnabled:  True
+dpmsStandby:  $STANDBY
+dpmsSuspend:  $STANDBY
+dpmsOff:      $STANDBY
+EOF
+	fi
+	xscreensaver -no-splash &
+fi
+true
+

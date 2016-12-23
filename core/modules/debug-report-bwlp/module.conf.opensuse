@@ -1,0 +1,4 @@
+REQUIRED_INSTALLED_PACKAGES="
+	curl
+	nano
+"

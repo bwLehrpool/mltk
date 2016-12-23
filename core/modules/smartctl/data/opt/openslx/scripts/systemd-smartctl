@@ -5,6 +5,7 @@
 . /opt/openslx/config
 
 [ -z "$SLX_SMARTCTL_MIN_REALLOC" ] && SLX_SMARTCTL_MIN_REALLOC=0
+DELAY=
 FILES=
 
 for dev in /dev/sd?; do
@@ -20,14 +21,21 @@ for dev in /dev/sd?; do
 	# report if applicable
 	if [ -n "$OVERALL" ]; then
 		slxlog "smartctl-fail" "Failed HDD: $dev reports health as $OVERALL" "$FILE"
+		DELAY=yes
 	fi
 	if [ -n "$REALLOC" ] && [ "$REALLOC" -gt "$SLX_SMARTCTL_MIN_REALLOC" ]; then
 		slxlog "smartctl-realloc" "Failing HDD: $dev has $REALLOC reallocated sectors!" "$FILE"
+		DELAY=yes
 	fi
 	if [ -n "$SPINRETRY_VAL" ] && [ "$SPINRETRY_VAL" -le "$SPINRETRY_THR" ]; then
 		slxlog "smartctl-spinretry" "Failing HDD: $dev has bad spin retry count! ($SPINRETRY_VAL/$SPINRETRY_THR)" "$FILE"
+		DELAY=yes
 	fi
 done
-sleep 2 # give slxlog a little time, as it's running async
+
+[ -n "$DELAY" ] && sleep 2 # give slxlog a little time, as it's running async
 [ -n "$FILES" ] && rm -f -- $FILES # list, no ""
+# Keep it that way instead of using --delete or --sync sonce it would add up; this way we're doing it just once here
+
+exit 0
 

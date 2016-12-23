@@ -2,11 +2,11 @@ fetch_source() {
 	mkdir -p src
 	cd src || perror "Could not change into src directory."
 	download "$REQUIRED_URL"
+	cd ..
 }
 
 build() {
-	local KERNELSRCDIR="$MODULE_WORK_DIR/../kernel/ksrc"	# kernel sources
-	local NVIDIA="$MODULE_WORK_DIR/src/$REQUIRED_NVIDIA"
+	local NVIDIA="${MODULE_WORK_DIR}/src/$REQUIRED_NVIDIA"
 	local NVIDIAEXTRACTDIR="$MODULE_BUILD_DIR/NVIDIA"
 
 	pdebug "Unpacking NVidia-Installer ..."
@@ -36,16 +36,6 @@ build() {
 		mv "${MODULE_BUILD_DIR}/overlay.whiteout.list" "${MODULE_BUILD_DIR}/opt/openslx/etc/nvidia.whiteout"
 	fi
 	
-	#pdebug "Handling whiteouts ..."
-	#local WHITEOUT_LIST="${MODULE_BUILD_DIR}/opt/openslx/etc/nvidia.whiteout"
-	#rm -f -- "$WHOUTEOUT_LIST"
-	#mkdir -p "$(dirname "$WHITEOUT_LIST")" || perror "Could not create $(dirname "$WHITEOUT_LIST")"
-	#pdebug "Searching for overlayfs-whiteouts ..."
-	#for WHITEOUT in $(find "$MODULE_BUILD_DIR" -lname "(overlay-whiteout)"); do
-#		pdebug "Whiteout found: $WHITEOUT"
-#		echo "/./${WHITEOUT#$MODULE_BUILD_DIR}" >> "$WHITEOUT_LIST"
-#		rm -f -- "$WHITEOUT" || perror "Could not delete whiteout $WHITEOUT!"
-#	done
 	
 	rm -rf "$MODULE_BUILD_DIR/NVIDIA"
 }

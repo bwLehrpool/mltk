@@ -1,0 +1,138 @@
+#!/bin/bash
+
+# Dieses Skript liest die Auflösungsdate HOSTRES.TXT aus der Diskette 2 (/dev/fd1). In dieser 
+# Datei wird die native (maximale) Auflösung des Grundsystems bereitgestellt. fd1 wird vom 
+# openslx-Grundsystem geliefert. Es loggt nach SYSLOG (syslog oder messages).
+# 
+# Zu erledigen: Jede Menge, zB anständiges Trapping, Fehler abfangen usw...
+# set -x
+
+MOUNTDIR=/tmp/diskmount
+RESFILE="${MOUNTDIR}"/openslx.ini
+DISPLAY=:0.0
+
+function ausgang() {
+	umount "${MOUNTDIR}"
+	rmdir "${MOUNTDIR}"
+}
+
+check_resolution() {
+	# Now, let's wait even more seconds to see if another process re-changes res.:
+	ACTRES=$(xrandr|grep '*'|tr -s " "|cut -f 2 -d " ")
+	if [ "$ACTRES" != "$RESOLUTION" ]; then
+		logger "openslx resolution utility: resolution changed; re-changing."
+		xrandr --output ${AUSGABE} --mode ${RESOLUTION}
+	else
+		logger "openslx resolution utility: resolution unchanged."
+	fi
+}
+
+trap ausgang EXIT SIGHUP SIGINT SIGTERM
+
+logger "openslx resolution utility started."
+
+# Mountpunkt erzeugen:
+if [ ! -d "$MOUNTDIR" ]; then
+	mkdir "$MOUNTDIR"
+	logger "openslx resolution utility: mkdir'ed diskmount dir $MOUNTDIR."
+fi
+
+# Virtuelles Floppylaufwerk mounten
+mount /dev/fd1 "$MOUNTDIR" 2>/dev/null
+ERR=$?
+if [ $ERR -ne 0 ]; then
+	logger "openslx resolution utility: error code $ERR trying to mount /dev/fd1 to ${MOUNTDIR}. Remounting..."
+	mount -o remount /dev/fd1 "$MOUNTDIR" 2>/dev/null
+	ERR=$?
+	if [ $ERR -ne 0 ]; then
+		logger "openslx resolution utility: error code $ERR trying to remount /dev/fd1 to ${MOUNTDIR}. Giving up."
+		exit 1
+	else
+		logger "openslx resolution utility: remount of /dev/fd1 mounted to diskmount dir ${MOUNTDIR} succeeded."
+	fi
+else
+	logger "openslx resolution utility: /dev/fd1 mounted to diskmount dir ${MOUNTDIR}."
+fi
+
+# Das Mounten mit shortname=WIN95 erwies sich als nicht zuverlässig. Daher hier Kontrolle:
+RESFILE=$(find "${MOUNTDIR}" -iwholename "${RESFILE}")
+
+if [ -f "$RESFILE" ]; then
+	RESOLUTION=$(grep 'resolution=' "$RESFILE" | cut -d '=' -f 2)
+	if [ -z $RESOLUTION ]; then
+		logger "openslx resolution utility: resolution file $RESFILE seems to be empty!"
+		exit 1
+	fi
+	logger "openslx resolution utility: resolution file $RESFILE yields ${RESOLUTION}."
+else
+	logger "openslx resolution utility: resolution file $RESFILE not found!"
+	exit 1
+fi
+
+umount /dev/fd1
+ERR=$?
+if [ "$ERR" -ne 0 ]; then
+	logger "openslx resolution utility: error code $ERR trying to to unmount /dev/fd1. Please unmount by hand."
+fi
+
+# Das ist mitunter ein Problem, da die richtige zu finden - Distroabhängig!
+# Hier ein Beispiel für openSuse 13.2, sollte auch für Debian, Ubuntu, Redhat usw. laufen:.
+XAUTHDATEI=$(ps aux | grep -o "X.* \-auth *[^ ]*" | awk '{print $NF}')
+if [ -n "$XAUTHDATEI" ]; then
+	logger "openslx resolution utility: XAUTHFILE found."
+	XAUTHORITY="${XAUTHDATEI}"
+else
+	logger "openslx resolution utility: XAUTHFILE not found. Exiting."
+	exit 1
+fi
+
+# Zu verbessern: Der Name des Verbundenen ist nicht immer bekannt. Daher nehmen wir das
+# erste 'connected' in der Ausgabe xrandrs:
+AUSGABE=$(xrandr -q|grep -m 1 " connected "|awk '{print $1}')
+if [ -z "$AUSGABE" ]; then
+	logger "openslx resolution utility: Could not detect output device."
+	exit 1
+fi
+
+# Pruefen, ob xrand eine passende modeline ausgibt:
+if [ "$(xrandr | grep -c ${RESOLUTION})" -eq 0 ]; then
+	logger "openslx resolution utility: xrandr yields no fitting modeline; adding one."
+	MODELINE=$(cvt ${RESOLUTION//x/ } | grep -v "^#" | sed "s/Modeline //g" | sed 's/"//g')
+	xrandr --newmode $(echo ${MODELINE})
+	xrandr --addmode ${AUSGABE} $(echo ${MODELINE} | cut -d " " -f 1)
+	# Dann einzusteuernde Auflösung natürlich auf die neue ändern:
+	RESOLUTION=$(echo ${MODELINE} | cut -d " " -f 1)
+	logger "openslx resolution utility: (xrandr) modeline ${MODELINE} added (${RESOLUTION})."
+fi
+
+# Auflösung per xrandr setzen:
+xrandr --output ${AUSGABE} --mode ${RESOLUTION}
+ERR=$?
+if [ $ERR -ne 0 ]; then
+	logger "openslx resolution utility: xrandr error code ${ERR}."
+else
+	logger "openslx resolution utility: xrandr ok. Mode $RESOLUTION set."
+fi
+
+# Das hier ist ein wenig problematisch, da nach X-Start die gewünschte Desktopumgebung
+# diese gern zuvor gespeicherte Auflösungen wieder einspielt. Daher warten wir einfach,
+# und prüfen in gewissen Zeitabständen, ob sich die Auflösung geändert hat, und spielen
+# im Änderungsfalle die Grundsystemauflösung wieder ein. Schön ist das nicht.
+
+# Now, let's wait some seconds to see if another process re-changes res.:
+sleep 5
+check_resolution
+
+# Now, let's wait some more seconds to see if another process re-changes res.:
+sleep 15
+check_resolution
+
+# Now, let's wait even more seconds to see if another process re-changes res.:
+sleep 20
+check_resolution
+
+# Now, let's wait even more seconds to see if another process re-changes res.:
+sleep 40
+check_resolution
+
+exit 0

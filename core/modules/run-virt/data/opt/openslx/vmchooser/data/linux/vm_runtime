@@ -1,0 +1,97 @@
+#!/bin/bash
+
+# set -x
+
+# logger "openslx vm_runtime: Started."
+
+DISTRIBUTION=$(lsb_release -is | tr '[A-Z]' '[a-z]' | sed -r 's/[^a-z0-9]//g;s/project$//g;s/scientificsl$/scientific/g')
+VERSION=$(lsb_release -rs)
+SCRIPTDIR=/mnt/diskmount/linux/
+RESOLUTIONSCRIPT="${SCRIPTDIR}"/resolution
+SHARESCRIPT="${SCRIPTDIR}"/mnt_shares
+UMOUNTSCRIPT="${SCRIPTDIR}"/umnt_shares
+XSETUP=$(find /etc/X* -name "Xsetup" 2>/dev/null)
+XRESET=$(find /etc/X* -name "Xreset" 2>/dev/null)
+
+[ ! -f "${RESOLUTIONSCRIPT}" -o ! -f "${SHARESCRIPT}" ] && \
+	{ logger "openslx vm_runtime: could not find needed scripts on disk. Exiting." ; exit 1 ; }
+
+write_xsetup() {
+	logger "openslx vm_runtime: writing ${XSETUP}..."
+	cat<<-BISHIER > "${XSETUP}"
+		#!/bin/sh
+		${SHARESCRIPT} &
+		${RESOLUTIONSCRIPT} &
+	BISHIER
+}
+
+patch_xsetup_shebang() {
+	# Patching after first line, to be exact.
+	logger "openslx vm_runtime: patching ${XSETUP} after shebang line, if necessary."
+	grep -q "${RESOLUTIONSCRIPT}" "${XSETUP}"	|| sed "1 a ${RESOLUTIONSCRIPT} \&" -i "${XSETUP}"
+	grep -q "${SHARESCRIPT}" "${XSETUP}"		|| sed "1 a ${SHARESCRIPT} \&" -i "${XSETUP}"
+}
+
+write_xreset() {
+	logger "openslx vm_runtime: writing ${XRESET}..."
+	cat<<-BISHIER > "${XRESET}"
+		#!/bin/sh
+		${UMOUNTSCRIPT} &
+	BISHIER
+}
+
+patch_xreset_shebang() {
+	# Patching after first line, to be exact.
+	logger "openslx vm_runtime: patching ${XRESET} after shebang line, if necessary."
+	grep -q "${UMOUNTSCRIPT}" "${XRESET}"	|| sed "1 a ${UMOUNTSCRIPT} \&" -i "${XRESET}"
+}
+
+case "${DISTRIBUTION}" in
+	opensuse) logger "openslx vm_runtime: openSuse detected."
+		if [ ! -e "${XSETUP}" ]; then
+			XSETUP=/etc/X11/xdm/Xsetup
+			write_xsetup
+		else
+			logger "openslx vm_runtime: patching ${XSETUP}."
+			if ! [ grep -c /etc/sysconfig/displaymanager "$XSETUP" 2>/dev/null 1>&2 ]; then
+				logger "openslx vm_runtime: Xsetup: openSuse marker found, patching."
+				sed "s#/etc/sysconfig/displaymanager#/etc/sysconfig/displaymanager\n"${SHARESCRIPT}" \&\n${RESOLUTIONSCRIPT} \&#g" \
+					-i "${XSETUP}"
+			else
+				logger "openslx vm_runtime: Xsetup: openSuse marker not found, patching after shebang line."
+				xsetup_patch_shebang
+			fi
+			logger "openslx vm_runtime: patching ${RESET}."
+			patch_xreset_shebang
+		fi
+		;;
+	ubuntu)	logger "openslx vm_runtime: Ubuntu detected, version ${VERSION}."
+		# Ubuntu has at least in version 14.04 LTS a bug leading to missing Xsetup/Xreset entries:
+		grep -q "session-setup-script=/etc/X11/Xsetup" /etc/lightdm/lightdm.conf.d/50-myconfig.conf \
+			|| { 	sed "$ a session-setup-script=/etc/X11/Xsetup" -i /etc/lightdm/lightdm.conf.d/50-myconfig.conf
+				logger "openslx vm_runtime: session-setup-script patched into /etc/lightdm/lightdm.conf.d/50-myconfig.conf."; }
+		grep -q "session-reset-script=/etc/X11/Xreset" /etc/lightdm/lightdm.conf.d/50-myconfig.conf \
+			|| {	sed "$ a session-reset-script=/etc/X11/Xreset" -i /etc/lightdm/lightdm.conf.d/50-myconfig.conf
+				logger "openslx vm_runtime: session-reset-script patched into /etc/lightdm/lightdm.conf.d/50-myconfig.conf."; }
+		if [ ! -e "${XSETUP}" ]; then
+			XSETUP=/etc/X11/Xsetup
+			write_xsetup
+		else
+			patch_xsetup_shebang
+		fi
+		if [ ! -e "${XRESET}" ]; then
+			XRESETP=/etc/X11/Xreset
+			write_xreset
+		else
+			patch_xreset_shebang
+		fi
+		;;
+	debian)	logger "openslx vm_runtime: Debian detected."
+		;;
+	*)	logger "openslx vm_runtime: Unknown distribution, exiting."
+		exit 1
+		;;
+esac
+
+exit 0
+

@@ -27,19 +27,28 @@ build() {
 	cd "$MODULE_WORK_DIR/src/kmod" || perror "Could not CD to standalone dnbd3 kmod dir"
 	make MODULE_NAME=dnbd3 KDIR="$KERNEL_HEADERS_DIR" || perror "Could not compile kernel module"
 	mkdir -p "$MODULE_BUILD_DIR/lib/modules/dnbd3" || perror "Could not create lib/modules/dnbd3"
-	mkdir -p "$MODULE_BUILD_DIR/opt/openslx/bin" || perror "Coould not create opt/openslx/bin"
-	cp "$MODULE_WORK_DIR/src/kmod/dnbd3.ko" "$MODULE_BUILD_DIR/lib/modules/dnbd3/" || perror "could not cp dnbd3.ko"
+	mkdir -p "$MODULE_BUILD_DIR/opt/openslx/bin" || perror "Could not create opt/openslx/bin"
+	cp "$MODULE_WORK_DIR/src/kmod/dnbd3.ko" "$MODULE_BUILD_DIR/lib/modules/dnbd3/" || perror "Could not copy dnbd3.ko"
 	cd "$MODULE_BUILD_DIR/opt/openslx/bin" || perror "Could not cd to build dir for client binary"
-	cmake "$MODULE_WORK_DIR/src/dnbd3" || perror "Could not cmake"
+	cmake \
+		-DBUILD_FUSE_CLIENT=ON \
+		-DBUILD_KERNEL_MODULE=ON \
+		-DBUILD_SERVER=OFF \
+		-DBUILD_STRESSTEST=OFF \
+		"$MODULE_WORK_DIR/src/dnbd3" || perror "Could not cmake"
 	make dnbd3-client || perror "Could not make dnbd3-client"
 	make dnbd3-fuse || perror "Could not make dnbd3-fuse"
 	chown root:root "dnbd3-client" "dnbd3-fuse"
 	chmod +xs "dnbd3-client"
 	chmod +x "dnbd3-fuse"
 	cd "$MODULE_WORK_DIR"
+
+	COPYLIST="list_dpkg_output"
+	[ -e "$COPYLIST" ] && rm "$COPYLIST"
+	list_packet_files >> "$COPYLIST"
+	tarcopy "$(cat "$COPYLIST" | sort -u)" "${MODULE_BUILD_DIR}"
 }
 
 post_copy() {
 	:
 }
-

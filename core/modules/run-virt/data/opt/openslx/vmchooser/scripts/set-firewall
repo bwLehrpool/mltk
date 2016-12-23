@@ -1,0 +1,130 @@
+#!/bin/bash
+
+# Do not rename/move this script, or change fwtool.c accordingly
+
+[ "$UID" = "0" ] || exit 1
+
+declare -rg RULES=$(mktemp)
+
+[ -n "$RULES" ] || exit 2
+
+[ -n "$1" ] || exit 3
+
+[ "${#1}" -ge 10 ] || exit 4
+[ "${#1}" -lt 40 ] || exit 5
+
+. /opt/openslx/config
+
+for TOOL in iptables ip6tables; do
+	$TOOL -w -F runvirt-INPUT || $TOOL -w -N runvirt-INPUT
+	$TOOL -w -F runvirt-OUTPUT || $TOOL -w -N runvirt-OUTPUT
+
+	if ! $TOOL -w -C INPUT -i br0 -j runvirt-INPUT; then
+		$TOOL -w -A INPUT -i br0 -j runvirt-INPUT
+	fi
+	if ! $TOOL -w -C OUTPUT -o br0 -j runvirt-OUTPUT; then
+		$TOOL -w -A OUTPUT -o br0 -j runvirt-OUTPUT
+	fi
+	if ! $TOOL -w -C FORWARD -i br0 -j runvirt-INPUT; then
+		$TOOL -w -A FORWARD -i br0 -j runvirt-INPUT
+	fi
+	if ! $TOOL -w -C FORWARD -o br0 -j runvirt-OUTPUT; then
+		$TOOL -w -A FORWARD -o br0 -j runvirt-OUTPUT
+	fi
+	$TOOL -A runvirt-INPUT -m conntrack --ctstate ESTABLISHED -j ACCEPT
+	$TOOL -A runvirt-OUTPUT -m conntrack --ctstate ESTABLISHED -j ACCEPT
+done
+
+declare -rg AUTORULES=$(mktemp)
+
+add_ips () {
+	# add_ips "IN/OUT" "IP1 IP2 IPn" "PORT" "ACCEPT/REJECT"
+	local IP
+	[ -z "$1" -o -z "$2" -o -z "$3" -o -z "$4" ] && return 1
+	for IP in $2; do
+		echo "$1 $IP $3 $4" >> "${AUTORULES}"
+	done
+}
+
+add_ips "IN" "127.0.0.0/8" 0 "ACCEPT"
+add_ips "OUT" "127.0.0.0/8" 0 "ACCEPT"
+add_ips "OUT" "$SLX_DNS" 53 "ACCEPT"
+add_ips "OUT" "$SLX_DNBD3_SERVERS" 5003 "ACCEPT"
+add_ips "OUT" "$SLX_KCL_SERVERS $SLX_SERVER_IP" 0 "ACCEPT"
+
+if [ -n "$SLX_VM_NFS" ]; then
+	IP=
+	if [ "${SLX_VM_NFS:0:2}" = '//' ]; then
+		IP=${SLX_VM_NFS:2}
+		IP=${IP%%/*}
+	else
+		IP=${SLX_VM_NFS%%:*}
+	fi
+	[ -n "$IP" ] && add_ips "OUT" "$IP" 0 "ACCEPT"
+fi
+
+sort -u "${AUTORULES}" > "${RULES}"
+
+wget -T 6 -O - "${SLX_VMCHOOSER_BASE_URL}/lecture/$1/netrules" >> "${RULES}" 2> "${AUTORULES}"
+RET=$?
+
+if [ "$RET" != "0" ]; then
+	echo "wget exit code: $RET :-("
+	grep -q "ERROR 404" "${AUTORULES}" && exit 0
+	exit 6
+fi
+
+declare -rg V4='^[0-9]+(\.[0-9]+)*(/[0-9]+)?$'
+declare -rg V6='^([0-9a-fA-F]+|:)(:+[0-9a-fA-F]*)*(/[0-9]+)?$'
+
+while read -r DIR DEST PORT ACTION GARBAGE || [ -n "$DIR" ]; do
+	if [ -z "$DEST" -o -z "$PORT" -o -z "$ACTION" ]; then
+		echo "Invalid rule: '$DIR $DEST $PORT $ACTION'"
+		continue
+	fi
+	IPLINE1=" -w"
+	IPLINE2=
+	if [ "$DIR" = "IN" ]; then
+		IPLINE1+=" -A runvirt-INPUT"
+	elif [ "$DIR" = "OUT" ]; then
+		IPLINE1+=" -A runvirt-OUTPUT"
+	else
+		continue
+	fi
+	if ! [[ $PORT =~ ^[0-9]+$ ]] || [ "$PORT" -gt 65535 ]; then
+		echo "Invalid port: '$PORT'"
+		continue
+	fi
+	if [ "$DEST" != "*" ]; then
+		if [ "$DIR" = "OUT" ]; then
+			IPLINE1+=" -d $DEST"
+		else
+			IPLINE1+=" -s $DEST"
+		fi
+	fi
+	if [ "$PORT" != 0 ]; then
+		IPLINE2+=" --dport $PORT"
+	fi
+	IPLINE2+=" -j $ACTION"
+	# IPv6?
+	if ! [[ $DEST =~ $V4 ]]; then
+		if [ "$PORT" = 0 ]; then
+			ip6tables $IPLINE1 $IPLINE2
+		else
+			ip6tables $IPLINE1 -p tcp $IPLINE2
+			ip6tables $IPLINE1 -p udp $IPLINE2
+		fi
+	fi
+	# IPv4
+	if ! [[ $DEST =~ $V6 ]]; then
+		if [ "$PORT" = 0 ]; then
+			iptables $IPLINE1 $IPLINE2
+		else
+			iptables $IPLINE1 -p tcp $IPLINE2
+			iptables $IPLINE1 -p udp $IPLINE2
+		fi
+	fi
+done < "$RULES"
+
+exit 0
+

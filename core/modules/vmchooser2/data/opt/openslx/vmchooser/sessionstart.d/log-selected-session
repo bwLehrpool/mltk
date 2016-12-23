@@ -1,5 +1,16 @@
 #!/bin/ash
 
-[ -n "$SESSION_NAME" ] && slxlog ".vmchooser-session-name" "$SESSION_NAME"
+[ -z "${SESSION_UUID}${SESSION_NAME}" ] && exit 0
+
+. /opt/openslx/config
+
+[ -z "$SLX_REMOTE_LOG" ] && exit 0
+
+REALUSER=$(whoami)
+LOGUSER=0
+[ "x$SLX_REMOTE_LOG_SESSIONS" = "xyes" ] && LOGUSER=1
+
+curl --data-urlencode "type=.vmchooser-session" --data-urlencode "uuid=$SESSION_UUID" --data-urlencode "name=$SESSION_NAME" \
+		--data-urlencode "user=$REALUSER" --data-urlencode "loguser=$LOGUSER" "$SLX_REMOTE_LOG"
 
 exit 0

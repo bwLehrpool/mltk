@@ -1,6 +1,7 @@
 REQUIRED_INSTALLED_PACKAGES="
-"
-REQUIRED_CONTENT_PACKAGES="
+			fonts-dejavu-core
+			fonts-dejavu-extra
+			ttf-dejavu-core
 			xserver-xorg$UBUNTU_XORG_PKG_SUFFIX
 			xserver-xorg-core$UBUNTU_XORG_PKG_SUFFIX
 			libgl1-mesa-dri$UBUNTU_XORG_PKG_SUFFIX
@@ -8,18 +9,47 @@ REQUIRED_CONTENT_PACKAGES="
 			xkb-data
 			x11-xkb-utils
 			x11-xserver-utils
+			xdotool
 			xserver-xorg-input-evdev$UBUNTU_XORG_PKG_SUFFIX
-			xserver-xorg-input-mouse$UBUNTU_XORG_PKG_SUFFIX
+			xserver-xorg-input-synaptics$UBUNTU_XORG_PKG_SUFFIX
 			xserver-xorg-input-vmmouse$UBUNTU_XORG_PKG_SUFFIX
-			xserver-xorg-video-intel$UBUNTU_XORG_PKG_SUFFIX
+			xserver-xorg-input-wacom$UBUNTU_XORG_PKG_SUFFIX
 			xserver-xorg-video-ati$UBUNTU_XORG_PKG_SUFFIX
-			xserver-xorg-video-vesa$UBUNTU_XORG_PKG_SUFFIX
-			xserver-xorg-video-mga$UBUNTU_XORG_PKG_SUFFIX
-			xserver-xorg-video-vmware$UBUNTU_XORG_PKG_SUFFIX
 			xserver-xorg-video-fbdev$UBUNTU_XORG_PKG_SUFFIX
+			xserver-xorg-video-intel$UBUNTU_XORG_PKG_SUFFIX
+			xserver-xorg-video-mga$UBUNTU_XORG_PKG_SUFFIX
+			xserver-xorg-video-nouveau$UBUNTU_XORG_PKG_SUFFIX
 			xserver-xorg-video-radeon$UBUNTU_XORG_PKG_SUFFIX
 			xserver-xorg-video-sisusb$UBUNTU_XORG_PKG_SUFFIX
+			xserver-xorg-video-vesa$UBUNTU_XORG_PKG_SUFFIX
+			xserver-xorg-video-vmware$UBUNTU_XORG_PKG_SUFFIX
+"
+REQUIRED_CONTENT_PACKAGES="
+			fonts-dejavu-core
+			fonts-dejavu-extra
+			ttf-dejavu-core
+			xserver-xorg$UBUNTU_XORG_PKG_SUFFIX
+			xserver-xorg-core$UBUNTU_XORG_PKG_SUFFIX
+			libgl1-mesa-dri$UBUNTU_XORG_PKG_SUFFIX
+			libgl1-mesa-glx$UBUNTU_XORG_PKG_SUFFIX
+			xkb-data
+			x11-xkb-utils
+			x11-xserver-utils
+			xdotool
+			xserver-xorg-input-evdev$UBUNTU_XORG_PKG_SUFFIX
+			xserver-xorg-input-synaptics$UBUNTU_XORG_PKG_SUFFIX
+			xserver-xorg-input-vmmouse$UBUNTU_XORG_PKG_SUFFIX
+			xserver-xorg-input-wacom$UBUNTU_XORG_PKG_SUFFIX
+			xserver-xorg-video-ati$UBUNTU_XORG_PKG_SUFFIX
+			xserver-xorg-video-fbdev$UBUNTU_XORG_PKG_SUFFIX
+			xserver-xorg-video-intel$UBUNTU_XORG_PKG_SUFFIX
+			xserver-xorg-video-mga$UBUNTU_XORG_PKG_SUFFIX
 			xserver-xorg-video-nouveau$UBUNTU_XORG_PKG_SUFFIX
+			xserver-xorg-video-radeon$UBUNTU_XORG_PKG_SUFFIX
+			xserver-xorg-video-sisusb$UBUNTU_XORG_PKG_SUFFIX
+			xserver-xorg-video-vesa$UBUNTU_XORG_PKG_SUFFIX
+			xserver-xorg-video-vmware$UBUNTU_XORG_PKG_SUFFIX
+			@xserver-xorg-input-mouse$UBUNTU_XORG_PKG_SUFFIX
 			@xserver-xorg-video-openchrome$UBUNTU_XORG_PKG_SUFFIX
 			@xserver-xorg-video-savage$UBUNTU_XORG_PKG_SUFFIX
 			@xserver-xorg-video-trident$UBUNTU_XORG_PKG_SUFFIX

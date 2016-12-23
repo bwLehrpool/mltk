@@ -87,16 +87,29 @@ case "$1" in
 
 		# Update resolver configuration file
 		CONF=""
+		# Own domain suffix
 		if [ -n "$domain" ]; then
-			printf -v CONF "${CONF}domain $domain\n"
+			:
 		elif [ -n "$dns_fqdn" ]; then
 			domain="${dns_fqdn#*.}"
-			printf -v CONF "${CONF}domain $domain\n"
 			
 		elif [ -n "$SLX_NET_DOMAIN" ]; then
 			domain="$SLX_NET_DOMAIN"
-			printf -v CONF "${CONF}domain $domain\n"
 		fi
+		if [ -n "$domain" ]; then
+			printf -v CONF "${CONF}domain ${domain%% *}\n"
+		fi
+		# Add domain to list of search domains if not in there yet
+		if [ -n "$domain" ] && [ -n "$search" ]; then
+			FOUND=no
+			for sd in $search; do
+				[ "x$sd" = "x$domain" ] && FOUND=yes
+			done
+			[ "$FOUND" = "no" ] && search="$domain $search"
+		elif [ -n "$domain" ]; then
+			search="$domain"
+		fi
+		# Search domains
 		if [ -n "$search" ]; then
 			printf -v CONF "${CONF}search $search\n"
 		elif [ -n "$SLX_SEARCH_DOMAIN" ]; then
@@ -125,6 +138,15 @@ case "$1" in
 		if [ "$interface" == "br0" ]; then
 			# Update IP
 			sed -i "s/^\(SLX_PXE_CLIENT_IP=\).*$/\1'$ip'/" /opt/openslx/config
+			# Write DOMAIN and SEARCH to /opt/openslx/config if empty
+			if [ -z "$SLX_NET_DOMAIN" ] && [ -n "$domain" ]; then
+				sed -i "/^SLX_NET_DOMAIN=/d" /opt/openslx/config
+				echo "SLX_NET_DOMAIN='$domain'" >> /opt/openslx/config
+			fi
+			if [ -z "$SLX_NET_SEARCH" ] && [ -n "$search" ]; then
+				sed -i "/^SLX_NET_SEARCH=/d" /opt/openslx/config
+				echo "SLX_NET_SEARCH='$search'" >> /opt/openslx/config
+			fi
 			
 			# Only if network is not ready yet
 			if [ ! -e "/run/network/network-ready" ]; then
@@ -150,16 +172,6 @@ case "$1" in
 					fi
 				fi
 
-				# if domain is given from dhcp, save it to openslx config for later use in VMs
-				if [ -n "$domain" ]; then
-						# check if SLX_NET_DOMAIN is in the config at all
-					if grep '^SLX_NET_DOMAIN=' /opt/openslx/config 2>/dev/null; then
-						sed -i "s/^\(SLX_NET_DOMAIN=\).*$/\1'$domain'/" /opt/openslx/config
-					else
-						# not set, add it
-						echo "SLX_NET_DOMAIN='$domain'" >> /opt/openslx/config
-					fi
-				fi
 				# Update /etc/issue for proper spacing
 				/opt/openslx/scripts/openslx-create_issue
 				touch "/run/network/network-ready"
@@ -200,9 +212,6 @@ case "$1" in
 		# "default route exists" target
 		if [ -n "$router" ] && [ ! -e "/run/network/gateway-ready" ]; then
 			touch "/run/network/gateway-ready"
-			# Write to openslx-config
-			echo "# Config written by openslx-dhcp-script (3)" >> /opt/openslx/config
-			echo "SLX_DNS='$dns'" >> /opt/openslx/config
 			systemctl start network-gateway.target &
 		fi
 		

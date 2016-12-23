@@ -118,6 +118,10 @@ for mnt in proc sys run ; do
 done
 
 # HACK HACK: Klausurmodus
+if [ "x$SLX_PVS_DEDICATED" = "xyes" ] || [ "x$SLX_PVS_HYBRID" = "xyes" ]; then
+	sed -i '/^SLX_EXAM=/d' "${FUTURE_ROOT}/opt/openslx/config"
+	SLX_EXAM=
+fi
 # Putting this here as we're hopefully moving to the all new dracut solution soon
 # so there's no reason to make it pretty now
 if [ -n "$SLX_EXAM" ]; then

@@ -26,14 +26,21 @@ mkdir -p "${FUTURE_ROOT}/etc/udev/rules.d"
 IP_OUT=$(ip a | grep -B 1 "/ether" | sed -r '/^--$/d;$!N;s#^[0-9]+: ([a-z0-9\.:]+): .*?/ether ([0-9a-fA-Z:]+) .*$#\1==\2#')
 
 if ! echo "$IP_OUT" | grep -q -- "$MAC"; then
-	drop_shell "Boot interface not found in interface list. NIC driver missing?"
+	drop_shell "---
+$(ip a)
+---
+$IP_OUT
+---
+
+Boot interface $MAC not found in interface list. NIC driver missing?"
+	:
 fi
 
 for LINE in $IP_OUT; do
 	IFACE=$(echo "$LINE" | awk -F '==' '{printf $1}')
 	IFMAC=$(echo "$LINE" | awk -F '==' '{printf $2}' | tr '[A-Z]' '[a-z]') # udev requires mac addesses to be lowercase (a-f), see http://www.debianhelp.co.uk/udev.htm
 	echo "${IFACE} = ${IFMAC}"
-	
+
 	if [ "x$IFMAC" == "x$MAC" ]; then
 		brctl addbr "$BRIDGE" || drop_shell "Could not create bridge $BRIDGE"
 		brctl stp "$BRIDGE" 0

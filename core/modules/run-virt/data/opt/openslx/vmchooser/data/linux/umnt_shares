@@ -1,0 +1,40 @@
+#!/bin/bash
+
+# set -x
+
+logger "openslx sharemapper: umounter started."
+
+OWNDIR=$(dirname $0)
+for i in "$(dirname $0)"/includes/*.inc; do
+	source "$i"
+done
+
+# REMAPMODE (remapMode):		0: None, 1 Native, 2 Native Fallback, 3 vmware
+# CREATEMISSING (createMissingRemap):	0: Nichts tun, 1 xdg-Verzeichnisse
+
+case "$REMAPMODE" in
+	0)	logger "openslx sharemapper: umounter: remapMode 0 (do nothing) detected."
+		exit 0
+		;;
+	1)	logger "openslx sharemapper: umounter: remapMode 1 (native mode) detected."
+		umount_shares
+		umount_home
+		postliminaries_native
+		;;
+	2)	logger "openslx sharemapper: umounter: remapMode 2 (fallback mode) detected."
+		umount_shares
+		umount_home
+		postliminaries_native
+		exit 0
+		;;
+	3)	logger "openslx sharemapper: umounter: remapMode 3 (vmware mode) detected."
+		postliminaries_vmware
+		exit 0
+		;;
+	*)	logger "openslx sharemapper: umounter: unknown remapMode in $SLXCONFIGFILE; doing nothing end exiting with error."
+		exit 1.
+		;;
+esac
+
+exit 0
+

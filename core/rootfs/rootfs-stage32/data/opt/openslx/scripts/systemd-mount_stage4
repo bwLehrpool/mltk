@@ -2,7 +2,6 @@
 # Needs full bash
 
 . /opt/openslx/config
-PATH=$PATH:/opt/openslx/bin:/opt/openslx/sbin
 
 [ -z "${SLX_STAGE4}" ] && { echo "SLX_STAGE4 is not set in /opt/openslx/config." && exit 1; }
 

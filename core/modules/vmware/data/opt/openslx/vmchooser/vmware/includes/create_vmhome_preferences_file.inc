@@ -68,4 +68,5 @@ create_vmhome_preferences_file() {
 		echo 'pref.hotkey.rightControl = "true"' >> "$vmhome/preferences"
 	fi
 	writelog "Vmware preferences file created in $vmhome."
+	true
 }

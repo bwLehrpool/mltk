@@ -1,0 +1,115 @@
+#!/bin/bash
+# bash because of {,} expansion
+
+TOOLS="
+	journalctl
+	systemctl
+	loginctl
+	lspci
+	lsusb
+	lsmod
+	mount
+	dmesg
+	dmidecode
+"
+
+URL="http://132.230.8.113/error_report.php"
+
+if [ "$UID" != "0" ]; then
+	echo "Debug Reports können nur von root versendet werden" >&2
+	exit 1
+fi
+
+if ! curl -H "Expect:" -f -s -S --connect-timeout 5 "$URL" > /dev/null; then
+	echo "Kann den Debug-Report-Server in Freiburg nicht erreichen. :-(" >&2
+	exit 1
+fi
+
+rm -rf /tmp/debug-report
+mkdir -p /tmp/debug-report/{static,generated}
+
+if [ ! -d /tmp/debug-report ]; then
+	echo "FEHLER: Konnte /tmp/debug-report nicht erstellen!" >&2
+	exit 1
+fi
+
+if ! cd /tmp/debug-report; then
+	echo "Cannot go to /tmp/debug-report"
+	exit 1
+fi
+
+cat > err-desc <<HEREEND
+
+# Bitte hier kurz eine passende Fehlerbeschreibung eingeben, anschließend
+# Strg+O, ENTER, Strg+X, ENTER drücken.
+HEREEND
+
+nano -w err-desc
+
+if ! grep -vqE '(^$)|(^# )' err-desc; then
+	echo "Fehlerberichterstattung aufgrund leerer Beschreibung abgebrochen."
+	exit 1
+fi
+
+echo -n "Beginne mit dem Erstellen des Fehlerberichts..."
+
+. /opt/openslx/config
+
+echo "TIME INFORMATION (hwclock, date):" > metadata
+hwclock >> metadata
+date >> metadata
+for srv in $SLX_NTP_SERVER 0.de.pool.ntp.org; do
+	ntpdate -u -q -p 2 -t 1 "$srv" >> metadata 2> /dev/null && break
+done
+echo -n "..."
+
+cp /opt/openslx/config /tmp/udhcpclog static/ 2> /dev/null
+echo -n "."
+
+FILES=$(find /tmp/vmware* /tmp/virt /tmp/vmchooser* -type f \( -name "*.log" -o -name "*.conf" -o -name "*.xml" \) 2> /dev/null)
+if [ -n "$FILES" ]; then
+	tar ckf static/vm-related.tar $FILES
+fi
+
+echo -n "."
+
+cp /var/log/Xorg.0.lo* static/ 2> /dev/null
+cp /var/log/{auth.log,kdm.log,syslog,messages,user.log} static/ 2> /dev/null
+cp /proc/{cpu,mem}info static/ 2> /dev/null
+echo -n "."
+
+for tool in $TOOLS; do
+	$tool > "generated/${tool}-out" 2> "generated/${tool}-err"
+	echo -n "."
+done
+
+ip a > "generated/ip-a-out" 2> "generated/ip-a-err"
+echo -n "."
+
+systemctl status > "generated/systemctl-status-out" 2> "generated/systemctl-status-err"
+echo -n "."
+
+ps auxf > "generated/ps-out" 2> "generated/ps-err"
+echo -n "."
+
+find generated/ -type f -name "*-err" -size 0 -delete > /dev/null 2>/dev/null
+
+echo "..fertig!"
+
+cd /tmp
+rm -f -- error-report.tar.gz
+echo -n "Packe Fehlerbericht ein..."
+if ! tar czf error-report.tar.gz debug-report; then
+	echo "Fehler beim Packen des Berichts!" >&2
+	exit 1
+fi
+echo "....fertig!"
+
+echo -n "Lade Fehlerbericht hoch...."
+if ! curl -H "Expect:" -f -s -S -F "file=@error-report.tar.gz;filename=report" "$URL" > /dev/null; then
+	echo "Fehler beim Hochladen des Fehlerberichts :-(" >&2
+	exit 1
+fi
+
+echo "Fehlerbericht erfolgreich versendet!"
+

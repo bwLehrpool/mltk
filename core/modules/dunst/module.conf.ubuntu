@@ -1,0 +1,9 @@
+REQUIRED_INSTALLED_PACKAGES="
+	dunst
+	libnotify-bin
+"
+REQUIRED_CONTENT_PACKAGES="
+	dunst
+	libnotify-bin
+"
+REQUIRED_FILES=""

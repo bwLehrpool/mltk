@@ -1,5 +1,6 @@
 REQUIRED_CONTENT_PACKAGES="
 			dbus
+			dbus-x11
 "
 REQUIRED_FILES+="
 			/etc/default/dbus

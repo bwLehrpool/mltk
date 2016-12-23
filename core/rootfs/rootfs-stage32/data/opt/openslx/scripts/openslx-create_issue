@@ -1,4 +1,5 @@
 #!/bin/bash
+# Needs bash for string manipulation
 # Copyright (c) 2013, 2014 - bwLehrpool Projekt
 # Copyright (c) 2012 - OpenSLX GmbH
 #
@@ -12,14 +13,75 @@
 #
 # First script for initial ramfs for OpenSLX linux stateless clients
 #############################################################################
-PATH=$PATH:/opt/openslx/bin:/opt/openslx/sbin
 
 # Set greeting and add information about the booted system
-len=$(expr length "$(cat /etc/hostname)")
-while [ $len -le 56 ] ; do
-	space="$space "
-	len=$(($len + 1))
-done
 
-sed "s/%space%/$space/g" /opt/openslx/etc/issue.template > /etc/issue
+declare -rg INFILE=/opt/openslx/etc/issue.template
+declare -rg TMPFILE=$(mktemp)
+declare -rg OUTFILE=/etc/issue
+
+. /opt/openslx/config
+
+# Replace known variables and determine maximum line length
+MAX=0
+while IFS='' read -r line || [ -n "$line" ]; do
+	line="${line//"%ip%"/"$SLX_PXE_CLIENT_IP"}"
+	line="${line//"%hostname%"/"$SLX_HOSTNAME"}"
+	tst="${line//"%space%"/}"
+	len=${#tst}
+	[ "$len" -gt "$MAX" ] && MAX=$len
+	echo "$line"
+done < "$INFILE" > "$TMPFILE"
+player=$(< /etc/vmware/config grep -m1 '^product.version' | awk -F= '{print $2}')
+kernel=$(uname -r)
+system="$(dmidecode -s system-manufacturer | grep -vP "unknown|filled|^#") $(dmidecode -s system-product-name | grep -vP "unknown|filled|^#")"
+linkspeed=$(cat /sys/class/net/eth0/speed)
+tmpstatus=$(grep -m1 ' /tmp ' /proc/mounts | awk '{print $3}')
+if [ -z "$tmpstatus" ] || [ "$tmpstatus" = "tmpfs" ]; then
+	tmpstatus="RAMDISK"
+else
+	tmpstatus="HDD"
+fi
+tmpstatus="$(df -P | grep -m1 ' /tmp$' | awk '{printf "%.1f", $2 / 1024 / 1024}')GiB ($tmpstatus)"
+
+cat >> "$TMPFILE" <<EOF
+System model: %space% $system
+Kernel version: %space% $kernel
+Temporary directory: %space% $tmpstatus
+Boot server: %space% $SLX_PXE_SERVER_IP
+EOF
+if [ -n "$linkspeed" ]; then
+	echo "Link speed: %space% ${linkspeed}MBit" >> "$TMPFILE"
+fi
+if [ -n "$SLX_SHUTDOWN_SCHEDULE" ]; then
+	echo "Scheduled shutdown: %space% $SLX_SHUTDOWN_SCHEDULE" >> "$TMPFILE"
+fi
+if [ -n "$SLX_REBOOT_SCHEDULE" ]; then
+	echo "Scheduled reboot: %space% $SLX_REBOOT_SCHEDULE" >> "$TMPFILE"
+fi
+if [ -n "$player" ]; then
+	echo "VMware version: %space% ${player//'"'/}" >> "$TMPFILE"
+fi
+
+echo "" >> "$TMPFILE"
+
+# Fix up spacing for right-aligned text
+while IFS='' read -r line || [ -n "$line" ]; do
+	tst=${line/"%space%"/}
+	if [ "$(( ${#line} - ${#tst} ))" -eq 7 ]; then
+		space=
+		while true; do
+			tst=${line/"%space%"/"$space"}
+			if [ "${#tst}" -ge "$MAX" ]; then
+				line="$tst"
+				break
+			fi
+			space=" $space"
+		done
+	fi
+	echo "$line"
+done < "$TMPFILE" > "$OUTFILE"
+
+rm -f -- "$TMPFILE"
+
 

@@ -14,261 +14,165 @@
 #    - component for virtualbox of the vmchooser plugin vmchooser-run_virt
 ################################################################################
 
+[ -r /run/hwinfo ] && source /run/hwinfo
+
 ################################################################################
 ### declaration of default variables
 ################################################################################
 
-VMCHOOSERVBOX="/opt/openslx/vmchooser/${self}"
-confdir="${TMPDIR}/vbox"	# dir for configs
-export VBOX_USER_HOME=${confdir}		# instead of $HOME/.VirtualBox
-# define dirs and files which can be removed after exit, be carefull!
-# TODO: Machanism not in use anymore. A better approach would be anyways to
-# Define a fixed directory which can be deleted recursively on exit. $TMPDIR
-# would be a start.
-#RMDIRS="${snapshotdir} ${confdir} /tmp/virt/.vbox-${USER}-ipc"
-# rm -rf ${RMDIRS} 2>/dev/null
-machfolder="${confdir}/Machines"
-# use vm_shortname for dir and config names since vm_name can be very long
-machconfig="${machfolder}/${vm_shortname}/${vm_shortname}.xml"
-diskfolder="${confdir}/HardDisks"
-snapshotdir=${machfolder}/${vm_shortname}/Snapshots
-mkdir -p ${diskfolder} ${snapshotdir} 2>/dev/null
-[ -z "${diskless}" ] && diskless=0	# check if diskless var empty?
-guestaudio="HDA"			# default guest audio controller (SB16, AC97, HDA)
-vb_network_card="82540EM"		# default guest network adaptor (Am79C970A, Am79C973, 82540EM)
-enable2d="true"				# default setting for accelerated 2D grapics (OS dependent)
-vram="128"				# set default graphics ram
-
-# configure our own rwimg, empty image which we provide
-if [ "${imgmode}" = "rwimg" ]; then
-  imgname="${vm_shortname}.vdi"		# what is our rwimg called?
-  vmpath=${imgpath}/${imgname}
-  if ! [ -e "${vmpath}" ]; then
-    cat /opt/openslx/vmchooser/virtualbox/rwimg.vdi.gz | gunzip > "${vmpath}"
-  fi
-fi
-
-# link to image
-diskfile="${diskfolder}/${imgname}"
-[ ${diskless} -eq 0 ] && ln -sf ${vmpath} ${diskfile}
-
-# check the file type
-if echo ${imgname} | grep -qiE "vdi|vhd" && [ ${diskless} -eq 0 ]; then
-  imgfmt=$(echo ${imgname##*.} | tr "[a-z]" "[A-Z]")
-elif [ ${diskless} -eq 0 ]; then
-  writelog "${imgname} is not a valid image format (vdi|vhd), exiting!"
+if ! isset VM_NAME_CLEAN IMG_BASENAME SRC_IMG_ABSOLUTE VM_OS_TYPE; then
+  env=$(mktemp)
+  env > "$env"
+  slxlog -d "virt-vbox-init" "A required variable is not set." "$env"
+  writelog "Incomplete variable set passed from main run-virt"
+  error_user "Wichtige variablen, die das VBox Plugin benötigt, wurden nicht
+gesetzt. Kann die VM nicht starten."
   cleanexit 1
 fi
 
-npaging="false"		# nested paging: Default: not enabled
-enablevt="false"	# VT: Default: not enabled
-[ ${vtflag} -eq 0 ] && cpu_cores=1	# check for VT, if not available only 1 cpu supported
-[ ${vtflag} -eq 1 ] && enablevt="true"
+declare -rg VMCHOOSERVBOX="/opt/openslx/vmchooser/${self}"
+declare -rg VBOX_ROOT="${TMPDIR}/vbox"	# dir for configs
+declare -rg VBOX_MACHINES_DIR="${VBOX_ROOT}/Machines"
+declare -rg VBOX_SNAPSHOT_DIR="${VBOX_MACHINES_DIR}/${VM_NAME_CLEAN}/Snapshots"
+declare -rg VBOX_HDD_DIR="${VBOX_ROOT}/HardDisks"
+declare -rg VBOX_HDD_LINK="${VBOX_HDD_DIR}/${IMG_BASENAME}"
+
+export VBOX_USER_HOME="${VBOX_ROOT}"		# instead of $HOME/.VirtualBox
+
+# use VM_NAME_CLEAN for dir and config names since VM_DISPLAYNAME can be very long
+VBOX_MACHINE_CONFIG="${VBOX_MACHINES_DIR}/${VM_NAME_CLEAN}/${VM_NAME_CLEAN}.xml"
+mkdir -p "${VBOX_HDD_DIR}" "${VBOX_SNAPSHOT_DIR}" 2>/dev/null
+enable2d="true"				# default setting for accelerated 2D grapics (OS dependent)
+vram="128"				# set default graphics ram
+snapshotuuid="34f617be-192a-46b3-a8ae-bce1029e093f"	# snapshot UUID is static
+
+# link to image, determine extension (type)
+imgfmt=$(echo ${SRC_IMG_ABSOLUTE##*.} | tr '[a-z]' '[A-Z]')
+if [ -n "$VM_DISKFILE_RW" ]; then
+  ln -sf "${VM_DISKFILE_RW}" "${VBOX_HDD_LINK}"
+else
+  ln -sf "${VM_DISKFILE_RO}" "${VBOX_HDD_LINK}"
+  # image is RO, we only support VDI?
+  if [ "$imgfmt" != "VDI" ]; then
+    writelog "Image is not VDI, cannot create snapshot.."
+    error_log "Die gewählte VM nutzt VBox, hat aber kein VDI image (sondern '$imgfmt'), kann VM nicht starten."
+    cleanexit 1
+  fi
+fi
+
 
 # Setting some default variables
 shfolders="TRUE"
+enablevt="true"
 
 # set some base configuration depending on the guest operating system
-case "${vmostype}" in
-  win31*)
-    guestaudio="SB16"
-    vb_network_card="Am79C973"
-    vmostype="Windows31"
+case "${VM_OS_TYPE}" in
+  Windows31)
     mem="32"
     vram="16"
     cpu_cores=1
     enablevt="false"
     shfolders="FALSE"
-  ;;
-  winnt*)
-    guestaudio="SB16"
-    vb_network_card="Am79C973"
-    vmostype="Windows31"
-    mem="32"
+    ;;
+  WindowsNT)
+    mem="4096"
     vram="16"
-    cpu_cores=1
+    cpu_cores=4
     enablevt="false"
     shfolders="FALSE"
-  ;;
-  win95*)
-    vmostype="Windows95"
-    guestaudio="SB16"
-    vb_network_card="Am79C973"
-    mem="92"
+    ;;
+  Windows95)
+    mem="128"
     vram="32"
     cpu_cores=1
     enablevt="false"
     shfolders="FALSE"
-  ;;
-  win98*)
-    vmostype="Windows98"
-    guestaudio="SB16"
-    vb_network_card="Am79C973"
+    ;;
+  Windows98)
     mem="256"
     vram="64"
     cpu_cores=1
     shfolders="FALSE"
-  ;;
-  winme*)
-    vmostype="WindowsMe"
-    guestaudio="AC97"
-    vb_network_card="Am79C973"
+    ;;
+  WindowsMe)
     mem="256"
     vram="64"
     cpu_cores=1
     shfolders="FALSE"
-  ;;
-  winxp*|windowsxp*)
-    vmostype="WindowsXP"
-    guestaudio="AC97"
-  ;;
-  winvista*|windowsvista*)
-    vmostype="WindowsVista"
-  ;;
-  windows7*)
-    vmostype="Windows7"
-  ;;
-  windows8*)
-    vmostype="Windows8"
-  ;;
-  linux*|*ubuntu*|*suse*|debian*|*sci*)
-    if echo "${vmostype}" | grep -q "64"; then
-      vmostype="Linux26_64"
-      # check for vtflag
-      if [ ${vtflag} -ne 1 ]; then
-        writelog "You are trying to boot a 64 bit OS without a VT enabled CPU"
-        writelog "This is not supported, exiting!"
-        cleanexit 1
-      fi
-      # check if host is only 32 bit, then use only 1 cpu (only 1 supported)
-      if echo "${host_arch}" | grep -qE "i.86"; then
-        cpu_cores=1
-      fi
-    else
-      vmostype="Linux26"
-    fi
-  ;;
-  os2*)
+    ;;
+  WindowsXP)
+    ;;
+  WindowsVista)
+    ;;
+  Windows7)
+    ;;
+  Windows8)
+    ;;
+  OS2eCS)
     mem="256"
-    vmostype="OS2eCS"
     cpu_cores=1
     enable2d="false"
-  ;;
-  macos*|MacOS*)
-    vmostype="MacOS"
+    ;;
+  MacOS)
     enable2d="false"
-  ;;
+    ;;
+  Linux*)
+    ;;
   *)
-    vmostype="Other"
+    VM_OS_TYPE="Other"
     enable2d="false"
-  ;;
+    ;;
 esac
 
+if [ "$HW_KVM" != "ENABLED" ]; then
+  enablevt="false"
+  cpu_cores=1 # check for VT, if not available only 1 cpu supported
+fi
+
 writelog "Directories:"
-writelog "\tConfig dir:\t\t$confdir"
-writelog "\tMachines dir:\t\t$machfolder"
-writelog "\tMachine config:\t\t$machconfig"
-[ ${diskless} -eq 0 ] && writelog "\tHardDisks dir:\t\t$diskfolder"
+writelog "\tConfig dir:\t\t$VBOX_ROOT"
+writelog "\tMachines dir:\t\t$VBOX_MACHINES_DIR"
+writelog "\tMachine config:\t\t$VBOX_MACHINE_CONFIG"
 
 ################################################################################
 ### Hardware checks
 ################################################################################
 
 # remove ':' from MAC addr for vbox and generate a VDE (virtual device ethernet)
-# MAC addr from the first one (put in prefix 0DE)
+# MAC addr from the first one (put in prefix 00DE)
 macaddr=$(echo ${macaddr} | sed 's/://g')
 vdemacaddr=$(echo ${macaddr} | sed 's/^..../00DE/g')
 
 machineuuid="00000000-0000-0000-0000-${macaddr}"	# machine UUID, MAC addr part of it
 machineuuid=$(echo ${machineuuid} | tr "[A-Z]" "[a-z]")	# cosmetical, since UUID in lower case
-# get UUID of VBox image, if not diskless
-[ ${diskless} -eq 0 ] && diskuuid=$(VBoxManage -q showvdiinfo ${diskfile} \
-					| grep UUID | grep -v "Parent UUID" | awk '{print $2}' \
-					| grep -v use )	# nec. for VBox >= 4
 
-imgtype="Immutable"					# make disk immutable
-snapshotuuid="34f617be-192a-46b3-a8ae-bce1029e093f"	# snapshot UUID is static
-imageuuid=${snapshotuuid}	# imageuuid in machine.include, default snapshotuuid
+# get UUID of VBox image
+diskuuid=$(VBoxManage -q showvdiinfo ${VBOX_HDD_LINK} \
+            | grep UUID | grep -v "Parent UUID" | awk '{print $2}' \
+            | grep -v use )	# nec. for VBox >= 4
 
-# check if rw image
-# remove disk and add rwimg if set
-if echo "${imgmode}" | grep -q rw; then
-  # lock existing?
-  if [ -e "${vmpath}.lock" ]; then
-    writelog "This rw image is already in use."
-    writelog "Found lock: ${vmpath}.lock, exiting!"
-    writelog "Remove lock if you are sure that this is not the case"
-    cleanexit 1
-  # image rw?
-  elif ! [ -w ${vmpath} ]; then
-    writelog "You defined mode rw, but image ${vmpath} is not rw! \c"
-    writelog "Please correct, exiting!"
-    cleanexit 1
-  fi
-  touch "${vmpath}.lock"		# add lock
-  #RMDIRS="${RMDIRS} ${vmpath}.lock"	# remove lock after VM stopped TODO See note at the top
+
+if [ -n "$VM_DISKFILE_RW" ]; then
+  # Image is already RW - easy
   imgtype="Normal"
-  imageuuid=${diskuuid}			# replace image uuid in machine config
-elif [ ${diskless} -eq 0 ]; then
-  # use temp disk as snapshot
-  cat ${VMCHOOSERVBOX}/empty-diff.vdi.gz \
-    | gunzip > "${snapshotdir}/{${snapshotuuid}}.vdi"
-  # patch the disk file uuid into the snapshot vdi file
-  dd if=${diskfile} of="${snapshotdir}/{${snapshotuuid}}.vdi" seek=424 \
-    skip=392 bs=1 count=16 conv=notrunc
+  imageuuid=${diskuuid}
+else
+  # use temp disk as snapshot to get CoW
+  imgtype="Immutable"					# make disk immutable
+  imageuuid=${snapshotuuid}
+  < "${VMCHOOSERVBOX}/empty-diff.vdi.gz" gunzip > "${VBOX_SNAPSHOT_DIR}/{${snapshotuuid}}.vdi"
+  # patch the disk file uuid into the snapshot vdi file:
+  # We read from offset 424 in the source HDD and write to offset 392 in out prepared
+  # CoW container. 16 bytes will be copied, which is the binary UUID
+  # TODO: This requires the image to be a vdi/vdh; Afaik, vbox supports vmdk,
+  # so this code would break in that case. Can we use the diskuuid we got via
+  # VBoxManage, convert to binary, and patch it
+  dd if=${VBOX_HDD_LINK} of="${VBOX_SNAPSHOT_DIR}/{${snapshotuuid}}.vdi" seek=424 \
+    skip=392 bs=16 count=1 conv=notrunc
 fi
 
-# TODO: MEM muss noch angepasst werden. Maschine crasht wenn mehr als 50% MEM
-# memory part equal to vmware plugin
-# percentage of memory to use for virtualbox in standard case
-#if [ -n "${forcemem}" ]; then
-#  mem="${forcemem}"
-#else
-#  permem=30
-#  if [ "${totalmem}" -ge "1600" ]; then
-#    permem=40
-#  fi
-#  # check if /tmp is on harddisk
-#  if grep -qe "/dev/.* /tmp " /proc/mounts ; then
-#    permem=60
-#    id44="1"
-#    # Hack, if more than 2,5G RAM use 40% of Ram and write vmem into Ram as well
-#    # (40% vmware | 40% confdir(vmem...) | 20% host
-#    # VMplayer 2+ issue
-#    # TODO: makes this sense for vbox?
-#    #if [ "${totalmem}" -ge "2500" ]; then
-#      #permem=40
-#      #rmdir ${snapshotdir}
-#      #snapshotdirold=${snapshotdir}
-#      #snapshotdir=/dev/shm/${self}/${USER}/${VM_ID}
-#      #mkdir -p ${snapshotdir}
-#      #ln -sf ${snapshotdir} ${snapshotdirold}
-#    #fi
-#  fi
-#  mem=$(expr ${totalmem} / 100 \* ${permem})
-#  if [ "${id44}" = "1" ]; then
-#    hostmem=$(expr ${totalmem} - ${mem})
-#  else
-#    hostmem=$(expr ${totalmem} - ${mem} - ${mem})
-#  fi
-#  #permem=40
-#  #mem=$(expr ${totalmem} * ${permem})
-#fi
-
-# translate network cards
-case "${network_card}" in
-  e1000)
-    vb_network_card="82540EM"
-  ;;
-  virtio)
-    vb_network_card="virtio"
-  ;;
-  *)
-    network_card="pcnet"
-    vb_network_card="Am79C973"
-esac
-
 # translate network kinds (nat, bridged, host-only)
+# TODO: Server should prepare this in returned xml
 case "${network_kind}" in
   bridge*)
     network_kind='HostOnlyInterface name="vboxnet0"'
@@ -280,57 +184,19 @@ case "${network_kind}" in
     network_kind='HostOnlyInterface name="vboxnet1"'
 esac
 
-# configure 3d settings
-case "${enable3d}" in
-  *true*|*yes*)
-    enable3d="true"
-    ;;
-  *)
-    enable3d="false"
-    ;;
-esac
+boot="HardDisk"
 
-# translate boot, use if set else set to HardDisk
-# usually support for a,c,d,n, stands for Floppy, HD, CD-ROM, Network
-# support nfs and tftp as well
-case ${boot} in
-  n*|tftp)
-    boot="Network"
-    if [ "${network_kind}" = "NAT" ] && [ -n "${virtualbox_tftpdir}" ]; then
-      vm_name=${vm_shortname}	# use vm_shortname to avoid Problems /w TFTP in NAT
-      mkdir -p ${confdir}/TFTP	# link TFTP dir for NAT TFTP boots
-      if [ -e ${virtualbox_tftpdir}/pxelinux.0 ]; then
-        cp ${virtualbox_tftpdir}/pxelinux.0 ${confdir}/TFTP/${vm_name}.pxe
-      else
-        writelog "${virtualbox_tftpdir}/pxelinux.0 not found!"
-        writelog "Network boot won't work, exiting!"
-        cleanexit 1
-      fi
-      for i in $(ls ${virtualbox_tftpdir}); do
-        ln -sf ${virtualbox_tftpdir}/${i} ${confdir}/TFTP/${i}
-      done
-    fi
-  ;;
-  # later maybe c|disk|hd*|sd*) for HD and d|cd*) for CD-ROM
-  *) 
-    boot="HardDisk"
-  ;;
-esac
-
-vrdpport=${remotedesktopport}	# external GUI
-
-[ ${diskless} -eq 0 ] && writelog "\tSnapshots dir:\t\t$snapshotdir"
+writelog "\tSnapshots dir:\t\t$VBOX_SNAPSHOT_DIR"
 writelog "Diskimage:"
-[ ${diskless} -eq 0 ] && writelog "\tDisk file:\t\t$diskfile"
-[ ${diskless} -eq 0 ] && writelog "\tDisk format:\t\t$imgfmt"
-[ ${diskless} -eq 0 ] && writelog "\tDisk type:\t\t$imgtype"
-  writelog "\tVMostype:\t\t$vmostype"
-  writelog "\tMachine UUID:\t\t$machineuuid"
-[ ${diskless} -eq 0 ] && writelog "\tDisk UUID:\t\t$diskuuid"
+writelog "\tDisk file:\t\t$VBOX_HDD_LINK"
+writelog "\tDisk type:\t\t$imgtype"
+writelog "\tVMostype:\t\t$VM_OS_TYPE"
+writelog "\tMachine UUID:\t\t$machineuuid"
+writelog "\tDisk UUID:\t\t$diskuuid"
 writelog "Virtual Hardware:"
 writelog "\tCPU cores:\t\t${cpu_cores}\c"
-[ ${vtflag} -eq 0 ] && writelog ""
-[ ${vtflag} -eq 1 ] && writelog " (VT enabled CPU)"
+writelog ""
+[ "$HW_KVM" = "ENABLED" ] && writelog " (VT enabled CPU)"
 writelog "\tGuest RAM:\t\t${mem} MB"
 # echo nur wenn hostmem gesetzt
 [ -n "${hostmem}" ] && writelog "\tHost RAM:\t\t${hostmem} MB"
@@ -338,10 +204,7 @@ writelog "\tMAC address:\t\t$macaddr"
 writelog "\tNetwork card:\t\t${vb_network_card}"
 writelog "\tNetwork kind:\t\t${network_kind}"
 writelog "\tBooting from:\t\t${boot}\c"
-[ ${diskless} -eq 0 ] && writelog ""
-[ ${diskless} -eq 1 ] && writelog " 'diskless'"
-# TODO: server start activate via xml, etc...
-#writelog "\tGuest VRDP port:\t${vrdpport}"
+writelog ""
 writelog "\tCD-ROM1:\t\t${cdrom0}"
 #writelog "\tCD-ROM2:\t\t${cdrom1}"
 writelog "\tFloppy_A:\t\t${floppy0}"
@@ -357,60 +220,31 @@ writelog "\tShared Folders '${sharename}':\t${sharepath}"
 
 # Shares given?
 if [ "x$shfolders" != "xFALSE" ]; then
-	sharelist="<SharedFolders>
+  sharelist="<SharedFolders>
         <SharedFolder name=\"${homesharename}\" hostPath=\"${homesharepath}\" writable=\"true\"/>
         <SharedFolder name=\"${commonsharename}\" hostPath=\"${commonsharepath}\" writable=\"true\"/>
       </SharedFolders>"
 else
-	sharelist=''
+  sharelist=''
 fi
 
-source ${VMCHOOSERVBOX}/virtualbox.include	# create Virtualbox.xml
+source "${VMCHOOSERVBOX}/virtualbox.include"  # create Virtualbox.xml
 
 # remove snapshot disk when using rw images
 if [ "${imgtype}" != "Immutable" ]; then
-  sed -i "/${snapshotuuid}/d" "${confdir}/VirtualBox.xml"
+  sed -i "/${snapshotuuid}/d" "${VBOX_ROOT}/VirtualBox.xml"
 fi
 
 # TODO: add rawdisk if requested
 #"raw.vmdk" format="VMDK" type="Writethrough"/>
 
-source ${VMCHOOSERVBOX}/machine.include	# create machine.xml
+source "${VMCHOOSERVBOX}/machine.include" # create machine.xml
 
 # remove CD-ROM if not available
 if [ "${cdrom0}" != "TRUE" ]; then
-  sed -i "/HostDrive/d" ${machconfig}
-  sed -i '/AttachedDevice.*type="DVD"/d' ${machconfig}
-  sed -i "/<!-- PLEASE DO NOT REMOVE THIS COMMENT (CD)!!! -->/d" ${machconfig}
-fi
-
-# if diskless remove all disks
-if [ ${diskless} -eq 1 ]; then
-  sed -i "/<HardDisk/d;/<\/HardDisk/d" "${confdir}/VirtualBox.xml"
-  sed -i "/${imageuuid}/d" ${machconfig}
-  sed -i '/AttachedDevice type="HardDisk"/d' ${machconfig}
-  sed -i "/<!-- PLEASE DO NOT REMOVE THIS COMMENT (HD)!!! -->/d" ${machconfig}
-fi
-
-# define redirects
-if [ ${redirects} -ge 1 ]; then
-  (( i=1 ))
-  writelog "\tGuest redirects:\t\c"
-  while [ ${i} -le ${redirects} ]; do
-    extradataitem='<ExtraDataItem name="VBoxInternal/Devices'
-    extradataitem="${extradataitem}/${network_card}/0/LUN#0/Config"
-    extradataitem="${extradataitem}/${redirect_name[$i]}/"
-    extradataprotocol="Protocol\" value=\"${redirect_proto[$i]}\"/>"
-    extradatahostport="HostPort\" value=\"${redirect_hport[$i]}\"/>"
-    extradataguestport="GuestPort\" value=\"${redirect_gport[$i]}\"/>"
-    sed -i "s,</ExtraData>,  ${extradataitem}${extradataguestport}\n\
-      ${extradataitem}${extradatahostport}\n\
-      ${extradataitem}${extradataprotocol}\n\
-    </ExtraData>," "${machconfig}"
-    writelog "${tabspace}${redirect_name[$i]} port: ${redirect_hport[$i]}"
-    tabspace='\t\t\t\t'
-    (( i=$i+1 ))
-  done
+  sed -i "/HostDrive/d" "${VBOX_MACHINE_CONFIG}"
+  sed -i '/AttachedDevice.*type="DVD"/d' "${VBOX_MACHINE_CONFIG}"
+  sed -i "/<!-- PLEASE DO NOT REMOVE THIS COMMENT (CD)!!! -->/d" "${VBOX_MACHINE_CONFIG}"
 fi
 
 ################################################################################

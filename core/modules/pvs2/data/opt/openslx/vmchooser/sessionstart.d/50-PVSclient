@@ -1,6 +1,6 @@
 #!/bin/ash
 
-# SESSION_TYPE can be either 'VSESSION' or 'XSESSION' - currently not evaluated
+# SESSION_TYPE can be either 'VSESSION' or 'XSESSION'
 
 # detect session command of the PVS-Manager session by looking at the xsession file
 PVSMGR_SESSION_CMD=
@@ -17,10 +17,43 @@ if [ -n "${PVSMGR_SESSION_CMD}" ]; then
 	# do not start pvsclient if we are running the pvs manager session
 	[ "x${SESSION_CMD}" == "x${PVSMGR_SESSION_CMD}" ] && exit 0
 fi
-# If the ENV var PVS has been set by vmchooser start pvsclient
-if [ -n "$PVS_AUTO_CONNECT" -a "$PVS_AUTO_CONNECT" == "TRUE" ]; then
-  pvsclient --auto &
-else
-  pvsclient &
+
+# Download fresh copy of config file if possible
+. /opt/openslx/config
+PVSCONFIG=
+if [ -n "$SLX_PVS_CONFIG_URL" ]; then
+		[ -z "$UID" ] && UID="$(id -u)"
+		[ -z "$HOME" ] && HOME="$(getent passwd "$UID" | head -n 1 | awk -F ':' '{print $6}')"
+		mkdir -p "$HOME/.tmp"
+		if wget -T 5 -O "$HOME/.tmp/pvs2.ini.tmp" "$SLX_PVS_CONFIG_URL"; then
+			mv -f "$HOME/.tmp/pvs2.ini.tmp" "$HOME/.tmp/pvs2.ini"
+		fi
+		if ! [ -s "$HOME/.tmp/pvs2.ini" ] && [ -s "/opt/openslx/pvs2/pvs2.ini" ]; then
+			cp -f "/opt/openslx/pvs2/pvs2.ini" "$HOME/.tmp/pvs2.ini"
+		fi
+		if [ -s "$HOME/.tmp/pvs2.ini" ]; then
+			PVSCONFIG="--config=$HOME/.tmp/pvs2.ini"
+		fi
 fi
+
+# If the ENV var PVS has been set by vmchooser start pvsclient
+if [ "$PVS_AUTO_CONNECT" == "TRUE" ]; then
+	pvsstartup "$PVSCONFIG" --auto &
+else
+	pvsstartup "$PVSCONFIG" &
+fi
+
+# Finally, handle hybrid mode where the pvsmgr is launched on the second desktop
+# alongside the actual vm. (make sure this is a VSESSION!)
+if [ "$SESSION_TYPE" == "VSESSION" ]; then
+	{
+		wt="PVS2-Manager"
+		pvsmgr "$PVSCONFIG" --manager-only &
+		for i in 100 100 200 200 200 300 500 500 1000; do
+			usleep $(( i * 1000 )) || sleep 1
+			wmctrl -r "$wt" -t 1
+		done
+	} &
+fi
+
 exit 0

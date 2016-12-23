@@ -8,7 +8,7 @@ build() {
 	COPYLIST="list_dpkg_output"
 	[ -e "${COPYLIST}" ] && rm "${COPYLIST}"
 
-        list_packet_files >> "${COPYLIST}"
+	list_packet_files >> "${COPYLIST}"
 	tarcopy "$(cat "${COPYLIST}" | sort -u)" "${MODULE_BUILD_DIR}"
 	# Systemd/dbus
 	mkdir -p "$MODULE_BUILD_DIR/usr/share/dbus-1/system-services" "$MODULE_BUILD_DIR/etc/systemd/system"

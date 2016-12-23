@@ -1,0 +1,27 @@
+#!/bin/bash
+
+
+fetch_source() {
+	[ -d "${MODULE_WORK_DIR}/src/.git" ] && return 0
+	rm -rf -- "${MODULE_WORK_DIR}/src"
+	git clone "${REQUIRED_GIT}" "${MODULE_WORK_DIR}/src" || perror "Could not create ${MODULE_WORK_DIR}/src"
+}
+
+build() {
+
+	# compilation
+	cd "${MODULE_WORK_DIR}/src" || perror "Could not cd to '${MODULE_WORK_DIR}/src'. Did fetch_source work?"
+
+	make || perror "Could not compile dmidecode using 'make'."
+
+	# NO MAKE INSTALL: Copy to build dir, since there are no shared libs linked in
+	mkdir -p "${MODULE_BUILD_DIR}/usr/sbin"
+	cp "${MODULE_WORK_DIR}/src/dmidecode" "${MODULE_BUILD_DIR}/usr/sbin/" || perror "Could not copy dmidecode binary to ${MODULE_BUILD_DIR}"
+
+	cd - &>/dev/null
+}
+
+post_copy() {
+	:
+}
+

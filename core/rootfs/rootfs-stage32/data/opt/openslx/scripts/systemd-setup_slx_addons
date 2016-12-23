@@ -15,8 +15,6 @@
 #
 ######################################################################################
 
-export PATH=$PATH:/opt/openslx/bin:/opt/openslx/sbin
-
 # read global OpenSLX config
 . /opt/openslx/config || { echo "Could not source config!"; exit 23; }
 
