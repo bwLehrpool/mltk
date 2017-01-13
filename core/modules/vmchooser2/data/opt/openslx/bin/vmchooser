@@ -42,9 +42,9 @@ fi
 
 # No quotes around $EXTRA!
 if [ -z "$SLX_LOCATIONS" ]; then
-	exec vmchooser.real "$@" --url "$URL" --fullscreen --tab "$TAB" --start-uuid "$SLX_EXAM_START" $EXTRA
+	exec vmchooser.real "$@" --url "$URL" --fullscreen --tab "$TAB" --start-uuid "$SLX_EXAM_START" --autoquit 120 $EXTRA
 fi
 
 # No quotes around $EXTRA!
-exec vmchooser.real "$@" --url "$URL" --fullscreen --tab "$TAB" --start-uuid "$SLX_EXAM_START" --locations "$SLX_LOCATIONS" $EXTRA
+exec vmchooser.real "$@" --url "$URL" --fullscreen --tab "$TAB" --start-uuid "$SLX_EXAM_START" --locations "$SLX_LOCATIONS" --autoquit 120 $EXTRA
 
