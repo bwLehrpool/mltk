@@ -1,8 +1,8 @@
 #!/bin/bash
 # Full bash required
 # -----------------------------------------------------------------------------
-# Copyright (c) 2007..2010 - RZ Uni FR
-# Copyright (c) 2007..2013 - OpenSLX GmbH
+# Copyright (c) 2007..2016 - RZ Uni FR
+# Copyright (c) 2007..2016 - OpenSLX GmbH
 #
 # This program is free software distributed under the GPL version 2.
 # See http://openslx.org/COPYING
@@ -19,84 +19,95 @@
 #      fied virtualization tool.
 ################################################################################
 
-declare -rg RUNVIRTINCLUDEDIR=/opt/openslx/vmchooser/run-virt-includes
-declare -rg xmlfile="$1"
+# HACK: workaround if $0 is a symlink, exec its symlink target instead
+SELF=$(readlink -f "$0")
+if [ -n "$SELF" ] && [ "$0" != "$SELF" ]; then
+	exec "$SELF" "$@"
+fi
+declare -rg RUN_VIRT_INCLUDE_DIR="$(dirname $SELF)/run-virt-includes"
 
-# Functions needed by vmchooser-run_virt (writelog(), cleanexit(), rv_clean_string())
-if ! source "${RUNVIRTINCLUDEDIR}/vmchooser_runvirt_functions.inc"; then
-	slxlog "run-virt" "Could not source ${RUNVIRTINCLUDEDIR}/vmchooser_runvirt_functions.inc"
+# This script expects the path to the xml file describing the VM to be started
+declare -rg XML_FILE="$1"
+
+# Functions needed by vmchooser-run_virt (writelog(), cleanexit(), safesource())
+if ! source "${RUN_VIRT_INCLUDE_DIR}/vmchooser_runvirt_functions.inc"; then
+	slxlog "run-virt" "Could not source ${RUN_VIRT_INCLUDE_DIR}/vmchooser_runvirt_functions.inc"
 	exit 1
 fi
 
 trap 'trap "" SIGINT SIGTERM; cleanexit' SIGINT SIGTERM
 
-# Define default dirs / get configs
-source "${RUNVIRTINCLUDEDIR}/set_runvirt_variables.inc"
+# Starting sourcing the includes files. Note that the critical ones should use
+# the '--exit' option of safesource to trigger cleanexit in case of a corrupted/bad
+# include file.
+
+# Set core runvirt variables and directories
+$(safesource --exit "${RUN_VIRT_INCLUDE_DIR}/init_core.inc")
+writelog "#################### Initialization ####################"
+
+# Window manager required early for user feedback through popups (e.g. errors) etc.
+$(safesource "${RUN_VIRT_INCLUDE_DIR}/start_windowmanager.inc")
+
+
+# Read vmchooser.conf, (generated) virtualization.conf and slx config files
+$(safesource --exit "${RUN_VIRT_INCLUDE_DIR}/load_configs.inc")
 
 # Read needed variables from XML file
-source "${RUNVIRTINCLUDEDIR}/get_xml_file_variables.inc"
+$(safesource --exit "${RUN_VIRT_INCLUDE_DIR}/get_xml_file_variables.inc")
 
-# Download meta data from server (e.g. vmx for vmware)
-source "${RUNVIRTINCLUDEDIR}/download_vm_metadata.inc"
+# Download metadata from server (e.g. vmx for vmware)
+$(safesource --exit "${RUN_VIRT_INCLUDE_DIR}/download_vm_metadata.inc")
 
-if ! isset IMGUUID TMPCONFIG TMPDIR USER; then
-	slxlog "run-virt" "Internal sanity check failed: One of IMGUUID TMPCONFIG TMPDIR USER is not set."
-	cleanexit 1
-fi
-
-if [ "$LEGACY" ]; then
-
-	# No longer supported - yay
-
-	error_user "Legacy Mode" "
-Die gewählte VM ist eine 'Legacy VM', für die unvollständige
-Metadaten auf dem bwLehrpool-Server hinterlegt sind. Diese
-werden nicht mehr unterstützt. Um diese VM weiterhin nutzen
-zu können, muss sie mittels der bwLehrpool-Suite heruntergeladen,
-einmal gebootet, und wieder hochgeladen werden.
-(Bei der Gelegenheit könnten z.B. auch gleich anfallende Updates
-eingespielt werden.)
-"
-	cleanexit 1
-
-	# End legacy warning
-fi
-
-# Proper meta data received - proceed normally
-
-# Helper that looks for virtualizer-specific include, show error to user if not found
-source "${RUNVIRTINCLUDEDIR}/setup_vm_hypervisor.inc"
-
-# For scanning for certain usb classes
-source "${RUNVIRTINCLUDEDIR}/usb_detector.inc"
-
-# Firewall
-source "${RUNVIRTINCLUDEDIR}/setup_firewall.inc" || writelog "Could not source setup_firewall"
-setup_firewall || writelog "Could not run setup_firewall"
-
-# Sound setup
-source "${RUNVIRTINCLUDEDIR}/setup_sound.inc"
-
-# Declaration of hardware relatedt variables
-source "${RUNVIRTINCLUDEDIR}/set_runvirt_hardware_variables.inc"
-
-# Start printer daemon
-source "${RUNVIRTINCLUDEDIR}/setup_printer_lpd.inc"
-
-# Setup virtual floppy b: for windows guests with config.xml, openslx.exe etc.
-source "${RUNVIRTINCLUDEDIR}/setup_virtual_floppy.inc"
+# Declaration of hardware related variables
+$(safesource --exit "${RUN_VIRT_INCLUDE_DIR}/set_runvirt_hardware_variables.inc")
 
 # Try to use dnbd3 to access the image, nfs/cifs fallback
-source "${RUNVIRTINCLUDEDIR}/setup_image_access.inc"
+$(safesource --exit "${RUN_VIRT_INCLUDE_DIR}/setup_image_access.inc")
 
-# Window manager required for handling of popups etc.
-source "${RUNVIRTINCLUDEDIR}/start_windowmanager.inc"
 
-# Source run-virt.include of virtualizer
-setup_vm_commandline
+# Mark the end of generic run-virt part
+writelog "Done with generic run-virt. Now loading virtualizer specific includes."
+writelog "#################### Plugin init: $PLUGIN_ID ####################"
+
+# NG: first include the hypervisor includes
+$(safesource "${RUN_VIRT_INCLUDE_DIR}/setup_vm_hypervisor.inc")
+
+# It must declare PLUGIN_FEATURES to set which features are needed.
+# Features are those defined by run-virt.d include files.
+# After sourcing the plugin, check that it defined both PLUGIN_FEATURES and
+# the main function 'run_plugin' which will be called later by the main scripts.
+if ! isset PLUGIN_FEATURES || ! is_function run_plugin; then
+	writelog "Bad plugin '$PLUGIN_ID': either it did not set PLUGIN_FEATURES or did not define 'run_plugin'."
+	EXIT_TYPE="internal" EXIT_REASON="Fehlerhaftes vmchooser plugin: '$PLUGIN_ID'." cleanexit 1
+fi
+writelog "Requested features:\t\t${PLUGIN_FEATURES}"
+
+# Source the *.inc files in run-virt.d
+for FILE in ${VMCHOOSER_DIR}/run-virt.d/*.inc; do
+	$(safesource "$FILE")
+done
+
+# Now look which features were requested and call the handler if one is defined.
+for FEAT in $PLUGIN_FEATURES; do
+	if notempty FEATURE_HANDLERS["${FEAT}"]; then
+		writelog "Initialising '${FEAT}'..."
+		if ! ${FEATURE_HANDLERS["$FEAT"]}; then
+			writelog "\tFailed to run '${FEATURE_HANDLERS["$FEAT"]}'."
+			error_user "Konnte Feature namens '$FEAT' nicht initialisieren!
+Diese Funktion wird nicht verfügbar sein!" # not critical, do not exit!
+		fi
+	else
+		writelog "\tFeature '$FEAT' has no handler! This function will be unavailable."
+		notify_user "Feature '$FEAT' nicht unterstützt"
+	fi
+done
+# The features should now be initialized, call the main 'run_plugin' function of the hypervisor
+writelog "#################### Plugin run: $PLUGIN_ID ####################"
+writelog "Calling 'run_plugin' of '$PLUGIN_ID'..."
+run_plugin || writelog "Failed to run 'run_plugin' of '$PLUGIN_ID'."
 
 # It should have set this variable if all went well
-if [ -z "${VIRTCMD}" ]; then
+if isempty VIRTCMD; then
 	error_user "Fehler beim Starten der VM-Sitzung" "
 Das Start-Script für den Virtualisierer $PLUGIN_ID hat kein Kommando
 zum Starten der Sitzung definiert. Kann Sitzung nicht initialisieren."
@@ -104,16 +115,11 @@ zum Starten der Sitzung definiert. Kann Sitzung nicht initialisieren."
 	cleanexit 1
 fi
 
-writelog "VM command: eval ${VIRTCMD} ${VIRTCMDOPTS}"
-# This will start the VM
-eval ${VIRTCMD} ${VIRTCMDOPTS}
+writelog "VM command: ${VIRTCMD} ${VIRTCMDOPTS}"
+# This will start the VM (no eval needed!)
+${VIRTCMD} ${VIRTCMDOPTS}
 
-writelog "Virtualizer exited. Bye."
-
-# Postrun for commands after virtualization finishes
-if [ -n "${POSTRUN}" ]; then
-	eval ${POSTRUN}  >/dev/null 2>&1
-fi
+writelog "Virtualizer exited with '$?'. Bye."
 
 cleanexit 0
 

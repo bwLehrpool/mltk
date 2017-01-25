@@ -98,11 +98,9 @@ build() {
 	unlink "${MODULE_BUILD_DIR}/$VMWARE_BUNDLE_FILE"
 
 	# write vmware.conf config file to be later sourced by vmware/run-virt.include.
-	# This file was formerly stored in data/opt/openslx/vmchooser/vmware/vmware.conf.
+	mkdir -p "${MODULE_BUILD_DIR}/opt/openslx/vmchooser/plugins/vmware/" || perror "Could not mkdir "${MODULE_BUILD_DIR}/opt/openslx/vmchooser/plugins/vmware/"."
 
-	mkdir -p "${MODULE_BUILD_DIR}/opt/openslx/vmchooser/vmware/" || perror "could not mkdir "${MODULE_BUILD_DIR}/opt/openslx/vmchooser/vmware/"."
-
-	cat > "${MODULE_BUILD_DIR}/opt/openslx/vmchooser/vmware/vmware.conf" <<-EOF
+	cat > "${MODULE_BUILD_DIR}/opt/openslx/vmchooser/plugins/vmware/vmware.conf" <<-EOF
 	# configuration file written by vmware/module.build
 	vmnet0=true
 	vmnet1=192.168.101.1/24

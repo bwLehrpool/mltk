@@ -1,7 +1,7 @@
 #!/bin/ash
 # -----------------------------------------------------------------------------
-# Copyright (c) 2007..2013 - RZ Uni FR
-# Copyright (c) 2007..2013 - OpenSLX GmbH
+# Copyright (c) 2007..2016 - RZ Uni FR
+# Copyright (c) 2007..2016 - OpenSLX GmbH
 #
 # This program is free software distributed under the GPL version 2.
 # See http://openslx.org/COPYING
@@ -14,6 +14,8 @@
 # systemd-vmchooser_env
 #    - This is the preparation script for the configuration of the virtuali-
 #      zation tools used later on.
+#    - This creates '$VMCHOOSER_CONF_DIR/virtualization.conf' that is later
+#      evaluated by the runvirt script.
 ################################################################################
 
 ################################################################################
@@ -22,16 +24,22 @@
 
 export PATH=$PATH:/opt/openslx/bin:/opt/openslx/sbin
 
-# source config file with vars (e.g. ipaddr, macaddr, hostname)
+# source config file with vars (e.g. ipaddr, macaddr, HOSTNAME)
 . /opt/openslx/config
 
 # from plugins/vmchooser/XX_vmchooser.sh
 VMCHOOSER_DIR="/opt/openslx/vmchooser"
-VMCHOOSER_CONF_DIR="$VMCHOOSER_DIR/config"
-DHCP_NAT_CONF="/opt/openslx/vmchooser/config/udhcpd-nat1.conf"
+VMCHOOSER_CONF_DIR="${VMCHOOSER_DIR}/config"
+VMCHOOSER_VIRT_CONF="${VMCHOOSER_CONF_DIR}/virtualization.conf"
+DHCP_NAT_CONF="${VMCHOOSER_CONF_DIR}/udhcpd-nat1.conf"
 
 # setup more scratch space for virtual machines, if configured
-mkdir -p /tmp/virt /var/log/samba /run/samba
+for DIR in /tmp/virt /var/log/samba /run/samba; do
+	if ! mkdir -p "$DIR"; then
+		echo "Could not create '$DIR'!"
+		exit 1
+	fi
+done
 
 chmod a+rwxt /tmp/virt
 
@@ -53,79 +61,75 @@ chmod a+rwxt /tmp/virt
 #EOF
 
 ################################################################################
-### Determine hardware configuration
+### Determine host's hardware configuration
 ################################################################################
 
 # estimate free mem
-mem_free=$(grep -i "^memfree:" /proc/meminfo | awk '{print $2}')
-mem_cached=$(grep -i "^cached:" /proc/meminfo | awk '{print $2}')
-mem_swapcached=$(grep -i "^swapcached:" /proc/meminfo | awk '{print $2}')
-[ -z "$mem_free" ] && mem_free="2048000"
-[ -z "$mem_cached" ] && mem_cached="0"
-[ -z "$mem_swapcached" ] && mem_swapcached="0"
-totalmem="$(expr $(expr $mem_free + $mem_cached + $mem_swapcached) / 1024)"
-echo "totalmem=${totalmem}" > "${VMCHOOSER_CONF_DIR}/virtualization.conf"
+MEM_FREE=$(grep -i "^memfree:" /proc/meminfo | awk '{print $2}')
+MEM_CACHED=$(grep -i "^cached:" /proc/meminfo | awk '{print $2}')
+MEM_SWAPCACHED=$(grep -i "^swapcached:" /proc/meminfo | awk '{print $2}')
+[ -z "$MEM_FREE" ] && MEM_FREE="2048000"
+[ -z "$MEM_CACHED" ] && MEM_CACHED="0"
+[ -z "$MEM_SWAPCACHED" ] && MEM_SWAPCACHED="0"
+MEM_TOTAL="$(expr $(expr $MEM_FREE + $MEM_CACHED + $MEM_SWAPCACHED) / 1024)"
+echo "HOST_MEM_TOTAL=${MEM_TOTAL}" > "${VMCHOOSER_VIRT_CONF}"
 
 # determine number of cpu cores
 CPU_CORES=$(grep '^processor.*:' /proc/cpuinfo | wc -l)
 if [ "${CPU_CORES}" -gt "1" 2>/dev/null ]; then
-  echo "cpu_cores=${CPU_CORES}" >> "${VMCHOOSER_CONF_DIR}/virtualization.conf"
+  echo "CPU_CORES=${CPU_CORES}" >> "${VMCHOOSER_VIRT_CONF}"
 else
-  echo 'cpu_cores=1' >> "${VMCHOOSER_CONF_DIR}/virtualization.conf"
+  echo 'CPU_CORES=1' >> "${VMCHOOSER_VIRT_CONF}"
 fi
 
 # general machine architecture (32/64bit)
-echo "host_arch=$(uname -m)" >> "${VMCHOOSER_CONF_DIR}/virtualization.conf"
+echo "HOST_ARCH=$(uname -m)" >> "${VMCHOOSER_VIRT_CONF}"
 
 # check for VT enabled CPU
 if grep -q '^flags.*\<vmx\>' "/proc/cpuinfo"; then
-    echo "vtflag=1" >> "${VMCHOOSER_CONF_DIR}/virtualization.conf"
-    echo 'kvm_module="kvm_intel"' >> "${VMCHOOSER_CONF_DIR}/virtualization.conf"
+    echo "VTFLAG=1" >> "${VMCHOOSER_VIRT_CONF}"
+    echo 'KVM_MODULE="kvm_intel"' >> "${VMCHOOSER_VIRT_CONF}"
   elif grep -q '^flags.*\<svm\>' "/proc/cpuinfo"; then
-    echo "vtflag=1" >> "${VMCHOOSER_CONF_DIR}/virtualization.conf"
-    echo 'kvm_module="kvm_amd"' >> "${VMCHOOSER_CONF_DIR}/virtualization.conf"
+    echo "VTFLAG=1" >> "${VMCHOOSER_VIRT_CONF}"
+    echo 'KVM_MODULE="kvm_amd"' >> "${VMCHOOSER_VIRT_CONF}"
   else
-    echo "vtflag=0" >> "${VMCHOOSER_CONF_DIR}/virtualization.conf"
+    echo "VTFLAG=0" >> "${VMCHOOSER_VIRT_CONF}"
 fi
 
 # write mac
 if [ -n "$SLX_PXE_MAC" ]; then
-	hostmacaddr="${SLX_PXE_MAC}"
+	HOSTMACADDR="${SLX_PXE_MAC}"
 else ## Fallback:
-	hostmacaddr="$(ip a | grep ether | grep -o -E -i '([0-9a-f]{2}:){5}[0-9a-f]{2}' | head -n 1)"
+	HOSTMACADDR="$(ip a | grep ether | grep -o -E -i '([0-9a-f]{2}:){5}[0-9a-f]{2}' | head -n 1)"
 fi
-echo "hostmacaddr='$hostmacaddr'" >> "${VMCHOOSER_CONF_DIR}/virtualization.conf"
+echo "HOSTMACADDR='$HOSTMACADDR'" >> "${VMCHOOSER_VIRT_CONF}"
 # TODO: We should only generate the suffix here (last 3 octets) as the first 3 are
 # dependant on the virtualizer/emulator. Check if any run-virt.include still relies on
-# $macguestpart/$macaddr. If so, fix it to use its specific first 3 bytes
-# and append $macaddrssuffix
-macaddrprefix='00:50:56'
-macaddrsuffix="$(echo "$hostmacaddr" | awk -F ":" '{print "%VMID%:" $(NF-1) ":" $NF}' | tr '[a-z]' '[A-Z]')"
-echo "macaddrprefix='$macaddrprefix'" >> "${VMCHOOSER_CONF_DIR}/virtualization.conf"
-echo "macaddrsuffix='$macaddrsuffix'" >> "${VMCHOOSER_CONF_DIR}/virtualization.conf"
+# $macguestpart/$macaddr (now VM_MAC_ADDR). If so, fix it to use its specific first 3 bytes
+# and append $MACADDRSUFFIX. For now, keep MACADDRPREFIX as vmware's defaults and overwrite
+# it if needed.
+MACADDRPREFIX='00:50:56'
+MACADDRSUFFIX="$(echo "$HOSTMACADDR" | awk -F ":" '{print "%VMID%:" $(NF-1) ":" $NF}' | tr '[a-z]' '[A-Z]')"
+echo "MACADDRPREFIX='$MACADDRPREFIX'" >> "${VMCHOOSER_VIRT_CONF}"
+echo "MACADDRSUFFIX='$MACADDRSUFFIX'" >> "${VMCHOOSER_VIRT_CONF}"
 
 # read in ip address
-echo "hostip=${SLX_PXE_CLIENT_IP}" >> "${VMCHOOSER_CONF_DIR}/virtualization.conf"
+echo "HOSTIP=${SLX_PXE_CLIENT_IP}" >> "${VMCHOOSER_VIRT_CONF}"
 # hostname
-echo "hostname=\"$(hostname -s)\"" >> "${VMCHOOSER_CONF_DIR}/virtualization.conf"
+echo "HOSTNAME=\"$(hostname -s)\"" >> "${VMCHOOSER_VIRT_CONF}"
 
 # get further hw information and check for traces of available optical and floppy drives
 j=0
-for cdrom in $(dmesg|grep -i "Attached scsi CD-ROM sr" | sed "s,.*Attached scsi CD-ROM ,,"); do
-    echo "cdrom_$j=/dev/${cdrom}" >> "${VMCHOOSER_CONF_DIR}/virtualization.conf"
+for CDROM in $(dmesg|grep -i "Attached scsi CD-ROM sr" | sed "s,.*Attached scsi CD-ROM ,,"); do
+    echo "CDROM_$j=/dev/${CDROM}" >> "${VMCHOOSER_VIRT_CONF}"
     j=$(expr $j + 1)
 done
 
 j=0
-for floppy in $(dmesg|grep -i "Floppy drive"|sed "s,.*(s): ,,;s, is .*,,"); do
-    echo "floppy_$j=/dev/${floppy}" >> "${VMCHOOSER_CONF_DIR}/virtualization.conf"
+for FLOPPY in $(dmesg|grep -i "Floppy drive"|sed "s,.*(s): ,,;s, is .*,,"); do
+    echo "FLOPPY_$j=/dev/${FLOPPY}" >> "${VMCHOOSER_VIRT_CONF}"
     j=$(expr $j + 1)
 done
-
-# Serial ports
-echo "serial_ports='$(dmesg | grep -Eo 'ttyS[0-9]+' | sed 's,^,/dev/,' | tr '\n' ' ')'" >> "${VMCHOOSER_CONF_DIR}/virtualization.conf"
-# Parallel ports
-modprobe parport_pc
 
 ################################################################################
 ### Setup VM networking
@@ -175,7 +179,7 @@ done
 sed -i "s#%DNSSERVER%#${SLX_DNS}#;s#%DOMAIN%#${SLX_NET_DOMAIN}#;s#%SEARCH%#${SLX_NET_SEARCH}#" "${DHCP_NAT_CONF}"
 
 # Make sure the primary vm running (we most likely never run more than one at a time anyways) always gets the same ip
-echo "static_lease $(echo "$macaddrprefix:$macaddrsuffix" | sed 's/%VMID%/01/') 192.168.101.20" >> "${DHCP_NAT_CONF}"
+echo "static_lease $(echo "$MACADDRPREFIX:$MACADDRSUFFIX" | sed 's/%VMID%/01/') 192.168.101.20" >> "${DHCP_NAT_CONF}"
 
 mkdir -p /var/lib/udhcpd
 udhcpd -S "${DHCP_NAT_CONF}"

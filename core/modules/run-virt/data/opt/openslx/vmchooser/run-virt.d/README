@@ -1,0 +1,21 @@
+## NOTES ##
+Only independent things in here please! We don't want to start with inter-feature dependencies...
+Simple ordering could be done via numerical prefixes...
+
+## USAGE ##
+* Try to use some easy keywords and functions! e.g. sound -> setup_sound
+* Basic include file should look like:
+	# example.inc
+	handle_example() { echo "Handling example..."; }
+	reg_feature_handler "example" "handle_example"
+* Do not try to reg a function which was already registered, this won't work
+  (Maybe one day we want to support overwritting handlers, but not at the moment.)
+* Only *.inc files are included by the mechanism!
+
+## MLTK INTEGRATION ##
+FEATURE -> MLTK MODULE:
+sound -> amixer
+print -> printergui
+firewall -> slxfwtool (TODO own fw mltk module)
+netshares -> TODO network share mltk module
+slxfloppy -> TODO externalize the floppy creation stuff from the run-virt mltk module

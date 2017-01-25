@@ -1,113 +1,124 @@
 ###########################################
 # Include: Set hardware related variables #
 ###########################################
+# New way of handling MAC address prefixes to support
+# nested and concurrent run-virt invocations.
+# Using a list of predefined MAC prefixes to use for VMs,
+# check if the host's MAC address prefix is in that list.
+# If not, use the first prefix in the list. If it is
+# use the next prefix in the list. If the host's prefix
+# is the last in the list, use the first one again.
+# This way we support up to 10 nested/concurrent VMs.
+# Use: 00:FF:00 for firtual machines ;)
+declare -gA MAC_PREFIXES
+for i in {0..9}; do
+	# make an associate array, it will make our life easier later
+	MAC_PREFIXES["00:FF:0$i"]="$i"
+done
 
-get_vm_id() {
-	local script=${BASH_SOURCE[-1]}
-	[ -z "$script" ] && script="$0"
-	if [ -n "$script" ]; then
-		script=$(readlink -f "$script")
-		if [ -n "$script" ] && [ -s "$script" ]; then
-			#bingo
-			VM_ID=$(ps ax | grep -F "$script" | grep -v 'grep' | grep -o -- "${script}.*\$" | sort -u | wc -l)
-			if [ "$VM_ID" -gt 0 ]; then
-				[ "${#VM_ID}" -eq 1 ] && VM_ID="0${VM_ID}"
-				[ "${#VM_ID}" -gt 2 ] && VM_ID="${VM_ID:0:2}"
-				[ "${#VM_ID}" -eq 2 ] && return
-			fi
-		fi
+
+## Functions ##
+# Sets the VM's hostname to the original hostname prefixed with a fixed string and its ID 
+set_virt_hostname() {
+	declare -rg HOSTNAME="virt${VM_ID}-$(hostname)"
+	writelog "\tVM Hostname:\t\t$HOSTNAME"
+}
+set_virt_cpu() {
+	# Make sure CPU_CORES is not empty
+	declare -g CPU_CORES=${CPU_CORES:-"1"}
+}
+# Derives the amount of memory allocated to the VM from the
+# host's total memory (previously determined by systemd-run_virt_env)
+set_virt_memory() {
+	# Make sure we have a VM_ID and HOST_MEM_TOTAL (read from virtualization.conf)
+	if isempty HOST_MEM_TOTAL; then
+		writelog "HOST_MEM_TOTAL is empty! Was '$VMCHOOSER_CONF_DIR/virtualization.conf' sourced?"
+		EXIT_TYPE="internal" EXIT_REASON="Konnte die Größe des Arbeitsspeichers nicht ermitteln!" cleanexit 1
 	fi
-	# fallback: take last two digits of current pid...
-	VM_ID=$(expr substr $$ $(expr ${#$} - 1) 2)
-	[ "${#VM_ID}" -eq 1 ] && VM_ID="0${VM_ID}"
+
+	# Amount of memory for the VM. Be generous if diff is written to HDD
+	local min=768
+	local reserve max
+	if mount | grep -q '^/dev/sd.*on.*/tmp'; then
+		reserve=20
+		max=1800
+	else
+		reserve=65
+		max=8192
+	fi
+
+	# Calculate absulute amount of RAM that should stay available to the host
+	local reserve="$(( ( HOST_MEM_TOTAL * reserve ) / 100 ))"
+	# Respect some upper and lower bounds for the host amount
+	[ "$reserve" -lt "$min" ] && reserve="$min"
+	[ "$reserve" -gt "$max" ] && reserve="$max"
+
+	# Get a result which can be divided by 4
+	declare -g VM_MEM="$(( ( ( HOST_MEM_TOTAL - reserve ) / 4 ) * 4 ))"
+	declare -g HOST_MEM_REMAINING="$(( HOST_MEM_TOTAL - VM_MEM ))"
+	# NOTE: removed old code that evaluated 'mainvirtmem'
+	# as it did nothing and we don't know what the idea was... 
 }
 
-get_vm_id
+# New way to generate MAC addresses:
+# MAC_PREFIXES is a statically declared list of prefixes which
+# can be used for VMs. To support nested VMs, we just look for
+# the MAC prefix of the host and if it is present in the list,
+# we just take the next one in the list. Currently support up to 10.
+# If none are found, we just take the first prefix.
+# Suffix template is taken from /opt/openslx/vmchooser/config/virtualization.conf
+# and will have the VMID inserted as first byte.
+set_virt_mac() {
+	# First, determine prefix of the host's MAC address
+	isset HOSTMACADDR || writelog "Host's MAC address was not defined in ${VMCHOOSER_CONF_DIR}/virtualizer.conf"
+	local HOST_MAC_PREFIX=$(echo "$HOSTMACADDR" | tr '[a-z]' '[A-Z]' | grep -o -E '^[0-9A-F]{2}:[0-9A-F]{2}:[0-9A-F]{2}')
+	unset MACADDRPREFIX
+	if notempty HOST_MAC_PREFIX && notempty MAC_PREFIXES[${HOST_MAC_PREFIX}]; then
+		# the host's prefix was in our list, so use the next one in the list
+		local -i HOST_MAC_PREFIX_INDEX="${MAC_PREFIXES[${HOST_MAC_PREFIX}]}" # this will be at least 0
+		# increment if its between 0 and 8
+		if [[ $HOST_MAC_PREFIX_INDEX =~ ^[0-8]$ ]]; then
+			declare -g MACADDRPREFIX="${HOST_MAC_PREFIX%?}$(( ++HOST_MAC_PREFIX_INDEX ))"
+		fi
+	fi
+	# host's mac prefix could not be determined (practically this should never happen)
+	# or the prefix is not in our mac address list or we reached the end of the list.
+	# Either way, use first mac prefix in the list
+	notempty MACADDRPREFIX || declare -g MACADDRPREFIX="$(echo ${!MAC_PREFIXES[@]} | awk '{print $1}')"
 
-# Make sure cpu_cores is not empty
-cpu_cores=${cpu_cores:-"1"}
-
-# Amount of memory for the VM. Be generous if diff is written to HDD
-if mount | grep -q '^/dev/sd.*on.*/tmp'; then
-	reserve=20
-	min=768
-	max=1800
-else
-	reserve=65
-	min=768
-	max=8192
-fi
-
-# Calculate absulute amount of RAM that should stay available to the host
-reserve="$(( ( totalmem * reserve ) / 100 ))"
-# Respect some upper and lower bounds for the host amount
-[ "$reserve" -lt "$min" ] && reserve="$min"
-[ "$reserve" -gt "$max" ] && reserve="$max"
-
-# Get a result which can be divided by 4
-mem="$(( ( ( totalmem - reserve ) / 4 ) * 4 ))"
-if [ -n "$mainvirtmem" ]; then
-	forcemem="$(( mainvirtmem / 4 * 4 ))"
-	mem="$forcemem"
-fi
-hostmem="$(( totalmem - mem ))"
-
-# Fill in VMID
-macaddrsuffix=$(echo "$macaddrsuffix" | sed "s/%VMID%/${VM_ID}/")
-
-if ! echo "$macaddrprefix" | grep -q -E '^[0-9A-F]{2}:[0-9A-F]{2}:[0-9A-F]{2}$'; then
-	slxlog "virt-mac" "Could not properly generate mac address prefix (got $macaddrprefix)"
-fi
-if ! echo "$macaddrsuffix" | grep -q -E '^[0-9A-F]{2}:[0-9A-F]{2}:[0-9A-F]{2}$'; then
-	slxlog "virt-mac" "Could not properly generate mac address suffix (got $macaddrsuffix)"
-fi
-macaddr="$macaddrprefix:$macaddrsuffix"
+	# Fill in VM_ID
+	local MACADDRSUFFIX=${MACADDRSUFFIX//%VMID%/"${VM_ID}"}
+	
+	if ! echo "$MACADDRPREFIX" | grep -q -E '^[0-9A-F]{2}:[0-9A-F]{2}:[0-9A-F]{2}$'; then
+		slxlog "virt-mac" "Could not properly generate mac address prefix (got $MACADDRPREFIX)"
+	fi
+	if ! echo "$MACADDRSUFFIX" | grep -q -E '^[0-9A-F]{2}:[0-9A-F]{2}:[0-9A-F]{2}$'; then
+		slxlog "virt-mac" "Could not properly generate mac address suffix (got $MACADDRSUFFIX)"
+	fi
+	declare -g VM_MAC_ADDR="$MACADDRPREFIX:$MACADDRSUFFIX"
+}
 
 # Virtual fd/cd/dvd and drive devices, floppy b: for configuration
-# if $floppy_0 from virtualization.conf set then fdtest="TRUE"
-fdtest=${floppy_0:+"TRUE"}
-# if $fdtest not set floppy0="FALSE", else "TRUE"
-floppy0=${fdtest:-"FALSE"}
-# if $cdrom_0 from virtualization.conf set then cdtest="TRUE"
-cdtest=${cdrom_0:+"TRUE"}
-# if $cdtest not set cdrom0="FALSE", else "TRUE"
-cdrom0=${cdtest:-"FALSE"}
-# if $cdrom_1 from virtualization.conf set then cdtest="TRUE"
-cdtest=${cdrom_1:+"TRUE"}
-# if $cdtest not set cdrom1="FALSE", else "TRUE"
-cdrom1=${cdtest:-"FALSE"}
+# NOTE: This uses bash's variable expansion magic to set
+# CDROM/FLOPPY variables evaluated later by the virtualizers...
+# If the variables in virtualization.conf is set, "TRUE" is assigned,
+# "FALSE" otherwise.
+check_optical_drives() {
+	local TESTVAR=${FLOPPY_0:+"TRUE"}
+	declare -rg FLOPPY0=${TESTVAR:-"FALSE"}
 
-# Dynamically detect serial ports here instead of at boot time
-# (virtualization.conf), since USB serial ports get quite common
-# and might not be plugged in at boot time yet
-serial_0=
-#for port in $(awk '{ if ($1 ~ /^[0-9]+:/ && $2 != "uart:unknown") print "/dev/ttyS" sub(/:\$/, "", $1) }' /proc/tty/driver/serial); do
-for port in $serial_ports /dev/ttyUSB*; do
-	[ -c "$port" ] || continue
-	serial_0="$port"
-	break
-done
+	TESTVAR=${CDROM_0:+"TRUE"}
+	declare -rg CDROM0=${TESTVAR:-"FALSE"}
 
-parallel_0=
-for port in /dev/parport*; do
-	[ -c "$port" ] || continue
-	parallel_0="$port"
-	break
-done
+	TESTVAR=${CDROM_1:+"TRUE"}
+	declare -rg CDROM1=${TESTVAR:-"FALSE"}
+}
 
-# RDP/VNC port (59001 - 59099)
-remotedesktopport="590${VM_ID}"
-
-# Add rw share for home dir
-homesharepath="${HOME}/PERSISTENT"
-homesharename="home"
-
-# Add common share
-commonsharepath="${HOME}/SHARE"
-commonsharename="share"
-
-# Set hostname: using original hostname and adding string
-hostname="virt-$(hostname)"
-
-writelog "\tVM Hostname:\t\t$hostname"
+## MAIN ##
+call_post_source \
+	set_virt_cpu \
+	set_virt_memory \
+	set_virt_mac \
+	set_virt_hostname \
+	check_optical_drives
 

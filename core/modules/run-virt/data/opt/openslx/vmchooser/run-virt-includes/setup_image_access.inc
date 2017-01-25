@@ -1,7 +1,6 @@
 ###########################################################
 # Include: Setup dnbd for image access, nfs/cifs fallback #
 ###########################################################
-
 # This will currently make sure that the variable
 # VM_DISKFILE_RO is set which will contain the
 # absolute path to the disk image to use for the vm
@@ -14,85 +13,112 @@
 # indicate to the virt plugin that it doesn't need to
 # handle creating a temporary CoW layer itself.
 
-writelog "Setting up disk access for virtualizer/emulator ..."
 
-# Try to use dnbd3 to access the image
-unset VM_DISKFILE_RO
-unset dnbd3_fuse_mount_point
+# Helper to cleanup the image mounted with dnbd3-fuse
+cleanup_dnbd3() {
+	if ! isset DNBD3_MOUNT_POINT; then
+		writelog "'DNBD3_MOUNT_POINT' is not set! Aborting DNBD3 cleanup."
+		return 1
+	fi
+	# try to umount it now
+	for timeout in 1 1 1 FAIL; do
+		fusermount -u "${DNBD3_MOUNT_POINT}" && break
+		writelog "dnbd3 still busy...."
+		[ "$timeout" = "FAIL" ] && break
+		sleep "$timeout"
+	done
+}
 
 setup_dnbd3 () {
 	# Mount path for images mounted with dnbd3-fuse
-	dnbd3_fuse_mount_point="$TMPDIR/dnbd3fuse.mnt"
-	mkdir -p "${dnbd3_fuse_mount_point}"
+	declare -rg DNBD3_MOUNT_POINT="${TMPDIR}/dnbd3fuse.mnt"
+	mkdir -p "${DNBD3_MOUNT_POINT}"
 	# start dnbd3-fuse in subshell
-	local dnbd3_tmplog="$TMPDIR/dnbd3fuse.log"
-	local dnbd3_exitflag="$TMPDIR/dnbd3exit$RANDOM"
-	local TIMEOUT vm_revision
-	rm -f -- "$dnbd3_exitflag"
+	local DNBD3_TMPLOG="${TMPDIR}/dnbd3fuse.log"
+	local DNBD3_EXITFLAG="${TMPDIR}/dnbd3exit$RANDOM"
+	local TIMEOUT VM_DISKFILE_REVISION
+	rm -f -- "${DNBD3_EXITFLAG}"
 	(
-		dnbd3-fuse -f -o allow_other,max_readahead=262144 -h "$SLX_DNBD3_SERVERS" -i "${SRC_IMG_RELATIVE}" "${dnbd3_fuse_mount_point}" > "$dnbd3_tmplog" 2>&1
+		dnbd3-fuse -f -o allow_other,max_readahead=262144 -h "${SLX_DNBD3_SERVERS}" -i "${SRC_IMG_RELATIVE}" "${DNBD3_MOUNT_POINT}" > "${DNBD3_TMPLOG}" 2>&1
 		RET=$?
-		touch "$dnbd3_exitflag"
+		touch "${DNBD3_EXITFLAG}"
 		if [ "$RET" != "0" ]; then
 			writelog "dnbd3-fuse stopped working (Exit code $RET)"
-			slxlog "virt-dnbd3-fuse" "dnbd3-fuse stopped/refused serving '${SRC_IMG_RELATIVE}' from '${SLX_DNBD3_SERVERS}' with error code: $RET" "${dnbd3_tmplog}"
+			slxlog "virt-dnbd3-fuse" "dnbd3-fuse stopped/refused serving '${SRC_IMG_RELATIVE}' from '${SLX_DNBD3_SERVERS}' with error code: $RET" "${DNBD3_TMPLOG}"
 		fi
 	) &
 	# give it a bit of time
 	usleep 250000
 	# check if we have the image
 	for TIMEOUT in 0.5 1 1 OUT; do
-		if [ -r "${dnbd3_fuse_mount_point}/img" ]; then
-			vm_revision="$(grep -m 1 "^Revision:" "${dnbd3_fuse_mount_point}/status" | cut  -d" " -f2)"
-			VM_DISKFILE_RO="${dnbd3_fuse_mount_point}/img"
-			writelog "DNBD3: $SRC_IMG_RELATIVE on $VM_DISKFILE_RO with rid $vm_revision"
+		if [ -r "${DNBD3_MOUNT_POINT}/img" ]; then
+			VM_DISKFILE_REVISION="$(grep -m 1 "^Revision:" "${DNBD3_MOUNT_POINT}/status" | cut  -d" " -f2)"
+			VM_DISKFILE_RO="${DNBD3_MOUNT_POINT}/img"
+			writelog "DNBD3: ${SRC_IMG_RELATIVE} on ${VM_DISKFILE_RO} with rid ${VM_DISKFILE_REVISION}"
+			add_cleanup "cleanup_dnbd3"
 			break
 		fi
-		[ "$TIMEOUT" = "OUT" -o -e "$dnbd3_exitflag" ] && break
+		[ "$TIMEOUT" = "OUT" -o -e "$DNBD3_EXITFLAG" ] && break
 		sleep "$TIMEOUT"
 	done
 
-	if [ -z "$VM_DISKFILE_RO" ]; then
-		slxlog "virt-dnbd3" "No dnbd3 server for ${SRC_IMG_RELATIVE} found, trying NFS/CIFS..." "$dnbd3_tmplog"
+	if isempty VM_DISKFILE_RO; then
+		slxlog "virt-dnbd3" "No dnbd3 server for ${SRC_IMG_RELATIVE} found, trying NFS/CIFS..." "$DNBD3_TMPLOG"
 		writelog "No working dnbd3 server found :-("
+	else
+		readonly VM_DISKFILE_RO
 	fi
 }
 
-# See if we should setup dnbd3 image access at all
-if ! which dnbd3-fuse; then
-	writelog "Can't use dnbd3 as dnbd3-fuse binary is not in PATH"
-elif [ -z "$SRC_IMG_RELATIVE" ]; then
-	writelog "Can't use dnbd3 as SRC_IMG_RELATIVE is not set"
-elif [ -z "$SLX_DNBD3_SERVERS" ] || [ "x$SLX_VM_DNBD3" != "xyes" ]; then
-	writelog "Can't use dnbd3 as no servers are given in config, or SLX_VM_DNBD3 is not set to yes"
-else
-	setup_dnbd3
-fi
-
-# VM_DISKFILE_RO will be empty if dnbd3 is not used or failed to connect.
-# Let's try to fall back to NFS/CIFS via file system
-if [ -z "$VM_DISKFILE_RO" ]; then
+setup_fallback() {
 	# Maybe we're reading a dnbd3 directory with RIDs encoded into the filename - use latest one
-	rid_suffix=$(ls -1 "${SRC_IMG_ABSOLUTE}.r"* | grep -E -o '\.r[0-9]+$' | grep -o -E '[0-9]+$' | sort -n | tail -n 1)
-	if [ -n "$rid_suffix" ]; then
+	unset VM_DISKFILE_REVISION
+	local VM_DISKFILE_REVISION=$(ls -1 "${SRC_IMG_ABSOLUTE}.r"* | grep -E -o '\.r[0-9]+$' | grep -o -E '[0-9]+$' | sort -n | tail -n 1)
+	if notempty VM_DISKFILE_REVISION; then
 		# found
-		VM_DISKFILE_RO="${SRC_IMG_ABSOLUTE}.r${rid_suffix}"
-	elif [ -e "$SRC_IMG_ABSOLUTE" ]; then
+		VM_DISKFILE_RO="${SRC_IMG_ABSOLUTE}.r${VM_DISKFILE_REVISION}"
+	elif [ -e "${SRC_IMG_ABSOLUTE}" ]; then
 		# try name we got from xml in the first place
-		VM_DISKFILE_RO="$SRC_IMG_ABSOLUTE"
+		VM_DISKFILE_RO="${SRC_IMG_ABSOLUTE}"
 	fi
-fi
+	readonly VM_DISKFILE_RO
+}
 
-# Check if virtual machine container file exists
-if [ -z "$VM_DISKFILE_RO" ] || ! [ -e "${VM_DISKFILE_RO}" ]; then
-	slxlog "virt-image-missing" "VM image $VM_DISKFILE_RO not found!"
-	writelog "Virtual machine image ${VM_DISKFILE_RO} not found!"
-	error_user "Das Image für die gewählte Virtuelle Maschine konnte nicht gefunden werden.
-Versuchen Sie zunächst, den Computer komplett neu zu starten. Sollte das Problem bestehen bleiben, wenden Sie sich bitte an den Support."
-	cleanexit 1
-fi
 
-readonly VM_DISKFILE_RO
+## MAIN PART / Sanity checks ##
+setup_image_access() {
+	writelog "Setting up virtual hard disk access for virtualizer/emulator ..."
+	
+	unset VM_DISKFILE_RO
+	declare -g VM_DISKFILE_RO
+	
+	# See if we should setup dnbd3 image access at all
+	if ! check_dep dnbd3-fuse fusermount; then
+		writelog "\tCan't use dnbd3 as dnbd3-fuse/fusermount binaries are not in PATH"
+	elif ! isset SRC_IMG_RELATIVE; then
+		writelog "\tCan't use dnbd3 as SRC_IMG_RELATIVE is not set"
+	elif ! isset SLX_DNBD3_SERVERS || [ "x${SLX_VM_DNBD3}}" != "xyes" ]; then
+		writelog "\tCan't use dnbd3 as no servers are given in config, or SLX_VM_DNBD3 is not set to yes"
+	else
+		# register setup_dnbd3 as start hook after sourcing this include
+		writelog "Trying image access via DNBD3..."
+		setup_dnbd3
+	fi
+	
+	# VM_DISKFILE_RO will be empty if dnbd3 is not used or failed to connect.
+	if isempty VM_DISKFILE_RO; then
+		# try to fallback to access the image via NFS/CIFS filesystem
+		writelog "Trying fallback image access via NFS/CIFS..."
+		setup_fallback
+	fi
+	
+	# Check if we finally found a valid, readable container
+	if isempty VM_DISKFILE_RO || [ ! -r "${VM_DISKFILE_RO}" ]; then
+		writelog "Virtual machine image ${VM_DISKFILE_RO} not found!"
+		EXIT_TYPE="user" EXIT_REASON="Konnte virtuelle Festplatte des gewählten Image nicht finden!" cleanexit 1
+	fi
+	
+	writelog "\tVM disk file:\t\t${VM_DISKFILE_RO}"
+}
 
-writelog "Disk file to use: $VM_DISKFILE_RO"
-
+call_post_source setup_image_access
