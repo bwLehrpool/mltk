@@ -17,4 +17,5 @@ REQUIRED_SYSTEM_FILES+="
 "
 REQUIRED_FILES+="
 			/etc/X11/app-defaults/Xvidtune
+			/usr/lib/ssl/openssl.cnf
 "
