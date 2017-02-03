@@ -147,6 +147,11 @@ case "$1" in
 				sed -i "/^SLX_NET_SEARCH=/d" /opt/openslx/config
 				echo "SLX_NET_SEARCH='$search'" >> /opt/openslx/config
 			fi
+			# Same for WINS servers
+			if [ -z "$SLX_NET_WINS" ] && [ -n "$wins" ]; then
+				sed -i "/^SLX_NET_WINS=/d" /opt/openslx/config
+				echo "SLX_NET_WINS='$wins'" >> /opt/openslx/config
+			fi
 			
 			# Only if network is not ready yet
 			if [ ! -e "/run/network/network-ready" ]; then

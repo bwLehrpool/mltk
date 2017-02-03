@@ -172,16 +172,30 @@ for wait in 1 1 2 2 3 end; do
 	. /opt/openslx/config
 done
 
+getips () {
+	# Output in one line by using echo without quotes
+	echo $(nslookup "$1" 2>/dev/null | grep -A 3 '^Name:' | grep '^Address .*: ' | awk '{print $3}')
+}
+
 # read the DNS configuration and configure the udhcpd
 [ -z "${SLX_DNS}" ] && SLX_DNS="8.8.8.8 8.8.4.4"
 [ -z "${SLX_NET_DOMAIN}" ] && SLX_NET_DOMAIN="virtual.site"
 [ -z "${SLX_NET_SEARCH}" ] && SLX_NET_SEARCH="virtual.site"
-sed -i "s#%DNSSERVER%#${SLX_DNS}#;s#%DOMAIN%#${SLX_NET_DOMAIN}#;s#%SEARCH%#${SLX_NET_SEARCH}#" "${DHCP_NAT_CONF}"
+# WINS - if not supplied, try to get it from the search base of our ldap config
+if [ -z "${SLX_NET_WINS}" ]; then
+	DC=$(grep -m1 -i '^BASE\s*DC=' "/etc/ldap.conf" | grep -o -i 'DC=.*' | sed -r 's/\s*,\s*DC=/./gI;s/^\s*DC=//I')
+	[ -z "$DC" ] && DC=$(grep -m1 -i '^ldap_search_base\s*=\s*DC=' "/etc/sssd/sssd.conf" | grep -o -i 'DC=.*'  | sed -r 's/\s*,\s*DC=/./gI;s/^\s*DC=//I')
+	[ -n "$DC" ] && SLX_NET_WINS=$(getips "$DC")
+fi
+[ -z "${SLX_NET_WINS}" ] && SLX_NET_WINS=$(getips "$SLX_NET_DOMAIN")
+[ -z "${SLX_NET_WINS}" ] && SLX_NET_WINS="0.0.0.0"
+sed -i "s#%DNSSERVER%#${SLX_DNS}#;s#%DOMAIN%#${SLX_NET_DOMAIN}#;s#%SEARCH%#${SLX_NET_SEARCH}#;s#%WINS%#${SLX_NET_WINS}#" "${DHCP_NAT_CONF}"
 
 # Make sure the primary vm running (we most likely never run more than one at a time anyways) always gets the same ip
 echo "static_lease $(echo "$MACADDRPREFIX:$MACADDRSUFFIX" | sed 's/%VMID%/01/') 192.168.101.20" >> "${DHCP_NAT_CONF}"
 
 mkdir -p /var/lib/udhcpd
+# TODO: systemd
 udhcpd -S "${DHCP_NAT_CONF}"
 
 # creating and configuring vsw2
