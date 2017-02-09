@@ -22,8 +22,13 @@ BRIDGE="br0"
 
 mkdir -p "${FUTURE_ROOT}/etc/udev/rules.d"
 
-#IP_OUT=$(ip a | sed -r ':a;N;$!ba;s/: ([a-z0-9]+): /####\1####/g;s/ether ([a-f0-9:]+) /####\1####/g'| grep -E -o '####[^ ]+####' | sed 's/#//g' | grep -B 1 ':')
-IP_OUT=$(ip a | grep -B 1 "/ether" | sed -r '/^--$/d;$!N;s#^[0-9]+: ([a-z0-9\.:]+): .*?/ether ([0-9a-fA-Z:]+) .*$#\1==\2#')
+for i in 1 1 1 END; do
+	IP_OUT=$(ip a | grep -B 1 "/ether" | sed -r '/^--$/d;$!N;s#^[0-9]+: ([a-z0-9\.:]+): .*?/ether ([0-9a-fA-Z:]+) .*$#\1==\2#')
+	[ "x$i" == "xEND" ] && break
+	if ! echo "$IP_OUT" | grep -q -- "$MAC"; then
+		sleep "$i"
+	fi
+done
 
 if ! echo "$IP_OUT" | grep -q -- "$MAC"; then
 	drop_shell "---
@@ -32,7 +37,8 @@ $(ip a)
 $IP_OUT
 ---
 
-Boot interface $MAC not found in interface list. NIC driver missing?"
+Boot interface $MAC not found in interface list. NIC driver missing?
+Check output of dmesg for missing firmware (dmesg | less)"
 	:
 fi
 

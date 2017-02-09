@@ -15,7 +15,17 @@ drop_shell() {
 		exec 1>&4 2>&5
 		reset
 	fi
-	[ $# -gt 0 ] && echo $@
+	[ $# -gt 0 ] && echo "$*"
+	if [ "x$SPLASH" != "x0" ]; then
+		echo "System halted. If you want to spawn a debug shell, select"
+		echo "debug mode in the boot menu."
+		echo ""
+		echo "Press any key to reboot."
+		read -t 1 -s -n 999999 BLA
+		read -n 1 -s BLA
+		echo b > /proc/sysrq-trigger
+		exit 1
+	fi
 	echo "CTRL + D will continue booting."
 	setsid sh -c 'exec sh </dev/tty1 >/dev/tty1 2>&1'
 }
