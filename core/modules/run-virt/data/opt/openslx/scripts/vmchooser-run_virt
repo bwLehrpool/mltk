@@ -1,1 +1,41 @@
-/opt/openslx/vmchooser/vmchooser-run_virt
+#!/bin/bash
+# Wrapper script to handle the real vmchooser-run_virt
+launch_runvirt() {
+	if [ $# -ne 1 ]; then
+		# we except 1 arg only! This case is weird, so lets just not do weird things...
+		slxlog "run-virt-wrapper" "Runvirt expects only 1 argument! $# given: $@"
+		exit 1
+	fi
+
+	local RUNVIRT_SCRIPT="/opt/openslx/vmchooser/vmchooser-run_virt"
+	if [ ! -s "${RUNVIRT_SCRIPT}" ]; then
+	       slxlog "run-virt-wrapper" "Missing/empty main run-virt script expected at $RUNVIRT_SCRIPT!"
+	       exit 1
+	fi
+	if ! bash -n "${RUNVIRT_SCRIPT}"; then
+		slxlog "run-virt-wrapper" "Syntax error in '${RUNVIRT_SCRIPT}'!"
+		exit 1
+	fi
+	# we now manage the logfile externally
+	# create it at the expected place, namely:
+	local LOGFILE="/var/log/openslx/run-virt.$(whoami).$$.log"
+	if ! echo "$(date +%Y-%m-%d-%H-%M-%S): ## Wrapper init ##" >> "${LOGFILE}"; then
+		slxlog "run-virt-wrapper" "Failed to create '${LOGFILE}'."
+		# fallback: runvirt will create it itself
+	fi
+
+	"${RUNVIRT_SCRIPT}" "$1" "${LOGFILE}" &
+
+	wait "$!"
+	# script exited here, check for exit code and send logfile to sat if appropriate
+	local RUNVIRT_RET="$?"
+	if [ ${RUNVIRT_RET} -ne 0 ]; then
+		slxlog "run-virt-failed" "Runvirt failed with '${RUNVIRT_RET}'. See attached log." "${LOGFILE}"
+		exit ${RUNVIRT_RET}
+	fi
+	echo "$(date +%Y-%m-%d-%H-%M-%S): ## Wrapper exit ##" >> "${LOGFILE}"
+
+}
+
+launch_runvirt $@
+

@@ -96,19 +96,31 @@ if grep -q '^flags.*\<vmx\>' "/proc/cpuinfo"; then
     echo "VTFLAG=0" >> "${VMCHOOSER_VIRT_CONF}"
 fi
 
-# write mac
+# generated mac address parts from the host's mac address
 if [ -n "$SLX_PXE_MAC" ]; then
 	HOSTMACADDR="${SLX_PXE_MAC}"
 else ## Fallback:
 	HOSTMACADDR="$(ip a | grep ether | grep -o -E -i '([0-9a-f]{2}:){5}[0-9a-f]{2}' | head -n 1)"
 fi
 echo "HOSTMACADDR='$HOSTMACADDR'" >> "${VMCHOOSER_VIRT_CONF}"
-# TODO: We should only generate the suffix here (last 3 octets) as the first 3 are
-# dependant on the virtualizer/emulator. Check if any run-virt.include still relies on
-# $macguestpart/$macaddr (now VM_MAC_ADDR). If so, fix it to use its specific first 3 bytes
-# and append $MACADDRSUFFIX. For now, keep MACADDRPREFIX as vmware's defaults and overwrite
-# it if needed.
-MACADDRPREFIX='00:50:56'
+# NG: we define 10 fixed prefixes (00:FF:00 -> 00:FF:09) to use for VMs
+# First, check if the first 3 bytes of the host's mac address is
+# contained in our list. If it is, use the next one in the list.
+# If not, or the host's prefix is the last one in the list, use the first one.
+# This lays the groundwork to avoid mac addresses collisions in nested operations.
+MACADDRPREFIX=
+for i in {0..9}; do
+	if [ "x${HOSTMACADDR#00:FF:0$i}" != "x${HOSTMACADDR}" ]; then
+		# current prefix is indeed part of the host's mac address
+		# use the next prefix if != 9
+		[ $i -lt 9 ] && MACADDRPREFIX="00:FF:0$(( i++ ))"
+	fi
+done
+# if it is still unset, then either the host's prefix did not match any in the list
+# or it matched the 9th. Either way, use the first prefix for this level of VMs.
+[ -n "${MACADDRPREFIX}" ] || MACADDRPREFIX='00:FF:00'
+# grab the last 2 bytes of the host's mac and prepend our VMID
+# placeholder (later replaced used by run-virt).
 MACADDRSUFFIX="$(echo "$HOSTMACADDR" | awk -F ":" '{print "%VMID%:" $(NF-1) ":" $NF}' | tr '[a-z]' '[A-Z]')"
 echo "MACADDRPREFIX='$MACADDRPREFIX'" >> "${VMCHOOSER_VIRT_CONF}"
 echo "MACADDRSUFFIX='$MACADDRSUFFIX'" >> "${VMCHOOSER_VIRT_CONF}"

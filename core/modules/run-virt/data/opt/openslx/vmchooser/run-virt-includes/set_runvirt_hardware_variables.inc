@@ -10,12 +10,6 @@
 # is the last in the list, use the first one again.
 # This way we support up to 10 nested/concurrent VMs.
 # Use: 00:FF:00 for firtual machines ;)
-declare -gA MAC_PREFIXES
-for i in {0..9}; do
-	# make an associate array, it will make our life easier later
-	MAC_PREFIXES["00:FF:0$i"]="$i"
-done
-
 
 ## Functions ##
 # Sets the VM's hostname to the original hostname prefixed with a fixed string and its ID 
@@ -71,20 +65,7 @@ set_virt_memory() {
 set_virt_mac() {
 	# First, determine prefix of the host's MAC address
 	isset HOSTMACADDR || writelog "Host's MAC address was not defined in ${VMCHOOSER_CONF_DIR}/virtualizer.conf"
-	local HOST_MAC_PREFIX=$(echo "$HOSTMACADDR" | tr '[a-z]' '[A-Z]' | grep -o -E '^[0-9A-F]{2}:[0-9A-F]{2}:[0-9A-F]{2}')
-	unset MACADDRPREFIX
-	if notempty HOST_MAC_PREFIX && notempty MAC_PREFIXES[${HOST_MAC_PREFIX}]; then
-		# the host's prefix was in our list, so use the next one in the list
-		local -i HOST_MAC_PREFIX_INDEX="${MAC_PREFIXES[${HOST_MAC_PREFIX}]}" # this will be at least 0
-		# increment if its between 0 and 8
-		if [[ $HOST_MAC_PREFIX_INDEX =~ ^[0-8]$ ]]; then
-			declare -g MACADDRPREFIX="${HOST_MAC_PREFIX%?}$(( ++HOST_MAC_PREFIX_INDEX ))"
-		fi
-	fi
-	# host's mac prefix could not be determined (practically this should never happen)
-	# or the prefix is not in our mac address list or we reached the end of the list.
-	# Either way, use first mac prefix in the list
-	notempty MACADDRPREFIX || declare -g MACADDRPREFIX="$(echo ${!MAC_PREFIXES[@]} | awk '{print $1}')"
+	isset MACADDRPREFIX || writelog "No MAC address prefix was defined in ${VMCHOOSER_CONF_DIR}/virtualizer.conf"
 
 	# Fill in VM_ID
 	local MACADDRSUFFIX=${MACADDRSUFFIX//%VMID%/"${VM_ID}"}

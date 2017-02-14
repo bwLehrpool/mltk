@@ -18,18 +18,16 @@
 #      tools and then include the specific plugin which configures the speci-
 #      fied virtualization tool.
 ################################################################################
-
-# HACK: workaround if $0 is a symlink, exec its symlink target instead
 SELF=$(readlink -f "$0")
-if [ -n "$SELF" ] && [ "$0" != "$SELF" ]; then
-	exec "$SELF" "$@"
-fi
-declare -rg RUN_VIRT_INCLUDE_DIR="$(dirname $SELF)/run-virt-includes"
 
 # This script expects the path to the xml file describing the VM to be started
 declare -rg XML_FILE="$1"
 
+# A path to the logfile can be given as second argument
+declare -rg LOGFILE="$2"
+
 # Functions needed by vmchooser-run_virt (writelog(), cleanexit(), safesource())
+declare -rg RUN_VIRT_INCLUDE_DIR="$(dirname $SELF)/run-virt-includes"
 if ! source "${RUN_VIRT_INCLUDE_DIR}/vmchooser_runvirt_functions.inc"; then
 	slxlog "run-virt" "Could not source ${RUN_VIRT_INCLUDE_DIR}/vmchooser_runvirt_functions.inc"
 	exit 1

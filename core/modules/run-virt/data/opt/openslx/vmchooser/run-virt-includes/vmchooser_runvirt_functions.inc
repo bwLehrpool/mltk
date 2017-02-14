@@ -134,10 +134,10 @@ cleanexit() {
 	fi
 
 	# Now see if we need to do the catch all error stuff
-	# no exit code given, return 129
-	[ $# -eq 0 ] && exit 129
 	# if 0 given, exit 0
 	[ "x$1" = "x0" ] && exit 0
+	# if no code was given, exit 129
+	[ $# -eq 0 ] && writelog "Cleanexit called without arguments! Dev error?"
 
 	# given exit code is set and not 0, handle the error now
 	# now evaluate the EXIT_{TYPE,REASON} variables and generate error title/text
@@ -168,8 +168,8 @@ cleanexit() {
 	fi
 
 	# first send the logfile (in case the user does not close the error before using magic keys e.g.)
-	# for any other error types besides 'user'.
-	[ "x${EXIT_TYPE}" != "xuser" ] && \
+	# for any other error types besides 'user'. Do no slxlog if we run wrapped (from /opt/openslx/scripts/vmchooser-run_virt)
+	[ "x${EXIT_TYPE}" != "xuser" ] && ! isset WRAPPED && \
 		slxlog "runvirt-exit-${EXIT_TYPE}" "Critical error happened in '${BASH_SOURCE[1]}:${FUNCNAME[1]}', see logs." "${LOGFILE}"
 
 	# finally display the error
@@ -179,7 +179,8 @@ ${ERR_TEXT}
 ${ERR_FOOTER}
 "
 	writelog "All done. Exiting."
-	exit "$1"
+	# if no exit code was given as $1, exit 129
+	exit "${1:-129}"
 }
 
 ################# SOURCING FUNCTIONS #################
@@ -360,13 +361,13 @@ is_array() {
 #	array_contains ARRAY_TO_TEST <values...>
 array_contains() {
 	if [ $# -lt 2 ]; then
-		writelog "${FUNCNAME[0]}: Expects at least 2 arguments, $# given."
+		#writelog "${FUNCNAME[0]}: Expects at least 2 arguments, $# given."
 		return 1
 	fi
 	# is $1 even defined?
 	local ARRAY_DEF="$(declare -p $1 2>/dev/null)"
 	if isempty ARRAY_DEF; then
-		writelog "${FUNCNAME[0]}: '$1' not defined!"
+		#writelog "${FUNCNAME[0]}: '$1' not defined!"
 		return 1
 	fi
 	local ARRAY_NAME="$1"
@@ -374,7 +375,7 @@ array_contains() {
 
 	# sanity check on $ARRAY_DEF being either indexed or associative array
 	if ! is_array "${ARRAY_NAME}"; then
-		writelog "${FUNCNAME[0]}: '${ARRAY_NAME}' not an array! Declared as:\t${ARRAY_DEF}"
+		#writelog "${FUNCNAME[0]}: '${ARRAY_NAME}' not an array! Declared as:\t${ARRAY_DEF}"
 		return 1
 	fi
 
@@ -382,7 +383,7 @@ array_contains() {
 	while [ $# -gt 0 ]; do
 		# check if ARRAY_DEF contains '"<value>"'
 		if [[ ! "${ARRAY_DEF}" =~ '="'${1}'"'[^\]]+ ]]; then 
-			writelog "${FUNCNAME[0]}: '${1}' not in '${ARRAY_NAME}'"
+			#writelog "${FUNCNAME[0]}: '${1}' not in '${ARRAY_NAME}'"
 			return 1
 		fi
 		shift
