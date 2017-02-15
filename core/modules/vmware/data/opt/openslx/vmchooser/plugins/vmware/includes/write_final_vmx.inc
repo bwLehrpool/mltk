@@ -97,20 +97,25 @@ setup_usb() {
 }
 
 setup_shared_folders() {
+	if ! notempty SHARED_FOLDERS HOME_SHARE_PATH HOME_SHARE_NAME COMMON_SHARE_PATH COMMON_SHARE_NAME; then
+		writelog "Missing information to setup shared folders."
+		return 1
+	fi
+
 	cat >> "${TMPCONFIG}" <<-HEREEND
 	sharedFolder.option = "alwaysEnabled"
 	sharedFolder0.present = "$SHARED_FOLDERS"
 	sharedFolder0.enabled = "$SHARED_FOLDERS"
 	sharedFolder0.expiration = "never"
-	sharedFolder0.guestName = "$homesharename"
-	sharedFolder0.hostPath = "$homesharepath"
+	sharedFolder0.guestName = "$HOME_SHARE_NAME"
+	sharedFolder0.hostPath = "$HOME_SHARE_PATH"
 	sharedFolder0.readAccess = "TRUE"
 	sharedFolder0.writeAccess = "TRUE"
 	sharedFolder1.present = "$SHARED_FOLDERS"
 	sharedFolder1.enabled = "$SHARED_FOLDERS"
 	sharedFolder1.expiration = "never"
-	sharedFolder1.guestName = "$commonsharename"
-	sharedFolder1.hostPath = "$commonsharepath"
+	sharedFolder1.guestName = "$COMMON_SHARE_NAME"
+	sharedFolder1.hostPath = "$COMMON_SHARE_PATH"
 	sharedFolder1.readAccess = "TRUE"
 	sharedFolder1.writeAccess = "FALSE"
 	sharedFolder.maxNum = "2"
@@ -209,7 +214,7 @@ write_final_vmx() {
 	setup_floppies
 	setup_vcpu_ram
 	setup_usb
-	[ "$HGFS_DISABLED" = "FALSE" ] && setup_shared_folders
+	[ "x$HGFS_DISABLED" = "xFALSE" ] && setup_shared_folders
 	setup_isolation
 	setup_graphics
 	finalize_hardware

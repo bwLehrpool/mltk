@@ -4,12 +4,12 @@
 set_network_shares() {
 
 	# Add rw share for home dir
-	homesharepath="${HOME}/PERSISTENT"
-	homesharename="home"
+	HOME_SHARE_PATH="${HOME}/PERSISTENT"
+	HOME_SHARE_NAME="home"
 
 	# Add common share
-	commonsharepath="${HOME}/SHARE"
-	commonsharename="share"
+	COMMON_SHARE_PATH="${HOME}/SHARE"
+	COMMON_SHARE_NAME="share"
 }
 
 reg_feature_handler "netshares" "set_network_shares"
