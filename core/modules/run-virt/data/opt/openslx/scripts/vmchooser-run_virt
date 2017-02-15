@@ -3,39 +3,57 @@
 launch_runvirt() {
 	if [ $# -ne 1 ]; then
 		# we except 1 arg only! This case is weird, so lets just not do weird things...
-		slxlog "run-virt-wrapper" "Runvirt expects only 1 argument! $# given: $@"
-		exit 1
+		log "Runvirt (wrapper) expects 1 argument! $# given: $@"
+		return 1
 	fi
 
 	local RUNVIRT_SCRIPT="/opt/openslx/vmchooser/vmchooser-run_virt"
 	if [ ! -s "${RUNVIRT_SCRIPT}" ]; then
-	       slxlog "run-virt-wrapper" "Missing/empty main run-virt script expected at $RUNVIRT_SCRIPT!"
-	       exit 1
+		log "Missing/empty main run-virt script expected at '${RUNVIRT_SCRIPT}'!"
+		return 1
 	fi
 	if ! bash -n "${RUNVIRT_SCRIPT}"; then
-		slxlog "run-virt-wrapper" "Syntax error in '${RUNVIRT_SCRIPT}'!"
-		exit 1
-	fi
-	# we now manage the logfile externally
-	# create it at the expected place, namely:
-	local LOGFILE="/var/log/openslx/run-virt.$(whoami).$$.log"
-	if ! echo "$(date +%Y-%m-%d-%H-%M-%S): ## Wrapper init ##" >> "${LOGFILE}"; then
-		slxlog "run-virt-wrapper" "Failed to create '${LOGFILE}'."
-		# fallback: runvirt will create it itself
+		log "Syntax error in '${RUNVIRT_SCRIPT}'!"
+		return 1
 	fi
 
+	# start the main runvirt script
 	"${RUNVIRT_SCRIPT}" "$1" "${LOGFILE}" &
-
-	wait "$!"
+	local RUNVIRT_PID="$!"
+	usleep 50000
+	# from now on, check if the LOGFILE still exists before writing to it
+	# if its not, runvirt deleted it and handles the logfile on its own
+	if ! kill -0 "${RUNVIRT_PID}"; then
+		[ -f "${LOGFILE}" ] && log "Failed to start main runvirt script. Seems that it exited early?."
+		return 1
+	fi
+	wait "${RUNVIRT_PID}"
 	# script exited here, check for exit code and send logfile to sat if appropriate
 	local RUNVIRT_RET="$?"
 	if [ ${RUNVIRT_RET} -ne 0 ]; then
-		slxlog "run-virt-failed" "Runvirt failed with '${RUNVIRT_RET}'. See attached log." "${LOGFILE}"
-		exit ${RUNVIRT_RET}
+		[ -f "${LOGFILE}" ] && log "Runvirt failed with '${RUNVIRT_RET}'."
+		return 1
 	fi
-	echo "$(date +%Y-%m-%d-%H-%M-%S): ## Wrapper exit ##" >> "${LOGFILE}"
-
+	return 0
+}
+# Log helper
+log() {
+	echo "$(date +%Y-%m-%d-%H-%M-%S): ## WRAPPER ## $@" >> "${LOGFILE}"
 }
 
-launch_runvirt $@
+## Main part
+# logfile is now managed by this wrapper and given as argument to runvirt
+declare -rg LOGFILE="/var/log/openslx/run-virt.$(whoami).$$.log"
+if ! touch "${LOGFILE}"; then
+	# this should practically never happen, log it just in case
+	slxlog "run-virt-wrapper" "Failed to create '${LOGFILE}'."
+	# fallback: runvirt will try to handle it itself
+fi
+log "Launching runvirt with arguments '$@'..."
+if ! launch_runvirt $@; then
+	[ -f "${LOGFILE}" ] && slxlog "run-virt-wrapper" "Failed to launch runvirt!" "${LOGFILE}"
+	exit 1
+fi
+log "Runvirt exited as expected."
+exit 0
 

@@ -24,7 +24,7 @@ SELF=$(readlink -f "$0")
 declare -rg XML_FILE="$1"
 
 # A path to the logfile can be given as second argument
-declare -rg LOGFILE="$2"
+declare -g LOGFILE="$2"
 
 # Functions needed by vmchooser-run_virt (writelog(), cleanexit(), safesource())
 declare -rg RUN_VIRT_INCLUDE_DIR="$(dirname $SELF)/run-virt-includes"
@@ -78,7 +78,7 @@ if ! isset PLUGIN_FEATURES || ! is_function run_plugin; then
 	writelog "Bad plugin '$PLUGIN_ID': either it did not set PLUGIN_FEATURES or did not define 'run_plugin'."
 	EXIT_TYPE="internal" EXIT_REASON="Fehlerhaftes vmchooser plugin: '$PLUGIN_ID'." cleanexit 1
 fi
-writelog "Requested features:\t\t${PLUGIN_FEATURES}"
+writelog "Requested features:\t${PLUGIN_FEATURES}"
 
 # Source the *.inc files in run-virt.d
 for FILE in ${VMCHOOSER_DIR}/run-virt.d/*.inc; do
