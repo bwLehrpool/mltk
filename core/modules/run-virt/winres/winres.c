@@ -31,6 +31,8 @@ DEFINE_GUID(ID_MMDeviceEnumerator, 0xBCDE0395, 0xE52F, 0x467C, 0x8E, 0x3D, 0xC4,
 
 #define WM_SOCKDATA (WM_APP+1)
 
+#define BUFLEN (200)
+
 typedef struct {
 	const char* path;
 	const char* pathIp;
@@ -66,9 +68,11 @@ static int _folderStatus = FS_UNKNOWN; // -1 = Not handled yet, 0 = patching fai
 #define RM_VMWARE (3)
 static int _remapMode = RM_NONE;
 static const char* _remapHomeDrive = NULL;
+static BOOL _passCreds = FALSE;
+static char *shost = NULL, *sport = NULL, *suser = NULL, *spass = NULL;
 
 #define SCRIPTFILELEN (50)
-char _scriptFile[SCRIPTFILELEN];
+static wchar_t _scriptFile[SCRIPTFILELEN];
 
 struct {
 	BOOL documents;
@@ -88,6 +92,7 @@ static BOOL mountNetworkShares();
 static int queryPasswordDaemon();
 static BOOL fileExists(wchar_t* szPath);
 static BOOL folderExists(wchar_t* szPath);
+static wchar_t* escapeShellArg(wchar_t* in, wchar_t *out, wchar_t *end);
 static void patchUserPaths(wchar_t *letter);
 static void remapViaSharedFolder();
 
@@ -197,6 +202,42 @@ exit_func:
 	bInProc = FALSE;
 }
 
+static void CALLBACK launchRunscript(HWND hWnd, UINT uMsg, UINT_PTR idEvent, DWORD dwTime)
+{
+	static int fails = 0;
+	wchar_t params[BUFLEN] = L"";
+	wchar_t nuser[BUFLEN] = L"";
+	wchar_t npass[BUFLEN] = L"";
+	if (_passCreds) {
+		if (spass == NULL) {
+			goto failure;
+		}
+
+		if (spass != NULL) {
+			BOOL ok = TRUE;
+			ok = MultiByteToWideChar(CP_UTF8, 0, (LPCSTR)suser, -1, (LPWSTR)nuser, BUFLEN) > 0 && ok;
+			ok = MultiByteToWideChar(CP_UTF8, 0, (LPCSTR)spass, -1, (LPWSTR)npass, BUFLEN) > 0 && ok;
+			if (!ok) {
+				alog("Could not convert user/password to unicode");
+				goto failure;
+			}
+			wchar_t *end = params + BUFLEN;
+			wchar_t *ptr = params;
+			ptr = escapeShellArg(nuser, ptr, end);
+			*ptr++ = ' ';
+			ptr = escapeShellArg(npass, ptr, end);
+			*ptr = '\0';
+		}
+	}
+	ShellExecuteW(NULL, L"open", _scriptFile, params, L"B:\\", SW_SHOWNORMAL);
+	KillTimer(hWnd, idEvent);
+	return;
+failure:
+	if (++fails > 12) {
+		KillTimer(hWnd, idEvent);
+	}
+}
+
 typedef HRESULT (*GFPTYPE)(HWND, int, HANDLE, DWORD, wchar_t*);
 typedef HRESULT (*GSFTYPE)(HWND, int, ITEMIDLIST**);
 typedef BOOL (*ID2PTYPE)(const ITEMIDLIST*, wchar_t*);
@@ -285,15 +326,20 @@ static void loadPaths()
 	if (_remapMode == RM_NONE) {
 		_folderStatus = FS_OK;
 	}
-	char buffer[10];
+	char buffer[100];
 	GetPrivateProfileStringA("openslx", "homeDrive", "H:", buffer, sizeof(buffer), SETTINGS_FILE);
 	buffer[0] = toupper(buffer[0]);
 	buffer[1] = ':';
 	buffer[2] = '\0';
 	_remapHomeDrive = strdup(buffer);
 	// Get extension for autorun script
-	GetPrivateProfileStringA("openslx", "scriptExt", "", buffer, sizeof(buffer), SETTINGS_FILE);
-	StringCchPrintfA(_scriptFile, SCRIPTFILELEN, "B:\\runscript%s", buffer);
+	int bl = snprintf(buffer, sizeof(buffer), "B:\\runscript");
+	GetPrivateProfileStringA("openslx", "scriptExt", "", buffer + bl, sizeof(buffer) - bl, SETTINGS_FILE);
+	if (MultiByteToWideChar(CP_UTF8, 0, (LPCSTR)buffer, -1, (LPWSTR)_scriptFile, SCRIPTFILELEN) <= 0) {
+		_scriptFile[0] = '\0';
+	}
+	// Pass creds to normal runscript?
+	_passCreds = GetPrivateProfileIntA("openslx", "passCreds", 0, SETTINGS_FILE) != 0;
 }
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd)
@@ -347,8 +393,11 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		}
 	}
 	// Runscript (if any)
-	if (PathFileExistsA(_scriptFile)) {
-		ShellExecuteA(NULL, "open", _scriptFile, NULL, "B:\\", SW_SHOWNORMAL);
+	if (fileExists(_scriptFile)) {
+		UINT_PTR tRet = SetTimer(NULL, 0, 3456, (TIMERPROC)&launchRunscript);
+		if (tRet == 0) {
+			alog("Could not create timer for runscript: %d", (int)GetLastError());
+		}
 	}
 	// Message pump
 	MSG Msg;
@@ -371,6 +420,42 @@ static BOOL folderExists(wchar_t* szPath)
 {
 	DWORD dwAttrib = GetFileAttributesW(szPath);
 	return (dwAttrib != INVALID_FILE_ATTRIBUTES && (dwAttrib & FILE_ATTRIBUTE_DIRECTORY) != 0);
+}
+
+static wchar_t* escapeShellArg(wchar_t* in, wchar_t *out, wchar_t *end)
+{
+	int bs;
+	end -= 2;
+	if (out >= end)
+		return out;
+
+	*out++ = '"';
+	while (*in != '\0') {
+		bs = 0;
+		while (*in == '\\' && out < end) {
+			bs++;
+			*out++ = *in++;
+		}
+		if (*in == '\0' || *in == '"') {
+			while (bs-- > 0 && out < end) {
+				*out++ = '\\';
+			}
+			if (*in == '\0') {
+				break;
+			}
+		}
+		if (*in == '"' && out < end) {
+			*out++ = '\\';
+		}
+		if (out < end) {
+			*out++ = *in++;
+		}
+	}
+	if (out < end) {
+		*out++ = '"';
+	}
+	*out = '\0';
+	return out;
 }
 
 static int execute(wchar_t *path, wchar_t *arguments)
@@ -544,7 +629,6 @@ static int setShutdownText()
 	return 0;
 }
 
-static char *shost = NULL, *sport = NULL, *suser = NULL, *spass = NULL;
 static uint8_t *bkey1 = NULL, *bkey2 = NULL;
 
 static char* xorString(const uint8_t* text, int len, const uint8_t* key);
@@ -732,8 +816,6 @@ static void udpReceived(SOCKET sock)
 	mountNetworkShares();
 }
 
-#define BUFLEN (200)
-
 static DWORD mount(LPNETRESOURCEW share, LPWSTR pass, LPWSTR user)
 {
 	DWORD retval;
@@ -877,7 +959,9 @@ static BOOL mountNetworkShares()
 	}
 	if (failCount > 0)
 		return FALSE;
-	SecureZeroMemory(spass, strlen(spass));
+	if (!_passCreds) {
+		SecureZeroMemory(spass, strlen(spass));
+	}
 	return TRUE;
 }
 

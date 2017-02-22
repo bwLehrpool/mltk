@@ -84,6 +84,7 @@ setup_virtual_floppy() {
 	remapMode=${SHARE_REMAP_MODE_INI}
 	homeDrive=${SHARE_HOME_DRIVE}
 	scriptExt=${EXT}
+	passCreds=${SHARE_CREDENTIAL_PASSTHROUGH}
 	
 	[remap]
 	documents=${SHARE_DOCUMENTS}
@@ -107,6 +108,11 @@ setup_virtual_floppy() {
 	if [ -n "$EXT" ]; then
 		sed -i '1d' "${RUNSCRIPT}"
 		mcopy -i "${SLX_FLOPPY_IMG}" "${RUNSCRIPT}" "::/runscript${EXT}"
+	fi
+	
+	# Admin supplied runscript(s)
+	if [ -d "${VMCHOOSER_DIR}/adminrun" ]; then
+		mcopy -s -i "${SLX_FLOPPY_IMG}" "${VMCHOOSER_DIR}/adminrun" "::/"
 	fi
 	
 	rm -f -- "${SHARES}" "${TMPDIR}/openslx.ini" "${TMPDIR}/HOSTRES.TXT"
