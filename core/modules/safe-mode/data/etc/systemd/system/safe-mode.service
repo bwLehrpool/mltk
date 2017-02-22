@@ -1,7 +1,0 @@
-[Unit]
-Description=Sets up safe mode (no magic keys, no tty switch, no openbox menu)
-DefaultDependencies=no
-
-[Service]
-Type=oneshot
-ExecStart=/opt/openslx/scripts/systemd-safe_mode
