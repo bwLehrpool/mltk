@@ -1,0 +1,25 @@
+
+fetch_source() {
+	git clone "${REQUIRED_GIT}" "${MODULE_WORK_DIR}/src"
+}
+
+build() {
+	local SRCDIR="${MODULE_WORK_DIR}/src/"
+
+	[ ! -d "${MODULE_BUILD_DIR}/${REQUIRED_PREFIX}" ] && mkdir -p "${MODULE_BUILD_DIR}/${REQUIRED_PREFIX}"
+	cd "${MODULE_BUILD_DIR}/${REQUIRED_PREFIX}"
+
+	pinfo "Running cmake"
+	# use qt4-dev (in case eg. qt4 and 5 are installed)
+	activate_qt 4
+
+	cmake "$SRCDIR" || perror "'cmake $SRCDIR' failed."
+	make || perror "'make' failed."
+
+	cd - > /dev/null
+}
+
+post_copy() {
+	:
+}
+
