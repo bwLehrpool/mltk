@@ -1,3 +1,4 @@
+#!/bin/bash
 # Customized kernel from system: fetch Distro's kernel sources, patch configuration, recompile
 
 # This overrides get_kernel_version from kernel.inc, so the variables will be set properly

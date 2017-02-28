@@ -1,3 +1,4 @@
+#!/bin/bash
 REQUIRED_VBOX_OSCODE='Ubuntu~raring'	# raring: 13.04, but also used here.
 
 REQUIRED_VBOXBASEURL="http://download.virtualbox.org/virtualbox/${REQUIRED_VBOX_VERSION}/virtualbox-${REQUIRED_VBOX_VERSION_MAJOR}_${REQUIRED_VBOX_VERSION}-${REQUIRED_VBOX_VERSIONCODE}~${REQUIRED_VBOX_OSCODE}_${AMD64_I386}.deb"

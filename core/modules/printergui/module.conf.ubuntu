@@ -1,3 +1,4 @@
+#!/bin/bash
 REQUIRED_INSTALLED_PACKAGES="
 	libcups2-dev
 	libqt4-dev

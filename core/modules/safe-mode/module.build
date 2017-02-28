@@ -1,3 +1,4 @@
+#!/bin/bash
 # fake module simply copying its data/ files
 fetch_source() {
 	:

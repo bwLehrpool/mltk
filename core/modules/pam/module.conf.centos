@@ -1,3 +1,4 @@
+#!/bin/bash
 # erase generic conf settings
 REQUIRED_BINARIES=""
 REQUIRED_FILES=""

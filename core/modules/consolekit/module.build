@@ -1,4 +1,5 @@
 #!/bin/bash
+#!/bin/bash
 
 fetch_source() {
 	pinfo "Extracting from running system..."

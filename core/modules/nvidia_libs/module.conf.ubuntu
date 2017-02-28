@@ -1,3 +1,4 @@
+#!/bin/bash
 # libvdpau: While nvidia delivers a linvdpau within it's driver package, nvidia
 # itself recommends using a distribution package if available. So, here we go.
 

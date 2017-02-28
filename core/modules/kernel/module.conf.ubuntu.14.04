@@ -1,2 +1,3 @@
+#!/bin/bash
 REQUIRED_GIT_BRANCH="lts-backport-vivid"
 REQUIRED_GIT="git://kernel.ubuntu.com/ubuntu/ubuntu-${SYS_CODENAME}.git"

@@ -1,3 +1,4 @@
+#!/bin/bash
 activate_qt() {
 	[ $# -eq 1 ] || perror "activate_qt() requires the version as only argument, $# given."
 	local QT_VERSION="$1"

@@ -1,3 +1,4 @@
+#!/bin/bash
 #
 # This include tries to determine system paths needed by mltk-modules
 # The idea here is to have a central place to determine paths required

@@ -1,3 +1,4 @@
+#!/bin/bash
 fetch_source() {
 	mkdir -p "src/kmod"
 	if [ ! -d "src/dnbd3" ]; then

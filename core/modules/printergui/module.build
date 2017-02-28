@@ -1,4 +1,5 @@
 #!/bin/bash
+#!/bin/bash
 
 fetch_source() {
 	git clone "${REQUIRED_GIT}" "${MODULE_WORK_DIR}/src"

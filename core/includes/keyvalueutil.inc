@@ -1,3 +1,4 @@
+#!/bin/bash
 # Helper file for managing key-value containing files
 # There are some specialized conveinience functions here first
 # that mostly just pass a predefined filename to the genric function

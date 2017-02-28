@@ -1,4 +1,5 @@
 #!/bin/bash
+#!/bin/bash
 
 fetch_source() {
 	echo "Extracting from running system..."

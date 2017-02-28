@@ -1,3 +1,4 @@
+#!/bin/bash
 # TODO fix and re-add ncp support !
 REQUIRED_INSTALLED_PACKAGES="
 	libpam-ldap

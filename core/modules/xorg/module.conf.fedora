@@ -1,3 +1,4 @@
+#!/bin/bash
 # xkbutils, xkbprint, setxkbmap, xkbevd for 64-bit openSuse
 REQUIRED_INSTALLED_PACKAGES="
 			xorg-x11-server-Xorg

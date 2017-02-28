@@ -1,3 +1,4 @@
+#!/bin/bash
 # kernel-system: Try to use the system's kernel without recompiling
 
 # overloaded get_kernel_version function from kernel.inc

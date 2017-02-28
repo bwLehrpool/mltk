@@ -1,3 +1,4 @@
+#!/bin/bash
 REQUIRED_CONTENT_PACKAGES="
 				libsdl1.2debian
 				libpng12-0

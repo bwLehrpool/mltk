@@ -1,3 +1,4 @@
+#!/bin/bash
 REQUIRED_VMWARE_DELETIONS="
 	/var/lib/vmware
 	/etc/vmware-vix

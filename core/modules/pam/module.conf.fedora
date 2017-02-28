@@ -1,3 +1,4 @@
+#!/bin/bash
 REQUIRED_NSS_LDAPD_VERSION="nss-pam-ldapd-0.8.13"
 REQUIRED_NSS_LDAPD_URL="http://arthurdejong.org/nss-pam-ldapd/${REQUIRED_NSS_LDAPD_VERSION}.tar.gz"
 

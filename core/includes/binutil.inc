@@ -1,3 +1,4 @@
+#!/bin/bash
 #
 # Common functions to copy binaries and their dependancies.
 #

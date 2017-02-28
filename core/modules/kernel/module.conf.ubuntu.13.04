@@ -1,2 +1,3 @@
+#!/bin/bash
 REQUIRED_GIT_BRANCH="-b master"
 REQUIRED_GIT="git://kernel.ubuntu.com/ubuntu-archive/ubuntu-${SYS_CODENAME}.git $REQUIRED_GIT_BRANCH"

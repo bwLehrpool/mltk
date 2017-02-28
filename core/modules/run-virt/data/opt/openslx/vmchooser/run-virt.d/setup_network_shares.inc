@@ -1,3 +1,4 @@
+#!/bin/bash
 # TODO this currently is not used.
 # This should be continued when we have a clear idea
 # how we will embed network shares in VMs

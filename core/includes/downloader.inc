@@ -1,3 +1,4 @@
+#!/bin/bash
 # helper functions for downloading files or packages
 
 # download a file. usage:

@@ -1,3 +1,4 @@
+#!/bin/bash
 fetch_source() {
 	mkdir -p src
 	cd src || perror "Could not change into src directory."

@@ -1,3 +1,4 @@
+#!/bin/bash
 REQUIRED_DIRECTORIES="
 	/usr/bin
 	/usr/sbin

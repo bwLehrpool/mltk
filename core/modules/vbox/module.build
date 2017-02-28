@@ -1,4 +1,5 @@
 #!/bin/bash
+#!/bin/bash
 
 patch_vbox_scripts() {
 	# Patching virtualbox utility scripts to include openslx-busybox binary paths. Strange sed-ing, as the openslx

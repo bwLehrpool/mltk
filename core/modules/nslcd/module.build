@@ -1,4 +1,5 @@
 #!/bin/bash
+#!/bin/bash
 
 fetch_source() {
 	if [ -n "$REQUIRED_NSS_LDAPD_URL" ]; then

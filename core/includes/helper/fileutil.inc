@@ -1,3 +1,4 @@
+#!/bin/bash
 #
 # copy list of files using tar
 tarcopy () {
