@@ -23,7 +23,7 @@ build() {
 	make || perror "'make' failed."
 
 	# Make read-edid
-	gcc -o "${MODULE_BUILD_DIR}/opt/openslx/bin/read-edid" "${MODULE_DIR}/source/parse-edid/parse-edid.c" || perror "Compiling parse-edid failed."
+	gcc -o "${MODULE_BUILD_DIR}/opt/openslx/bin/parse-edid" "${MODULE_DIR}/source/parse-edid/parse-edid.c" || perror "Compiling parse-edid failed."
 }
 post_copy() {
 	:
