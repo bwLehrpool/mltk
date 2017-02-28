@@ -44,9 +44,9 @@ echo "$XRANDR"
 # Get the names of the connected outputs
 # This is a rigid approach to determine the connected outputs
 declare -a OUTPUTNAMES
-while read line; do
-  OUTPUTNAMES+=("$(awk '{print $1}' <<<"$line" )")
-done < <( echo "$XRANDR" | grep -E "[[:digit:]]+mm x [[:digit:]]+mm" )
+while read -r line || [[ -n "$line" ]]; do
+  OUTPUTNAMES+=("$( <<<$line  awk '{print $1}' )")
+done < <( <<<$XRANDR  grep -E "[[:digit:]]+mm x [[:digit:]]+mm" )
 echo -e "Connected outputs: \e[32m${OUTPUTNAMES[@]}\e[0m"
 
 # The goal is to add more modelines to the X server. While this is done the
@@ -64,8 +64,8 @@ if [ ${#OUTPUTNAMES[@]} -eq 2 ]; then
   SMALL=
   for i in 0 1; do
     # See if we hard-coded the device as a beamer
-    EDID=$(<<<$XRANDRV  grep -Pzo "\n${OUTPUTNAMES[$i]}\N*connected\N*\n(\s+\N*\n)+" | grep -Eao '[0-9a-f]{32}' tmp | sed -r ':a;N;$!ba;s/[^0-9a-f]//gI;s/([0-9a-f]{2})/\\\\x\1/gI' | xargs printf | parse-edid)
-    MODEL_NAME=$(<<<$EDID  awk '{if ($1 == "ModelName") { A=$2$3$4$5; print substr(A, 2, length(A) - 2)}}')
+    EDID=$( <<<$XRANDRV  grep -Pzo "\n${OUTPUTNAMES[$i]}\N*connected\N*\n(\s+\N*\n)+" | grep -Eao '[0-9a-f]{32}' tmp | sed -r ':a;N;$!ba;s/[^0-9a-f]//gI;s/([0-9a-f]{2})/\\\\x\1/gI' | xargs printf | parse-edid )
+    MODEL_NAME=$( <<<$EDID  awk '{if ($1 == "ModelName") { A=$2$3$4$5; print substr(A, 2, length(A) - 2)}}' )
     echo "'${OUTPUTNAMES[$i]}' is connected to device '$MODEL_NAME'"
     # Have a name, do the checks
     if [ -n "$MODEL_NAME" ]; then
@@ -88,7 +88,7 @@ if [ ${#OUTPUTNAMES[@]} -eq 2 ]; then
       fi
     fi
     # Classic test by what X(randr) figured out
-    WIDTH=$(grep -E "^${OUTPUTNAMES[$i]}.*[0-9]+mm x [0-9]+mm" <<<"$XRANDR" | head -n 1 | grep -o -E ' [0-9]+mm x' | grep -o -E '[0-9]+')
+    WIDTH=$( <<<$XRANDR  grep -E "^${OUTPUTNAMES[$i]}.*[0-9]+mm x [0-9]+mm" | head -n 1 | grep -o -E ' [0-9]+mm x' | grep -o -E '[0-9]+' )
     if [ -z "$WIDTH" ] || [ "$WIDTH" -eq 0 ] || [ "$WIDTH" -gt 900 ]; then
       echo "Screen $i is beamer, width is '$WIDTH'"
       BEAMER=$i
@@ -114,14 +114,14 @@ if [ ${#OUTPUTNAMES[@]} -eq 2 ]; then
     # Add the modes to the outputs, this means that, if this action is
     # successful they can be applied to the screens.
     for i in "${MODES[@]}"; do
-      if xrandr --current --newmode $i; then # > /dev/null 2>&1
+      if xrandr --current --newmode "$i"; then # > /dev/null 2>&1
         echo -e "Created mode ${i%% *}."
       else
         echo -e "\e[31mFailed to create mode ${i%% *}!\e[0m"
       fi
 
       for j in "${OUTPUTNAMES[@]}"; do
-        if xrandr --current --addmode $j $(echo $i| awk '{print $1;}'); then
+        if xrandr --current --addmode "$j" "$( <<<$i  awk '{print $1;}' )"; then
           echo -e "Added mode ${i%% *} to $j."
         else
           echo -e "\e[31mFailed to add mode ${i%% *} to $j!\e[0m"
@@ -133,23 +133,23 @@ if [ ${#OUTPUTNAMES[@]} -eq 2 ]; then
     # Finally, if the EDID is present, apply a proper resolution.
     # Find out whether the beamer transmits reliable EDID data.
     # The data in xrandr should be reliable if the EDID is present.
-    if echo "$XRANDRV" | grep -Pzo \
-      "^${OUTPUTNAMES[$BEAMER]}\N*\n((\ |\t)+\N*\n)+" \
+    if <<<$XRANDRV  grep -Pzo \
+      "\n${OUTPUTNAMES[$BEAMER]}\N*\n((\ |\t)+\N*\n)+" \
       | grep EDID > /dev/null ; then
       echo "${OUTPUTNAMES[$BEAMER]} [Beamer] provides EDID."
 
       # If the breamer transmits the EDID there shall be a preferred resolution.
-      OPTIMALRES=$(echo "$XRANDRV" \
-        | grep -Pzo "^${OUTPUTNAMES[$BEAMER]}\N*\n((\ |\t)+\N*\n)+" \
-        | grep preferred | awk '{print $1}')
+      OPTIMALRES=$( <<<$XRANDRV \
+        | grep -Pzo "\n${OUTPUTNAMES[$BEAMER]}\N*\n((\ |\t)+\N*\n)+" \
+        | grep preferred | awk '{print $1}' )
 
       # Apply the optimal resolution tho either of the outputs. The beamer has
       # to be the secondary output.
       if xrandr \
-        --output ${OUTPUTNAMES[$((1-$BEAMER))]} --mode $OPTIMALRES \
+        --output "${OUTPUTNAMES[$((1-$BEAMER))]}" --mode "$OPTIMALRES" \
         --primary \
-        --output ${OUTPUTNAMES[$BEAMER]} --mode $OPTIMALRES \
-        --same-as ${OUTPUTNAMES[$((1-$BEAMER))]}
+        --output "${OUTPUTNAMES[$BEAMER]}" --mode "$OPTIMALRES" \
+        --same-as "${OUTPUTNAMES[$((1-$BEAMER))]}"
       then
         echo "Applied optimal resolution successfully."
       fi
@@ -162,17 +162,17 @@ if [ ${#OUTPUTNAMES[@]} -eq 2 ]; then
       . /opt/openslx/config
 
       # Try to get a probed mode
-      PROBEDMODE=$(cat $CONFIGFILE | grep $SLX_PXE_CLIENT_IP | cut -d '=' -f2)
+      PROBEDMODE=$( <<<$CONFIGFILE  grep "^\s*$SLX_PXE_CLIENT_IP" | cut -d '=' -f2 )
 
       # If a probed mode was found, ..
       if [[ -n "$PROBEDMODE" ]]; then
         echo "Probed mode found in config file."
         # Apply the probed mode from the config file
         if xrandr \
-          --output ${OUTPUTNAMES[$((1-$BEAMER))]} --mode $PROBEDMODE \
+          --output "${OUTPUTNAMES[$((1-$BEAMER))]}" --mode "$PROBEDMODE" \
           --primary \
-          --output ${OUTPUTNAMES[$BEAMER]} --mode $PROBEDMODE \
-          --same-as ${OUTPUTNAMES[$((1-$BEAMER))]}
+          --output "${OUTPUTNAMES[$BEAMER]}" --mode "$PROBEDMODE" \
+          --same-as "${OUTPUTNAMES[$((1-$BEAMER))]}"
         then
           echo "Applied probed mode successfully."
         fi
@@ -183,10 +183,10 @@ if [ ${#OUTPUTNAMES[@]} -eq 2 ]; then
       # Apply a fallback mode
       echo -e "\e[31mERROR: Beamer provides no EDID and no config file found in $CONFIGFILE. Falling back to 1024x768.\e[0m"
       xrandr \
-        --output ${OUTPUTNAMES[$((1-$BEAMER))]} --mode 1024x768 \
+        --output "${OUTPUTNAMES[$((1-$BEAMER))]}" --mode "1024x768" \
         --primary \
-        --output ${OUTPUTNAMES[$BEAMER]} --mode 1024x768 \
-        --same-as ${OUTPUTNAMES[$((1-$BEAMER))]}
+        --output "${OUTPUTNAMES[$BEAMER]}" --mode "1024x768" \
+        --same-as "${OUTPUTNAMES[$((1-$BEAMER))]}"
     fi
   else
     # In case of two monitors just sort the outputs lexicographically and apply
@@ -194,12 +194,12 @@ if [ ${#OUTPUTNAMES[@]} -eq 2 ]; then
     echo "Dualhead setup deteced. Sorting outputs lexicographically."
     readarray -t OUTPUTNAMES \
       < <(for a in "${OUTPUTNAMES[@]}"; do echo "$a"; done | sort)
-    echo ${OUTPUTNAMES[@]}
+    echo "${OUTPUTNAMES[@]}"
     if xrandr \
-      --output ${OUTPUTNAMES[0]} --preferred \
+      --output "${OUTPUTNAMES[0]}" --preferred \
       --primary \
-      --output ${OUTPUTNAMES[1]} --preferred \
-      --right-of ${OUTPUTNAMES[0]}
+      --output "${OUTPUTNAMES[1]}" --preferred \
+      --right-of "${OUTPUTNAMES[0]}"
     then
       echo "Successfully applied preferred modes on outputs in sorted order."
     fi
