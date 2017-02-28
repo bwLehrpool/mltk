@@ -25,6 +25,11 @@ MODES=("${MODES[@]}" "1280x1024 109.00  1280 1368 1496 1712  1024 1027 1034 1063
 
 CONFIGFILE="/opt/openslx/beamergui/beamer.conf"
 
+# Hard-code a few models known to be problematic
+declare -a FORCE_BEAMER
+FORCE_BEAMER=("AT-HDVS-RX")
+
+
 ################################################################################
 
 #DRIVER=$(lspci -nnk | grep -i vga -A3 | grep 'in use'| awk '{ print $NF }')
@@ -58,6 +63,31 @@ if [ ${#OUTPUTNAMES[@]} -eq 2 ]; then
   MAYBEAMER=
   SMALL=
   for i in 0 1; do
+    # See if we hard-coded the device as a beamer
+    EDID=$(<<<$XRANDRV  grep -Pzo "\n${OUTPUTNAMES[$i]}\N*connected\N*\n(\s+\N*\n)+" | grep -Eao '[0-9a-f]{32}' tmp | sed -r ':a;N;$!ba;s/[^0-9a-f]//gI;s/([0-9a-f]{2})/\\\\x\1/gI' | xargs printf | parse-edid)
+    MODEL_NAME=$(<<<$EDID  awk '{if ($1 == "ModelName") { A=$2$3$4$5; print substr(A, 2, length(A) - 2)}}')
+    echo "'${OUTPUTNAMES[$i]}' is connected to device '$MODEL_NAME'"
+    # Have a name, do the checks
+    if [ -n "$MODEL_NAME" ]; then
+      FOUND=
+      # Try hard coded values from above
+      for model in "${FORCE_BEAMER[@]}"; do
+        if [ "x$model" = "x$MODEL_NAME" ]; then
+          FOUND=ya
+          break
+        fi
+      done
+      # Now try user supplied config
+      if [ -z "$FOUND" ] && grep -Fxq "${MODEL_NAME}=beamer" "$CONFIGFILE"; then
+        FOUND=ya
+      fi
+      # Set beamer if any match
+      if [ -n "$FOUND" ]; then
+        BEAMER=$i
+        continue
+      fi
+    fi
+    # Classic test by what X(randr) figured out
     WIDTH=$(grep -E "^${OUTPUTNAMES[$i]}.*[0-9]+mm x [0-9]+mm" <<<"$XRANDR" | head -n 1 | grep -o -E ' [0-9]+mm x' | grep -o -E '[0-9]+')
     if [ -z "$WIDTH" ] || [ "$WIDTH" -eq 0 ] || [ "$WIDTH" -gt 900 ]; then
       echo "Screen $i is beamer, width is '$WIDTH'"

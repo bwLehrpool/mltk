@@ -21,6 +21,9 @@ build() {
 	"$QMAKE" "$SRCDIR/src/beamergui.pro" -r -spec linux-g++ || perror "'qmake-qt4' failed (e.g. not installed)."
 	pinfo "Running make"
 	make || perror "'make' failed."
+
+	# Make read-edid
+	gcc -o "${MODULE_BUILD_DIR}/opt/openslx/bin/read-edid" "${MODULE_WORK_DIR}/source/parse-edid/parse-edid.c" || perror "Compiling parse-edid failed."
 }
 post_copy() {
 	:
