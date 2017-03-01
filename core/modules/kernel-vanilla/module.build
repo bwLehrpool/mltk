@@ -44,6 +44,12 @@ fetch_source() {
 	fi
 	# remember the current kernel version
 	echo "${SYSTEM_KERNEL_LONG}" > ksrc/KVERSION
+	# Fetch all the firmware
+	if ! [ -s "./fw/Makefile" ]; then
+		rm -rf -- "./fw"
+		git clone "git://git.kernel.org/pub/scm/linux/kernel/git/firmware/linux-firmware.git" "./fw" || perror "Could not clone linux-firmware repo."
+		rm -rf -- ./fw/LICENSE.* ./fw/*.txt
+	fi
 }
 
 build() {
@@ -75,6 +81,9 @@ build() {
 	fi
 	make INSTALL_MOD_PATH="${MODULE_BUILD_DIR}" INSTALL_MOD_STRIP=1 modules_install || perror "make modules_install failed in ${MODULE_BUILD_DIR}."
 	cd - 2> /dev/null
+
+	# copy most recent firmware
+	cp -r ./fw/* "${MODULE_BUILD_DIR}/lib/firmware/" || perror "Could not copy linux-firmware to '${MODULE_BUILD_DIR}/lib/firmware/'"
 
 	# copy kernel to build
 	cp ksrc/arch/x86/boot/bzImage "${MODULE_BUILD_DIR}/kernel"
