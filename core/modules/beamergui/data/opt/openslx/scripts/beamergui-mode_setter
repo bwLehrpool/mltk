@@ -64,7 +64,9 @@ if [ ${#OUTPUTNAMES[@]} -eq 2 ]; then
   SMALL=
   for i in 0 1; do
     # See if we hard-coded the device as a beamer
-    EDID=$( <<<"$XRANDRV"  grep -Pzo "\n${OUTPUTNAMES[$i]}\N*connected\N*\n(\s+\N*\n)+" | grep -Eao '[0-9a-f]{32}' tmp | sed -r ':a;N;$!ba;s/[^0-9a-f]//gI;s/([0-9a-f]{2})/\\\\x\1/gI' | xargs printf | parse-edid )
+    # Use echo -e -n "" instead of piping the sed output into xargs printf, as xargs
+    # handles backslashes differently depending on the version.
+    EDID=$( echo -e -n "$( <<<"$XRANDRV"  grep -Pzo "\n${OUTPUTNAMES[$i]}\N*connected\N*\n(\s+\N*\n)+" | grep -Eao '[0-9a-f]{32}' | sed -r ':a;N;$!ba;s/[^0-9a-f]//gI;s/([0-9a-f]{2})/\\x\1/gI' )" | parse-edid )
     MODEL_NAME=$( <<<"$EDID"  awk '{if ($1 == "ModelName") { A=$2$3$4$5; print substr(A, 2, length(A) - 2)}}' )
     echo "'${OUTPUTNAMES[$i]}' is connected to device '$MODEL_NAME'"
     # Have a name, do the checks
@@ -78,7 +80,7 @@ if [ ${#OUTPUTNAMES[@]} -eq 2 ]; then
         fi
       done
       # Now try user supplied config
-      if [ -z "$FOUND" ] && grep -Fxq "${MODEL_NAME}=beamer" "$CONFIGFILE"; then
+      if [ -z "$FOUND" ] && [ -f "$CONFIGFILE" ] && grep -Fxq "${MODEL_NAME}=beamer" "$CONFIGFILE"; then
         FOUND=ya
       fi
       # Set beamer if any match
@@ -134,15 +136,16 @@ if [ ${#OUTPUTNAMES[@]} -eq 2 ]; then
     # Find out whether the beamer transmits reliable EDID data.
     # The data in xrandr should be reliable if the EDID is present.
     if <<<"$XRANDRV"  grep -Pzo \
-      "\n${OUTPUTNAMES[$BEAMER]}\N*\n((\ |\t)+\N*\n)+" \
+      "\n${OUTPUTNAMES[$BEAMER]}\N*\n(\s+\N*\n)+" \
       | grep EDID > /dev/null ; then
       echo "${OUTPUTNAMES[$BEAMER]} [Beamer] provides EDID."
 
       # If the breamer transmits the EDID there shall be a preferred resolution.
-      OPTIMALRES=$( <<<"$XRANDRV" \
-        | grep -Pzo "\n${OUTPUTNAMES[$BEAMER]}\N*\n((\ |\t)+\N*\n)+" \
+      OPTIMALRES=$( <<<"$XRANDRV"  grep -Pzo "\n${OUTPUTNAMES[$BEAMER]}\N*\n(\s+\N*\n)+" \
         | grep preferred | awk '{print $1}' )
 
+      # (try to) make sure the display has the preferred mode of the beamer added to it, in case it wasn't in our list from above
+      xrandr --current --addmode "${OUTPUTNAMES[$((1-$BEAMER))]}" "$OPTIMALRES"
       # Apply the optimal resolution tho either of the outputs. The beamer has
       # to be the secondary output.
       if xrandr \
