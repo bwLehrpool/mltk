@@ -73,7 +73,7 @@ int main(int argc, char *argv[])
   
   //printf("%lu\n", workaroundCreepyXServer(dpy, ssi.idle));
   // Apparently not needed anymore since some recent X11 release.
-  printf("%lu\n", dpy, ssi->idle);
+  printf("%lu\n", ssi->idle);
   
   XFree(ssi);
   XCloseDisplay(dpy);
