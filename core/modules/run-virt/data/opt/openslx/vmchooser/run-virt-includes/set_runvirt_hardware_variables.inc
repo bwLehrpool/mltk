@@ -81,19 +81,28 @@ set_virt_mac() {
 }
 
 # Virtual fd/cd/dvd and drive devices, floppy b: for configuration
-# NOTE: This uses bash's variable expansion magic to set
-# CDROM/FLOPPY variables evaluated later by the virtualizers...
 # If the variables in virtualization.conf is set, "TRUE" is assigned,
 # "FALSE" otherwise.
 check_optical_drives() {
-	local TESTVAR=${FLOPPY_0:+"TRUE"}
-	declare -rg FLOPPY0=${TESTVAR:-"FALSE"}
-
-	TESTVAR=${CDROM_0:+"TRUE"}
-	declare -rg CDROM0=${TESTVAR:-"FALSE"}
-
-	TESTVAR=${CDROM_1:+"TRUE"}
-	declare -rg CDROM1=${TESTVAR:-"FALSE"}
+	# TODO This should only handle exam mode here, maybe even have one function
+	# that prepares all exam mode related stuff. Then create the TRUE/FALSE
+	# variables somewhere in the vmware plugin, since it's specific to that
+	# plugin.
+	FLOPPY0="FALSE"
+	CDROM0="FALSE"
+	CDROM1="FALSE"
+	if [ -z "$SLX_EXAM" ]; then
+		if [ -n "$FLOPPY_0" ]; then
+			FLOPPY0="TRUE"
+		fi
+		if [ -n "$CDROM_0" ]; then
+			CDROM0="TRUE"
+		fi
+		if [ -n "$CDROM_1" ]; then
+			CDROM1="TRUE"
+		fi
+	fi
+	readonly FLOPPY0 CDROM0 CDROM1
 }
 
 ## MAIN ##
