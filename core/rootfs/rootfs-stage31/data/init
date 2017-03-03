@@ -127,6 +127,8 @@ fi
 if [ -n "$SLX_EXAM" ]; then
 	# Visual: Make kdm all orange
 	sed -i 's/#e3e4e9/#f9a72b/g' "${FUTURE_ROOT}/usr/share/desktop/themes/kdm/bwlehrpool/theme.xml"
+	# Logo black
+	sed -r -i 's/#[a-fA-F0-9]{6}/#000000/g' "${FUTURE_ROOT}/usr/share/desktop/themes/kdm/bwlehrpool/bwLehrpool.svg"
 	# Set autologindelay to 0 to directly boot
 	sed -i 's/^AutoLoginDelay=.*/AutoLoginDelay=0/g' "${FUTURE_ROOT}/etc/kde4/kdm/kdmrc"
 	# Visual: Move splash screen to upper left corner
