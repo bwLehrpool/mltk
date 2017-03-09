@@ -1,0 +1,28 @@
+#!/bin/bash
+
+
+fetch_source() {
+	[ -s "${MODULE_DIR}/src/driver.zip" ] && return 0
+	rm -rf -- "${MODULE_DIR}/src"
+	mkdir -p "${MODULE_DIR}/src"
+	wget -O "${MODULE_DIR}/src/driver.zip" "${REQUIRED_ARCHIVE}" || perror "Could not create ${MODULE_DIR}/src"
+}
+
+build() {
+	cd "${MODULE_DIR}/src/" || perror "Could not cd to '${MODULE_DIR}/src'. Did fetch_source work?"
+	# Initial archive is zip
+	unzip -j -o "${MODULE_DIR}/src/driver.zip" || perror "Could not extract initial driver.zip"
+	# Then we have two tgz, 32bit and 64bit
+	tar -x -f *x86_64*.tar* --wildcards '*/sic*' || perror "Could not extract binaries from inner tar"
+
+	mkdir -p "${MODULE_BUILD_DIR}/usr/bin"
+	find . -name "sic*" -type f -executable -exec cp {} "${MODULE_BUILD_DIR}/usr/bin" \; \
+		|| perror "Could not copy sic* binaries to module build dir"
+
+	cd - &>/dev/null
+}
+
+post_copy() {
+	:
+}
+
