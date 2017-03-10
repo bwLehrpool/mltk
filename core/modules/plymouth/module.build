@@ -1,5 +1,4 @@
 #!/bin/bash
-#!/bin/bash
 
 fetch_source() {
 	download_untar "$REQUIRED_URL" "src/"

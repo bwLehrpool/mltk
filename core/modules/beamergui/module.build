@@ -1,5 +1,4 @@
 #!/bin/bash
-#!/bin/bash
 
 fetch_source() {
 	git clone "${REQUIRED_GIT}" src

@@ -1,6 +1,4 @@
 #!/bin/bash
-#!/bin/bash
-
 
 fetch_source() {
 	[ -d "${MODULE_WORK_DIR}/src/.git" ] && return 0
