@@ -1,0 +1,31 @@
+#!/bin/ash
+
+CUPSD=$(which cupsd)
+if [ -z "$CUPSD" ]; then
+	echo "Could not find CUPSd binary - doing nothing"
+	exit 0
+fi
+
+VERSION=$(strings -n 8 "$CUPSD" | grep -E '^CUPS v[0-9]\.' | head -n 1)
+if [ -z "$VERSION" ]; then
+	echo "Could not extract CUPS version from $CUPSD - doing nothing"
+	exit 0
+fi
+
+# CUPS before 2.0 required the <DefaultPrinter> tag to be closed by </Printer>, while
+# CUPS >= 2.0 allowed you to use the more logical </DefaultPrinter>. Convert the config
+# in case the user supplied new style and we run old cups
+MAJOR=${VERSION:6:1}
+if [ -n "$MAJOR" ] && [ "$MAJOR" -lt 2 ]; then
+	echo "CUPS < 2.0, patching printers.conf"
+	[ -s "/etc/cups/printers.conf" ] && sed -i 's,</DefaultPrinter>,</Printer>,' "/etc/cups/printers.conf"
+fi
+
+# Set proper permissions
+chmod +rx "/etc/cups"
+chmod -R +rX "/etc/cups/ppd"
+chmod 0600 "/etc/cups/printers.conf"
+chown -R root:lp "/etc/cups/printers.conf" "/etc/cups/ppd"
+
+exit 0
+

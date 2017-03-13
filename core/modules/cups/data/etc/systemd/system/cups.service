@@ -6,4 +6,5 @@ Before=graphical.target
 ConditionFileNotEmpty=/etc/cups/printers.conf
 
 [Service]
+ExecStartPre=-/opt/openslx/scripts/systemd-cupsd_prestart
 ExecStart=/usr/sbin/cupsd -f
