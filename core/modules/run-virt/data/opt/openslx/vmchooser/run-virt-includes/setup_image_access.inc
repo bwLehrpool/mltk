@@ -97,7 +97,7 @@ setup_image_access() {
 		writelog "\tCan't use dnbd3 as dnbd3-fuse/fusermount binaries are not in PATH"
 	elif ! isset SRC_IMG_RELATIVE; then
 		writelog "\tCan't use dnbd3 as SRC_IMG_RELATIVE is not set"
-	elif ! isset SLX_DNBD3_SERVERS || [ "x${SLX_VM_DNBD3}}" != "xyes" ]; then
+	elif ! isset SLX_DNBD3_SERVERS || [ "x${SLX_VM_DNBD3}" != "xyes" ]; then
 		writelog "\tCan't use dnbd3 as no servers are given in config, or SLX_VM_DNBD3 is not set to yes"
 	else
 		# register setup_dnbd3 as start hook after sourcing this include
