@@ -43,6 +43,9 @@ if ! mount | grep -q -F " ${TEMP_HOME_DIR} "; then
 		slxlog "pam-global-tmpfstemphome" "Could not make a tmpfs on ${TEMP_HOME_DIR}"
 		exit 1
 	fi
+	if ! chown "${USER_UID}:${USER_GID}" "${TEMP_HOME_DIR}"; then
+		slxlog "pam-global-chpersistent" "Could not chown '${TEMP_HOME_DIR}' to '${PAM_USER}'."
+	fi
 fi
 
 ###############################################################################
@@ -63,8 +66,6 @@ if [ -e "${PERSISTENT_MOUNT_SCRIPT}" ] && ! mount | grep -q -F " ${PERSISTENT_HO
 	# create the PERSISTENT directory and give to user
 	if ! mkdir -p "${PERSISTENT_HOME_DIR}"; then
 		slxlog "pam-global-mkpersistent" "Could not create '${PERSISTENT_HOME_DIR}'."
-	elif ! chown "${USER_UID}:${USER_GID}" "${TEMP_HOME_DIR}"; then
-		slxlog "pam-global-chpersistent" "Could not chown '${TEMP_HOME_DIR}' to '${PAM_USER}'."
 	else
 		# everything seems ok, call mount script
 		. "${PERSISTENT_MOUNT_SCRIPT}" \
