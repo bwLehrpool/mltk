@@ -12,7 +12,7 @@ download_metadata() {
 		EXIT_TYPE="internal" EXIT_REASON="Fehlendes Dienstprogramm 'wget'!" cleanexit 1
 	fi
 
-	if ! isset SLX_VMCHOOSER_BASE_URL; then
+	if isempty SLX_VMCHOOSER_BASE_URL; then
 		writelog "SLX_VMCHOOSER_BASE_URL is not set! Was /opt/openslx/config sourced?"
 		EXIT_TYPE="internal" EXIT_REASON="Keine URL zur Schnittstelle des bwLehrpool-Satelliten gefunden!" cleanexit 1
 	fi
