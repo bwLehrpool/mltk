@@ -108,7 +108,7 @@ add_cleanup() {
 #
 # EXIT_TYPE should be either:
 #	- 'internal' for critical internal errors, this will
-#	   automatically send the logfile via slxlog.
+#     automatically send the logfile via slxlog.
 #	- 'user' for errors related to the user's choice
 # Others could be thought of like 'external' for failures
 # with remote services (e.g. slx apis, external image repo, ...)
@@ -159,7 +159,7 @@ cleanexit() {
 				writelog "Unknown EXIT_TYPE: '${EXIT_TYPE}'."
 				;;
 		esac
-	fi	
+	fi
 	if notempty EXIT_REASON; then
 		ERR_TEXT="${EXIT_REASON}"
 	else
@@ -185,7 +185,7 @@ ${ERR_FOOTER}
 }
 
 ################# SOURCING FUNCTIONS #################
-# Wrapped 'source' that first checks for existence and 
+# Wrapped 'source' that first checks for existence and
 # syntax before actually sourcing the given file.
 # The option '--exit' triggers cleanexit upon syntax errors.
 # Without it, it returns 0 when tests passed, 1 otherwise.
@@ -198,7 +198,7 @@ safesource() {
 		# sanitze filename just to be sure as it is part of the eval coming later
 		# alphanumeric and - _ . should be enough for common file naming scheme
 		if [[ ! "$1" =~ ^[a-zA-Z0-9./_-]+$ ]]; then
-	       		writelog "'$1' is a weird filename to source! Ignoring."
+			writelog "'$1' is a weird filename to source! Ignoring."
 			return 1
 		fi
 		local FILE="$1"
@@ -214,7 +214,7 @@ safesource() {
 				*) writelog --quiet "Syntax check (bash -n) returned unknown error code '${RET}' for: ${FILE}" ;;
 			esac
 			if [ $EXIT_ON_FAILURE -eq 1 ]; then
-		       		echo "eval EXIT_REASON=\"internal:source:${FILE}\" cleanexit 1 ;"
+				echo "eval EXIT_REASON=\"internal:source:${FILE}\" cleanexit 1 ;"
 			else
 				echo "eval writelog \"Could not safesource '${FILE}'.\" ;"
 			fi
@@ -224,7 +224,7 @@ safesource() {
 		echo "run_post_source ${FILE} ;"
 
 	done
-	return 0 
+	return 0
 }
 
 # Registers functions to be called after sourcing an include.
@@ -345,7 +345,6 @@ is_function() {
 
 # Helper to test if given arguments are declared as arrays
 is_array() {
-	
 	# -ne 1 ] && writelog "is_array: Expects 1 argument! $# given." && return 1
 	while [ $# -gt 0 ]; do
 		local ARRAY_DEF="$(declare -p ${1} 2>/dev/null)"
@@ -413,7 +412,7 @@ check_dep() {
 		fi
 		shift
 	done
-	isset ONEOF && return 1 || return 0 
+	isset ONEOF && return 1 || return 0
 }
 
 
