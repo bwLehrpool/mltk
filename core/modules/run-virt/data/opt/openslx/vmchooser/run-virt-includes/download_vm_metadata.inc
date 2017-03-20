@@ -14,7 +14,7 @@ download_metadata() {
 
 	if isempty SLX_VMCHOOSER_BASE_URL; then
 		writelog "SLX_VMCHOOSER_BASE_URL is not set! Was /opt/openslx/config sourced?"
-		EXIT_TYPE="internal" EXIT_REASON="Keine URL zur Schnittstelle des bwLehrpool-Satelliten gefunden!" cleanexit 1
+		EXIT_TYPE="internal" EXIT_REASON="msg.vmchooser.url-missing Keine URL zur Schnittstelle des bwLehrpool-Satelliten gefunden!" cleanexit 1
 	fi
 
 	writelog "Detecting current/legacy mode..."	
@@ -31,7 +31,7 @@ download_metadata() {
 	fi
 
 	# Seems we are in legacy mode, which is no longer supported. Warn user and exit
-	EXIT_TYPE="user" EXIT_REASON="
+	EXIT_TYPE="user" EXIT_REASON="msg.vm.no-metadata
 Die gewählte VM ist eine 'Legacy VM', für die unvollständige
 Metadaten auf dem bwLehrpool-Server hinterlegt sind. Diese
 werden nicht mehr unterstützt. Um diese VM weiterhin nutzen

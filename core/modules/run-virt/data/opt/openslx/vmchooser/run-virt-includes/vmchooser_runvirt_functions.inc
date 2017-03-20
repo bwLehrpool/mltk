@@ -45,25 +45,26 @@ writelog() {
 notify_user() {
 	local TOPIC="$1"
 	shift
-	notify-send -u normal "$TOPIC" "$@"
+	notify-send -u normal "$TOPIC" "$*"
 	writelog "Notify: **${TOPIC}**: $*"
 }
 
 # Helper to display an error message box to the user.
 # Only returns when the user dismisses the message.
 error_user() {
-	local TOPIC="$1"
+	local TITLE="$(translate "$1")"
 	shift
-	local MSG TITLE BODY
-	if [ $# -gt 0 ]; then
-		MSG="   $TOPIC
-$*"
-		TITLE="$TOPIC"
-		BODY="$*"
+	local BODY="$*"
+	local MSG
+	if [ -n "$BODY" ]; then
+		BODY="$(translate "$BODY")"
+		MSG="   $TITLE
+
+$BODY"
 	else
-		MSG="$TOPIC"
+		MSG="$TITLE"
+		BODY="$TITLE"
 		TITLE="ERROR"
-		BODY="$TOPIC"
 	fi
 	# Zenity should yield the nicest result
 	# TODO the title is only set as the window name,
@@ -71,9 +72,12 @@ $*"
 	zenity --error --title "$TITLE" --text "$BODY"
 	local RET=$?
 	[ $RET -le 1 ] && return
+	# no zenity...
 	# QnD abuse printergui for error message as it's blocking
 	/opt/openslx/cups/printergui --error "$MSG" && return
-	# printergui might not exist, try fallback here
+	# no printergui...
+	# xmessage is ugly but gets the job done
+	xmessage "$MSG" && return
 	# unfortunately, I can only think of notify+sleep right now
 	notify-send -u critical "$TITLE" "$BODY"
 	sleep 10
@@ -114,6 +118,7 @@ add_cleanup() {
 # with remote services (e.g. slx apis, external image repo, ...)
 #
 # EXIT_REASON should contain a user-friendly message to print to the user.
+# it can be prefixed with err.\S+, which will serve as a translation identifier
 cleanexit() {
 	writelog "Cleanexit '$1' triggered by '${BASH_SOURCE[1]}:${FUNCNAME[1]}'"
 	sleep 1
@@ -161,7 +166,8 @@ cleanexit() {
 		esac
 	fi
 	if notempty EXIT_REASON; then
-		ERR_TEXT="${EXIT_REASON}"
+		# Try i18n
+		ERR_TEXT="$(translate "$EXIT_REASON")"
 	else
 		# this should never happen if EXIT_REASON is properly
 		# used when calling cleanexit !
@@ -182,6 +188,36 @@ ${ERR_FOOTER}
 	writelog "All done. Exiting."
 	# if no exit code was given as $1, exit 129
 	exit "${1:-129}"
+}
+
+##
+# Translate the given string using a lookup file for messages/strings
+# This expects one parameter in the form of "msg.foo.bar_baz${IFS}Fallback msg"
+# where the first word is really just of the format msg.*
+# If no translation is found, the rest of the string will be returned. If the
+# argument does not start with msg.*, the whole string will be returned as is
+translate() {
+	local ERR_TEXT_CODE
+	read -r ERR_TEXT_CODE _ <<<$1 # No quotes to strip leading spaces automatically
+	if [[ "$ERR_TEXT_CODE" = msg.* ]]; then
+		# Message starts with message identifier
+		if ! is_array TRANSLATION_STRING; then
+			unset TRANSLATION_STRING
+			if [ -s "${RUN_VIRT_INCLUDE_DIR}/strings.inc" ]; then
+				declare -A TRANSLATION_STRING
+				$(safesource "${RUN_VIRT_INCLUDE_DIR}/strings.inc")
+			fi
+		fi
+		if is_array TRANSLATION_STRING && [ -n "${TRANSLATION_STRING[$ERR_TEXT_CODE]}" ]; then
+			echo "${TRANSLATION_STRING[$ERR_TEXT_CODE]}"
+			return 0
+		fi
+		# Identifier not found in translation file, fallback
+		echo "${1#*$ERR_TEXT_CODE}"
+	else
+		# No identifier, output everything
+		echo "$1"
+	fi
 }
 
 ################# SOURCING FUNCTIONS #################
@@ -214,7 +250,7 @@ safesource() {
 				*) writelog --quiet "Syntax check (bash -n) returned unknown error code '${RET}' for: ${FILE}" ;;
 			esac
 			if [ $EXIT_ON_FAILURE -eq 1 ]; then
-				echo "eval EXIT_REASON=\"internal:source:${FILE}\" cleanexit 1 ;"
+				echo "eval EXIT_REASON=\"Could not safesource '${FILE}'\" cleanexit 1 ;"
 			else
 				echo "eval writelog \"Could not safesource '${FILE}'.\" ;"
 			fi
