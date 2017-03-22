@@ -5,13 +5,28 @@ fetch_source() {
 	mkdir -p "${MODULE_WORK_DIR}/src"	|| perror "Could not mkdir src"
 	cd "${MODULE_WORK_DIR}/src"			|| perror "cd to '${MODULE_WORK_DIR}/src' failed."
 
-	# Get directory listing
-	wget -O "index.html" "$REQUIRED_DOWNLOAD_BASE" || perror "Could not download vmware dir index"
+	local BASE_URL LIST_URL BUILD_NO
+	#BASE_URL="http://softwareupdate.vmware.com/cds/vmw-desktop/ws/12.5.2/4638234/linux/core/"
+	BASE_URL="http://softwareupdate.vmware.com/cds/vmw-desktop/"
+	if [ "$REQUIRED_TYPE" = "workstation" ]; then
+		BASE_URL+="ws/"
+	else
+		BASE_URL+="${REQUIRED_TYPE}/"
+	fi
+	BASE_URL+="${REQUIRED_VERSION}/"
+	# Get directory listing of version to get build number
+	wget -O "index.html" "$BASE_URL" || perror "Could not download vmware version index from $BASE_URL"
+	BUILD_NO=$(grep -E -o -i -m 1 'href="[0-9]+/"' "index.html" | awk -F '"' '{print $2}')
+	[ -z "$BUILD_NO" ] && perror "Could not determine build number of $REQUIRED_VERSION from $MODULE_WORK_DIR/src/index.html"
+	LIST_URL="${BASE_URL}${BUILD_NO}linux/core/" # BUILD_NO already has trailing slash...
 
-	VMWARE_BUNDLE_FILE=$(grep -E -o -i "href=\"VMware-$REQUIRED_TYPE-[^\"]+[\._\-]$ARCHREGEX[\._\-][^\"]+\"" "index.html" | head -n 1 | awk -F '"' '{printf $2}')
+	# Get directory listing of where final archive resides
+	wget -O "index.html" "$LIST_URL" || perror "Could not download vmware build type core dir index"
+	VMWARE_BUNDLE_FILE=$(grep -E -o -i -m 1 "href=\"VMware-$REQUIRED_TYPE-[^\"]+[\._\-]$ARCHREGEX[\._\-][^\"]+\"" "index.html" | awk -F '"' '{printf $2}')
 	[ -z "$VMWARE_BUNDLE_FILE" ] && perror "Could not determine vmware $REQUIRED_TYPE bundle file for current arch from $MODULE_WORK_DIR/src/index.html"
+
 	# Download file
-	wget -O "$VMWARE_BUNDLE_FILE" "$REQUIRED_DOWNLOAD_BASE/$VMWARE_BUNDLE_FILE" || perror "Could not download $VMWARE_BUNDLE_FILE from $REQUIRED_DOWNLOAD_BASE"
+	wget -O "$VMWARE_BUNDLE_FILE" "${LIST_URL}${VMWARE_BUNDLE_FILE}" || perror "Could not download ${VMWARE_BUNDLE_FILE} from ${LIST_URL}"
 	if [[ "$VMWARE_BUNDLE_FILE" == *.tar ]]; then
 		tar -x "${VMWARE_BUNDLE_FILE%.tar}" -f "$VMWARE_BUNDLE_FILE" || perror "Could not untar downloaded $VMWARE_BUNDLE_FILE"
 		unlink "$VMWARE_BUNDLE_FILE"
