@@ -8,18 +8,43 @@
 export LANG=C
 export LC_ALL=C
 
+touch "/tmp/hw-delete-list" || exit 10
+chmod 0600 "/tmp/hw-delete-list" || exit 11
+echo -n "" > "/tmp/hw-delete-list" || exit 12
+
 mktemp() {
-	/bin/mktemp && return 0
-	/opt/openslx/bin/mktemp && return 0
-	local FN DIR
-	for DIR in "tmp" "tmp" "tmp" "run/user/$UID" "run"; do
-		FN="/${DIR}/${RANDOM}-${$}-${UID}-$(date +%N)"
-		[ -e "$FN" ] && continue
-		touch "$FN" || continue
-		chmod 0600 "$FN" || continue
-		echo "$FN"
-		return 0
-	done
+	local FILE
+	FILE=$(/bin/mktemp)
+	if [ -z "$FILE" ]; then
+		FILE=$(/opt/openslx/bin/mktemp)
+	fi
+	if [ -z "$FILE" ]; then
+		local FN DIR
+		for DIR in "tmp" "tmp" "tmp" "run/user/$UID" "run"; do
+			FN="/${DIR}/${RANDOM}-${$}-${UID}-$(date +%N)"
+			[ -e "$FN" ] && continue
+			touch "$FN" || continue
+			chmod 0600 "$FN" || continue
+			echo -n "" > "$FN" || continue
+			FILE="$FN"
+			break
+		done
+	fi
+	if [ -z "$FILE" ]; then
+		# Uhm...
+		echo "/dev/null"
+		exit 1
+	fi
+	echo "$FILE" >> "/tmp/hw-delete-list"
+	echo "$FILE"
+}
+
+# Can't just place all temp file names in a variable since mktemp usually runs in a subshell
+cleanup() {
+	local FILE=
+	while read -r FILE _ || [ -n "$FILE" ]; do
+		[ -f "$FILE" ] && rm -f -- "$FILE"
+	done < "/tmp/hw-delete-list"
 }
 
 fdisk() {
@@ -50,11 +75,31 @@ if [ "${#BOOTIF}" -ne "20" ]; then
 fi
 MAC=${BOOTIF:3}
 
-# 2) Get machine UUID, with fallback to MAC address if it fails for some reason
-UUID=$(dmidecode -q -s system-uuid | grep -v '^#' | head -n 1)
+# 2) Get machine UUID, with fallback to MAC address if it fails for some reason, or if the UUID is blacklisted
+UUID=$(dmidecode -q -s system-uuid | grep -v '^#' | head -n 1 | tr '[a-z]' '[A-Z]')
 if [ "${#UUID}" -ne "36" ]; then
 	echo "Determined UUID (${UUID}) has not expected length of 36, falling back to MAC..."
 	UUID="000000000000000-$BOOTIF"
+else
+	# Got UUID, check blacklist
+	DIR="/opt/openslx/hardware-stats/bad-uuid.d"
+	TMPLIST=$(mktemp)
+	BADLIST="/run/bad-uuids"
+	for file in "$DIR"/*; do
+		[ -f "$file" ] || continue
+		# 11111111-2222-3333-4444-555555555555
+		< "$file" tr '[a-z]' '[A-Z]' | grep -Po '[0-9A-F]{8}\-[0-9A-F]{4}\-[0-9A-F]{4}\-[0-9A-F]{4}\-[0-9A-F]{12}'
+	done | tee "$TMPLIST" > "$BADLIST"
+	# Also add flipped version of bad uuids. Found some of them through googling and discovered that sometimes
+	# users report them in a different order. UUIDs use different endianness for the first three blocks than
+	# the remaining two, but some tools seem to ignore that fact.
+	< "$BADLIST" sed -r 's/^(..)(..)(..)(..)\-(..)(..)\-(..)(..)\-([0-9A-F]{4}\-[0-9A-F]{12})$/\4\3\2\1-\6\5-\8\7-\9/' >> "$TMPLIST"
+	# Finally make unique
+	sort -u "$TMPLIST" > "$BADLIST"
+	if grep -Fxq "$UUID" "$BADLIST"; then
+		echo "WARNING: UUID is blacklisted as potentially not being unique, using MAC fallback"
+		UUID="000000000000000-$BOOTIF"
+	fi
 fi
 
 # 3) Uptime in seconds
@@ -260,6 +305,7 @@ for DELAY in 1 1 0; do
 		EOF
 		touch "/etc/cron.d" # Sometimes, aufs doesn't update the mtime of dirs when creating files,
 		# so cron would not rescan the cron directory
+		cleanup
 		exit 0
 	fi
 	sleep "$DELAY"
@@ -267,5 +313,6 @@ done
 
 echo "Server doesn't seem to support hardware/usage stats - disabling logging"
 rm -f -- "/etc/cron.d/usage_stats"
+cleanup
 exit 1
 
