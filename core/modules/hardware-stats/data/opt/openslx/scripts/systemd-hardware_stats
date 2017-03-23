@@ -13,9 +13,11 @@ chmod 0600 "/tmp/hw-delete-list" || exit 11
 echo -n "" > "/tmp/hw-delete-list" || exit 12
 
 mktemp() {
-	local FILE
-	FILE=$(/bin/mktemp)
-	if [ -z "$FILE" ]; then
+	local FILE=
+	if [ -x /bin/mktemp ]; then
+		FILE=$(/bin/mktemp)
+	fi
+	if [ -z "$FILE" ] && [ -x /opt/openslx/bin/mktemp ]; then
 		FILE=$(/opt/openslx/bin/mktemp)
 	fi
 	if [ -z "$FILE" ]; then
