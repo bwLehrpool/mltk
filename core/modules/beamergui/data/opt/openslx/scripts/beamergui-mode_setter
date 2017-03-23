@@ -57,6 +57,14 @@ echo -e "Connected outputs: \e[32m${OUTPUTNAMES[@]}\e[0m"
 if [ ${#OUTPUTNAMES[@]} -eq 2 ]; then
 
   echo "Two outputs detected."
+  if ! [ -f "$CONFIGFILE" ]; then
+      echo "No additional beamer file (${CONFIGFILE}) found."
+  elif ! [ -r "$CONFIGFILE" ]; then
+      echo "$CONFIGFILE found but not readable."
+  else
+      echo "beamer.conf found, contains the following beamer definitions:"
+      <"$CONFIGFILE" grep '=beamer$'
+  fi
 
   # Either of them a projector?
   BEAMER=
@@ -75,12 +83,14 @@ if [ ${#OUTPUTNAMES[@]} -eq 2 ]; then
       # Try hard coded values from above
       for model in "${FORCE_BEAMER[@]}"; do
         if [ "x$model" = "x$MODEL_NAME" ]; then
+          echo "Model is hard-coded as beamer"
           FOUND=ya
           break
         fi
       done
       # Now try user supplied config
       if [ -z "$FOUND" ] && [ -f "$CONFIGFILE" ] && grep -Fxq "${MODEL_NAME}=beamer" "$CONFIGFILE"; then
+        echo "Model is defined as beamer in beamer.conf"
         FOUND=ya
       fi
       # Set beamer if any match
