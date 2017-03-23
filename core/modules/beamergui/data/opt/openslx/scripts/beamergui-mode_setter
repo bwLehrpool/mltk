@@ -70,11 +70,14 @@ if [ ${#OUTPUTNAMES[@]} -eq 2 ]; then
   BEAMER=
   MAYBEAMER=
   SMALL=
+  TF=$(mktemp)
+  [ -z "$TF" ] && TF="/tmp/${RANDOM}-$$"
   for i in 0 1; do
     # See if we hard-coded the device as a beamer
     # Use echo -e -n "" instead of piping the sed output into xargs printf, as xargs
     # handles backslashes differently depending on the version.
-    EDID=$( echo -e -n "$( <<<"$XRANDRV"  grep -Pzo "\n${OUTPUTNAMES[$i]}\N*connected\N*\n(\s+\N*\n)+" | grep -Eao '[0-9a-f]{32}' | sed -r ':a;N;$!ba;s/[^0-9a-f]//gI;s/([0-9a-f]{2})/\\x\1/gI' )" | parse-edid )
+    echo -e -n "$( <<<"$XRANDRV"  grep -Pzo "\n${OUTPUTNAMES[$i]}\N*connected\N*\n(\s+\N*\n)+" | grep -Eao '[0-9a-f]{32}' | sed -r ':a;N;$!ba;s/[^0-9a-f]//gI;s/([0-9a-f]{2})/\\x\1/gI' )" > "$TF"
+    EDID=$( < "$TF" parse-edid )
     MODEL_NAME=$( <<<"$EDID"  awk '{if ($1 == "ModelName") { A=$2$3$4$5; print substr(A, 2, length(A) - 2)}}' )
     echo "'${OUTPUTNAMES[$i]}' is connected to device '$MODEL_NAME'"
     # Have a name, do the checks
@@ -110,6 +113,7 @@ if [ ${#OUTPUTNAMES[@]} -eq 2 ]; then
       SMALL=yes
     fi
   done
+  rm -f -- "$TF"
   if [ -z "$BEAMER" ] && [ -n "$MAYBEAMER" ] && [ -n "$SMALL" ]; then
     # This is a hack on top of the other hack; we already treat outputs reporting a sufficiently large width
     # as beamers, as we have encountered such devices in the wild. However, we might have just a large TV connected
