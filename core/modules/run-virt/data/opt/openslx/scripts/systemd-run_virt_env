@@ -143,6 +143,11 @@ for FLOPPY in $(dmesg|grep -i "Floppy drive"|sed "s,.*(s): ,,;s, is .*,,"); do
     j=$(expr $j + 1)
 done
 
+# Serial ports
+echo "SERIAL_PORTS='$(dmesg | grep -Eo 'ttyS[0-9]+' | sed 's,^,/dev/,' | tr '\n' ' ')'" >> "${VMCHOOSER_VIRT_CONF}"
+# Parallel ports
+modprobe parport_pc
+
 ################################################################################
 ### Setup VM networking
 ################################################################################

@@ -56,6 +56,32 @@ setup_floppies() {
 	HEREEND
 }
 
+setup_serial() {
+	# Serial port
+	if [ -n "$SERIAL0" ]; then
+		cat >> "${TMPCONFIG}" <<-HEREEND
+			serial0.present = "TRUE"
+			serial0.startConnected = "TRUE"
+			serial0.fileType = "device"
+			serial0.fileName = "$SERIAL0"
+			serial0.tryNoRxLoss = "FALSE"
+			serial0.autodetect = "FALSE"
+		HEREEND
+	fi
+
+	# Parallel port
+	if [ -n "$PARALLEL0" ]; then
+		cat >> "${TMPCONFIG}" <<-HEREEND
+			parallel0.present = "TRUE"
+			parallel0.startConnected = "TRUE"
+			parallel0.fileType = "device"
+			parallel0.fileName = "$PARALLEL0"
+			parallel0.bidirectional = "TRUE"
+			parallel0.autodetect = "FALSE"
+		HEREEND
+	fi
+}
+
 # CPU and RAM
 setup_vcpu_ram() {
 	#writelog "numvcpus = ${CPU_CORES} - maxvcpus=${HOST_CORE_COUNT}"
@@ -213,6 +239,7 @@ write_final_vmx() {
 	setup_ethernet
 	setup_optical_drives
 	setup_floppies
+	setup_serial
 	setup_vcpu_ram
 	setup_usb
 	[ "x$HGFS_DISABLED" = "xFALSE" ] && setup_shared_folders

@@ -105,11 +105,34 @@ check_optical_drives() {
 	readonly FLOPPY0 CDROM0 CDROM1
 }
 
+# Dynamically detect serial ports here instead of at boot time
+# (virtualization.conf), since USB serial ports get quite common
+# and might not be plugged in at boot time yet
+set_serial_ports() {
+	declare -g SERIAL0=
+	#for port in $(awk '{ if ($1 ~ /^[0-9]+:/ && $2 != "uart:unknown") print "/dev/ttyS" sub(/:\$/, "", $1) }' /proc/tty/driver/serial); do
+	for PORT in $SERIAL_PORTS /dev/ttyUSB*; do
+		[ -c "$PORT" ] || continue
+		SERIAL0="$PORT"
+		break
+	done
+
+	declare -g PARALLEL0=
+	for PORT in /dev/parport*; do
+		[ -c "$PORT" ] || continue
+		PARALLEL0="$PORT"
+		break
+	done
+
+	readonly SERIAL0 PARALLEL0
+}
+
 ## MAIN ##
 call_post_source \
 	set_virt_cpu \
 	set_virt_memory \
 	set_virt_mac \
 	set_virt_hostname \
+	set_serial_ports \
 	check_optical_drives
 
