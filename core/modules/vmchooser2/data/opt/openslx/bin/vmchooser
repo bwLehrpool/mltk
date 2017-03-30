@@ -39,6 +39,7 @@ fi
 [ -n "$SLX_VMCHOOSER_FORLOCATION" ] && EXTRA="$EXTRA --location-mode $SLX_VMCHOOSER_FORLOCATION"
 [ "$HW_KVM" != "ENABLED" ] && EXTRA="$EXTRA --no-vtx"
 [ -n "$SLX_EXAM" ] && EXTRA="$EXTRA --exam-mode"
+[ -z "$SLX_NO_PVS" ] && EXTRA="$EXTRA --pvs"
 
 # No quotes around $EXTRA!
 if [ -z "$SLX_LOCATIONS" ]; then
