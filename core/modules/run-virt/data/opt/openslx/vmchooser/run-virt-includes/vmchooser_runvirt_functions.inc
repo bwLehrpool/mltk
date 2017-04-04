@@ -154,7 +154,7 @@ cleanexit() {
 		case "${EXIT_TYPE}" in
 			user)
 				ERR_TITLE="Auswahlfehler"
-				ERR_FOOTER="Beim Start Ihrer Veranstaltung sind Fehler aufgetretten. Versuchen Sie es mit einer anderen Veranstaltung."
+				ERR_FOOTER="Beim Start Ihrer Veranstaltung sind Fehler aufgetreten. Versuchen Sie es mit einer anderen Veranstaltung."
 				;;
 			internal)
 				ERR_TITLE="Interner Fehler"

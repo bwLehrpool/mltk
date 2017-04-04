@@ -115,7 +115,7 @@ setup_image_access() {
 	# Check if we finally found a valid, readable container
 	if isempty VM_DISKFILE_RO || [ ! -r "${VM_DISKFILE_RO}" ]; then
 		writelog "Virtual machine image ${VM_DISKFILE_RO} not found!"
-		EXIT_TYPE="user" EXIT_REASON="Konnte virtuelle Festplatte des gewählten Image nicht finden!" cleanexit 1
+		EXIT_TYPE="user" EXIT_REASON="Konnte virtuelle Festplatte der gewählten VM nicht finden!" cleanexit 1
 	fi
 	
 	writelog "\tVM disk file:\t\t${VM_DISKFILE_RO}"
