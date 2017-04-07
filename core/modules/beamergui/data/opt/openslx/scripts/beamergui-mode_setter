@@ -78,7 +78,7 @@ if [ ${#OUTPUTNAMES[@]} -eq 2 ]; then
     # handles backslashes differently depending on the version.
     echo -e -n "$( <<<"$XRANDRV"  grep -Pzo "\n${OUTPUTNAMES[$i]}\N*connected\N*\n(\s+\N*\n)+" | grep -Eao '[0-9a-f]{32}' | sed -r ':a;N;$!ba;s/[^0-9a-f]//gI;s/([0-9a-f]{2})/\\x\1/gI' )" > "$TF"
     EDID=$( < "$TF" parse-edid )
-    MODEL_NAME=$( <<<"$EDID"  awk '{if ($1 == "ModelName") { A=$2$3$4$5; print substr(A, 2, length(A) - 2)}}' )
+    MODEL_NAME=$( <<<"$EDID"  grep -m 1 -E '^\s*ModelName' | sed -r 's/^[^"]*"(.*)"[^"]*$/\1/;s/^\s+//;s/\s+$//' )
     echo "'${OUTPUTNAMES[$i]}' is connected to device '$MODEL_NAME'"
     # Have a name, do the checks
     if [ -n "$MODEL_NAME" ]; then
