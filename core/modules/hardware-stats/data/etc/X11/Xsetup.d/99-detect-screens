@@ -1,0 +1,39 @@
+#!/bin/sh
+# XXX: This file is actually sourced, so the shebang above doesn't do anything.
+# Thus we explicitly call bash below to get our echo -e -n support
+
+(
+bash <<"HEREDOC"
+
+    mkdir -p "/run/openslx"
+    [ -f "/run/openslx/screen-report-done" ] && exit 0
+    touch "/run/openslx/screen-report-done"
+
+    . /opt/openslx/config
+    [ -z "$SLX_REMOTE_LOG" ] && exit 0
+    UUID=$( cat /run/system-uuid )
+    [ -z "$UUID" ] && exit 0
+    XRANDR=$( mktemp )
+    TMP=$( mktemp )
+    TF=$( mktemp )
+    xrandr --verbose > "$XRANDR"
+
+    OUTPUTNAMES=$( < "$XRANDR"  grep -E "[[:digit:]]+mm x [[:digit:]]+mm" | awk '{print $1}' )
+
+    declare -a POSTDATA
+    for output in ${OUTPUTNAMES}; do
+        < "$XRANDR"  grep -Pzo "\n${output}\N*connected\N*\n(\s+\N*\n)+" > "$TMP"
+        echo -e -n "$( < "$TMP"  grep -Eao '[0-9a-f]{32}' | sed -r ':a;N;$!ba;s/[^0-9a-f]//gI;s/([0-9a-f]{2})/\\x\1/gI' )" > "$TF"
+        MODEL_NAME=$( < "$TF"  parse-edid | grep -m 1 -E '^\s*ModelName' | sed -r 's/^[^"]*"(.*)"[^"]*$/\1/;s/^\s+//;s/\s+$//' )
+        NATIVE_RES=$( < "$TMP"  grep -Fa ' +preferred' | awk '{print $1}' )
+        POSTDATA+=( "-dscreen[${output}][name]=${MODEL_NAME}" "-dscreen[${output}][resolution]=${NATIVE_RES}" )
+    done
+
+    rm -f -- "$TF" "$XRANDR" "$TMP"
+    curl --data "uuid=$UUID" --data "type=~screens" "${POSTDATA[@]}" "$SLX_REMOTE_LOG"
+
+HEREDOC
+) &
+
+true
+
