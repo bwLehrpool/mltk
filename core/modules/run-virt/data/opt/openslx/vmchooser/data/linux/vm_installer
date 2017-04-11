@@ -6,7 +6,9 @@ LOGGER=$(which logger)
 MKDIR=$(which mkdir)
 MOUNT=$(which mount)
 MOUNTDIR=/mnt/diskmount/
-SERVICEFILE=openslx-scriptinstall.service
+SERVICEMOUNT=openslx-mount.service
+SERVICEUMOUNT=openslx-umount.service
+SERVICERESOLUTION=openslx-resolution.service
 
 # systemd erkennen
 case $(${PS} --pid 1 -o comm h) in
@@ -16,32 +18,67 @@ case $(${PS} --pid 1 -o comm h) in
 		else
 			SERVICEDIR=/usr/lib/systemd/system/
 		fi
-		echo "openslx praeinstaller: installing systemd service file to ${SERVICEDIR}/${SERVICEFILE}."
-
-		cat <<-HEREDOC > "$SERVICEDIR"/"$SERVICEFILE"
+		echo "openslx praeinstaller: installing systemd service (mounter) to ${SERVICEDIR}/${SERVICEMOUNT}."
+		cat <<-HEREDOC > "$SERVICEDIR"/"$SERVICEMOUNT"
 			[Unit]
-			Description=openSLX script installer
-			Before=display-manager.service graphical.target
+			Description=openSLX share mounter
+			After=basic.target
 			
 			[Service]
 			Type=oneshot
 			ExecStartPre=${MKDIR} -p /mnt/diskmount
 			ExecStartPre=-${MOUNT} /dev/fd1 /mnt/diskmount
-			ExecStart=${LOGGER} "openslx service file: started."
-			ExecStart=${MOUNTDIR}/linux/vm_runtime
+			ExecStart=${LOGGER} "openslx service file: mounter started."
+			ExecStart=${MOUNTDIR}/linux/mnt_shares
+			ExecStart=${LOGGER} "openslx service file: done."
+			RemainAfterExit=yes
+		HEREDOC
+
+		echo "openslx praeinstaller: installing systemd service (umounter) to ${SERVICEDIR}/${SERVICEUMOUNT}."
+		cat <<-THEREDOC > "$SERVICEDIR"/"${SERVICEUMOUNT}"
+			[Unit]
+			Description=openSLX resolution utility
+			Before=shutdown.target 
+			
+			[Service]
+			Type=oneshot
+			ExecStartPre=${MKDIR} -p /mnt/diskmount
+			ExecStartPre=-${MOUNT} /dev/fd1 /mnt/diskmount
+			ExecStart=${LOGGER} "openslx service file: umounter started."
+			ExecStart=${MOUNTDIR}/linux/umount
 			ExecStart=${LOGGER} "openslx service file: done."
 			RemainAfterExit=no
-		HEREDOC
+		THEREDOC
+
+		echo "openslx praeinstaller: installing systemd service (resolution utility) to ${SERVICEDIR}/${SERVICERESOLUTION}."
+		cat <<-THEREDOC > "$SERVICEDIR"/"${SERVICERESOLUTION}"
+			[Unit]
+			Description=openSLX resolution utility
+			After=display-manager.service
+			
+			[Service]
+			Type=oneshot
+			ExecStartPre=${MKDIR} -p /mnt/diskmount
+			ExecStartPre=-${MOUNT} /dev/fd1 /mnt/diskmount
+			ExecStart=${LOGGER} "openslx service file: resolution utility started."
+			ExecStart=${MOUNTDIR}/linux/resolution
+			ExecStart=${LOGGER} "openslx service file: done."
+			RemainAfterExit=yes
+		THEREDOC
+
 
 		[ ! -d /etc/systemd/system/graphical.target.wants ]	&& mkdir /etc/systemd/system/graphical.target.wants 2>/dev/null
 		[ ! -d /etc/systemd/system/basic.target.wants ]		&& mkdir /etc/systemd/system/basic.target.wants 2>/dev/null
+		[ ! -d /etc/systemd/system/shutdown.target.wants ]	&& mkdir /etc/systemd/system/shutdown.target.wants 2>/dev/null
 
-		ln -s "${SERVICEDIR}"/"${SERVICEFILE}" /etc/systemd/system/graphical.target.wants/"${SERVICEFILE}"
-		ln -s "${SERVICEDIR}"/"${SERVICEFILE}" /etc/systemd/system/basic.target.wants/"${SERVICEFILE}"
+		ln -s "${SERVICEDIR}"/"${SERVICEMOUNT}" /etc/systemd/system/graphical.target.wants/"${SERVICEMOUNT}"
+		ln -s "${SERVICEDIR}"/"${SERVICEUMOUNT}" /etc/systemd/system/shutdown.target.wants/"${SERVICEUMOUNT}"
+		ln -s "${SERVICEDIR}"/"${SERVICERESOLUTION}" /etc/systemd/system/basic.target.wants/"${SERVICERESOLUTION}"
 
 		echo "openslx praeinstaller: doing systemd reload."
 		systemctl daemon-reload
 		;;
+
 	init)	echo "openslx praeinstaller: init(V) detected."
 		SERVICEDIR=/etc/init.d/
 		[ ! -d "${SERVICEDIR}" ] && { echo "openslx praeinstaller: No init directory $SERVICEDIR found, exiting."; exit 1; }
