@@ -1,18 +1,23 @@
-This package consists of the following scripts:
+This package consists of following scripts:
 
 vm_installer: 	This script is to be started once in a local, permanent (so 
 		not within the pool system environment) virtual machine. It 
-		writes three systemd service files and links them, so the 
-		scripts will be started at system startup resp. shutdown:
+		writes three systemd service files and links them, so  
+		following scripts will be started at system startup resp. 
+		shutdown:
 
 resolution:     (after display-manager.service): Sets resolution within the 
 		virtual machine according to base system resolution given via 
-		config file openslx.ini, and re-checks it for some time..
+		config file openslx.ini, and re-checks it for some time.
 
 mnt_shares:     (after basic.target): Reads entries remapMode (and 
 		createMissingRemap, todo) from the file openslx.ini, and 
 		mounts the shares given by shares.dat according to remapMode. 
 		mounts therein given network shares.
+
+umnt_shares:	(Before shutdown.target): Umounts given shares at virtual 
+		machine shutdown time .
+
 
 resolution_standalone: Standalone version of resolution sctipt. Needs no 
 		preliminary work done by systemd or vm_runtime.

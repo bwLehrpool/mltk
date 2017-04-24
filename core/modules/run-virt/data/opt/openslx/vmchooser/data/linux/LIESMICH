@@ -2,24 +2,27 @@ Dieses Paket besteht aus folgenden Skripten:
 
 vm_installer:	Dieses Skript einmalig in einer lokalen, permanenten (also 
 		nicht innerhalb des Poolsystems) Virtuellen Maschine ausführen. 
-		Es schreibt eine drei systemd-Servicedateien und verlinkt diese,
-		um beim Systemstart foglende Skripte zu starten:
+		Es schreibt eine systemd-Servicedateien und verlinkt diese,
+		um beim Systemstart folgende Skripte zu starten:
 
 resolution:	(after display-manager.service): Dieses Skript wartet eine 
 		gewisse Zeit, ob ein X-Server gestartet wurde, ändert 
 		anschließend die Auflösung entsprechend der vom Basissystem 
 		übergebenen Angabe in openslx.ini und überwacht diese eine 
-		gewisse Zeit lang.
+		gewisse Zeit lang, um nachträgliche Auflösungsänderungen,
+		zB. durch gespeicherte Einstellungen des Displaymanagers,
+		zu erkennen und rückzusetzen.
 
 mnt_shares: 	(after basic.target): Wertet die Einträge remapMode (sowie 
 		createMissingRemap, noch zu implementieren) der Datei 
 		openslx.ini aus, und hängt anhand des per remapMode gegebenen 
 		Wertes die in shares.dat angegebenen Netzlaufwerke ein. Die 
-		(evtl. nötige) Authentizizierung wird verschlüsselt vom 
+		(evtl. nötige) Authentifizierung wird verschlüsselt vom 
 		Grundsystem übergeben.
 
 umnt_shares:	(Before shutdown.target): Hängt gegebene Laufwerke beim 
 		Herunterfahren der VM wieder aus.
+
 
 
 resolution_standalone: Einzelstehende Version des resolution-Skriptes, die 

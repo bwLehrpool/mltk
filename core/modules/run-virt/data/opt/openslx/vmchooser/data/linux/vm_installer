@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# set -x
+
 PS=$(which ps)
 GREP=$(which grep)
 LOGGER=$(which logger)
@@ -18,6 +20,25 @@ case $(${PS} --pid 1 -o comm h) in
 		else
 			SERVICEDIR=/usr/lib/systemd/system/
 		fi
+
+		if [ -L "${SERVICEDIR}/graphical.target.wants/${SERVICEMOUNT}" ] \
+				|| [ -L "${SERVICEDIR}/graphical.target.wants/${SERVICEUMOUNT}" ] \
+				|| [ -L "${SERVICEDIR}/graphical.target.wants/${SERVICERESOLUTION}" ]; then
+			while [ "$RESCRIPT" != "y" ] && [ "$RESCRIPT" != "n" ]; do
+				RESCRIPTDEF=y
+				read -e -p "There seems to an older install. Delete (y/n, Default is $RESCRIPTDEF, Ctrl-C to exit): " RESCRIPT
+				RESCRIPT="${RESCRIPT:-$RESCRIPTDEF}"
+			done
+		fi
+
+		if [ "${RESCRIPT}" == "y" ]; then
+			# Just unlink stuff...
+			echo "Deleting old links..."
+			unlink "${SERVICEDIR}/graphical.target.wants/${SERVICEMOUNT}" 2>/dev/null
+			unlink "${SERVICEDIR}/shutdown.target.wants/${SERVICEUMOUNT}" 2>/dev/null
+			unlink "${SERVICEDIR}/basic.target.wants/${SERVICERESOLUTION}" 2>/dev/null
+		fi
+
 		echo "openslx praeinstaller: installing systemd service (mounter) to ${SERVICEDIR}/${SERVICEMOUNT}."
 		cat <<-HEREDOC > "$SERVICEDIR"/"$SERVICEMOUNT"
 			[Unit]
@@ -50,30 +71,74 @@ case $(${PS} --pid 1 -o comm h) in
 			RemainAfterExit=no
 		THEREDOC
 
-		echo "openslx praeinstaller: installing systemd service (resolution utility) to ${SERVICEDIR}/${SERVICERESOLUTION}."
-		cat <<-THEREDOC > "$SERVICEDIR"/"${SERVICERESOLUTION}"
-			[Unit]
-			Description=openSLX resolution utility
-			After=display-manager.service
-			
-			[Service]
-			Type=oneshot
-			ExecStartPre=${MKDIR} -p /mnt/diskmount
-			ExecStartPre=-${MOUNT} /dev/fd1 /mnt/diskmount
-			ExecStart=${LOGGER} "openslx service file: resolution utility started."
-			ExecStart=${MOUNTDIR}/linux/resolution
-			ExecStart=${LOGGER} "openslx service file: done."
-			RemainAfterExit=yes
-		THEREDOC
+# This bloc was meant for a resolution setting alternative via xorg.conf.d. As this did not work on time, it's
+# just commented for now due to programmer's laziness, who was too lazy to store it elsewhere.
+#		echo
+#		echo "openslx praeinstaller: Which resolution script to install?"
+#		echo
+#		echo "There are two possibilies:"
+#		echo ""
+#		echo '1)	A script which waits until the xserver started, then checks for possible'
+#		echo '	modelines (writes one if no sufficient modeline is detected, and waits for'
+#		echo '	some time afterwards whether resolution changes again (eg. via display manager'
+#		echo '	or such stuff. Fairly stable no more XSetup/Xreset patching.'
+#		echo
+#		echo '2)	Just a screen configuration dropped to xorg.conf.d, which restricts'
+#		echo '	possible screen resolutions to just one. This may give trouble when screen,'
+#		echo '	monitor etc. are hard-wired elsewhere (xorg.conf, xorg.conf.d).'
+#		echo
+#
+#		while [ "$RESCRIPT" != "1" ] && [ "$RESCRIPT" != "2" ]; do
+#			RESCRIPTDEF=1
+#			read -e -p "Well, which one do you choose? (1/2, Default is $RESCRIPTDEF): " RESCRIPT
+#			RESCRIPT="${RESCRIPT:-$RESCRIPTDEF}"
+#		done
+#
+#		case $RESCRIPT in
+#			1)	echo "openslx praeinstaller: installing systemd service (resolution utility) to ${SERVICEDIR}/${SERVICERESOLUTION}."
+				echo "openslx praeinstaller: installing systemd service (resolution utility) to ${SERVICEDIR}/${SERVICERESOLUTION}."
+				cat <<-SOMEWHEREDOC > "$SERVICEDIR"/"${SERVICERESOLUTION}"
+				[Unit]
+				Description=openSLX resolution utility
+				After=display-manager.service
 
+				[Service]
+				Type=oneshot
+				ExecStartPre=${MKDIR} -p /mnt/diskmount
+				ExecStartPre=-${MOUNT} /dev/fd1 /mnt/diskmount
+				ExecStart=${LOGGER} "openslx service file: resolution utility started."
+				ExecStart=${MOUNTDIR}/linux/resolution
+				ExecStart=${LOGGER} "openslx service file: done."
+				RemainAfterExit=yes
+				SOMEWHEREDOC
+#				;;
+#			2)	echo "openslx praeinstaller: installing systemd service (xorg.conf.d entry) to ${SERVICEDIR}/${SERVICERESOLUTION}."
+#				cat <<-THEREDOC > "$SERVICEDIR"/"${SERVICERESOLUTION}"
+#				[Unit]
+#				Description=openSLX xorg.conf.d entry
+#				Before=display-manager.service
+#				[Service]
+#				Type=oneshot
+#				ExecStartPre=${MKDIR} -p /mnt/diskmount
+#				ExecStartPre=-${MOUNT} /dev/fd1 /mnt/diskmount
+#				ExecStart=${LOGGER} "openslx service file: resolution utility started."
+#				ExecStart=${MOUNTDIR}/linux/xorgconf
+#				ExecStart=${LOGGER} "openslx service file: done."
+#				RemainAfterExit=yes
+#				THEREDOC
+#				;;
+#			*)	echo "openslx praeinstaller: This should not have happened: RESCRIPT ($RESCRIPT) not set!"
+#				exit 1
+#				;;
+#esac
 
-		[ ! -d /etc/systemd/system/graphical.target.wants ]	&& mkdir /etc/systemd/system/graphical.target.wants 2>/dev/null
-		[ ! -d /etc/systemd/system/basic.target.wants ]		&& mkdir /etc/systemd/system/basic.target.wants 2>/dev/null
-		[ ! -d /etc/systemd/system/shutdown.target.wants ]	&& mkdir /etc/systemd/system/shutdown.target.wants 2>/dev/null
+		[ ! -d "$SERVICEDIR"/graphical.target.wants ]	&& mkdir "$SERVICEDIR"/graphical.target.wants 2>/dev/null
+		[ ! -d "$SERVICEDIR"/basic.target.wants ]	&& mkdir "$SERVICEDIR"/basic.target.wants 2>/dev/null
+		[ ! -d "$SERVICEDIR"/shutdown.target.wants ]	&& mkdir "$SERVICEDIR"/shutdown.target.wants 2>/dev/null
 
-		ln -s "${SERVICEDIR}"/"${SERVICEMOUNT}" /etc/systemd/system/graphical.target.wants/"${SERVICEMOUNT}"
-		ln -s "${SERVICEDIR}"/"${SERVICEUMOUNT}" /etc/systemd/system/shutdown.target.wants/"${SERVICEUMOUNT}"
-		ln -s "${SERVICEDIR}"/"${SERVICERESOLUTION}" /etc/systemd/system/basic.target.wants/"${SERVICERESOLUTION}"
+		ln -s "${SERVICEDIR}"/"${SERVICEMOUNT}" "$SERVICEDIR"/graphical.target.wants/"${SERVICEMOUNT}"
+		ln -s "${SERVICEDIR}"/"${SERVICEUMOUNT}" "$SERVICEDIR"/shutdown.target.wants/"${SERVICEUMOUNT}"
+		ln -s "${SERVICEDIR}"/"${SERVICERESOLUTION}" "$SERVICEDIR"/basic.target.wants/"${SERVICERESOLUTION}"
 
 		echo "openslx praeinstaller: doing systemd reload."
 		systemctl daemon-reload

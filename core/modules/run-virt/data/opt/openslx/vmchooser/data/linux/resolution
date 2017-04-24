@@ -42,23 +42,22 @@ fi
 # Das ist mitunter ein Problem, da die richtige zu finden - Distroabhängig!
 # Hier ein Beispiel für openSuse 13.2, sollte auch für Debian, Ubuntu, Redhat usw. laufen:.
 # XAUTHDATEI=$(ps aux | grep -o "root.*X.* \-auth *[^ ]*" | awk '{print $NF}')
-
-for wartezeit in 0 1 2 3 5 10 10 0 ende; do
+for wartezeit in 1 2 3 5 10 10 0 ende; do
 	[ "$wartezeit" = "ende" ] && { logger "openslx resolution utility: XAUTHFILE not found. Exiting." ; exit 1; }
 	XAUTHORITY=$(ps aux | grep -o "root.*X.* \-auth *[^ ]*" | awk '{print $NF}')
 	[ -n "${XAUTHORITY}" ] && break
 	sleep $wartezeit
 done
-
 logger "openslx resolution utility: XAUTHFILE found."
 
 # Zu verbessern: Der Name des Verbundenen ist nicht immer bekannt. Daher nehmen wir das
-# erste 'connected' in der Ausgabe xrandrs:
-AUSGABE=$(DISPLAY="${DISPLAY}" XAUTHORITY="${XAUTHORITY}" xrandr -q|grep -m 1 " connected "|awk '{print $1}')
-if [ -z "$AUSGABE" ]; then
-	logger "openslx resolution utility: Could not detect output device. Exiting."
-	exit 1
-fi
+# erste 'connected' in der Ausgabe xrandrs Und warten evtl. ein Weilchen)::
+for wartezeit in 1 1 1 2 0 ende; do
+	[ "$wartezeit" = "ende" ] && { logger "openslx resolution utility: Could not detect output device. Exiting." ; exit 1; }
+	AUSGABE=$(DISPLAY="${DISPLAY}" XAUTHORITY="${XAUTHORITY}" xrandr -q|grep -m 1 " connected "|awk '{print $1}')
+	[ -n "$AUSGABE" ] && break
+	sleep $wartezeit
+done
 
 # Pruefen, ob xrand eine passende modeline ausgibt:
 if [ "$(DISPLAY=${DISPLAY} XAUTHORITY=${XAUTHORITY} xrandr | grep -c ${RESOLUTION})" -eq 0 ]; then

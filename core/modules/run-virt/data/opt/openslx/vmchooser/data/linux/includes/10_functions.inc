@@ -34,15 +34,18 @@ function mounter()
 		logger "openslx sharemapper: $3 already mounted."
 		AUSGANG=2	
 	else	
-		mount $1 $2 $3 2>/dev/null 1>&2
-		ERR=$?
-		if [ "$ERR" -gt 0 ]; then
-			logger "openslx sharemapper: could not mount ${2} to ${3}."
-			AUSGANG=1
-		else
-			logger "openslx sharemapper: ${2} mounted to ${3}."
-			AUSGANG=0	
-		fi
+		x=2
+		while ! mount $1 $2 $3 2>/dev/null 1>&2; do
+			sleep $x
+			if [ "$x" -gt 10 ]; then
+				AUSGANG=1
+				logger "openslx sharemapper: could not mount ${2} to ${3}."
+				break
+			fi
+			let x=x+2
+		done
+		logger "openslx sharemapper: ${2} mounted to ${3}."     # Todo: Schöner schreiben:)
+		AUSGANG=0
 	fi
 	return $AUSGANG
 }
