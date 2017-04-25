@@ -16,6 +16,39 @@
 # set PATH correctly
 export PATH=/bin:/sbin:/usr/bin:/usr/sbin
 
+# IMPORTANT - check if kernel modules in initrams match kernel version
+BASEDIR="/lib/modules/$(uname -r)/kernel/drivers"
+for dir in gpu hid misc; do
+	if ! [ -d "$BASEDIR/$dir" ]; then
+		cat <<WARNING
++
++
++
++
++ + + + + + + + + + + + + +
++   WARNING + + WARNING   +
++ - - - - - - - - - - - - +
++
++ kernel/drivers/$dir missing!
++
++ Booted kernel version does not match
++ modules provided by initramfs.
++ Make sure kernel and initramfs-stage31
++ are up to date.
++
++ Kernel:    $(uname -r)
++ initramfs: $(ls -1 /lib/modules | grep -m1 '\..*\..*-')
++
++ System halted.
++
++ + + + + + + + + + + + + +
+WARNING
+		while true; do
+			read some garbage
+		done
+	fi
+done
+
 # import common functions
 . "/inc/functions"
 
