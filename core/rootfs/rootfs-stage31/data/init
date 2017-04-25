@@ -124,13 +124,19 @@ if [ "x$SLX_PVS_DEDICATED" = "xyes" ] || [ "x$SLX_PVS_HYBRID" = "xyes" ]; then
 fi
 # Putting this here as we're hopefully moving to the all new dracut solution soon
 # so there's no reason to make it pretty now
+
+# Auto login to demo user requested?
+if [ -n "$SLX_AUTOLOGIN" ] || [ -z "$SLX_EXAM" -a -n "$SLX_AUTOSTART_UUID" ]; then
+	# Enable KDM autologin for demo user
+	sed -i '/^AutoLoginDelay=/d;/^AutoLoginUser=/d;s/^AutoLoginEnable=.*$/AutoLoginEnable=true\nAutoLoginUser=demo\nAutoLoginDelay=0/' "${FUTURE_ROOT}/etc/kde4/kdm/kdmrc"
+fi
+
+# Exam mode
 if [ -n "$SLX_EXAM" ]; then
 	# Visual: Make kdm all orange
 	sed -i 's/#e3e4e9/#f9a72b/g' "${FUTURE_ROOT}/usr/share/desktop/themes/kdm/bwlehrpool/theme.xml"
-	# Logo black
-	sed -r -i 's/#[a-fA-F0-9]{6}/#000000/g' "${FUTURE_ROOT}/usr/share/desktop/themes/kdm/bwlehrpool/bwLehrpool.svg"
-	# Set autologindelay to 0 to directly boot
-	sed -i 's/^AutoLoginDelay=.*/AutoLoginDelay=0/g' "${FUTURE_ROOT}/etc/kde4/kdm/kdmrc"
+	# Logo gray like main runner
+	sed -r -i 's/#[a-fA-F0-9]{6}/#757575/g' "${FUTURE_ROOT}/usr/share/desktop/themes/kdm/bwlehrpool/bwLehrpool.svg"
 	# Visual: Move splash screen to upper left corner
 	if [ -e "/etc/splash.ppm.gz" ]; then
 		fbsplash -b -s "/etc/splash.ppm.gz" &

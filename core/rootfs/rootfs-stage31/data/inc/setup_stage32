@@ -58,9 +58,3 @@ if [ $SPLASH -eq 1 ]; then
 	fi
 fi
 
-# Auto login to demo user requested?
-if [ -n "$SLX_AUTOLOGIN" ]; then
-	# Enable KDM autologin for demo user
-	sed -i 's/^AutoLoginUser=.*//;s/^AutoLoginEnable=.*/AutoLoginEnable=true\nAutoLoginUser=demo/' "${FUTURE_ROOT}/etc/kde4/kdm/kdmrc"
-fi
-
