@@ -43,7 +43,12 @@ if [ -n "$SLX_EXAM" ]; then
 elif [ -n "$SLX_AUTOSTART_UUID" ]; then
 	SLX_EXAM_START="$SLX_AUTOSTART_UUID"
 fi
-[ -z "$SLX_NO_PVS" ] && EXTRA="$EXTRA --pvs"
+if [ -z "$SLX_NO_PVS" ]; then
+	EXTRA="$EXTRA --pvs"
+	if [ "x$SLX_PVS_DEFAULT" = "xON" ]; then
+		EXTRA="$EXTRA --pvs-checked"
+	fi
+fi
 
 # No quotes around $EXTRA!
 if [ -z "$SLX_LOCATIONS" ]; then
