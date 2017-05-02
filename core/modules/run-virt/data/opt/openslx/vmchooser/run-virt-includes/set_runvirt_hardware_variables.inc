@@ -35,8 +35,13 @@ set_virt_memory() {
 	local min=768
 	local reserve max
 	if mount | grep -q '^/dev/sd.*on.*/tmp'; then
-		reserve=20
-		max=1800
+		if lsmod | grep -q '^nvidia'; then
+			max=2800
+			reserve=28
+		else
+			max=1800
+			reserve=21
+		fi
 	else
 		reserve=65
 		max=8192
