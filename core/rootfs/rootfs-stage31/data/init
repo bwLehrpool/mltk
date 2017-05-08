@@ -16,10 +16,25 @@
 # set PATH correctly
 export PATH=/bin:/sbin:/usr/bin:/usr/sbin
 
+# import common functions
+. "/inc/functions"
+
+# mount the important standard directories
+[ ! -f /proc/cpuinfo ] && busybox mount -n -t proc proc /proc
+bench_event "KERNEL" "Kernel initialized"
+[ ! -d /sys/class ] && busybox mount -n -t sysfs sysfs /sys
+
+# NOTE: busybox mount is only available through the busybox binary,
+# the link had to be dropped, to prevent bugs in the stage32.
+busybox mount -n -t devtmpfs -o 'rw,relatime,nosuid,noexec,mode=0755' initramfsdevs /dev
+busybox mount -n -t tmpfs -o 'mode=755' run "/run"
+
 # IMPORTANT - check if kernel modules in initrams match kernel version
 BASEDIR="/lib/modules/$(uname -r)/kernel/drivers"
 for dir in gpu hid misc; do
 	if ! [ -d "$BASEDIR/$dir" ]; then
+		echo "0" > /proc/sys/kernel/printk
+		reset
 		cat <<WARNING
 +
 +
@@ -48,19 +63,6 @@ WARNING
 		done
 	fi
 done
-
-# import common functions
-. "/inc/functions"
-
-# mount the important standard directories
-[ ! -f /proc/cpuinfo ] && busybox mount -n -t proc proc /proc
-bench_event "KERNEL" "Kernel initialized"
-[ ! -d /sys/class ] && busybox mount -n -t sysfs sysfs /sys
-
-# NOTE: busybox mount is only available through the busybox binary,
-# the link had to be dropped, to prevent bugs in the stage32.
-busybox mount -n -t devtmpfs -o 'rw,relatime,nosuid,noexec,mode=0755' initramfsdevs /dev
-busybox mount -n -t tmpfs -o 'mode=755' run "/run"
 
 # preparations for mounting stage3.2
 FUTURE_ROOT="/dev/shm/uniontmp"
