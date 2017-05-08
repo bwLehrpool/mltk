@@ -97,5 +97,10 @@ case "$1" in
   ;;
 esac
 
+# Breaks performance with certain workloads, so disable.
+# See https://unix.stackexchange.com/a/185172 for details and further references
+echo never > /sys/kernel/mm/transparent_hugepage/defrag
+echo 0 > /sys/kernel/mm/transparent_hugepage/khugepaged/defrag
+
 exit 0
 
