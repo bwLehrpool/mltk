@@ -17,18 +17,28 @@ download_metadata() {
 		EXIT_TYPE="internal" EXIT_REASON="msg.vmchooser.url-missing Keine URL zur Schnittstelle des bwLehrpool-Satelliten gefunden!" cleanexit 1
 	fi
 
-	writelog "Detecting current/legacy mode..."	
+	writelog "Detecting current/legacy mode..."
 	declare -rg TMPCONFIG="$TMPDIR/vmconfig.tmp"
 
-	if wget -T 6 -O "$TMPCONFIG" "${SLX_VMCHOOSER_BASE_URL}/lecture/${IMGUUID}" 2>/dev/null >&2; then
-		writelog "Downloaded VM description from '${SLX_VMCHOOSER_BASE_URL}/lecture/${IMGUUID}' successfully."
-		if [ -s "$TMPCONFIG" ]; then
-			# Downloaded a non-zero VM description file, all good
-			return 0
+	local WLOG="$TMPDIR/wget.log"
+	local TRIES=0
+	while [ "$TRIES" -lt 3 ]; do
+		TRIES=$(( TRIES + 1 ))
+		writelog "wget try $TRIES"
+		if wget -T 6 -O "$TMPCONFIG" "${SLX_VMCHOOSER_BASE_URL}/lecture/${IMGUUID}" &>"$WLOG"; then
+			rm -f -- "$WLOG"
+			writelog "Downloaded VM description from '${SLX_VMCHOOSER_BASE_URL}/lecture/${IMGUUID}' successfully."
+			if [ -s "$TMPCONFIG" ]; then
+				# Downloaded a non-zero VM description file, all good
+				return 0
+			else
+				writelog "Server sent zero byte virtual machine description file."
+			fi
 		else
-			writelog "Server sent zero byte virtual machine description file. Triggering legacy mode."
+			writelog "wget failed."
+			slxlog --delete "run-virt-wget" "Downloading VMX failed" "$WLOG"
 		fi
-	fi
+	done
 
 	# Seems we are in legacy mode, which is no longer supported. Warn user and exit
 	EXIT_TYPE="user" EXIT_REASON="msg.vm.no-metadata
