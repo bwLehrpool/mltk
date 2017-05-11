@@ -20,11 +20,13 @@ download_metadata() {
 	writelog "Detecting current/legacy mode..."
 	declare -rg TMPCONFIG="$TMPDIR/vmconfig.tmp"
 
-	local WLOG="$TMPDIR/wget.log"
 	local TRIES=0
+	local EXTRA_ERROR=
+	local WLOG=
 	while [ "$TRIES" -lt 3 ]; do
 		TRIES=$(( TRIES + 1 ))
 		writelog "wget try $TRIES"
+		WLOG="$TMPDIR/wget-${TRIES}.log"
 		if wget -T 6 -O "$TMPCONFIG" "${SLX_VMCHOOSER_BASE_URL}/lecture/${IMGUUID}" &>"$WLOG"; then
 			rm -f -- "$WLOG"
 			writelog "Downloaded VM description from '${SLX_VMCHOOSER_BASE_URL}/lecture/${IMGUUID}' successfully."
@@ -33,8 +35,15 @@ download_metadata() {
 				return 0
 			else
 				writelog "Server sent zero byte virtual machine description file."
+				EXTRA_ERROR="(Der Server hat eine leere Antwort gesendet)"
 			fi
 		else
+			local ERRCODE=$(grep -m1 -o -E '\b[0-9]{3}\b' "$WLOG")
+			if [ -n "$ERRCODE" ]; then
+				EXTRA_ERROR="(HTTP Error Code $ERRCODE)"
+			else
+				EXTRA_ERROR="(Der Server ist nicht erreichbar)"
+			fi
 			writelog "wget failed."
 			slxlog --delete "run-virt-wget" "Downloading VMX failed" "$WLOG"
 		fi
@@ -42,13 +51,10 @@ download_metadata() {
 
 	# Seems we are in legacy mode, which is no longer supported. Warn user and exit
 	EXIT_TYPE="user" EXIT_REASON="msg.vm.no-metadata
-Die gewählte VM ist eine 'Legacy VM', für die unvollständige
-Metadaten auf dem bwLehrpool-Server hinterlegt sind. Diese
-werden nicht mehr unterstützt. Um diese VM weiterhin nutzen
-zu können, muss sie mittels der bwLehrpool-Suite heruntergeladen,
-einmal gebootet, und wieder hochgeladen werden.
-(Bei der Gelegenheit könnten z.B. auch gleich anfallende Updates
-eingespielt werden.)
+Die Metadaten der Lehrumgebung konnten nicht vom bwLehrpool-Satelliten
+heruntergeladen werden. Bitte versuchen Sie es in wenigen Minuten erneut
+und wenden Sie sich an den Support, wenn das Problem bestehen bleibt.
+$EXTRA_ERROR
 " cleanexit 1
 }
 

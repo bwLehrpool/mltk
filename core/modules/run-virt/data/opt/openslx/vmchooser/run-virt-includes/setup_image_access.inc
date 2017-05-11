@@ -33,6 +33,7 @@ setup_dnbd3 () {
 	# Mount path for images mounted with dnbd3-fuse
 	declare -rg DNBD3_MOUNT_POINT="${TMPDIR}/dnbd3fuse.mnt"
 	mkdir -p "${DNBD3_MOUNT_POINT}"
+	mkdir -p "${DNBD3_MOUNT_POINT}"
 	# start dnbd3-fuse in subshell
 	local DNBD3_TMPLOG="${TMPDIR}/dnbd3fuse.log"
 	local DNBD3_EXITFLAG="${TMPDIR}/dnbd3exit$RANDOM"
