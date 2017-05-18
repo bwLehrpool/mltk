@@ -1,0 +1,13 @@
+display :0	
+ssl TMP
+sslonly
+accept popup
+quiet
+
+#see "x11vnc -opts" or "http://www.karlrunge.com/x11vnc/x11vnc_opts.html" for complete list of options
+#xrandr option adds polling overhead and should only be used if xrandr events are expected
+#ncache -n adds to the memory requirements, left to testing in productive context. Also, pixelcache is implemented in a awkward way by ssvnc viewer.
+#viewonly option might be of use in productive context
+
+###GENERATED OPTS FROM /opt/openslx/remotedebug/clientrequest.sh###
+#expected: clip WxH+X+X, rmflag PIDFILE, connect IP:PORT
