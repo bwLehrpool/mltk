@@ -2,7 +2,15 @@
 #######################################################################
 # Include: Declaration of core functions and variables of this plugin #
 #######################################################################
-# This core include just executes stuff! No post source calls!
+# This core include just runs commands directly
+
+## Sanity checks for systemd-vmware_env
+# /dev/vmmon should exist, missing vmnet's does not make vmplayer crash
+if [ ! -c /dev/vmmon ]; then
+	# would cause vmplayer to crash, so abort
+	EXIT_TYPE="internal" EXIT_REASON="VMWare wurde nicht richtig initialisiert!" cleanexit 1
+fi
+
 # For now define helpers here, maybe use a dedicated include later on
 vmw_cap_hw_version() {
 	[ -z "$1" ] && writelog "cap_hw_version called without parameter!" && return 1
