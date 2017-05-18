@@ -2,7 +2,7 @@ Dieses Paket besteht aus folgenden Skripten:
 
 vm_installer:	Dieses Skript einmalig in einer lokalen, permanenten (also 
 		nicht innerhalb des Poolsystems) Virtuellen Maschine ausführen. 
-		Es schreibt eine systemd-Servicedateien und verlinkt diese,
+		Es schreibt drei systemd-Servicedateien und verlinkt diese,
 		um beim Systemstart folgende Skripte zu starten:
 
 resolution:	(after display-manager.service): Dieses Skript wartet eine 
@@ -26,7 +26,7 @@ umnt_shares:	(Before shutdown.target): Hängt gegebene Laufwerke beim
 
 
 resolution_standalone: Einzelstehende Version des resolution-Skriptes, die 
-		keine Vorarbeiten seitens systemd bzw. vm_runtime benötigt.
+		keine Vorarbeiten seitens systemd benötigt.
 		Für geeignete Einbindung innerhalb der VM (Xsetup/Xreset) 
 		muss daher selbst gesorgt werden.
 
