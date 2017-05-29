@@ -53,7 +53,7 @@ static BOOL _debug = FALSE;
 
 static HINSTANCE hKernel32, hShell32;
 static OSVERSIONINFO winVer;
-static BOOL bGetShares = FALSE;
+static BOOL shareFileOk = FALSE;
 static netdrive_t drives[DRIVEMAX];
 static wchar_t desktopPath[MAX_PATH+1], tempPath[MAX_PATH+1], programsPath[MAX_PATH+1], windowsPath[MAX_PATH+1];
 static wchar_t logFile[LOGFILELEN];
@@ -141,6 +141,8 @@ static void wlog(const wchar_t *fmt, ...)
 	fclose(f);
 }
 
+#define dlog(...) do { if (_debug) alog(__VA_ARGS__); } while (0)
+
 static void CALLBACK resetShutdown(HWND hWnd, UINT uMsg, UINT_PTR idEvent, DWORD dwTime)
 {
 	static BOOL bInProc = FALSE;
@@ -170,10 +172,14 @@ static void CALLBACK setupNetworkDrives(HWND hWnd, UINT uMsg, UINT_PTR idEvent, 
 	if (bInProc)
 		return;
 	bInProc = TRUE;
-	if (!bGetShares && (_remapMode == RM_NATIVE_FALLBACK || _remapMode == RM_VMWARE)) {
-		remapViaSharedFolder();
+	if (!shareFileOk) {
+		dlog("No shareFileOk in sND");
+		if (_remapMode == RM_NATIVE_FALLBACK || _remapMode == RM_VMWARE) {
+			remapViaSharedFolder();
+		}
 	} else {
 		int ret = queryPasswordDaemon();
+		dlog("sND: qPD = %d", ret);
 		if (ret != 0) {
 			if (++fails < 10)
 				goto exit_func;
@@ -210,6 +216,7 @@ static void CALLBACK launchRunscript(HWND hWnd, UINT uMsg, UINT_PTR idEvent, DWO
 	wchar_t npass[BUFLEN] = L"";
 	if (_passCreds) {
 		if (spass == NULL) {
+			dlog("launchRun: No spass");
 			goto failure;
 		}
 
@@ -228,6 +235,9 @@ static void CALLBACK launchRunscript(HWND hWnd, UINT uMsg, UINT_PTR idEvent, DWO
 			ptr = escapeShellArg(npass, ptr, end);
 			*ptr = '\0';
 		}
+	}
+	if (_debug) {
+		wlog(L"Params are '%s'", params);
 	}
 	ShellExecuteW(NULL, L"open", _scriptFile, params, L"B:\\", SW_SHOWNORMAL);
 	KillTimer(hWnd, idEvent);
@@ -357,7 +367,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	CoInitializeEx(NULL, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
 	_startTime = GetTickCount();
 	loadPaths();
-	if (lpCmdLine != NULL && strstr(lpCmdLine, "debug") != NULL) {
+	if (lpCmdLine != NULL && strstr(lpCmdLine, "/debug") != NULL) {
 		_debug = TRUE;
 		alog("Windows Version %d.%d", (int)winVer.dwMajorVersion, (int)winVer.dwMinorVersion);
 	}
@@ -370,8 +380,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	setPowerState();
 	// Any network shares to mount?
 	readShareFile();
-	if (bGetShares || _remapMode != RM_NONE) {
+	if (shareFileOk || _remapMode != RM_NONE) {
 		UINT_PTR tRet = SetTimer(NULL, 0, 1550, (TIMERPROC)&setupNetworkDrives);
+		dlog("init: &setupNetworkDrives");
 		if (tRet == 0) {
 			alog("Could not create timer for mounting network shares: %d", (int)GetLastError());
 		}
@@ -395,6 +406,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	// Runscript (if any)
 	if (fileExists(_scriptFile)) {
 		UINT_PTR tRet = SetTimer(NULL, 0, 3456, (TIMERPROC)&launchRunscript);
+		dlog("init: &launchRunscript");
 		if (tRet == 0) {
 			alog("Could not create timer for runscript: %d", (int)GetLastError());
 		}
@@ -687,7 +699,7 @@ const char* uncReplaceFqdnByIp(const char* path)
 
 static void readShareFile()
 {
-	if (bGetShares)
+	if (shareFileOk)
 		return;
 	memset(drives, 0, sizeof(drives));
 	FILE *h = fopen("B:\\shares.dat", "r");
@@ -727,8 +739,6 @@ drive_fail:
 		FREENULL(d->pass);
 	}
 	fclose(h);
-	if (idx == 0) // No drives to map
-		return;
 	if (shost == NULL || sport == NULL || skey1 == NULL || skey2 == NULL || suser == NULL) // Credential stuff missing
 		return;
 	if (strlen(skey1) != KEYLEN*2 || strlen(skey2) != KEYLEN*2) // Messed up keys
@@ -739,7 +749,7 @@ drive_fail:
 	bkey2 = hex2bin(skey2);
 	if (bkey1 == NULL || bkey2 == NULL)
 		return;
-	bGetShares = TRUE;
+	shareFileOk = TRUE;
 }
 
 static void udpReceived(SOCKET sock);
@@ -761,8 +771,10 @@ LRESULT CALLBACK slxWindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPara
 static int queryPasswordDaemon()
 {
 	// See if preconditions are met
-	if (!bGetShares || spass != NULL)
+	dlog("in qPD");
+	if (!shareFileOk || spass != NULL)
 		return 0;
+	dlog("...");
 	static int wsaInit = 1337;
 	static SOCKET sock = INVALID_SOCKET;
 	static HWND sockWnd = NULL;
@@ -803,6 +815,7 @@ static int queryPasswordDaemon()
 
 static void udpReceived(SOCKET sock)
 {
+	dlog("UDP received");
 	int ret;
 	uint8_t buffer[200];
 	ret = recv(sock, (char*)buffer, sizeof(buffer), 0);
@@ -939,7 +952,7 @@ static BOOL mountNetworkShare(const netdrive_t *d, BOOL useIp)
 
 static BOOL mountNetworkShares()
 {
-	if (!bGetShares)
+	if (!shareFileOk)
 		return TRUE;
 	if (spass == NULL)
 		return FALSE;
@@ -960,6 +973,7 @@ static BOOL mountNetworkShares()
 	if (failCount > 0)
 		return FALSE;
 	if (!_passCreds) {
+		dlog("Erasing password from memory");
 		SecureZeroMemory(spass, strlen(spass));
 	}
 	return TRUE;
