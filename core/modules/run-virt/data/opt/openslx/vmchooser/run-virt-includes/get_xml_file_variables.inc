@@ -26,7 +26,7 @@ parse_xml() {
 		EXIT_TYPE="user" EXIT_REASON="Konnte kein Pfad zur ausgewählten virtuellen Maschine ermitteln!" cleanexit 1
 	fi
 
-	if isempty SRC_IMG_ABSOLUTE && [ "${SRC_IMG_ABSOLUTE:0:1}" != "/" ]; then
+	if notempty SRC_IMG_ABSOLUTE && [ "${SRC_IMG_ABSOLUTE:0:1}" != "/" ]; then
 		writelog "Error parsing XML: Parsed value for absolute path doesn't start with '/': '$SRC_IMG_ABSOLUTE'"
 		EXIT_TYPE="user" EXIT_REASON="Ungültiger asboluter Pfad zur virtuellen Maschine!" cleanexit 1
 	fi
