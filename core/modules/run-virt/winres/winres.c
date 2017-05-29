@@ -840,7 +840,8 @@ static DWORD mount(LPNETRESOURCEW share, LPWSTR pass, LPWSTR user)
 		}
 		if (retval != ERROR_INVALID_PASSWORD && retval != ERROR_LOGON_FAILURE
 				&& retval != ERROR_BAD_USERNAME && retval != ERROR_ACCESS_DENIED
-				&& retval != ERROR_SESSION_CREDENTIAL_CONFLICT && retval != ERROR_BAD_NET_NAME) {
+				&& retval != ERROR_SESSION_CREDENTIAL_CONFLICT && retval != ERROR_BAD_NET_NAME
+				&& retval != ERROR_NOT_AUTHENTICATED && retval != ERROR_NOT_LOGGED_ON) {
 			return retval;
 		}
 	}
