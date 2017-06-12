@@ -2,7 +2,7 @@
 
 fetch_source() {
 	git clone "${REQUIRED_GIT}" "${MODULE_WORK_DIR}/src"
-	cd "{MODULE_WORK_DIR}/src"
+	cd "${MODULE_WORK_DIR}/src"
 	git checkout "$REQUIRED_COMMIT"
 	cd - &>/dev/null
 }
