@@ -7,8 +7,13 @@
 # check for vmdk file marker %VM_DISK_PATH% and put vmdk path in it's place: also VM_DISK_MODE
 # and VM_DISK_REDOLOGDIR.
 replace_placeholders() {
-	sed -i 's#%VM_DISK_PATH%#'"$VM_DISKFILE_RO"'#g' "${TMPCONFIG}"
-	sed -i 's#%VM_DISK_MODE%#'"independent-nonpersistent"'#g' "${TMPCONFIG}"
+	if [ -n "$VM_DISKFILE_RW" ]; then
+		sed -i 's#%VM_DISK_PATH%#'"$VM_DISKFILE_RW"'#g' "${TMPCONFIG}"
+		sed -i 's#%VM_DISK_MODE%#'"independent-persistent"'#g' "${TMPCONFIG}"
+	else
+		sed -i 's#%VM_DISK_PATH%#'"$VM_DISKFILE_RO"'#g' "${TMPCONFIG}"
+		sed -i 's#%VM_DISK_MODE%#'"independent-nonpersistent"'#g' "${TMPCONFIG}"
+	fi
 	sed -i 's#%VM_DISK_REDOLOGDIR%#'"$VM_REDO_DIR"'#g' "${TMPCONFIG}"
 }
 
