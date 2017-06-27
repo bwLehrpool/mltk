@@ -9,8 +9,9 @@ function mount_shares()
 		SHAREPASS=$(echo "${ROHSHARES[CONFIGROW]}" | cut -f 5 -d$'\t')		# User-PW, bei Userhome nicht vorhanden
 
 		# Sharetyp bestimmen:
-		if [ "${SHAREPATH:0:2}" == '\\' ]; then
+		if [ "${SHAREPATH:0:2}" == '\\' ]  || [ "${SHAREPATH:0:2}" == '//' ]; then
 			USER=$(echo "$SHAREUSER"|cut -d '\' -f 2)
+			SHAREPATH="${SHAREPATH//\\//}"					# '\' --> `/` :-)
 			MOUNTOPTS="$MOUNTOPTSCIFS"
 		else
 			MOUNTOPTS="$MOUNTOPTSNFS"
@@ -21,7 +22,7 @@ function mount_shares()
 			logger "openslx sharemapper: home share \"$SHARENAME\" found (for PERSISTENT)."
 			export USER="${GLOBALUSER}"
 			export PASSWD="${PW}"
-			mounter "${MOUNTOPTS}" ${SHAREPATH} ${USERHOMEDIR} 2>/dev/null 1>&2
+			mounter "${MOUNTOPTS}" "${SHAREPATH}" "${USERHOMEDIR}" 2>/dev/null 1>&2
 			unset USER
 			unset PASSWD
 		else
@@ -44,11 +45,13 @@ function mount_shares()
 			export PASSWD="${SHAREPASS}"
 			mounter "${MOUNTOPTS}" ${SHAREPATH} ${USERSHAREDIR} 2>/dev/null 1>&2
 			ERR=$?
+			unset USER
+			unset PASSWD
 			if [ "$ERR" -eq 1 ]; then
 				export USER="${GLOBALUSER}"
 				export PASSWD="${PW}"
 				logger "openslx sharemapper: Could not mount ${USERSHAREDIR}, now trying using user credentials."
-				mounter "${MOUNTOPTS}" ${SHAREPATH} ${USERSHAREDIR} 2>/dev/null 1>&2 \
+				mounter "${MOUNTOPTS}" ${SHAREPATH} ${USERSHAREDIR} 2>/dev/null 1>&2 
 				ERR=$?				# ERR merken wg. Links aus USERSHAREDIR
 				if [ "$ERR" -eq 1 ]; then
 					logger "openslx sharemapper: Could not mount ${USERSHAREDIR} even using user credentials; giving up."
