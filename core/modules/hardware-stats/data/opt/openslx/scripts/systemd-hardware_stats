@@ -199,11 +199,15 @@ if which smartctl; then
 		OVERALL=$(grep -o "test result: .*$" "$FILE" | cut -c 14-)
 		[ "x$OVERALL" = "xPASSED" ] && OVERALL=""
 		REALLOC=$(grep "^ *5 " "$FILE" | awk '{print $8}')
+		PENDING=$(grep "^ *197 " "$FILE" | awk '{print $8}')
 		SPINRETRY_VAL=$(grep "^ *10 " "$FILE" | awk '{print $4}')
 		SPINRETRY_THR=$(grep "^ *10 " "$FILE" | awk '{print $6}')
 		[ -n "$OVERALL" ] && BADSECTORS=$(( $BADSECTORS + 100 ))
 		if [ -n "$REALLOC" ] && [ "$REALLOC" -gt "0" ]; then
 			BADSECTORS=$(( $BADSECTORS + $REALLOC ))
+		fi
+		if [ -n "$PENDING" ] && [ "$PENDING" -gt "5" ]; then
+			BADSECTORS=$(( $BADSECTORS + $PENDING ))
 		fi
 		if [ -n "$SPINRETRY_VAL" ] && [ "$SPINRETRY_VAL" -le "$SPINRETRY_THR" ]; then
 			BADSECTORS=$(( $BADSECTORS + 100 ))
