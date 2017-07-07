@@ -9,8 +9,8 @@ activate_qt() {
 	# Handle qt chooser
 	[ -d "/usr/share/qtchooser" ] || return 0 # No qtchooser found, hope for the best...
 	local QT_DEFAULT="$(readlink -f /usr/share/qtchooser/default.conf)"
-	if [ -e "$QT_DEFAULT" ]; then
-		[[ "$(basename "$QT_DEFAULT")" =~ ^qt$QT_VERSION.*\.conf$ ]] || perror "Something with QT4 is bad. Check '/usr/share/qtchooser'"
+	if [ -e "$QT_DEFAULT" ] && [[ "$(basename "$QT_DEFAULT")" =~ ^qt${QT_VERSION}.*\.conf$ ]]; then
+		: # Already default
 	else
 		# no default active, try to set it
 		local QT_CANDIDATES="$(find "/usr/share/qtchooser" -name "qt$QT_VERSION*" | grep -E "$ARCHREGEX")"
