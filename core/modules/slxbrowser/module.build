@@ -11,8 +11,6 @@ build() {
 	cd "${MODULE_BUILD_DIR}/${REQUIRED_PREFIX}" || perror "No dir"
 
 	pinfo "Running cmake"
-	# use qt4-dev (in case eg. qt4 and 5 are installed)
-	activate_qt 5
 
 	cmake "$SRCDIR" || perror "'cmake $SRCDIR' failed."
 	make || perror "'make' failed."
