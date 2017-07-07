@@ -2,4 +2,8 @@
 REQUIRED_INSTALLED_PACKAGES="
 				cmake
 				libqt5webkit5-dev
+				libqt5gui5
+"
+REQUIRED_CONTENT_PACKAGES="
+	libqt5gui5
 "

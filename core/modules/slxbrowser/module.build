@@ -15,6 +15,10 @@ build() {
 	cmake "$SRCDIR" || perror "'cmake $SRCDIR' failed."
 	make || perror "'make' failed."
 
+	local COPYLIST="$MODULE_BUILD_DIR/list_packet_files"
+	list_packet_files | sort -u > "$COPYLIST"
+	tarcopy "$(cat "$COPYLIST")" "${MODULE_BUILD_DIR}"
+
 	cd - > /dev/null
 }
 
