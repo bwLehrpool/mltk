@@ -6,4 +6,5 @@ REQUIRED_INSTALLED_PACKAGES="
 "
 REQUIRED_CONTENT_PACKAGES="
 	libqt5gui5
+	gstreamer1.0-plugins-base
 "
