@@ -1,6 +1,5 @@
 [Unit]
 Description=Sets up the virtualization environment
-Wants=graphical.target
 Before=graphical.target
 
 [Service]
