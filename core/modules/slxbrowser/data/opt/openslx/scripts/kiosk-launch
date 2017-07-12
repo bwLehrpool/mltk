@@ -1,0 +1,13 @@
+#!/bin/ash
+
+. /opt/openslx/config
+
+[ -z "$SLX_BROWSER_URL" ] && exit 1
+
+xset s off
+xset -dpms
+
+openbox &
+
+exec slxbrowser --insecure --fullscreen "$SLX_BROWSER_URL"
+

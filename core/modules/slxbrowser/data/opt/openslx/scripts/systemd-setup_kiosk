@@ -1,0 +1,16 @@
+#!/bin/ash
+
+# Autologin
+sed -i '/^AutoLoginDelay=/d;/^AutoLoginUser=/d;s/^AutoLoginEnable=.*$/AutoLoginEnable=true\nAutoLoginUser=demo\nAutoLoginDelay=0/' "/etc/kde4/kdm/kdmrc"
+
+# desktop session
+cat > /opt/openslx/xsessions/default.desktop <<EOF
+[Desktop Entry]
+Name=SLXbrowser
+Comment=Minimalistic browser
+Exec=/opt/openslx/scripts/kiosk-launch
+Type=Application
+X-LightDM-DesktopName=SLXbrowser
+DesktopNames=SLXbrowser
+EOF
+
