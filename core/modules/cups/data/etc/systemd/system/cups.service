@@ -1,8 +1,6 @@
 [Unit]
 Description=Common Unix Printing System
-Requires=network.target graphical.target
 After=network.target
-Before=graphical.target
 ConditionFileNotEmpty=/etc/cups/printers.conf
 
 [Service]

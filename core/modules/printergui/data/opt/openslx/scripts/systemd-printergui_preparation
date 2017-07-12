@@ -9,11 +9,11 @@ if [ ! -d "$DESTDIR" ]; then
 	mkdir -p "$DESTDIR" || exit 1
 fi
 
-mv "$SRCDIR"/* "$DESTDIR"
+mv -n "$SRCDIR"/* "$DESTDIR"
 
 cd "$SRCDIR"
 for i in "$DESTDIR"/*; do
-        ln -sf "$PRINTPWGUI" $(basename "$i")
+        ln -s "$PRINTPWGUI" $(basename "$i")
 done
 
 exit 0
