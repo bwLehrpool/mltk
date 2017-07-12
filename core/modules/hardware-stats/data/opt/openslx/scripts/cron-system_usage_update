@@ -1,11 +1,11 @@
 #!/bin/ash
 
-[ -r "/run/system-uuid" ] || exit 0
+[ -r "/etc/system-uuid" ] || exit 0
 
 . /opt/openslx/config
 [ -z "$SLX_REMOTE_LOG" ] && exit 0
 
-UUID=$(cat "/run/system-uuid")
+UUID=$(cat "/etc/system-uuid")
 
 [ -z "$UUID" ] && exit 1
 

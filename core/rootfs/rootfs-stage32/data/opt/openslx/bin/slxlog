@@ -78,8 +78,8 @@ else
 fi
 
 UUID=
-if [ -s /run/system-uuid ]; then
-	UUID=$(cat /run/system-uuid)
+if [ -s /etc/system-uuid ]; then
+	UUID=$(cat /etc/system-uuid)
 fi
 
 submitlog () {

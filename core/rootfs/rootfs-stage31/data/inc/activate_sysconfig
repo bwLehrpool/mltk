@@ -9,11 +9,11 @@ CONFIG="${FUTURE_ROOT}/opt/openslx/config"
 #
 # This function downloads the config containing environment variables
 #
-fetch_sysconfig() {
+fetch_text_config() {
 	[ -e "$CONFIG" ] && grep -E '^#_RCONFIG_TAG$' "$CONFIG" > /dev/null \
 		&& echo "Config already fetched." && return 0
 
-	download "${SLX_BASE_PATH}/config" "${CONFIG}-remote" || return 1
+	download "${SLX_BASE_PATH}/config$UUID_URL" "${CONFIG}-remote" || return 1
 
 	echo "# Config fetched from $URL" >> "$CONFIG"
 	echo "#_RCONFIG_TAG" >> "$CONFIG"
@@ -23,10 +23,10 @@ fetch_sysconfig() {
 #
 # This function downloads the config.tgz and unpacks it to $TARGET_PATH <-- no it doesn't!
 #
-fetch_config_files() {
+fetch_config_tgz() {
 	[ -e "${CONFIG}.tgz" ] && echo "config.tgz already downloaded." && return 0
 
-	download "${SLX_BASE_PATH}/config.tgz" "${CONFIG}.tgz"
+	download "${SLX_BASE_PATH}/config.tgz$UUID_URL" "${CONFIG}.tgz"
 }
 
 
@@ -34,7 +34,7 @@ fetch_config_files() {
 #
 # This function updates the downloaded config with the IP information
 # received from /inc/setup_network <-- plus 500 other things
-update_sysconfig() {
+merge_text_config() {
 	# sanity checks
 	[ ! -e "${CONFIG}" ] && { echo "Cannot update. '$CONFIG' does not exist."; return 1; }
 
@@ -95,7 +95,17 @@ HEREEND
 # MAIN PART
 #
 
-fetch_sysconfig || drop_shell "Could not download remote config"
+# Determine machine uuid, save for later
+get-uuid
+if [ -e "/run/system-uuid" ]; then
+	UUID=$(cat "/run/system-uuid")
+	if [ -n "$UUID" ]; then
+		UUID_URL="?uuid=$UUID"
+	fi
+	cp "/run/system-uuid" "${FUTURE_ROOT}/etc/system-uuid"
+fi
+
+fetch_text_config || drop_shell "Could not download remote config"
 if ! ash -n "${CONFIG}-remote"; then
 	echo -e "\n\tFATAL: Could not download configuration!"
 	echo -e "\tAborting boot since the system would be in an unusable state."
@@ -108,7 +118,7 @@ if ! ash -n "${CONFIG}-remote"; then
 	echo b > /proc/sysrq-trigger
 fi
 . "${CONFIG}-remote" || drop_shell "Could not source remote config"
-fetch_config_files || drop_shell "Could not download config.tgz"
-update_sysconfig || drop_shell "Could not update sysconfig"
+fetch_config_tgz || drop_shell "Could not download config.tgz"
+merge_text_config || drop_shell "Could not update sysconfig"
 true
 

@@ -78,30 +78,13 @@ fi
 MAC=${BOOTIF:3}
 
 # 2) Get machine UUID, with fallback to MAC address if it fails for some reason, or if the UUID is blacklisted
-UUID=$(dmidecode -q -s system-uuid | grep -v '^#' | head -n 1 | tr '[a-z]' '[A-Z]')
+UUID=$(cat /etc/system-uuid)
+if [ -z "$UUID" ] || [ "${#UUID}" -ne "36" ]; then
+	UUID=$(dmidecode -q -s system-uuid | grep -v '^#' | head -n 1 | tr '[a-z]' '[A-Z]')
+fi
 if [ "${#UUID}" -ne "36" ]; then
 	echo "Determined UUID (${UUID}) has not expected length of 36, falling back to MAC..."
 	UUID="000000000000000-$BOOTIF"
-else
-	# Got UUID, check blacklist
-	DIR="/opt/openslx/hardware-stats/bad-uuid.d"
-	TMPLIST=$(mktemp)
-	BADLIST="/run/bad-uuids"
-	for file in "$DIR"/*; do
-		[ -f "$file" ] || continue
-		# 11111111-2222-3333-4444-555555555555
-		< "$file" tr '[a-z]' '[A-Z]' | grep -Po '[0-9A-F]{8}\-[0-9A-F]{4}\-[0-9A-F]{4}\-[0-9A-F]{4}\-[0-9A-F]{12}'
-	done | tee "$TMPLIST" > "$BADLIST"
-	# Also add flipped version of bad uuids. Found some of them through googling and discovered that sometimes
-	# users report them in a different order. UUIDs use different endianness for the first three blocks than
-	# the remaining two, but some tools seem to ignore that fact.
-	< "$BADLIST" sed -r 's/^(..)(..)(..)(..)\-(..)(..)\-(..)(..)\-([0-9A-F]{4}\-[0-9A-F]{12})$/\4\3\2\1-\6\5-\8\7-\9/' >> "$TMPLIST"
-	# Finally make unique
-	sort -u "$TMPLIST" > "$BADLIST"
-	if grep -Fxq "$UUID" "$BADLIST"; then
-		echo "WARNING: UUID is blacklisted as potentially not being unique, using MAC fallback"
-		UUID="000000000000000-$BOOTIF"
-	fi
 fi
 
 # 3) Uptime in seconds
@@ -299,7 +282,6 @@ for DELAY in 1 1 0; do
 			--data-urlencode "badsectors=$BADSECTORS" --data-urlencode "systemmodel=$MODEL" \
 			--data-urlencode "data@$DATAFILE" "$SLX_REMOTE_LOG" | grep -q "RESULT=0"; then
 		rm -f -- "$DATAFILE"
-		echo "$UUID" > "/run/system-uuid"
 		START=$(( $RANDOM % 5 ))
 		cat > "/etc/cron.d/usage_stats" <<-EOF
 			# Update usage statistics on server

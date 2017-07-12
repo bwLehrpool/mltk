@@ -11,7 +11,7 @@ bash <<"HEREDOC"
 
     . /opt/openslx/config
     [ -z "$SLX_REMOTE_LOG" ] && exit 0
-    UUID=$( cat /run/system-uuid )
+    UUID=$( cat /etc/system-uuid )
     [ -z "$UUID" ] && exit 0
     XRANDR=$( mktemp )
     TMP=$( mktemp )

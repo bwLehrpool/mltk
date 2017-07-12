@@ -85,10 +85,39 @@ setup_fallback() {
 	readonly VM_DISKFILE_RO
 }
 
+setup_jambo() {
+	declare -r CMDLOG="$TMPDIR/sshfs.jambo"
+	declare -rg CLIENTPARTITION_ADMIN="/var/lib/vmware_admin"
+	#declare -r UPLOAD_KEYFILE="/var/lib/uploaduser"
+	#sudo -n sshfs "uploaduser@$JAMBOSERVER:/vms/bwlehrpool_store" "$CLIENTPARTITION_ADMIN" -o allow_other -o PreferredAuthentications=publickey -o IdentityFile="$UPLOAD_KEYFILE" -o IdentitiesOnly=yes &> "$CMDLOG"
+	sudo -n sshfs "uploaduser@$JAMBOSERVER:/vms/bwlehrpool_store" "$CLIENTPARTITION_ADMIN" -o allow_other -o PreferredAuthentications=publickey &> "$CMDLOG"
+	RET=$?
+	if [ "$RET" != "0" ]; then
+		writelog "SSHFS Failed
+		$(cat "$CMDLOG")"
+		EXIT_TYPE="user" EXIT_REASON="Schreibbarer VM-Speicher konnte nicht eingebunden werden. Adminmodus fehlgeschlagen." cleanexit 1
+	fi
+	declare -rg VM_DISKFILE_RW="$CLIENTPARTITION_ADMIN/$SRC_IMG_RELATIVE"
+}
+
 
 ## MAIN PART / Sanity checks ##
 setup_image_access() {
 	writelog "Setting up virtual hard disk access for virtualizer/emulator ..."
+
+	if [ "$VMCHOOSER_ADMIN_MODE" = "TRUE" ] && [ -n "$SLX_JAMBOSERVER" ]; then
+		setup_jambo
+		writelog "\tVM disk file RW:\t\t$VM_DISKFILE_RW"
+		if ! [ -s "$VM_DISKFILE_RW" ]; then
+			writelog ".... not found!"
+			EXIT_TYPE="user" EXIT_REASON="Schreibbare VM nicht gefunden. Adminmodus fehlgeschlagen." cleanexit 1
+		fi
+		if ! [ -w "$VM_DISKFILE_RW" ]; then
+			writelog ".... not writable!"
+			EXIT_TYPE="user" EXIT_REASON="VM-Image auf schreibbarem VM-Speicher nicht schreibbar. Adminmodus fehlgeschlagen." cleanexit 1
+		fi
+		return 0
+	fi
 	
 	unset VM_DISKFILE_RO
 	declare -g VM_DISKFILE_RO

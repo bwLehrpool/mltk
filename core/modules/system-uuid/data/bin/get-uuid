@@ -1,0 +1,40 @@
+#!/bin/ash
+
+eval $(grep -Eo BOOTIF=\\S+ /proc/cmdline)
+if [ "${#BOOTIF}" -ne "20" ]; then
+	echo "Getting MAC from /proc/cmdline failed, using 'ip a'..."
+	BOOTIF=01-$(ip a | grep -A 1 ': br0' | grep -o 'ether ..:..:..:..:..:..' | cut -d' ' -f2 | sed s/:/-/g)
+	if [ "${#BOOTIF}" -ne "20" ]; then
+		echo "FAIL FAIL FAIL"
+		BOOTIF="99-88-77-66-55-44-33"
+	fi
+fi
+
+UUID=$(dmidecode -q -s system-uuid | grep -v '^#' | head -n 1 | tr '[a-z]' '[A-Z]')
+if [ "${#UUID}" -ne "36" ]; then
+	echo "Determined UUID (${UUID}) has not expected length of 36, falling back to MAC..."
+	UUID="000000000000000-$BOOTIF"
+else
+	# Got UUID, check blacklist
+	DIR="/opt/openslx/bad-uuid.d"
+	TMPLIST=$(mktemp)
+	BADLIST=$(mktemp)
+	for file in "$DIR"/*; do
+		[ -f "$file" ] || continue
+		# 11111111-2222-3333-4444-555555555555
+		< "$file" tr '[a-z]' '[A-Z]' | grep -Eo '[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}'
+	done | tee "$TMPLIST" > "$BADLIST"
+	# Also add flipped version of bad uuids. Found some of them through googling and discovered that sometimes
+	# users report them in a different order. UUIDs use different endianness for the first three blocks than
+	# the remaining two, but some tools seem to ignore that fact.
+	< "$BADLIST" sed -r 's/^(..)(..)(..)(..)\-(..)(..)\-(..)(..)\-([0-9A-F]{4}\-[0-9A-F]{12})$/\4\3\2\1-\6\5-\8\7-\9/' >> "$TMPLIST"
+	# Finally make unique
+	sort -u "$TMPLIST" > "$BADLIST"
+	if grep -Fxq "$UUID" "$BADLIST"; then
+		echo "WARNING: UUID is blacklisted as potentially not being unique, using MAC fallback"
+		UUID="000000000000000-$BOOTIF"
+	fi
+	rm -f -- "$TMPLIST" "$BADLIST"
+fi
+
+echo "$UUID" > "/run/system-uuid"
