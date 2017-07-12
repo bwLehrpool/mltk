@@ -133,8 +133,10 @@ fi
 # Change systemd target if desired
 if [ -n "$SLX_SYSTEMD_TARGET" ]; then
 	SLX_SYSTEMD_TARGET="${SLX_SYSTEMD_TARGET%.target}.target"
-	mkdir -p "${FUTURE_ROOT}/etc/systemd/system"
-	ln -sf "$SLX_SYSTEMD_TARGET" "${FUTURE_ROOT}/etc/systemd/system/default.target"
+	for dir in etc lib usr/lib; do
+		mkdir -p "${FUTURE_ROOT}/${dir}/systemd/system"
+		ln -sf "$SLX_SYSTEMD_TARGET" "${FUTURE_ROOT}/${dir}/systemd/system/default.target"
+	done
 fi
 
 true
