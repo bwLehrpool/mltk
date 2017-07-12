@@ -20,6 +20,7 @@ export PATH=/bin:/sbin:/usr/bin:/usr/sbin
 . "/inc/functions"
 
 # mount the important standard directories
+mkdir -p /tmp /proc /sys /dev /run
 [ ! -f /proc/cpuinfo ] && busybox mount -n -t proc proc /proc
 bench_event "KERNEL" "Kernel initialized"
 [ ! -d /sys/class ] && busybox mount -n -t sysfs sysfs /sys
@@ -27,7 +28,8 @@ bench_event "KERNEL" "Kernel initialized"
 # NOTE: busybox mount is only available through the busybox binary,
 # the link had to be dropped, to prevent bugs in the stage32.
 busybox mount -n -t devtmpfs -o 'rw,relatime,nosuid,noexec,mode=0755' initramfsdevs /dev
-busybox mount -n -t tmpfs -o 'mode=755' run "/run"
+busybox mount -n -t tmpfs -o 'mode=755,size=10m' run "/run"
+busybox mount -n -t tmpfs -o 'mode=755,size=10m' temp "/tmp"
 
 # IMPORTANT - check if kernel modules in initrams match kernel version
 BASEDIR="/lib/modules/$(uname -r)/kernel/drivers"
@@ -147,11 +149,6 @@ fi
 # need /proc for this ;)
 bench_event "PRESWITCH" "Switching to stage 3.2"
 
-# unmount filesystems
-for mnt in proc sys run ; do
-	busybox umount -f -l "/$mnt" 2>/dev/null
-done
-
 # HACK HACK: Klausurmodus
 if [ "x$SLX_PVS_DEDICATED" = "xyes" ] || [ "x$SLX_PVS_HYBRID" = "xyes" ]; then
 	sed -i '/^SLX_EXAM=/d' "${FUTURE_ROOT}/opt/openslx/config"
@@ -200,6 +197,11 @@ EOF
 	# Link exam.service in sysinit.target
 	ln -s "../exam.service" "${FUTURE_ROOT}/etc/systemd/system/sysinit.target.wants/exam.service"
 fi
+
+# unmount filesystems
+for mnt in run tmp; do
+	busybox umount -f -l "/$mnt" 2>/dev/null
+done
 
 echo "Switching root...."
 echo "$bench_result" > "${FUTURE_ROOT}/opt/openslx/.benchmark"
