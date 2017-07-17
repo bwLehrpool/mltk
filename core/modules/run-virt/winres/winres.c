@@ -887,9 +887,11 @@ static BOOL mountNetworkShare(const netdrive_t *d, BOOL useIp)
 {
 	wchar_t path[BUFLEN] = L"", user[BUFLEN] = L"", pass[BUFLEN] = L"", letter[10] = L"", shortcut[BUFLEN] = L"";
 	int ok = -1;
-	if (useIp && d->pathIp[0] == '\0')
+	if (useIp && (d->pathIp == NULL || d->pathIp[0] == '\0'))
 		return FALSE;
 	const char *uncPath = useIp ? d->pathIp : d->path;
+	if (uncPath == NULL)
+		return FALSE;
 	ok &= MultiByteToWideChar(CP_UTF8, 0, (LPCSTR)uncPath, -1, (LPWSTR)path, BUFLEN) > 0;
 	if (d->letter != NULL) {
 		ok &= MultiByteToWideChar(CP_UTF8, 0, (LPCSTR)d->letter, -1, (LPWSTR)letter, 10) > 0;
