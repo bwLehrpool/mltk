@@ -1,10 +1,10 @@
 #!/bin/sh
 
-rm -- winres.exe
-i686-w64-mingw32-windres -i winres.rc -o resource.res -O coff
-i686-w64-mingw32-gcc -Wall -Wextra -pedantic -Wno-unused-parameter -flto -std=c99 -Os -Wl,--subsystem,windows -o winres.exe winres.c resource.res -lole32 -luuid -lgdi32 -lws2_32 -lshell32 -lmpr -lshlwapi
-rm -- resource.res
-if strip winres.exe; then
+mkdir -p tmp
+rm -- winres.exe tmp/resource.res tmp/winres.debug.exe
+i686-w64-mingw32-windres -i src/winres.rc -o tmp/resource.res -O coff
+i686-w64-mingw32-gcc -Wall -Wextra -pedantic -Wno-unused-parameter -flto -std=c99 -Os -Wl,--subsystem,windows -o tmp/winres.debug.exe src/winres.c tmp/resource.res -lole32 -luuid -lgdi32 -lws2_32 -lshell32 -lmpr -lshlwapi
+if strip -o winres.exe tmp/winres.debug.exe; then
 	echo "Successfully created winres.exe"
 	echo "It has NOT been moved to data/.../openslx.exe"
 else

@@ -16,3 +16,4 @@ rootupper/
 overlay
 var/log
 var/builds
+**/winres/tmp/
