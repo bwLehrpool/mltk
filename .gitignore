@@ -17,3 +17,4 @@ overlay
 var/log
 var/builds
 **/winres/tmp/
+**/winres/winres.exe
