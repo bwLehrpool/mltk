@@ -1,0 +1,8 @@
+#!/bin/bash
+REQUIRED_INSTALLED_PACKAGES="
+	lightdm
+"
+
+REQUIRED_CONTENT_PACKAGES="
+	lightdm
+"
