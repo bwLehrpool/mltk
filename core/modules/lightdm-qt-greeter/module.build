@@ -1,0 +1,34 @@
+#!/bin/bash
+fetch_source() {
+	git clone "$REQUIRED_GIT" "${MODULE_WORK_DIR}/src"
+}
+
+build() {
+	local SRCDIR="${MODULE_WORK_DIR}/src/"
+	local BUILDDIR="${SRCDIR}/build/"
+	local DESTDIR="${MODULE_BUILD_DIR}/opt/openslx/bin"
+
+	# now regular cmake stuff
+	mkdir -p "${BUILDDIR}" || perror "Could not mkdir ${BUILDDIR}!"
+	pushd "${BUILDDIR}" &>/dev/null || perror "Could not cd to ${BUILDDIR}!"
+	pinfo "Running cmake"
+	cmake .. || perror "'cmake ..' failed."
+	pinfo "Running make"
+	make || perror "'make' failed."
+	popd &>/dev/null
+	# "install"
+	mkdir -p "${DESTDIR}" || perror "Could not mkdir ${DESTDIR}!"
+	mv "${BUILDDIR}/qt-lightdm-greeter" "${DESTDIR}"
+	mkdir -p "${MODULE_BUILD_DIR}/usr/share/xgreeters"
+	cp "${SRCDIR}/qt-lightdm-greeter.desktop" "${MODULE_BUILD_DIR}/usr/share/xgreeters"
+
+	COPYLIST="list_dpkg_output"
+	[ -e "$COPYLIST" ] && rm "$COPYLIST"
+	list_packet_files >> "$COPYLIST"
+	tarcopy "$(cat "$COPYLIST" | sort -u)" "${MODULE_BUILD_DIR}"
+}
+
+post_copy() {
+	:
+}
+
