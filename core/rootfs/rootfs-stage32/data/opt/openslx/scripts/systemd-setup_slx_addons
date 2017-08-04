@@ -32,8 +32,9 @@ fi
 
 # read base slx servers from cmdline
 BASE_MOUNT_POINT="/opt/openslx/mnt"
-DOWNLOAD_DEST="/tmp/addons"
-mkdir -p "$DOWNLOAD_DEST" || { echo "Failed to create $DOWNLOAD_DEST"; exit 1; }
+DOWNLOAD_DEST="/run/addons"
+FINAL_DEST="/tmp/addons"
+mkdir -p "$FINAL_DEST" || { echo "Failed to create $FINAL_DEST"; exit 1; }
 
 ######################################################################################
 #
@@ -54,19 +55,27 @@ fi
 
 if [ $# -eq 1 ]; then
 	ADDON="$1"
-
-	# download the addon from the given URL
-	ADDON_TARGET_PATH="${DOWNLOAD_DEST}/$(basename "$ADDON").sqfs"
-	if ! download "${SLX_BASE_PATH}/${ADDON}.sqfs" "${ADDON_TARGET_PATH}"; then
-		slxlog --echo "addon-download" "Download of '${HTTP_BASE_PATH}/${ADDON}.sqfs' failed."
+	# check that is was properly downloaded
+	ADDON_PATH="${DOWNLOAD_DEST}/$(basename $ADDON.sqfs)"
+	if [ ! -f "${ADDON_PATH}" ]; then
+		slxlog --echo "addon-setup" "Addon squashfs not found under: '${ADDON_PATH}'"
 		exit 1
 	fi
+	# do we have tmp? 
+	if mount | grep -q '^/dev/.*on /tmp type'; then
+		# it was there, so move it to /tmp that we should have by now
+		if mv "${ADDON_PATH}" "${FINAL_DEST}/$(basename $ADDON.sqfs)"; then
+			ADDON_PATH="${FINAL_DEST}/$(basename $ADDON.sqfs)"
+		else
+			slxlog --echo "addon-setup" "Failed to move '$ADDON' from $DOWNLOAD_DEST to $FINAL_DEST. Keeping it in RAM"
+		fi
+	fi				
 
 	# now mount it to $BASE_MOUNT_POINT/<addon-name>
 	ADDON_MOUNT_POINT="${BASE_MOUNT_POINT}/$(basename "$ADDON")"
 	mkdir -p "$ADDON_MOUNT_POINT"
-	mount -t squashfs -o ro "$ADDON_TARGET_PATH" "$ADDON_MOUNT_POINT" || \
-		{ slxlog --echo "addon-mount" "Failed to mount $ADDON_TARGET_PATH."; exit 1; }
+	mount -t squashfs -o ro "$ADDON_PATH" "$ADDON_MOUNT_POINT" || \
+		{ slxlog --echo "addon-mount" "Failed to mount $ADDON_PATH."; exit 1; }
 
 	# now append it to /
 	echo "Appending ${ADDON_MOUNT_POINT} to /"

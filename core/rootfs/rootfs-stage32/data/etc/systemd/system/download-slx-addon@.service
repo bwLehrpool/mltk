@@ -1,0 +1,10 @@
+[Unit]
+Description=Download SLX addon %I
+DefaultDependencies=no
+Wants=setup-slx-addon@%i.service
+Before=setup-slx-addon@%i.service
+
+[Service]
+Type=oneshot
+ExecStart=/opt/openslx/scripts/systemd-download_slx_addons %I
+RemainAfterExit=yes

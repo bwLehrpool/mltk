@@ -1,0 +1,62 @@
+#!/bin/bash
+# Needs full bash
+#
+#	Script to be called by systemd
+#
+#	Downloads and appends addons per sqfs/aufs.
+#
+######################################################################################
+#
+#	Two modes for this script:
+#		- without any arguments, it will just go through the list of addons to
+#		  setup as given through the OpenSLX configuration file
+#		- with an argument, it will setup the addon given as $1
+#
+#
+######################################################################################
+
+# read global OpenSLX config
+. /opt/openslx/config || { echo "Could not source config!"; exit 23; }
+
+# source functions.inc for the download function
+. /opt/openslx/inc/functions || { echo "/opt/openslx/inc/functions not found!"; exit 1337; }
+
+# quick fix for the missing FUTURE_ROOT needed by /opt/openslx/etc/functions.inc
+export FUTURE_ROOT="/"
+
+# read openslx config, especially servers given by SLX_KCL_SERVERS and SLX_CONFIG_SERVERS
+if [ -z "${SLX_CONFIG_SERVERS}" ]; then
+	echo "SLX_CONFIG_SERVERS is not set in /opt/openslx/config. Will only try the base servers from the cmdline."
+	#[ -z "${SLX_KCL_SERVERS}" ] && SLX_KCL_SERVERS=$(read_from_cmdline "slxsrv")
+fi
+
+# read base slx servers from cmdline
+BASE_MOUNT_POINT="/opt/openslx/mnt"
+DOWNLOAD_DEST="/run/addons"
+mkdir -p "$DOWNLOAD_DEST" || { echo "Failed to create $DOWNLOAD_DEST"; exit 1; }
+
+######################################################################################
+#
+#				DOWNLOAD ALL ADDONS
+#
+if [ $# -eq 0 ]; then
+	[ -z "${SLX_ADDONS}" ] && { echo "No addons configured. Nothing to do :-)."; exit 0; }
+	for ADDON in ${SLX_ADDONS}; do
+		systemctl start "download-slx-addon@$ADDON.service" &
+	done
+fi
+##
+# DOWNLOAD SINGLE ADDON
+if [ $# -eq 1 ]; then
+	ADDON="$1"
+	ADDON_TARGET_PATH="${DOWNLOAD_DEST}/$(basename "$ADDON").sqfs"
+	if ! download "${SLX_BASE_PATH}/${ADDON}.sqfs" "${ADDON_TARGET_PATH}"; then
+		slxlog --echo "addon-download" "Download of '${HTTP_BASE_PATH}/${ADDON}.sqfs' failed."
+		exit 1
+	fi
+fi
+
+[ $# -gt 1 ] && { echo "$0 needs 0 or 1 arguments! $# given."; exit 1; }
+
+exit 0
+
