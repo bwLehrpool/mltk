@@ -42,7 +42,7 @@ mkdir -p "$DOWNLOAD_DEST" || { echo "Failed to create $DOWNLOAD_DEST"; exit 1; }
 if [ $# -eq 0 ]; then
 	[ -z "${SLX_ADDONS}" ] && { echo "No addons configured. Nothing to do :-)."; exit 0; }
 	for ADDON in ${SLX_ADDONS}; do
-		systemctl start "download-slx-addon@$ADDON.service" &
+		systemctl start "download-slx-addon@$ADDON.service"
 	done
 fi
 ##
