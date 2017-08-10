@@ -109,11 +109,12 @@ echo "HOSTMACADDR='$HOSTMACADDR'" >> "${VMCHOOSER_VIRT_CONF}"
 # If not, or the host's prefix is the last one in the list, use the first one.
 # This lays the groundwork to avoid mac addresses collisions in nested operations.
 MACADDRPREFIX=
-for i in {0..9}; do
-	if [ "x${HOSTMACADDR#00:FF:0$i}" != "x${HOSTMACADDR}" ]; then
+for i in $(seq 0 8); do
+	if [ "x${HOSTMACADDR#00:FF:0$i}" == "x${HOSTMACADDR}" ]; then
 		# current prefix is indeed part of the host's mac address
 		# use the next prefix if != 9
-		[ $i -lt 9 ] && MACADDRPREFIX="00:FF:0$(( i++ ))"
+		MACADDRPREFIX="00:FF:0$(( i + 1 ))"
+		break
 	fi
 done
 # if it is still unset, then either the host's prefix did not match any in the list
