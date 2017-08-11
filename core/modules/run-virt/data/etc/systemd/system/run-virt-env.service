@@ -1,6 +1,8 @@
 [Unit]
 Description=Sets up the virtualization environment
 Before=graphical.target
+Wants=network-dns.target
+After=network-dns.target
 
 [Service]
 Type=oneshot

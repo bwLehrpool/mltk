@@ -61,7 +61,7 @@ chmod a+rwxt /tmp/virt
 #EOF
 
 ################################################################################
-### Determine host's hardware configuration
+echo "Determine host's hardware configuration"
 ################################################################################
 
 # estimate free mem
@@ -150,7 +150,7 @@ echo "SERIAL_PORTS='$(dmesg | grep -Eo 'ttyS[0-9]+' | sed 's,^,/dev/,' | tr '\n'
 modprobe parport_pc
 
 ################################################################################
-### Setup VM networking
+echo "Setup VM networking"
 ################################################################################
 
 # there will be three types of network interfaces for virtual machines available
@@ -177,22 +177,12 @@ ip addr add 192.168.101.1/24 dev nat1
 echo "1" >/proc/sys/net/ipv4/conf/nat1/forwarding
 echo "1" >/proc/sys/net/ipv4/conf/br0/forwarding 2>/dev/null
 # iptables masquerade rule is now inserted by /opt/openslx/iptables/rules.d/50-virt-nat1-masquerading
-### iptables -t nat -A POSTROUTING -o br0 -s 192.168.0.0/16 -j MASQUERADE
-
-for wait in 1 1 2 2 3 end; do
-	[ -n "$SLX_DNS" ] && [ -n "$SLX_NET_SEARCH" ] && break
-	if [ "$wait" == "end" ]; then
-		echo "No DNS config found, using google dns"
-		break
-	fi
-	echo "Waiting for DNS & search-domain config.."
-	sleep "$wait"
-	. /opt/openslx/config
-done
 
 getips () {
-	# Output in one line by using echo without quotes
-	echo $(nslookup "$1" 2>/dev/null | grep -A 3 '^Name:' | grep '^Address .*: ' | awk '{print $3}')
+	if [ -n "$1" ]; then
+		# Output in one line by using echo without quotes
+		echo $(timeout -t 1 nslookup "$1" 2>/dev/null | grep -A 3 '^Name:' | grep '^Address .*: ' | awk '{print $3}')
+	fi
 }
 
 # read the DNS configuration and configure the udhcpd
@@ -220,4 +210,6 @@ udhcpd -S "${DHCP_NAT_CONF}"
 brctl addbr vsw2
 ip link set dev vsw2 up
 echo "1" >/proc/sys/net/ipv4/conf/vsw2/forwarding
+
+exit 0
 
