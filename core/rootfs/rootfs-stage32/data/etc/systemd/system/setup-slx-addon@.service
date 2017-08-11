@@ -1,8 +1,8 @@
 [Unit]
 Description=Setup SLX addon %i
 DefaultDependencies=no
-Wants=tmp.target
-After=tmp.target
+Wants=tmp.target download-slx-addon@%i.service
+After=tmp.target download-slx-addon@%i.service
 
 [Service]
 Type=oneshot

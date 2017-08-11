@@ -1,5 +1,4 @@
-#!/bin/bash
-# Needs full bash
+#!/bin/ash
 #
 #	Script to be called by systemd
 #
@@ -18,18 +17,6 @@
 # read global OpenSLX config
 . /opt/openslx/config || { echo "Could not source config!"; exit 23; }
 
-# source functions.inc for the download function
-. /opt/openslx/inc/functions || { echo "/opt/openslx/inc/functions not found!"; exit 1337; }
-
-# quick fix for the missing FUTURE_ROOT needed by /opt/openslx/etc/functions.inc
-export FUTURE_ROOT="/"
-
-# read openslx config, especially servers given by SLX_KCL_SERVERS and SLX_CONFIG_SERVERS
-if [ -z "${SLX_CONFIG_SERVERS}" ]; then
-	echo "SLX_CONFIG_SERVERS is not set in /opt/openslx/config. Will only try the base servers from the cmdline."
-	#[ -z "${SLX_KCL_SERVERS}" ] && SLX_KCL_SERVERS=$(read_from_cmdline "slxsrv")
-fi
-
 # read base slx servers from cmdline
 BASE_MOUNT_POINT="/opt/openslx/mnt"
 DOWNLOAD_DEST="/run/addons"
@@ -38,14 +25,12 @@ mkdir -p "$FINAL_DEST" || { echo "Failed to create $FINAL_DEST"; exit 1; }
 
 ######################################################################################
 #
-#				NO ARGUMENTS -> LOOP OVER ALL ADDONS
+#				NO ARGUMENTS
 #
 
-if [ $# -eq 0 ]; then
-	[ -z "${SLX_ADDONS}" ] && { echo "No addons configured. Nothing to do :-)."; exit 0; }
-	for ADDON in ${SLX_ADDONS}; do
-		systemctl start "setup-slx-addon@$ADDON" &
-	done
+if [ $# -ne 1 ]; then
+	echo "No addon passed via command line. Pass exactly one addon."
+	exit 1
 fi
 
 ######################################################################################
@@ -53,49 +38,45 @@ fi
 #				WITH ARGUMENTS -> SETUP ADDON
 #
 
-if [ $# -eq 1 ]; then
-	ADDON="$1"
-	# check that is was properly downloaded
-	ADDON_PATH="${DOWNLOAD_DEST}/$(basename $ADDON.sqfs)"
-	if [ ! -f "${ADDON_PATH}" ]; then
-		slxlog --echo "addon-setup" "Addon squashfs not found under: '${ADDON_PATH}'"
-		exit 1
-	fi
-	# do we have tmp? 
-	if mount | grep -q '^/dev/.*on /tmp type'; then
-		# it was there, so move it to /tmp that we should have by now
-		if mv "${ADDON_PATH}" "${FINAL_DEST}/$(basename $ADDON.sqfs)"; then
-			ADDON_PATH="${FINAL_DEST}/$(basename $ADDON.sqfs)"
-		else
-			slxlog --echo "addon-setup" "Failed to move '$ADDON' from $DOWNLOAD_DEST to $FINAL_DEST. Keeping it in RAM"
-		fi
-	fi				
-
-	# now mount it to $BASE_MOUNT_POINT/<addon-name>
-	ADDON_MOUNT_POINT="${BASE_MOUNT_POINT}/$(basename "$ADDON")"
-	mkdir -p "$ADDON_MOUNT_POINT"
-	mount -t squashfs -o ro "$ADDON_PATH" "$ADDON_MOUNT_POINT" || \
-		{ slxlog --echo "addon-mount" "Failed to mount $ADDON_PATH."; exit 1; }
-
-	# now append it to /
-	echo "Appending ${ADDON_MOUNT_POINT} to /"
-	if ! mount -o "remount,ins:1:${ADDON_MOUNT_POINT}=rr" / ; then # ins:2 makes sure the addon is after tmpfs and stage32, but before stage4
-		slxlog --echo "addon-aufs" "Failed to append ${ADDON_MOUNT_POINT} to the aufs. Cleaning up..."
-		umount -l ${ADDON_MOUNT_POINT} || echo "Could not unmount ${ADDON_MOUNT_POINT}!"
-		exit 1
-	fi
-
-	# Run post-hook if available
-	if [ -x "$ADDON_MOUNT_POINT/addon-init" ]; then
-		"$ADDON_MOUNT_POINT/addon-init" || \
-			slxlog --echo "addon-init" "Warning: Could not execute addon-init of $ADDON"
-	fi
-	if ! grep -q '/opt/openslx/mnt/stage4' "/proc/mounts"; then
-		ldconfig 2> /dev/null || ldconfig.real 2> /dev/null
+ADDON="$1"
+# check that is was properly downloaded
+ADDON_PATH="${DOWNLOAD_DEST}/$(basename "$ADDON.sqfs")"
+if [ ! -f "${ADDON_PATH}" ]; then
+	slxlog --echo "addon-setup-fnf" "Addon squashfs not found under: '${ADDON_PATH}'"
+	exit 1
+fi
+# do we have hdd tmp?
+if grep -q '^/dev/\S+\s/tmp' '/proc/mounts'; then
+	# it's there, so move it to /tmp to save some ram
+	if mv -f "${ADDON_PATH}" "${FINAL_DEST}/$(basename $ADDON.sqfs)"; then
+		ADDON_PATH="${FINAL_DEST}/$(basename $ADDON.sqfs)"
+	else
+		slxlog --echo "addon-setup-mv" "Failed to move '$ADDON' from $DOWNLOAD_DEST to $FINAL_DEST. Keeping it in RAM"
 	fi
 fi
 
-[ $# -gt 1 ] && { echo "Error - $0 only takes no or one argument. $# given." && exit 1; }
+# now mount it to $BASE_MOUNT_POINT/<addon-name>
+ADDON_MOUNT_POINT="${BASE_MOUNT_POINT}/$(basename "$ADDON")"
+mkdir -p "$ADDON_MOUNT_POINT"
+mount -t squashfs -o ro "$ADDON_PATH" "$ADDON_MOUNT_POINT" || \
+	{ slxlog --echo "addon-setup-mount" "Failed to mount $ADDON_PATH."; exit 1; }
+
+# now append it to /
+echo "Appending ${ADDON_MOUNT_POINT} to /"
+if ! mount -o "remount,ins:1:${ADDON_MOUNT_POINT}=rr" / ; then # ins:1 makes sure the addon is before stage32, after rw layer
+	slxlog --echo "addon-setup-aufs" "Failed to append ${ADDON_MOUNT_POINT} to the aufs. Cleaning up..."
+	umount -l "${ADDON_MOUNT_POINT}" || echo "Could not unmount ${ADDON_MOUNT_POINT}!"
+	exit 1
+fi
+
+# Run post-hook if available
+if [ -x "$ADDON_MOUNT_POINT/addon-init" ]; then
+	"$ADDON_MOUNT_POINT/addon-init" || \
+		slxlog --echo "addon-setup-init" "Warning: Could not execute addon-init of $ADDON"
+fi
+if ! grep -q -F '/opt/openslx/mnt/stage4' "/proc/mounts"; then
+	ldconfig 2> /dev/null || ldconfig.real 2> /dev/null
+fi
 
 exit 0
 
