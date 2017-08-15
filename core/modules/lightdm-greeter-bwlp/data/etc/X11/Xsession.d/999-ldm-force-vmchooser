@@ -1,0 +1,6 @@
+#!/bin/ash
+
+if [ -x /opt/openslx/bin/vmchooser ]; then
+	set -- /opt/openslx/bin/vmchooser
+fi
+
