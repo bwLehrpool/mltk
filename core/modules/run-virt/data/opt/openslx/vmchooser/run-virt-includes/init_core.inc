@@ -31,5 +31,11 @@ if check_dep mkdir && ! mkdir -p "$TMPDIR"; then
 	EXIT_TYPE="internal" EXIT_REASON="Konnte kein Arbeitsverzeichnis für die VM-Sitzung anlegen." cleanexit 1
 fi
 
+# Determine if /tmp resides on the hdd
+if grep -q -E '^/dev/\S+\s/tmp' '/proc/mounts'; then
+	writelog "Hard drive partition mounted on /tmp"
+	declare -rg TMP_ON_HDD=1
+fi
+
 # Get a unique VM_ID for the current invocation
 get_vm_id
