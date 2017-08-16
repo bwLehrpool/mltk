@@ -30,8 +30,11 @@ if check_dep mkdir && ! mkdir -p "$TMPDIR"; then
 	writelog "Could not create temporary directory '$TMPDIR' for session"
 	EXIT_TYPE="internal" EXIT_REASON="Konnte kein Arbeitsverzeichnis für die VM-Sitzung anlegen." cleanexit 1
 fi
-declare -g TMP_ON_HDD=
+
 # Determine if /tmp resides on the hdd
+# This variable is empty (but set!) if no hard drive was mounted on /tmp
+# else it will be non-empty (check with helper function 'notempty').
+declare -g TMP_ON_HDD=
 if grep -q -E '^/dev/\S+\s/tmp' '/proc/mounts'; then
 	writelog "Hard drive partition mounted on /tmp"
 	TMP_ON_HDD=1
