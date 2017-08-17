@@ -11,9 +11,13 @@ build() {
 
 	tarcopy "$(cat "${COPYLIST}" | sort -u)" "${MODULE_BUILD_DIR}"
 
-	# FIXME get kernel/virt kernel module dir for irqbypass 
+	# add kernel modules
+	cd "${KERNEL_BASE_DIR}"
+	tarcopy "lib/modules/${TARGET_KERNEL_LONG}/kernel/virt" "${MODULE_BUILD_DIR}"
+	cd - &>/dev/null
 }
 
 post_copy() {
+	# qemu-bridge-helper needs suid to be called within run-virt
 	find ${TARGET_BUILD_DIR} -type f -executable -name "*qemu-bridge-helper*" -exec chmod u+s {} \;
 }
