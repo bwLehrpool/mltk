@@ -10,6 +10,8 @@ build() {
 
 
 	tarcopy "$(cat "${COPYLIST}" | sort -u)" "${MODULE_BUILD_DIR}"
+
+	# FIXME get kernel/virt kernel module dir for irqbypass 
 }
 
 post_copy() {
