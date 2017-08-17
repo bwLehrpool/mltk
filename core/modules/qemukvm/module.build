@@ -11,7 +11,8 @@ build() {
 
 	tarcopy "$(cat "${COPYLIST}" | sort -u)" "${MODULE_BUILD_DIR}"
 
-	# add kernel modules
+	# add irqbypass kernel module needed by kvm
+	# TODO this seems to be dependent on the kernel version, so make it check that....
 	cd "${KERNEL_BASE_DIR}"
 	tarcopy "lib/modules/${TARGET_KERNEL_LONG}/kernel/virt" "${MODULE_BUILD_DIR}"
 	cd - &>/dev/null
