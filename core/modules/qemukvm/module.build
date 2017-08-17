@@ -13,5 +13,5 @@ build() {
 }
 
 post_copy() {
-	:
+	find ${TARGET_BUILD_DIR} -type f -executable -name "*qemu-bridge-helper*" -exec chmod u+s {} \;
 }

@@ -1,6 +1,6 @@
 #!/bin/ash
 # -----------------------------------------------------------------------------
-# Copyright (c) 2013 - OpenSLX GmbH
+# Copyright (c) 2017 - OpenSLX GmbH
 #
 # This program/file is free software distributed under the GPL version 2.
 # See http://openslx.org/COPYING
@@ -14,20 +14,13 @@
 #    - This is the preparation script for the configuration of Linux Qemu/KVM.
 ################################################################################
 
-
+# lazy load all kvm related modules
 modprobe kvm
 modprobe kvm_amd
 modprobe kvm_intel
 
-# check for Linux kvm modules (if required at all)
-
-lsmod |grep kvm || slxlog "qemukvm-modules" "Cannot find any kvm kernel module(s)"
-
-cat >> /etc/sudoers << EOF
-# allow to start and stop kvm services / load-/unload kvm modules
-ALL ALL=NOPASSWD: /opt/openslx/sbin/tunctl -t kvmnet*
-ALL ALL=NOPASSWD: /opt/openslx/sbin/tunctl -d kvmnet*
-ALL ALL=NOPASSWD: /opt/openslx/sbin/brctl addif br0 kvmnet*
-ALL ALL=NOPASSWD: /opt/openslx/bin/ip link set dev kvmnet* *
-EOF
+if [ ! -e /dev/kvm ]; then
+	slxlog "qemukvm-modules" "/dev/kvm not found! Missing kvm kernel module(s)?"
+	exit 1
+fi
 
