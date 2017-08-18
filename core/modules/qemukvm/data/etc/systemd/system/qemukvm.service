@@ -1,7 +1,7 @@
 [Unit]
 Description=Sets up the virtual box environment
-Requires=vmchooser.service
-After=vmchooser.service
+Requires=run-virt-env.service
+After=run-virt-env.service
 
 [Service]
 Type=oneshot
