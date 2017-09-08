@@ -2,19 +2,33 @@
 # Include: Setup virtual floppy for drive b: #
 ##############################################
 ## Functions ##
-download_runscript() {
-	declare -g RUNSCRIPT="${TMPDIR}/runscript.tmp"
-	if ! wget -T 6 -O "${RUNSCRIPT}" "${SLX_VMCHOOSER_BASE_URL}/lecture/${IMGUUID}/runscript" 2> /dev/null >&2; then
-		writelog "Downloading runscript from '${SLX_VMCHOOSER_BASE_URL}/lecture/${IMGUUID}/runscript' failed."
-	fi
-	if [ -s "${RUNSCRIPT}" ]; then
-		# there is stuff in it, make it readonly
-		readonly RUNSCRIPT
-	else
-		# zero bytes, log and ignore
-		writelog "Downloaded runscript from '${SLX_VMCHOOSER_BASE_URL}/lecture/${IMGUUID}/runscript' has zero bytes."
-		unset RUNSCRIPT
-	fi
+# download the given resource for this lecture
+# and makes it accessible globally through a
+# variable of the same name. Given name will be
+# put to lower case before wget'ing so its safe
+# to use upper case variables...
+load_dmsd_resource() {
+	[ $# -eq 0 ] && writelog "Missing argument for resource." && return
+	while [ $# -gt 0 ]; do
+		local RESOURCE="$1"
+		declare -g ${RESOURCE}="${TMPDIR}/${RESOURCE}"
+		local RESOURCE_URL="${SLX_VMCHOOSER_BASE_URL}/lecture/${IMGUUID}/$(echo $1 | awk '{print tolower($0)}')"
+		shift
+		echo "DOWNLOAD to ${!RESOURCE}"
+		if ! wget -T 6 -O "${!RESOURCE}" "${RESOURCE_URL}" 2> /dev/null >&2; then
+			writelog "Downloading runscript from '${RESOURCE_URL}' failed."
+			continue
+		fi
+		if [ ! -s "${!RESOURCE}" ]; then
+			# zero bytes, log and ignore
+			writelog "Downloaded resource from '${RESOURCE_URL}' has zero bytes."
+			unset "${RESOURCE}"
+		else
+			# there is stuff in it, make it readonly
+			readonly "${RESOURCE}"
+		fi
+	done
+	return 0
 }
 setup_virtual_floppy() {
 	declare -rg SLX_FLOPPY_IMG="${TMPDIR}/floppy.img"
@@ -62,9 +76,20 @@ setup_virtual_floppy() {
 			echo "${!VAR}" >> "${SHARES}"
 		done
 	fi
-	
+
+	## Network shares
+	# openslx.exe expects network shares line in the following format:
+	#		<path> <letter> <shortcut> <username> <password>
+	# which is coincidentally the one we received from dmsd :)
+	if load_dmsd_resource NETSHARES; then
+		if [ -s "${NETSHARES}" ]; then
+			cat $NETSHARES >> "${SHARES}"
+		fi
+	fi
+
+	## Runscript
 	# Check downloaded runscript, handle extension marker
-	if download_runscript; then
+	if load_dmsd_resource RUNSCRIPT; then
 		local EXT=
 		if [ -s "$RUNSCRIPT" ]; then
 			EXT=$(head -n 1 "$RUNSCRIPT" | grep -o -i '^EXT=.*$' | cut -d '=' -f 2-)
