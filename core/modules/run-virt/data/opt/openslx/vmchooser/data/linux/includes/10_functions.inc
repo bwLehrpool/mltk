@@ -6,11 +6,9 @@ function xor()
 	while [[ "$1" ]]; do
 		local ONE=($(echo "$1" | sed "s/../0x& /g"))
 		local COUNT1=${#RES[@]}
-		if [ $COUNT1 -lt ${#ONE[@]} ]; then
-			COUNT1=${#ONE[@]}
-		fi
+		local COUNT2=${#ONE[@]}
 		for (( i = 0; i < $COUNT1; i++ )); do
-			RES[$i]=$((${ONE[$i]:-0} ^ ${RES[$i]:-0}))
+			RES[$i]=$((${ONE[$(( i % COUNT2 ))]:-0} ^ ${RES[$i]:-0}))
 		done
 		shift 1
 	done
