@@ -43,6 +43,17 @@ run_plugin() {
 	
 	# For debugging
 	cp "$VM_RUN_FILE" "/tmp/vmware-last-config"
+
+	# HACK: make the mouse disappear
+	(
+		local WINDOWS="$(xdotool search --sync --name '.*VMware.*Player.*')"
+		isempty WINDOWS && writelog "Could not find any vmplayer windows."
+		for WINDOW in $WINDOWS; do
+			xdotool set_desktop_for_window $WINDOW 0 || writelog "Could not move vmplayer to desktop 0"
+			xdotool windowactivate --sync $WINDOW || writelog "Could not activate vmplayer window"
+			xdotool key --delay 1000 --clearmodifiers --window $WINDOW ctrl+g || writelog "Could not send ctrl+g to vmplayer window"
+		done
+	) &
 	
 	# HACK: using the modified version of the wrapper script
 	declare -rg VIRTCMD="/opt/openslx/bin/vmplayer"
