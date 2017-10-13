@@ -49,6 +49,8 @@ fi
 # Using the information given by the server in /opt/openslx/config
 . /opt/openslx/config
 
+DNBD3_BGR="false"
+[ -n "${SLX_DNBD3_BGR}" ] && DNBD3_BGR="true"
 DNBD3_PORT=5003
 rm -f "${DNBD3_CONF_DIR}/server.conf"
 # Refer to http://git.openslx.org/dnbd3.git/tree/conf for configuration options
@@ -59,7 +61,7 @@ basePath=${DNBD3_DATA_DIR}
 serverPenalty=100000
 clientPenalty=0
 isProxy=true
-backgroundReplication=false
+backgroundReplication=${DNBD3_BGR}
 removeMissingImages=false
 uplinkTimeout=1250
 clientTimeout=15000
