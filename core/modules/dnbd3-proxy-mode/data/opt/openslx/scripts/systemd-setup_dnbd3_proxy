@@ -50,6 +50,7 @@ fi
 . /opt/openslx/config
 
 DNBD3_PORT=5003
+rm -f "${DNBD3_CONF_DIR}/server.conf"
 # Refer to http://git.openslx.org/dnbd3.git/tree/conf for configuration options
 cat << EOF > "${DNBD3_CONF_DIR}/server.conf"
 [dnbd3]
@@ -81,20 +82,31 @@ add_alt_server() {
 	return 0
 }
 
+rm -f "${DNBD3_CONF_DIR}/alt-servers"
 FOUND_SAT=
 add_alt_server ${SLX_DNBD3_PUBLIC}
 add_alt_server '-' ${SLX_DNBD3_PRIVATE}
 # To this day, only the sat IP is in SLX_KCL_SERVERS afaik
-[ -n "${FOUND_SAT}" ] && add_alt_server ${SLX_KCL_SERVERS}
+[ -z "${FOUND_SAT}" ] && add_alt_server ${SLX_KCL_SERVERS}
 
+chmod a+Xr "${DNBD3_CONF_DIR}"
+
+rm -f "/opt/openslx/iptables/rules.d/99-dnbd3"
 # now create iptables helper rules
 DNBD3_IPTABLES_CONF="/opt/openslx/iptables/rules.d/99-dnbd3"
 echo '#!/bin/ash' >> "${DNBD3_IPTABLES_CONF}"
 for CIDR in ${SLX_DNBD3_WHITELIST}; do
-	echo "iptables -w -w -I ipt-helper-INPUT 1 -i br0 -p tcp -s ${CIDR} --dport ${DNBD3_PORT} -j ACCEPT"
+	echo "iptables -I ipt-helper-INPUT 1 -i br0 -p tcp -s ${CIDR} --dport ${DNBD3_PORT} -j ACCEPT"
 done >> "${DNBD3_IPTABLES_CONF}"
 [ -n "${SLX_DNBD3_WHITELIST}" ] && \
-	echo "iptables -w -w -I ipt-helper-INPUT 1 -i br0 -p tcp --dport ${DNBD3_PORT} -j REJECT" >> "${DNBD3_IPTABLES_CONF}"
+	echo "iptables -I ipt-helper-INPUT 1 -i br0 -p tcp --dport ${DNBD3_PORT} -j REJECT" >> "${DNBD3_IPTABLES_CONF}"
 chmod +x "${DNBD3_IPTABLES_CONF}"
+
+(
+echo "*******************************"
+echo "*** DNBD3 Proxy Modus aktiv ***"
+echo "*******************************"
+) >> /etc/issue
+
 
 return 0
