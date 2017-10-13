@@ -90,8 +90,13 @@ add_alt_server ${SLX_DNBD3_PUBLIC}
 add_alt_server '-' ${SLX_DNBD3_PRIVATE}
 # To this day, only the sat IP is in SLX_KCL_SERVERS afaik
 [ -z "${FOUND_SAT}" ] && add_alt_server ${SLX_KCL_SERVERS}
-
 chmod a+Xr "${DNBD3_CONF_DIR}"
+
+# create rpc.acl to allow the satellite only
+rm -f "${DNBD3_CONF_DIR}/rpc.acl" 
+cat <<EOF > "${DNBD3_CONF_DIR}/rpc.acl"
+${SLX_KCL_SERVERS} STATS CLIENT_LIST IMAGE_LIST
+EOF
 
 rm -f "/opt/openslx/iptables/rules.d/99-dnbd3"
 # now create iptables helper rules
