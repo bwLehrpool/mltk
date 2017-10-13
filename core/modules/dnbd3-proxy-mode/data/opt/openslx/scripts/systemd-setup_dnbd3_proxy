@@ -84,14 +84,17 @@ add_alt_server() {
 FOUND_SAT=
 add_alt_server ${SLX_DNBD3_PUBLIC}
 add_alt_server '-' ${SLX_DNBD3_PRIVATE}
-[ -z "${FOUND_SAT}" ] && add_alt_server ${SLX_KCL_SERVERS}
+# To this day, only the sat IP is in SLX_KCL_SERVERS afaik
+[ -n "${FOUND_SAT}" ] && add_alt_server ${SLX_KCL_SERVERS}
 
 # now create iptables helper rules
 DNBD3_IPTABLES_CONF="/opt/openslx/iptables/rules.d/99-dnbd3"
-ehco '#!/bin/ash' >> "${DNBD3_IPTABLES_CONF}"
+echo '#!/bin/ash' >> "${DNBD3_IPTABLES_CONF}"
 for CIDR in ${SLX_DNBD3_WHITELIST}; do
-	echo -n "iptables -w -w -I ipt-helper-INPUT 1 -i br0"
-	echo "-p tcp \! -s ${CIDR} --dport ${DNBD3_PORT} -j DROP"
+	echo "iptables -w -w -I ipt-helper-INPUT 1 -i br0 -p tcp -s ${CIDR} --dport ${DNBD3_PORT} -j ACCEPT"
 done >> "${DNBD3_IPTABLES_CONF}"
+[ -n "${SLX_DNBD3_WHITELIST}" ] && \
+	echo "iptables -w -w -I ipt-helper-INPUT 1 -i br0 -p tcp --dport ${DNBD3_PORT} -j REJECT" >> "${DNBD3_IPTABLES_CONF}"
+chmod +x "${DNBD3_IPTABLES_CONF}"
 
-# TODO set DNBD3_SERV0R issue warning for ttys
+return 0
