@@ -34,14 +34,15 @@ build() {
 	cmake \
 		-DBUILD_FUSE_CLIENT=ON \
 		-DBUILD_KERNEL_MODULE=ON \
-		-DBUILD_SERVER=OFF \
+		-DBUILD_SERVER=ON \
 		-DBUILD_STRESSTEST=OFF \
 		"$MODULE_WORK_DIR/src/dnbd3" || perror "Could not cmake"
 	make dnbd3-client || perror "Could not make dnbd3-client"
 	make dnbd3-fuse || perror "Could not make dnbd3-fuse"
-	chown root:root "dnbd3-client" "dnbd3-fuse"
+	make dnbd3-server || perror "Could not make dnbd3-server"
+	chown root:root "dnbd3-client" "dnbd3-fuse" "dnbd3-server"
 	chmod +xs "dnbd3-client"
-	chmod +x "dnbd3-fuse"
+	chmod +x "dnbd3-fuse" "dnbd3-server"
 	cd "$MODULE_WORK_DIR"
 
 	COPYLIST="list_dpkg_output"
