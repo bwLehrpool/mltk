@@ -1,0 +1,13 @@
+#!/bin/bash
+fetch_source() {
+	:
+}
+
+build() {
+	:
+}
+
+post_copy() {
+	add_group "dnbd3"
+	USER="dnbd3" GROUP="dnbd3" add_user
+}

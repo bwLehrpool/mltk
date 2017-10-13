@@ -1,0 +1,97 @@
+#!/bin/ash
+# This scripts runs as root and prepares the configuration
+# for the dnbd3 server (...)
+
+# Creates the DNBD3 server configuration under DNBD3_CONF_DIR
+DNBD3_CONF_DIR="/etc/dnbd3"
+if ! mkdir -p "${DNBD3_CONF_DIR}"; then
+	slxlog -s -e "dnbd3-setup" "Failed to create '${DNBD3_CONF_DIR}'."
+	exit 1
+fi
+
+# Checks if the persistent partition (MBR-ID 45 / GPT-LABEL OpenSLX-ID45)
+# is present, exits if not.
+DNBD3_BASE_DIR="/opt/openslx/persistent"
+if grep -q '^/dev/.* '"${DNBD3_BASE_DIR}"' .*rw' /proc/mounts \
+		&& [ -k "${DNBD3_BASE_DIR}/data" ]; then
+	# setup_partitions creates a data folder in ID45
+	DNBD3_BASE_DIR="${DNBD3_BASE_DIR}/data"
+else
+	# try /tmp fallback
+	DNBD3_BASE_DIR="/tmp"
+	if ! grep -q '^/dev/.* '"${DNBD3_BASE_DIR}"' .*rw' /proc/mounts ; then
+		# no sane fallback possible, exit 1
+		slxlog -s -e "dnbd3-setup" \
+			"Neither the persistent part (ID45) nor /tmp are available for dnbd3-server!"
+		exit 1
+	fi
+fi
+# now try to create the actual folder used by the server
+DNBD3_DATA_DIR="${DNBD3_BASE_DIR}/dnbd3"
+if ! mkdir -p "${DNBD3_DATA_DIR}"; then
+	i=0
+	while [ $i -lt 10 ]; do
+		mkdir -p "${DNBD3_BASE_DIR}/dnbd3.$i" && \
+			DNBD3_DATA_DIR="${DNBD3_BASE_DIR}/dnbd3.$i" && break
+	done
+fi
+if [ ! -d "${DNBD3_DATA_DIR}" ]; then
+	slxlog -s -e "dnbd3-setup" "Failed to create '${DNBD3_BASE_DIR}.0-$i]'!"
+	exit 1
+fi
+
+if ! chown dnbd3:dnbd3 "${DNBD3_DATA_DIR}"; then
+	slxlog -s -e "dnbd3-setup" "Failed to chown '${DNBD3_DATA_DIR}' to dnbd3."
+	exit 1
+fi
+
+# Done with sanity checks, now create configs: server.conf & alt-servers
+# Using the information given by the server in /opt/openslx/config
+. /opt/openslx/config
+
+DNBD3_PORT=5003
+# Refer to http://git.openslx.org/dnbd3.git/tree/conf for configuration options
+cat << EOF > "${DNBD3_CONF_DIR}/server.conf"
+[dnbd3]
+listenPort=${DNBD3_PORT}
+basePath=${DNBD3_DATA_DIR}
+serverPenalty=100000
+clientPenalty=0
+isProxy=true
+backgroundReplication=false
+removeMissingImages=false
+uplinkTimeout=1250
+clientTimeout=15000
+
+[logging]
+consoleMask=ERROR WARNING
+EOF
+
+# helper to echo given list of IPs to ${DNBD3_CONF_DIR}/alt-servers
+# optionally takes a single char prefix as first param and
+# adds it to the IP (for private dnbd3 servers)
+# Also sets FOUND_SAT if satellite IP was seen
+add_alt_server() {
+	local PRE=
+	[ "x$1" = "x-" ] && PRE='-' && shift
+	for ALT in $@; do
+		echo "${PRE}${ALT}" >> "${DNBD3_CONF_DIR}/alt-servers"
+		[ "x${ALT}" = "x${SLX_PXE_SERVER_IP}" ] && FOUND_SAT="oui"
+	done
+	return 0
+}
+
+FOUND_SAT=
+add_alt_server ${SLX_DNBD3_PUBLIC}
+add_alt_server '-' ${SLX_DNBD3_PRIVATE}
+[ -z "${FOUND_SAT}" ] && add_alt_server ${SLX_KCL_SERVERS}
+
+# now create iptables helper rules
+DNBD3_IPTABLES_CONF="/opt/openslx/iptables/rules.d/99-dnbd3"
+ehco '#!/bin/ash' >> "${DNBD3_IPTABLES_CONF}"
+for CIDR in ${SLX_DNBD3_WHITELIST}; do
+	echo -n "iptables -w -w -I ipt-helper-INPUT 1 -i br0"
+	echo "-p tcp \! -s ${CIDR} --dport ${DNBD3_PORT} -j DROP"
+done >> "${DNBD3_IPTABLES_CONF}"
+
+# TODO set DNBD3_SERV0R issue warning for ttys
