@@ -106,7 +106,7 @@ for CIDR in ${SLX_DNBD3_WHITELIST}; do
 	echo "iptables -I ipt-helper-INPUT 1 -i br0 -p tcp -s ${CIDR} --dport ${DNBD3_PORT} -j ACCEPT"
 done >> "${DNBD3_IPTABLES_CONF}"
 [ -n "${SLX_DNBD3_WHITELIST}" ] && \
-	echo "iptables -I ipt-helper-INPUT 1 -i br0 -p tcp --dport ${DNBD3_PORT} -j REJECT" >> "${DNBD3_IPTABLES_CONF}"
+	echo "iptables -A ipt-helper-INPUT -i br0 -p tcp --dport ${DNBD3_PORT} -j REJECT" >> "${DNBD3_IPTABLES_CONF}"
 chmod +x "${DNBD3_IPTABLES_CONF}"
 
 (
