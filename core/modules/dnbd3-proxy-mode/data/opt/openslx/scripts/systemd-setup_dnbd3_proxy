@@ -77,7 +77,7 @@ EOF
 add_alt_server() {
 	local PRE=
 	[ "x$1" = "x-" ] && PRE='-' && shift
-	for ALT in $@; do
+	for ALT in "$@"; do
 		echo "${PRE}${ALT}" >> "${DNBD3_CONF_DIR}/alt-servers"
 		[ "x${ALT}" = "x${SLX_PXE_SERVER_IP}" ] && FOUND_SAT="oui"
 	done
@@ -94,9 +94,9 @@ chmod a+Xr "${DNBD3_CONF_DIR}"
 
 # create rpc.acl to allow the satellite only
 rm -f "${DNBD3_CONF_DIR}/rpc.acl" 
-cat <<EOF > "${DNBD3_CONF_DIR}/rpc.acl"
-${SLX_KCL_SERVERS} STATS CLIENT_LIST IMAGE_LIST
-EOF
+for SRV in ${SLX_KCL_SERVERS}; do
+	echo "$SRV STATS CLIENT_LIST IMAGE_LIST" >> "${DNBD3_CONF_DIR}/rpc.acl"
+done
 
 rm -f "/opt/openslx/iptables/rules.d/99-dnbd3"
 # now create iptables helper rules
