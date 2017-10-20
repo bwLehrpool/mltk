@@ -146,13 +146,13 @@ done
 
 # Put detected linux partitions (83) into /etc/fstab with "noauto"
 HAVE_PARTITION_45=no
-for PART_DEV in $(get_all_with_id 83) '/dev/disk/by-partlabel/OpenSLX-ID45'; do
+for PART_DEV in $(get_all_with_id 83); do
 	mkdir -p "/media/${PART_DEV#/dev/*}"
 	echo -e "${PART_DEV}\t/media/${PART_DEV#/dev/*}\tauto\t\tnoauto,noexec\t 0 0" >> "/etc/fstab"
 done
 
 # special partition 45 (persistent scratch) to $MOUNT_POINT_45
-for PART_DEV in $(get_all_with_id 45); do
+for PART_DEV in $(get_all_with_id 45) '/dev/disk/by-partlabel/OpenSLX-ID45'; do
 	mkdir -p "$MOUNT_POINT_45"
 	if ! mount -t auto -o noexec "${PART_DEV}" "$MOUNT_POINT_45"; then
 		format_disk "$PART_DEV" "ext4 xfs jfs ext3" || continue
