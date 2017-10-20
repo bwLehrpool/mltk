@@ -178,17 +178,19 @@ echo "1" >/proc/sys/net/ipv4/conf/nat1/forwarding
 echo "1" >/proc/sys/net/ipv4/conf/br0/forwarding 2>/dev/null
 # iptables masquerade rule is now inserted by /opt/openslx/iptables/rules.d/50-virt-nat1-masquerading
 
+FALLBACK_DOMAIN="virtual.localnet"
+
 getips () {
-	if [ -n "$1" ]; then
-		# Output in one line by using echo without quotes
-		echo $(timeout -t 1 nslookup "$1" 2>/dev/null | grep -A 3 '^Name:' | grep '^Address .*: ' | awk '{print $3}')
-	fi
+	[ -z "$1" ] && return
+	[ "$1" = "$FALLBACK_DOMAIN" ] && return
+	# Output in one line by using echo without quotes
+	echo $(timeout -t 2 nslookup "$1" 2>/dev/null | grep -A 4 '^Name:' | grep -E '^Address\s*[0-9]*: ' | awk -F': ' '{print $2}' | grep -oE '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' | awk '{print $1}')
 }
 
 # read the DNS configuration and configure the udhcpd
 [ -z "${SLX_DNS}" ] && SLX_DNS="8.8.8.8 8.8.4.4"
-[ -z "${SLX_NET_DOMAIN}" ] && SLX_NET_DOMAIN="virtual.site"
-[ -z "${SLX_NET_SEARCH}" ] && SLX_NET_SEARCH="virtual.site"
+[ -z "${SLX_NET_DOMAIN}" ] && SLX_NET_DOMAIN="$FALLBACK_DOMAIN"
+[ -z "${SLX_NET_SEARCH}" ] && SLX_NET_SEARCH="$FALLBACK_DOMAIN"
 # WINS - if not supplied, try to get it from the search base of our ldap config
 if [ -z "${SLX_NET_WINS}" ]; then
 	DC=$(grep -m1 -i '^BASE\s*DC=' "/etc/ldap.conf" | grep -o -i 'DC=.*' | sed -r 's/\s*,\s*DC=/./gI;s/^\s*DC=//I')
