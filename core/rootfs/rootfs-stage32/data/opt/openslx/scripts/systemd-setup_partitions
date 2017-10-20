@@ -146,7 +146,7 @@ done
 
 # Put detected linux partitions (83) into /etc/fstab with "noauto"
 HAVE_PARTITION_45=no
-for PART_DEV in $(get_all_with_id 83); do
+for PART_DEV in $(get_all_with_id 83) '/dev/disk/by-partlabel/OpenSLX-ID45'; do
 	mkdir -p "/media/${PART_DEV#/dev/*}"
 	echo -e "${PART_DEV}\t/media/${PART_DEV#/dev/*}\tauto\t\tnoauto,noexec\t 0 0" >> "/etc/fstab"
 done
