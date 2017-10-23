@@ -41,6 +41,35 @@ for DIR in /tmp/virt /var/log/samba /run/samba; do
 	fi
 done
 
+# check if a fallback share is set as SLX_VM_TMP_SOURCE
+if [ -n "${SLX_VM_TMP_SOURCE}" ]; then
+	LOG=$(mktemp)
+	# use SLX_VM_TMP_TYPE and SLX_VM_TMP_OPTS, if set
+	for TRY in 1 2 3 STOP; do
+		[ "x$TRY" = "xSTOP" ] && break
+		if [ -n "${SLX_VM_TMP_TYPE}" ] && [ -n "${SLX_VM_TMP_OPTS}" ]; then
+			mount -t ${SLX_VM_TMP_TYPE} -o "${SLX_VM_TMP_OPTS}" "${SLX_VM_TMP_SOURCE}" /tmp/virt
+		elif [ -n "${SLX_VM_TMP_TYPE}" ]; then
+			mount -t ${SLX_VM_TMP_TYPE} "${SLX_VM_TMP_SOURCE}" /tmp/virt
+		elif [ -n "${SLX_VM_TMP_OPTS}" ]; then
+			mount -o "${SLX_VM_TMP_OPTS}" "${SLX_VM_TMP_SOURCE}" /tmp/virt
+		else
+			mount "${SLX_VM_TMP_SOURCE}" /tmp/virt
+		fi
+		RET=$?
+		[ "$RET" = "0" ] && break
+		sleep $TRY
+	done > "$LOG" 2>&1
+	if [ "$RET" -ne "0" ]; then
+		if [ -s "$LOG" ]; then
+			slxlog --delete "mount-vm-tmp-fail" "Mounting of '${SLX_VM_TMP_SOURCE}' failed." "$LOG"
+		else
+			slxlog "mount-vm-tmp-fail" "Mounting of '${SLX_VM_TMP_SOURCE}' failed."
+			rm -f -- "$LOG"
+		fi
+	fi
+fi
+
 chmod a+rwxt /tmp/virt
 
 # enable normal users to setup the extended virtual machine redo file space
