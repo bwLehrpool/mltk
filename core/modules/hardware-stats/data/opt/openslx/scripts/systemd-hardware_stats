@@ -76,6 +76,7 @@ if [ "${#BOOTIF}" -ne "20" ]; then
 	fi
 fi
 MAC=${BOOTIF:3}
+echo "Determined MAC=$MAC"
 
 # 2) Get machine UUID, with fallback to MAC address if it fails for some reason, or if the UUID is blacklisted
 UUID=$(cat /etc/system-uuid)
@@ -86,6 +87,7 @@ if [ "${#UUID}" -ne "36" ]; then
 	echo "Determined UUID (${UUID}) has not expected length of 36, falling back to MAC..."
 	UUID="000000000000000-$BOOTIF"
 fi
+echo "UUID=$UUID"
 
 # 3) Uptime in seconds
 UPTIME=$(grep -o -E '^[0-9]+' /proc/uptime)
@@ -105,9 +107,11 @@ fi
 if [ -z "$CPUCORES" ] || [ "$CPUCORES" = "0" ]; then
 	CPUCORES=$(grep -E -e '^core id\s*:' -e '^physical\s*:' /proc/cpuinfo | xargs -l2 echo | sort -u | wc -l)
 fi
+echo "$CPUCORES real cores, $VCORES with HT"
 
 # 5) CPU model name
 CPUMODEL=$(grep -m1 '^model name\s*:' /proc/cpuinfo | sed 's/^model name\s*:\s*//;s/\s\s*/ /g;s/^ //;s/ $//')
+echo "$CPUMODEL"
 
 # 6) RAM
 RAM=$(grep -m1 '^MemTotal:' /proc/meminfo | awk '{print $2}')
@@ -119,11 +123,13 @@ if [ -z "$RAM" ] || [ "$RAM" -lt 500 ]; then
 		RAM=$(( $RAM + $c ))
 	done
 fi
+echo "$RAM MB RAM"
 
 # 7) 64bit virtualization support
 VT="UNSUPPORTED"
 VIRTTYPE=$(grep -m1 '^flags\s*:' /proc/cpuinfo | grep -wo -e svm -e vmx)
 [ -n "$VIRTTYPE" ] && modprobe msr
+echo "Virtualization technology: $VIRTTYPE"
 
 if [ "$VIRTTYPE" = "vmx" ]; then    # intel
 	BIT1=$(rdmsr --bitfield 0:0 0x3a 2>/dev/null || echo "fail")
@@ -145,6 +151,7 @@ elif [ "$VIRTTYPE" = "svm" ]; then  # amd
 		VT="DISABLED"
 	fi
 fi
+echo "$VIRTTYPE is $VT"
 
 # 8) ID44 partition size
 ID44=0
@@ -164,6 +171,7 @@ if [ "$ID44" = 0 ]; then
 	# blockdev reports bytes, convert to MB
 	ID44=$(( $ID44 / 1058576 )) # we'd rather underreport
 fi
+echo "Temp partition: $ID44 MB"
 
 # 9) check smart values
 FDISK=$(mktemp)
@@ -198,6 +206,7 @@ if which smartctl; then
 	done
 	rm -f -- "$FILE"
 fi
+echo "SMART: $OVERALL - $REALLOC reallocated, $PENDING pending"
 
 # A) Read system model and manufacturer
 dmidec() {
@@ -222,6 +231,7 @@ MODEL="$HW_MODEL"
 if [ "$HW_MANUF" != "Unknown" ]; then
 	MODEL="$MODEL ($HW_MANUF)"
 fi
+echo "System model: $MODEL"
 
 # n) Dump raw data to a file
 DATAFILE=$(mktemp)
@@ -250,6 +260,7 @@ fi
 cat >> "$DATAFILE" <<-EOF
 #########################
 EOF
+echo "Created report file"
 
 [ -n "$ALLSMART" ] && rm -f -- "$ALLSMART"
 
@@ -276,26 +287,30 @@ HORST
 
 # Fire away
 for DELAY in 1 1 0; do
+	echo "Submitting to $SLX_REMOTE_LOG"
 	if curl --data-urlencode "type=~poweron" --data-urlencode "uuid=$UUID" --data-urlencode "macaddr=$MAC" \
 			--data-urlencode "uptime=$UPTIME" --data-urlencode "realcores=$CPUCORES" --data-urlencode "mbram=$RAM" \
 			--data-urlencode "kvmstate=$VT" --data-urlencode "cpumodel=$CPUMODEL" --data-urlencode "id44mb=$ID44" \
 			--data-urlencode "badsectors=$BADSECTORS" --data-urlencode "systemmodel=$MODEL" \
 			--data-urlencode "data@$DATAFILE" "$SLX_REMOTE_LOG" | grep -q "RESULT=0"; then
+		echo "Success"
 		rm -f -- "$DATAFILE"
 		START=$(( $RANDOM % 5 ))
+		DELAY=$(( $RANDOM % 15 ))
 		cat > "/etc/cron.d/usage_stats" <<-EOF
 			# Update usage statistics on server
 
 			SHELL=/bin/sh
 			PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin:/opt/openslx/sbin:/opt/openslx/bin
 
-			${START}-59/5 *   * * *    root    /opt/openslx/scripts/cron-system_usage_update
+			${START}-59/5 *   * * *    root    sleep ${DELAY}; /opt/openslx/scripts/cron-system_usage_update
 		EOF
 		touch "/etc/cron.d" # Sometimes, aufs doesn't update the mtime of dirs when creating files,
 		# so cron would not rescan the cron directory
 		cleanup
 		exit 0
 	fi
+	echo "Failed..."
 	sleep "$DELAY"
 done
 
