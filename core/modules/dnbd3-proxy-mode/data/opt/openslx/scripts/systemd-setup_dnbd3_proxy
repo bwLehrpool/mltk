@@ -67,8 +67,10 @@ uplinkTimeout=1250
 clientTimeout=15000
 
 [logging]
-consoleMask=ERROR WARNING
+consoleMask=ERROR WARNING MINOR INFO
 EOF
+
+MY_IPS=$(ip a | grep '^\s*inet\s' | awk '{print $2}')
 
 # helper to echo given list of IPs to ${DNBD3_CONF_DIR}/alt-servers
 # optionally takes a single char prefix as first param and
@@ -78,6 +80,9 @@ add_alt_server() {
 	local PRE=
 	[ "x$1" = "x-" ] && PRE='-' && shift
 	for ALT in "$@"; do
+		for ip in $MY_IPS; do
+			[ "x$ALT" = "x${ip%/*}" ] && return 0 # Ignore self
+		done
 		echo "${PRE}${ALT}" >> "${DNBD3_CONF_DIR}/alt-servers"
 		[ "x${ALT}" = "x${SLX_PXE_SERVER_IP}" ] && FOUND_SAT="oui"
 	done
@@ -93,7 +98,7 @@ add_alt_server '-' ${SLX_DNBD3_PRIVATE}
 chmod a+Xr "${DNBD3_CONF_DIR}"
 
 # create rpc.acl to allow the satellite only
-rm -f "${DNBD3_CONF_DIR}/rpc.acl" 
+rm -f "${DNBD3_CONF_DIR}/rpc.acl"
 for SRV in ${SLX_KCL_SERVERS}; do
 	echo "$SRV STATS CLIENT_LIST IMAGE_LIST" >> "${DNBD3_CONF_DIR}/rpc.acl"
 done
