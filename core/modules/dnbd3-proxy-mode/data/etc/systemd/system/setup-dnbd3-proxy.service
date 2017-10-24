@@ -1,6 +1,6 @@
 [Unit]
 Description=Setup DNBD3 proxy server
-After=network.target multi-user.target
+After=setup-partitions.service
 
 [Service]
 Type=oneshot

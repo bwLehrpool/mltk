@@ -1,6 +1,6 @@
 [Unit]
 Description=DNBD3 proxy server
-After=network.target multi-user.target setup-dnbd3-proxy.service
+After=setup-dnbd3-proxy.service
 
 [Service]
 User=dnbd3
