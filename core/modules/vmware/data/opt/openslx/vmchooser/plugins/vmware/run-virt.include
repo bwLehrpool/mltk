@@ -51,7 +51,7 @@ run_plugin() {
 		for WINDOW in $WINDOWS; do
 			xdotool set_desktop_for_window $WINDOW 0 || writelog "Could not move vmplayer to desktop 0"
 			xdotool windowactivate --sync $WINDOW || writelog "Could not activate vmplayer window"
-			xdotool key --delay 1000 --clearmodifiers --window $WINDOW ctrl+g || writelog "Could not send ctrl+g to vmplayer window"
+			xdotool key --delay 2000 --clearmodifiers ctrl+g || writelog "Could not send ctrl+g to vmplayer window"
 		done
 	) &
 	
