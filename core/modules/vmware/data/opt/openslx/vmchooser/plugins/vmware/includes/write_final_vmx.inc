@@ -50,8 +50,8 @@ setup_floppies() {
 
 	# Floppies:
 	cat >> "${TMPCONFIG}" <<-HEREEND
-	floppy0.present = "$FLOPPY0"
-	floppy0.startConnected = "FALSE"
+	floppy0.present = "TRUE"
+	floppy0.startConnected = "$FLOPPY0"
 	floppy0.autodetect = "TRUE"
 	floppy0.fileName = "auto detect"
 	floppy1.present = "$SLX_FLOPPY"
