@@ -29,7 +29,7 @@ bench_event "KERNEL" "Kernel initialized"
 # the link had to be dropped, to prevent bugs in the stage32.
 busybox mount -n -t devtmpfs -o 'rw,relatime,nosuid,noexec,mode=0755' initramfsdevs /dev
 busybox mount -n -t tmpfs -o 'mode=755,size=10m' run "/run"
-busybox mount -n -t tmpfs -o 'mode=755,size=10m' temp "/tmp"
+busybox mount -n -t tmpfs -o 'mode=755,size=50m' temp "/tmp"
 
 # IMPORTANT - check if kernel modules in initrams match kernel version
 BASEDIR="/lib/modules/$(uname -r)/kernel/drivers"
