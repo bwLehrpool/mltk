@@ -112,8 +112,8 @@ case "$1" in
 		# Search domains
 		if [ -n "$search" ]; then
 			printf -v CONF "${CONF}search $search\n"
-		elif [ -n "$SLX_SEARCH_DOMAIN" ]; then
-			printf -v CONF "${CONF}search $SLX_SEARCH_DOMAIN\n"
+		elif [ -n "$SLX_NET_SEARCH" ]; then
+			printf -v CONF "${CONF}search $SLX_NET_SEARCH\n"
 		elif [ -n "$SLX_NET_DOMAIN" ]; then
 			printf -v CONF "${CONF}search $SLX_NET_DOMAIN\n"
 		fi

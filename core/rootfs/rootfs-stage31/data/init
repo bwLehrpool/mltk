@@ -140,9 +140,6 @@ if [ ! -z "$SLX_DEMO_PASS" ]; then
 	sed -i "s#^demo:[^:]*:#demo:$SLX_DEMO_PASS:#" "${FUTURE_ROOT}/etc/shadow"
 fi
 
-# one last debug shell if activated
-[ $DEBUG -ge 1 ] && drop_shell "Requested Debug Shell: before switch_root."
-
 # Activate debug shell after switchroot?
 [ -n "$DEBUG_SHELL" ] && ln -s "../debug-shell.service" "${FUTURE_ROOT}/usr/lib/systemd/system/sysinit.target.wants/debug-shell.service"
 
@@ -197,6 +194,21 @@ EOF
 	# Link exam.service in sysinit.target
 	ln -s "../exam.service" "${FUTURE_ROOT}/etc/systemd/system/sysinit.target.wants/exam.service"
 fi
+
+# Merge freshly generated config to stage32
+if [ -s "/run/config" ]; then
+	line=
+	while read -r line || [ -n "$line" ]; do
+		[ "${line:0:1}" = '#' ] && continue
+		var="${line%%=*}"
+		[ "$var" = "$line" ] && continue
+		sed -i -r "s/^(${var}=)/#<s31>\\1/" "${FUTURE_ROOT}/opt/openslx/config"
+	done < "/run/config"
+	cat "/run/config" >> "${FUTURE_ROOT}/opt/openslx/config"
+fi
+
+# one last debug shell if activated
+[ $DEBUG -ge 1 ] && drop_shell "Requested Debug Shell: before switch_root."
 
 # unmount filesystems
 for mnt in run tmp; do

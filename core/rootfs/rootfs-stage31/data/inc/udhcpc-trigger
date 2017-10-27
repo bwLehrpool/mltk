@@ -62,13 +62,24 @@ if [ -z "$domain" ]; then
 	fqdn=$(timeout -t 3 nslookup "$ip" | grep -E "^Address +[0-9]+: +$ip " | head -n 1 | awk '{print $4}')
 	domain="${fqdn#*.}"
 fi
+# Add domain to list of search domains if not in there yet
+if [ -n "$domain" ] && [ -n "$search" ]; then
+	FOUND=no
+	for sd in $search; do
+		[ "x$sd" = "x$domain" ] && FOUND=yes
+	done
+	[ "$FOUND" = "no" ] && search="$domain $search"
+elif [ -n "$domain" ]; then
+	search="$domain"
+fi
+# Write out
 if [ -n "$domain" ]; then
 	echo "domain $domain" >> "/etc/resolv.conf"
+	echo "SLX_NET_DOMAIN='$domain'" >> /run/config
 fi
 if [ -n "$search" ]; then
 	echo "search $search" >> "/etc/resolv.conf"
-elif [ -n "$domain" ]; then
-	echo "search $domain" >> "/etc/resolv.conf"
+	echo "SLX_NET_SEARCH='$search'" >> /run/config
 fi
 
 

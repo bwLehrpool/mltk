@@ -48,7 +48,6 @@ FUTURE_ROOT="/mnt"
 
 cp /etc/hostname /etc/hosts   "${FUTURE_ROOT}/etc/"
 cp /etc/resolv.conf   "${FUTURE_ROOT}/opt/openslx/"
-[ -s "/run/config" ] && cat "/run/config" >> "${FUTURE_ROOT}/opt/openslx/config"
 
 # if booting with splash, suppress kernel output in stage32
 if [ $SPLASH -eq 1 ]; then
