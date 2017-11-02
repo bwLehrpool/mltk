@@ -2,47 +2,62 @@
 # This scripts runs as root and prepares the configuration
 # for the dnbd3 server (...)
 
+ERRLOG="/run/dnbd3-proxy.err"
+
+rm -- "$ERRLOG"
+
+errormsg () {
+	echo "$@" >> "$ERRLOG"
+	slxlog -s -e "dnbd3-setup" "$@"
+}
+
+# Get size of disk/device at given path, in kb
+disksize () {
+	df -k "$1" | tail -n 1 | awk '{print $2}'
+}
+
 # Creates the DNBD3 server configuration under DNBD3_CONF_DIR
-DNBD3_CONF_DIR="/etc/dnbd3"
+DNBD3_CONF_DIR="/etc/dnbd3-server"
 if ! mkdir -p "${DNBD3_CONF_DIR}"; then
-	slxlog -s -e "dnbd3-setup" "Failed to create '${DNBD3_CONF_DIR}'."
-	exit 1
+	errormsg "Failed to create '${DNBD3_CONF_DIR}'."
 fi
 
 # Checks if the persistent partition (MBR-ID 45 / GPT-LABEL OpenSLX-ID45)
-# is present, exits if not.
+# is present, fallback to /tmp
 DNBD3_BASE_DIR="/opt/openslx/persistent"
-if grep -q '^/dev/.* '"${DNBD3_BASE_DIR}"' .*rw' /proc/mounts \
-		&& [ -k "${DNBD3_BASE_DIR}/data" ]; then
+if grep -q "^/dev/.* ${DNBD3_BASE_DIR} .*rw" /proc/mounts \
+		&& [ -k "${DNBD3_BASE_DIR}/data" ] \
+		&& [ "$(disksize "${DNBD3_BASE_DIR}/data")" -gt 40000000 ]; then
 	# setup_partitions creates a data folder in ID45
 	DNBD3_BASE_DIR="${DNBD3_BASE_DIR}/data"
 else
 	# try /tmp fallback
 	DNBD3_BASE_DIR="/tmp"
-	if ! grep -q '^/dev/.* '"${DNBD3_BASE_DIR}"' .*rw' /proc/mounts ; then
-		# no sane fallback possible, exit 1
-		slxlog -s -e "dnbd3-setup" \
-			"Neither the persistent part (ID45) nor /tmp are available for dnbd3-server!"
-		exit 1
+	if ! grep -q '^/dev/.* '"${DNBD3_BASE_DIR}"' .*rw' /proc/mounts \
+		|| [ "$(disksize "${DNBD3_BASE_DIR}")" -lt 40000000 ]; then
+		# no sane fallback possible
+		errormsg "Neither a persistent part (ID45) nor /tmp (ID44) are available, or they are < 40GB"
 	fi
 fi
 # now try to create the actual folder used by the server
 DNBD3_DATA_DIR="${DNBD3_BASE_DIR}/dnbd3"
 if ! mkdir -p "${DNBD3_DATA_DIR}"; then
-	i=0
-	while [ $i -lt 10 ]; do
-		mkdir -p "${DNBD3_BASE_DIR}/dnbd3.$i" && \
-			DNBD3_DATA_DIR="${DNBD3_BASE_DIR}/dnbd3.$i" && break
+	for i in 0 1 2 3 4 5 $RANDOM $RANDOM; do
+		if mkdir -p "${DNBD3_BASE_DIR}/dnbd3.$i"; then
+			DNBD3_DATA_DIR="${DNBD3_BASE_DIR}/dnbd3.$i"
+			break
+		fi
 	done
 fi
-if [ ! -d "${DNBD3_DATA_DIR}" ]; then
-	slxlog -s -e "dnbd3-setup" "Failed to create '${DNBD3_BASE_DIR}.0-$i]'!"
-	exit 1
-fi
 
-if ! chown dnbd3:dnbd3 "${DNBD3_DATA_DIR}"; then
-	slxlog -s -e "dnbd3-setup" "Failed to chown '${DNBD3_DATA_DIR}' to dnbd3."
-	exit 1
+if [ ! -d "${DNBD3_DATA_DIR}" ]; then
+	errormsg "Failed to create '${DNBD3_BASE_DIR}(.[0-$i])'"
+fi
+if ! chown -R dnbd3:dnbd3 "${DNBD3_DATA_DIR}"; then
+	errormsg "Failed to chown '${DNBD3_DATA_DIR}' to dnbd3."
+fi
+if ! chmod -R go-w,u+rwX "${DNBD3_DATA_DIR}"; then
+	errormsg "Failed to chmod '${DNBD3_DATA_DIR}' to dnbd3."
 fi
 
 # Done with sanity checks, now create configs: server.conf & alt-servers
@@ -63,7 +78,7 @@ clientPenalty=0
 isProxy=true
 backgroundReplication=${DNBD3_BGR}
 removeMissingImages=false
-uplinkTimeout=1250
+uplinkTimeout=5000
 clientTimeout=15000
 
 [logging]
@@ -95,7 +110,7 @@ add_alt_server ${SLX_DNBD3_PUBLIC}
 add_alt_server '-' ${SLX_DNBD3_PRIVATE}
 # To this day, only the sat IP is in SLX_KCL_SERVERS afaik
 [ -z "${FOUND_SAT}" ] && add_alt_server ${SLX_KCL_SERVERS}
-chmod a+Xr "${DNBD3_CONF_DIR}"
+chmod -R a+Xr "${DNBD3_CONF_DIR}"
 
 # create rpc.acl to allow the satellite only
 rm -f "${DNBD3_CONF_DIR}/rpc.acl"
@@ -115,10 +130,25 @@ done >> "${DNBD3_IPTABLES_CONF}"
 chmod +x "${DNBD3_IPTABLES_CONF}"
 
 (
-echo "*******************************"
-echo "*** DNBD3 Proxy Modus aktiv ***"
-echo "*******************************"
-) >> /etc/issue
+	echo "*******************"
+	echo "*** DNBD3 Proxy ***"
+	echo "*******************"
+) | tee -a "/etc/issue" >> "/opt/openslx/etc/issue.template"
 
+M=$(( RANDOM % 60 ))
+H=$(( RANDOM % 5 ))
+if [ -s "$ERRLOG" ]; then
+	W="*"
+else
+	W="0"
+fi
+cat > "/etc/cron.d/dnbd3-reboot" <<EOF
+# OpenSLX: Reboot proxy at night
+SHELL=/bin/ash
+PATH=/usr/sbin:/usr/bin:/sbin:/bin:/opt/openslx/sbin:/opt/openslx/bin
 
-return 0
+$M $H	* * $W	root	reboot
+EOF
+
+exit 0
+

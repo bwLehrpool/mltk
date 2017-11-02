@@ -4,7 +4,7 @@ After=setup-dnbd3-proxy.service
 
 [Service]
 User=dnbd3
-ExecStart=/opt/openslx/bin/dnbd3-server -n -c /etc/dnbd3
+ExecStart=/opt/openslx/scripts/systemd-dnbd3_proxy
 Restart=always
-RestartSec=1
+RestartSec=3
 TimeoutStopSec=10

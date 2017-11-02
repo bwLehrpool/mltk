@@ -1,0 +1,12 @@
+#!/bin/ash
+
+ERRLOG="/run/dnbd3-proxy.err"
+
+if [ -s "$ERRLOG" ]; then
+	exec $(which dnbd3-server) -n --errormsg "$(cat "$ERRLOG")"
+fi
+
+exec $(which dnbd3-server) -n -c /etc/dnbd3-server
+
+exit 1
+
