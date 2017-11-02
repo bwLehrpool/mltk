@@ -29,5 +29,5 @@ TCPKeepAlive yes
 AcceptEnv LANG LC_*
 UsePAM yes
 UseDNS no
-PidFile /run/sshd_mgmt/pid
+PidFile /run/sshd_mgmt.pid
 AllowUsers root

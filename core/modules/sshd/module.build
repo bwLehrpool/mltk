@@ -17,5 +17,5 @@ build() {
 post_copy() {
 	mkdir -p "${TARGET_BUILD_DIR}/var/lib/empty" # suse
 
-	chmod go-rwx "${TARGET_BUILD_DIR}/etc/ssh/"* # no space, " before *
+	chmod go-rwX "${TARGET_BUILD_DIR}/etc/ssh"
 }
