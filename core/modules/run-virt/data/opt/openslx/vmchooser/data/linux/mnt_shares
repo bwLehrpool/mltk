@@ -54,7 +54,7 @@ case "$REMAPMODE" in
 		exit 0
 		;;
 	*)	logger "openslx sharemapper: unknown remapMode in $SLXCONFIGFILE; doing nothing end exiting with error."
-		exit 1.
+		exit 1
 		;;
 esac
 
