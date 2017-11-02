@@ -1,7 +1,8 @@
 [Unit]
-Description=Setup DNBD3 proxy server
+Description=DNBD3 proxy server config generator
 After=setup-partitions.service
 
 [Service]
 Type=oneshot
 ExecStart=/opt/openslx/scripts/systemd-setup_dnbd3_proxy
+RemainAfterExit=true

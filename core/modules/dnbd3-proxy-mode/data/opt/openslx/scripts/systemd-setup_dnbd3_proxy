@@ -4,7 +4,7 @@
 
 ERRLOG="/run/dnbd3-proxy.err"
 
-rm -- "$ERRLOG"
+[ -s "$ERRLOG" ] && exit 0 # already ran and failed, don't do it again
 
 errormsg () {
 	echo "$@" >> "$ERRLOG"
@@ -66,8 +66,10 @@ fi
 
 DNBD3_BGR="false"
 DNBD3_LOOKUP="false"
+DNBD3_SERVER_PENALTY=2000 # no BGR = don't like other servers connecting so much
 if [ -n "${SLX_DNBD3_BGR}" ]; then
 	DNBD3_BGR="true"
+	DNBD3_SERVER_PENALTY=500 # much better
 	# Only do chained lookup of image if we're a global proxy with BGR
 	[ -z "${SLX_DNBD3_WHITELIST}" ] && DNBD3_LOOKUP="true"
 fi
@@ -78,7 +80,7 @@ cat << EOF > "${DNBD3_CONF_DIR}/server.conf"
 [dnbd3]
 listenPort=${DNBD3_PORT}
 basePath=${DNBD3_DATA_DIR}
-serverPenalty=100000
+serverPenalty=${DNBD3_SERVER_PENALTY}
 clientPenalty=0
 isProxy=true
 backgroundReplication=${DNBD3_BGR}
@@ -126,14 +128,16 @@ done
 
 rm -f "/opt/openslx/iptables/rules.d/99-dnbd3"
 # now create iptables helper rules
-DNBD3_IPTABLES_CONF="/opt/openslx/iptables/rules.d/99-dnbd3"
-echo '#!/bin/ash' >> "${DNBD3_IPTABLES_CONF}"
-for CIDR in ${SLX_DNBD3_WHITELIST}; do
-	echo "iptables -I ipt-helper-INPUT 1 -i br0 -p tcp -s ${CIDR} --dport ${DNBD3_PORT} -j ACCEPT"
-done >> "${DNBD3_IPTABLES_CONF}"
-[ -n "${SLX_DNBD3_WHITELIST}" ] && \
+if [ -n "${SLX_DNBD3_WHITELIST}" ]; then
+	DNBD3_IPTABLES_CONF="$(mktemp)"
+	echo '#!/bin/ash' > "${DNBD3_IPTABLES_CONF}"
+	for CIDR in ${SLX_DNBD3_WHITELIST}; do
+		echo "iptables -I ipt-helper-INPUT 1 -i br0 -p tcp -s ${CIDR} --dport ${DNBD3_PORT} -j ACCEPT"
+	done >> "${DNBD3_IPTABLES_CONF}"
 	echo "iptables -A ipt-helper-INPUT -i br0 -p tcp --dport ${DNBD3_PORT} -j REJECT" >> "${DNBD3_IPTABLES_CONF}"
-chmod +x "${DNBD3_IPTABLES_CONF}"
+	chmod +x "${DNBD3_IPTABLES_CONF}"
+	mv -f "$DNBD3_IPTABLES_CONF" "/opt/openslx/iptables/rules.d/99-dnbd3"
+fi
 
 (
 	echo "*******************"
@@ -141,6 +145,8 @@ chmod +x "${DNBD3_IPTABLES_CONF}"
 	echo "*******************"
 ) | tee -a "/etc/issue" >> "/opt/openslx/etc/issue.template"
 
+# Create a crontab for rebooting - if everything is fine, once a weekend,
+# on failure, reboot every night, hoping things will get better (...)
 M=$(( RANDOM % 60 ))
 H=$(( RANDOM % 5 ))
 if [ -s "$ERRLOG" ]; then

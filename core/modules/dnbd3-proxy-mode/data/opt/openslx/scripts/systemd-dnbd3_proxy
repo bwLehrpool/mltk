@@ -3,7 +3,7 @@
 ERRLOG="/run/dnbd3-proxy.err"
 
 if [ -s "$ERRLOG" ]; then
-	exec $(which dnbd3-server) -n --errormsg "$(cat "$ERRLOG")"
+	exec $(which dnbd3-server) -n --errormsg "$(cat "$ERRLOG")" -c /etc/dnbd3-server
 fi
 
 exec $(which dnbd3-server) -n -c /etc/dnbd3-server
