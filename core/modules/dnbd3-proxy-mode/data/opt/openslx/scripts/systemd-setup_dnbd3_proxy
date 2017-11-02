@@ -65,7 +65,12 @@ fi
 . /opt/openslx/config
 
 DNBD3_BGR="false"
-[ -n "${SLX_DNBD3_BGR}" ] && DNBD3_BGR="true"
+DNBD3_LOOKUP="false"
+if [ -n "${SLX_DNBD3_BGR}" ]; then
+	DNBD3_BGR="true"
+	# Only do chained lookup of image if we're a global proxy with BGR
+	[ -z "${SLX_DNBD3_WHITELIST}" ] && DNBD3_LOOKUP="true"
+fi
 DNBD3_PORT=5003
 rm -f "${DNBD3_CONF_DIR}/server.conf"
 # Refer to http://git.openslx.org/dnbd3.git/tree/conf for configuration options
@@ -77,6 +82,7 @@ serverPenalty=100000
 clientPenalty=0
 isProxy=true
 backgroundReplication=${DNBD3_BGR}
+lookupMissingForProxy=${DNBD3_LOOKUP}
 removeMissingImages=false
 uplinkTimeout=5000
 clientTimeout=15000
