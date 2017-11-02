@@ -1,0 +1,9 @@
+[Unit]
+Description=Management OpenSSH Daemon for OpenSLX
+
+[Service]
+ExecStartPre=-/opt/openslx/scripts/systemd-mgmt_sshd_fw
+ExecStart=/usr/sbin/sshd -D -f /etc/ssh/mgmt/sshd_config
+ExecReload=/bin/kill -HUP $MAINPID
+KillMode=process
+Restart=always

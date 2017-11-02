@@ -1,0 +1,12 @@
+#!/bin/bash
+fetch_source() {
+	:
+}
+
+build() {
+	:
+}
+
+post_copy() {
+	chmod -R go-rwX "${TARGET_BUILD_DIR}/etc/ssh"
+}

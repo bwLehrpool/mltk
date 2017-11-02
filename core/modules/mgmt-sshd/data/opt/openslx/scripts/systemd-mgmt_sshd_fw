@@ -1,0 +1,17 @@
+#!/bin/ash
+
+FILE="/opt/openslx/iptables/rules.d/99-mgmt-sshd"
+[ -s "$FILE" ] && exit 0
+
+. /opt/openslx/config
+
+(
+	for ip in $SLX_KCL_SERVERS; do
+		echo "iptables -I ipt-helper-INPUT 1 -s $ip -p tcp --dport 9922 -j ACCEPT"
+	done
+	echo "iptables -A ipt-helper-INPUT -p tcp --dport 9922 -j REJECT"
+) > "$FILE"
+chmod +x "$FILE"
+
+exit 0
+
