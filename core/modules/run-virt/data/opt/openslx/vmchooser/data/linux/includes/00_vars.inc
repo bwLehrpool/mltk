@@ -21,8 +21,8 @@ SCHLUESSEL=$(head -n 1 "$CONFIGFILE" | cut -f 4 -d$'\t')
 GLOBALDOMAINUSER=$(head -n 1 "$CONFIGFILE" | cut -f 5 -d$'\t')
 GLOBALUSER=$(echo "$GLOBALDOMAINUSER" | cut -d '\' -f 2)
 
-REMAPMODE=$(grep 'remapMode=' "$SLXCONFIGFILE" | cut -d '=' -f 2)
-CREATEMISSING=$(grep 'createMissingRemap=' "$SLXCONFIGFILE" | cut -d '=' -f 2)
+REMAPMODE=$(grep '^remapMode=' "$SLXCONFIGFILE" | cut -d '=' -f 2)
+CREATEMISSING=$(grep '^createMissingRemap=' "$SLXCONFIGFILE" | cut -d '=' -f 2)
 
 MOUNTOPTSCIFS="-v -t cifs -o uid=$(id --user "$LOCALUSER"),gid=$(id --group "$LOCALUSER"),forceuid,forcegid,file_mode=0700,dir_mode=0700,nobrl,noacl"
 MOUNTOPTSNFS="-v -t nfs4 -o rw,nosuid,nodev,nolock,intr,hard,sloppy"
