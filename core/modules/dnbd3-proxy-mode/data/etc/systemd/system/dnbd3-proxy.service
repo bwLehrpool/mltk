@@ -8,3 +8,4 @@ ExecStart=/opt/openslx/scripts/systemd-dnbd3_proxy
 Restart=always
 RestartSec=3
 TimeoutStopSec=10
+LimitNOFILE=65536
