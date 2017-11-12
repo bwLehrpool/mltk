@@ -1,7 +1,7 @@
 [Unit]
 Description=Gather statistics about this machine and send to boot server
 DefaultDependencies=no
-After=tmp.target
+After=tmp.target mount-vm-store.service
 Wants=tmp.target
 
 [Service]

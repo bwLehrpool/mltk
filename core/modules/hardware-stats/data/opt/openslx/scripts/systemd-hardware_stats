@@ -285,6 +285,46 @@ HW_CORES='${CPUCORES}'
 HW_THREADS='${VCORES}'
 HORST
 
+# Build warning logfile (for lightdm)
+buildlogfile() {
+	. /run/hwinfo
+	exec 4> /run/hw-warnings.log
+	CONTACT_RZ=
+	if [ "$HW_KVM" = "DISABLED" ]; then
+		echo "ff0000" "* 64Bit-Gast-Support (VT-x oder AMD-V) ist im BIOS deaktiviert. 64Bit VMs können nicht gestartet werden." >&4
+		CONTACT_RZ=jau
+	elif [ "$HW_KVM" = "UNSUPPORTED" ]; then
+		echo "000000" "* CPU hat keinen 64Bit-Gast-Support (VT-x oder AMD-V). 64Bit VMs können nicht gestartet werden." >&4
+	fi
+	if [ -n "$HW_MBRAM" ] && [ "$HW_MBRAM" -lt 3400 ]; then
+		local GB=$(( ( HW_MBRAM + 300 ) / 1024 ))
+		echo "000000" "* Dieser PC hat wenig RAM (${GB}GB). Die Leistung von VM-Sitzungen wird nicht optimal sein." >&4
+	fi
+	if [ "$HW_ID44" = "0" ]; then
+		echo "000000" "* Keine ID44-Partition gefunden. VMs bekommen wenig RAM zugewiesen." >&4
+		if [ "$HW_HDDCOUNT" = "0" ]; then
+			echo "000000" "  Keine Festplatte erkannt; eine Festplatte wird empfohlen, wenn Sie VMs nutzen wollen." >&4
+		elif [ -n "$HW_HDDCOUNT" ]; then
+			CONTACT_RZ=klar
+		fi
+		if [ -n "$HW_MBRAM" ] && [ "$HW_MBRAM" -lt 4500 ]; then
+			echo "ff0000" "  Da der PC wenig RAM hat, ist die Einrichtung einer ID44-Partition dringend zu empfehlen." >&4
+		fi
+	elif [ -n "$HW_ID44" ] && [ "$HW_ID44" -lt 10000 ]; then
+		echo "000000" "* Die ID44-Partition ist sehr klein. VM-Sitzungen könnten nach einiger Zeit aus Speichermangel abstürzen." >&4
+		CONTACT_RZ=fjeden
+	fi
+	if [ -n "$SLX_VM_NFS" ] && ! systemctl status mount-vm-store >/dev/null; then
+		echo "ff0000" "* Der VM-Store konnte nicht eingehängt werden. VMs können nicht gestartet werden." >&4
+		echo "ff0000" "  Versuchen Sie das Problem zu lösen, indem Sie den Computer neu starten." >&4
+	fi
+	if [ -n "$CONTACT_RZ" ]; then
+		echo "000000" " -- " >&4
+		echo "000000" " -- Wenden Sie sich ggf. an den bwLehrpool-Support Ihres Rechenzentrums -- " >&4
+}
+
+buildlogfile &
+
 # Fire away
 for DELAY in 1 1 0; do
 	echo "Submitting to $SLX_REMOTE_LOG"
