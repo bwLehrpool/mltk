@@ -8,5 +8,5 @@ build() {
 }
 
 post_copy() {
-	chmod -R go-rwX "${TARGET_BUILD_DIR}/etc/ssh"
+	chmod -R go-rwx "${TARGET_BUILD_DIR}/etc/ssh"
 }
