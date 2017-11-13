@@ -1,0 +1,7 @@
+#!/bin/bash
+REQUIRED_INSTALLED_PACKAGES="
+	udisks2
+"
+REQUIRED_CONTENT_PACKAGES="
+	udisks2
+"
