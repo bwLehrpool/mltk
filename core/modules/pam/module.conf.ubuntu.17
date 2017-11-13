@@ -1,0 +1,45 @@
+#!/bin/bash
+# TODO fix and re-add ncp support !
+REQUIRED_INSTALLED_PACKAGES="
+	libpam-ldap
+	libpam-cap
+	libnss-ldapd
+	krb5-user
+	krb5-config
+	libpam-krb5
+	libssl-dev
+	ldap-utils
+	libnfsidmap2
+	nfs-common
+	libpam0g-dev
+	cifs-utils
+"
+REQUIRED_CONTENT_PACKAGES="
+	libpam0g
+	libpam-modules
+	libpam-modules-bin
+	libpam-cap
+	libldap-2.4-2
+	libpam-ldap
+	libnss-ldapd
+	krb5-user
+	krb5-config
+	libpam-krb5
+	ldap-utils
+	libnfsidmap2
+	nfs-common
+	cifs-utils
+	keyutils
+"
+REQUIRED_BINARIES+="
+	mount.cifs
+"
+REQUIRED_DIRECTORIES+="
+	$SYS_PAM_MODULES_PATH
+	/lib
+	/usr/lib
+"
+REQUIRED_SYSTEM_FILES+="
+	/etc/pam.conf
+	/etc/default/locale
+"
