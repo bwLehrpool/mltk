@@ -321,6 +321,7 @@ buildlogfile() {
 	if [ -n "$CONTACT_RZ" ]; then
 		echo "000000" " -- " >&4
 		echo "000000" " -- Wenden Sie sich ggf. an den bwLehrpool-Support Ihres Rechenzentrums -- " >&4
+	fi
 }
 
 buildlogfile &
