@@ -1,11 +1,1 @@
-[Unit]
-Description=LightDM Display Manager
-Requires=dev-tty7.device
-After=dev-tty7.device systemd-user-sessions.service
-
-[Service]
-ExecStart=/usr/sbin/lightdm
-Restart=always
-
-[Install]
-WantedBy=graphical.target
+lightdm.service
