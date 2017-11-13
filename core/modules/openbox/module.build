@@ -16,7 +16,6 @@ build() {
 }
 
 post_copy() {
-	[ ! -d "$TARGET_BUILD_DIR/etc/pango" ] && mkdir -p "$TARGET_BUILD_DIR/etc/pango"
 
 	# little Workaround, as under e.g. 64bit Suse the binary is called
 	# pango-querymodules-64, not pango-querymodules.
@@ -30,8 +29,12 @@ post_copy() {
 		if [[ "$ERR" -eq 0 ]]; then
 			PANGO_QUERYMODULES_ARCH=pango-querymodules-64
 		else
-			perror "Could not find either pango-querymodules or pango-querymodules-64!"
+			pwarning "Could not find either pango-querymodules or pango-querymodules-64!"
+			pwarning "Newer pango versions (1.37) deprecated this tool. Most likely all is fine."
+			return 0
 		fi
 	fi
+
+	[ ! -d "$TARGET_BUILD_DIR/etc/pango" ] && mkdir -p "$TARGET_BUILD_DIR/etc/pango"
 	$PANGO_QUERYMODULES_ARCH > "$TARGET_BUILD_DIR/etc/pango/pango.modules"
 }
