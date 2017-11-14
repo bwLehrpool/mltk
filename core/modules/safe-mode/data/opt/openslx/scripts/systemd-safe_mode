@@ -19,6 +19,17 @@ disable_magic_keys() {
 	echo 0 > /proc/sys/kernel/sysrq
 }
 
+change_loginscreen() {
+	local CF="/etc/lightdm/qt-lightdm-greeter.conf"
+	sed -r -i 's/#[a-fA-F0-9]{6}/#757575/g' "/opt/openslx/lightdm/bwlp-banner.svg"
+	sed -r -i '/^greeter-background/d' "$CF"
+	echo "greeter-background-gradient=f9a72b ffffff" >> "$CF"
+}
+
 disable_tty_switch
 disable_openbox_menu
 disable_magic_keys
+change_loginscreen
+
+exit 0
+

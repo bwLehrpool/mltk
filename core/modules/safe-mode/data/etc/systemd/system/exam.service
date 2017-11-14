@@ -1,6 +1,7 @@
 [Unit]
 Description=Sets up safe mode (no magic keys, no tty switch, no openbox menu)
 DefaultDependencies=no
+Before=graphical.target display-manager.target
 
 [Service]
 Type=oneshot

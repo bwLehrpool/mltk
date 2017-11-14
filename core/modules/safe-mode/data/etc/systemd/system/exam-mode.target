@@ -1,0 +1,4 @@
+[Unit]
+Description=bwLehrpool Klausurmodus
+Requires=multi-user.target
+After=multi-user.target
