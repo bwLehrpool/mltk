@@ -9,5 +9,7 @@ xset -dpms
 
 openbox &
 
-exec slxbrowser --insecure --fullscreen "$SLX_BROWSER_URL"
+[ -n "$SLX_BROWSER_INSECURE" ] && SLX_BROWSER_INSECURE="--insecure"
+
+exec slxbrowser $SLX_BROWSER_INSECURE --fullscreen "$SLX_BROWSER_URL"
 
