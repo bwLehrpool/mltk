@@ -149,6 +149,7 @@ if [ ${#OUTPUTNAMES[@]} -eq 2 ]; then
     # Finally, if the EDID is present, apply a proper resolution.
     # Find out whether the beamer transmits reliable EDID data.
     # The data in xrandr should be reliable if the EDID is present.
+    SUCCESS=
     if <<<"$XRANDRV"  grep -Pzo \
       "\n${OUTPUTNAMES[$BEAMER]}\N*\n(\s+\N*\n)+" \
       | grep EDID > /dev/null ; then
@@ -169,6 +170,7 @@ if [ ${#OUTPUTNAMES[@]} -eq 2 ]; then
         --same-as "${OUTPUTNAMES[$((1-$BEAMER))]}"
       then
         echo "Applied optimal resolution successfully."
+        SUCCESS=1
       fi
 
     elif [[ -f "$CONFIGFILE" ]]; then
@@ -179,7 +181,7 @@ if [ ${#OUTPUTNAMES[@]} -eq 2 ]; then
       . /opt/openslx/config
 
       # Try to get a probed mode
-      PROBEDMODE=$( <<<"$CONFIGFILE"  grep "^\s*$SLX_PXE_CLIENT_IP" | cut -d '=' -f2 )
+      PROBEDMODE=$( <"$CONFIGFILE"  grep "^\\s*${SLX_PXE_CLIENT_IP}" | cut -d '=' -f2 )
 
       # If a probed mode was found, ..
       if [[ -n "$PROBEDMODE" ]]; then
@@ -192,18 +194,26 @@ if [ ${#OUTPUTNAMES[@]} -eq 2 ]; then
           --same-as "${OUTPUTNAMES[$((1-$BEAMER))]}"
         then
           echo "Applied probed mode successfully."
+          SUCCESS=1
         fi
       else
         echo -e "\e[31mERROR: Beamer provides no EDID and no probed mode given in $CONFIGFILE.\e[0m"
       fi
-    else
+    fi
+    if [ -z "$SUCCESS" ]; then
       # Apply a fallback mode
-      echo -e "\e[31mERROR: Beamer provides no EDID and no config file found in $CONFIGFILE. Falling back to 1024x768.\e[0m"
-      xrandr \
-        --output "${OUTPUTNAMES[$((1-$BEAMER))]}" --mode "1024x768" \
-        --primary \
-        --output "${OUTPUTNAMES[$BEAMER]}" --mode "1024x768" \
-        --same-as "${OUTPUTNAMES[$((1-$BEAMER))]}"
+      # Maybe the screen has EDID, use its preferred resolution
+      OPTIMALRES=$( <<<"$XRANDRV"  grep -Pzo "\n${OUTPUTNAMES[$((1-$BEAMER))]}\N*\n(\s+\N*\n)+" \
+        | grep preferred | awk '{print $1}' )
+      for res in "$OPTIMALRES" "1280x768"; do
+        [ -z "$res" ] && continue
+        echo -e "\e[31mERROR: Beamer provides no EDID and no config found in $CONFIGFILE. Falling back to ${OPTIMALRES}.\e[0m"
+        xrandr \
+          --output "${OUTPUTNAMES[$((1-$BEAMER))]}" --mode "$res" \
+          --primary \
+          --output "${OUTPUTNAMES[$BEAMER]}" --mode "$res" \
+          --same-as "${OUTPUTNAMES[$((1-$BEAMER))]}" && break
+      done
     fi
   else
     # In case of two monitors just sort the outputs lexicographically and apply
