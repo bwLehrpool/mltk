@@ -1,0 +1,18 @@
+#!/bin/ash
+
+. /opt/openslx/config
+
+GUESTDIR="/opt/openslx/lightdm/autologin.d"
+if [ -d "$GUESTDIR" ]; then
+	for file in $GUESTDIR/*; do
+		if [ -s "$file" ]; then
+			. "$file" || slxlog "xsession-autologin" "Could not source $file" "$file"
+		fi
+	done
+fi
+
+
+# Normal session mode
+exec "$@"
+exit 0
+

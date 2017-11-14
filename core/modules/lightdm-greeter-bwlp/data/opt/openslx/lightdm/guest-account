@@ -1,0 +1,5 @@
+#!/bin/ash
+# Run as root, intended to setup the guest account
+# and echo its name at the end.
+# we use the existing demo user, so not much to do
+echo "demo"
