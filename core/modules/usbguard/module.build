@@ -1,0 +1,35 @@
+fetch_source() {
+	[ -d "${MODULE_WORK_DIR}/src/.git" ] && return 0
+	rm -rf -- "${MODULE_WORK_DIR}/src"
+	download_untar "${REQUIRED_LIBSODIUM_URL}" "src/libsodium/"
+	git clone --depth 1 "${REQUIRED_GIT}" "${MODULE_WORK_DIR}/src/usbguard" || perror "Could not clone git to ${MODULE_WORK_DIR}/src/usbguard"
+	cd "${MODULE_WORK_DIR}/src/usbguard"
+	git checkout "${REQUIRED_COMMIT}" || perror "Could not switch to required commit"
+	cd - &>/dev/null
+}
+
+build() {
+	# copy REQUIRED_CONTENT_PACKAGES to mltk/tmp/work/<module>/build/
+	#COPYLIST="list_dpkg_output"
+	#[ -e "$COPYLIST" ] && rm "$COPYLIST"
+	#list_packet_files >> "$COPYLIST"
+	#tarcopy "$(cat "$COPYLIST" | sort -u)" "${MODULE_BUILD_DIR}"
+	# Compile libsodium
+	cd "${MODULE_WORK_DIR}/src/libsodium/${REQUIRED_LIBSODIUM_UNTAR_NAME}" || perror "Could not cd to '${MODULE_WORK_DIR}/src/libsodium'. Did download_untar in fetch_source work?"
+	./configure || perror "configure failed"
+	make || perror "Could not compile libsodium using 'make'"
+	DESTDIR="${MODULE_BUILD_DIR}" make install || perror "libsodium: make install failed"
+	# Compile usbguard
+	cd "${MODULE_WORK_DIR}/src/usbguard" || perror "Could not cd to '${MODULE_WORK_DIR}/src/usbguard'. Did fetch_source work?"
+	./autogen.sh || perror "./autogen.sh failed"
+	./configure --with-bundled-catch --with-bundled-pegtl sodium_CFLAGS="-I${MODULE_BUILD_DIR}/usr/local/include/" sodium_LIBS="-L${MODULE_BUILD_DIR}/usr/local/lib/ -lsodium" || perror "./configure failed"
+	#./configure --with-bundled-catch --with-bundled-pegtl PKG_CONFIG_PATH=/root/mltk/tmp/work/usbguard/build/libsodium/usr/local/lib/pkgconfig || perror "configure failed"
+	make || perror "Could not compile usbguard using 'make'."
+	# make install:
+	DESTDIR="${MODULE_BUILD_DIR}" make install || perror "usbguard: make install failed"
+}
+
+post_copy() {
+	:
+}
+

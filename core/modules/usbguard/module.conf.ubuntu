@@ -1,0 +1,23 @@
+REQUIRED_INSTALLED_PACKAGES="
+	asciidoctor
+	autoconf
+	automake
+	libtool
+	g++
+	git
+	libudev-dev
+	libqb-dev
+	libcap-ng-dev
+	libseccomp-dev
+	libprotobuf-dev
+	protobuf-compiler
+	libdbus-1-dev
+	libdbus-glib-1-dev
+	xsltproc
+	libxml2-utils
+	libpolkit-gobject-1-dev
+"
+
+REQUIRED_CONTENT_PACKAGES="
+
+"

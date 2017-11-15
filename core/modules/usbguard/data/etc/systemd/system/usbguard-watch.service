@@ -1,0 +1,11 @@
+[Unit]
+Description=USBGuard collect usb Daemon
+After=usbguard-daemon.service
+
+[Service]
+ExecStart=/usr/local/bin/usbguard watch -e /usr/local/etc/usbguard/sendUSBInfo.sh
+Type=simple
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

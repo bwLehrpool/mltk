@@ -1,0 +1,11 @@
+[Unit]
+Description=USBGuard Services Daemon
+After=systemd-user-sessions.service
+
+[Service]
+ExecStart=/usr/local/sbin/usbguard-daemon -c /usr/local/etc/usbguard/usbguard-daemon.conf
+Type=simple
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
