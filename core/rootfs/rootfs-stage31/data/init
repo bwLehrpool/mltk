@@ -143,56 +143,14 @@ fi
 # Activate debug shell after switchroot?
 [ -n "$DEBUG_SHELL" ] && ln -s "../debug-shell.service" "${FUTURE_ROOT}/usr/lib/systemd/system/sysinit.target.wants/debug-shell.service"
 
-# need /proc for this ;)
-bench_event "PRESWITCH" "Switching to stage 3.2"
-
-# HACK HACK: Klausurmodus
-if [ "x$SLX_PVS_DEDICATED" = "xyes" ] || [ "x$SLX_PVS_HYBRID" = "xyes" ]; then
-	sed -i '/^SLX_EXAM=/d' "${FUTURE_ROOT}/opt/openslx/config"
-	SLX_EXAM=
-fi
-# Putting this here as we're hopefully moving to the all new dracut solution soon
-# so there's no reason to make it pretty now
-
-# Auto login to demo user requested?
-if [ -n "$SLX_AUTOLOGIN" ] || [ -z "$SLX_EXAM" -a -n "$SLX_AUTOSTART_UUID" ]; then
-	# Enable KDM autologin for demo user
-	sed -i '/^AutoLoginDelay=/d;/^AutoLoginUser=/d;s/^AutoLoginEnable=.*$/AutoLoginEnable=true\nAutoLoginUser=demo\nAutoLoginDelay=0/' "${FUTURE_ROOT}/etc/kde4/kdm/kdmrc"
-fi
-
 # Exam mode
 if [ -n "$SLX_EXAM" ]; then
-	# Visual: Make kdm all orange
-	sed -i 's/#e3e4e9/#f9a72b/g' "${FUTURE_ROOT}/usr/share/desktop/themes/kdm/bwlehrpool/theme.xml"
-	# Logo gray like main runner
-	sed -r -i 's/#[a-fA-F0-9]{6}/#757575/g' "${FUTURE_ROOT}/usr/share/desktop/themes/kdm/bwlehrpool/bwLehrpool.svg"
 	# Visual: Move splash screen to upper left corner
 	if [ -e "/etc/splash.ppm.gz" ]; then
 		fbsplash -b -s "/etc/splash.ppm.gz" &
 	elif [ -e "/etc/splash.ppm" ]; then
 		fbsplash -b -s "/etc/splash.ppm" &
 	fi
-	# Visual: ssh banner
-	echo "+ - - - - KLAUSURMODUS AKTIV - - - - +" >> "${FUTURE_ROOT}/etc/issue.net"
-	echo "++++++++++++++++++++++++++++++++++++++" >> "${FUTURE_ROOT}/etc/issue.net"
-	# Disable ctrl-alt-delete
-	rm -- "${FUTURE_ROOT}/usr/lib/systemd/system/ctrl-alt-del.target"
-	# No idleaction
-	rm -- "${FUTURE_ROOT}/etc/cron.d/openslx-idleaction"
-	# Ignore everything but power button
-	cat > "${FUTURE_ROOT}/etc/systemd/logind.conf" <<EOF
-[Login]
-NAutoVTs=0
-ReserveVT=0
-KillUserProcesses=no
-HandlePowerKey=poweroff
-HandleSuspendKey=ignore
-HandleHibernateKey=ignore
-HandleLidSwitch=ignore
-IdleAction=ignore
-EOF
-	# Link exam.service in sysinit.target
-	ln -s "../exam.service" "${FUTURE_ROOT}/etc/systemd/system/sysinit.target.wants/exam.service"
 fi
 
 # Merge freshly generated config to stage32
@@ -209,6 +167,9 @@ fi
 
 # one last debug shell if activated
 [ $DEBUG -ge 1 ] && drop_shell "Requested Debug Shell: before switch_root."
+
+# need /proc for this ;)
+bench_event "PRESWITCH" "Switching to stage 3.2"
 
 # unmount filesystems
 for mnt in run tmp; do

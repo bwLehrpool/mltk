@@ -26,10 +26,40 @@ change_loginscreen() {
 	echo "greeter-background-gradient=f9a72b ffffff" >> "$CF"
 }
 
+systemd_config() {
+	# Disable ctrl-alt-delete
+	rm -- "/usr/lib/systemd/system/ctrl-alt-del.target"
+	# No idleaction
+	rm -- "/etc/cron.d/openslx-idleaction"
+	# Ignore everything but power button, no VTs
+	cat > "${FUTURE_ROOT}/etc/systemd/logind.conf" <<EOF
+[Login]
+NAutoVTs=0
+ReserveVT=0
+KillUserProcesses=no
+HandlePowerKey=poweroff
+HandleSuspendKey=ignore
+HandleHibernateKey=ignore
+HandleLidSwitch=ignore
+IdleAction=ignore
+EOF
+	# reload
+	systemd daemon-reload
+	systemctl restart systemd-logind
+}
+
+ssh_banner() {
+	# Visual: ssh banner
+	echo "+ - - - - KLAUSURMODUS AKTIV - - - - +" >> "/etc/issue.net"
+	echo "++++++++++++++++++++++++++++++++++++++" >> "/etc/issue.net"
+}
+
 disable_tty_switch
 disable_openbox_menu
 disable_magic_keys
 change_loginscreen
+systemd_config
+ssh_banner
 
 exit 0
 
