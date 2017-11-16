@@ -18,7 +18,7 @@ activate_qt() {
 		local QTS="$(echo "$QT_CANDIDATES" | wc -w)"
 		if [ "$QTS" -eq 1 ]; then
 			# we found it, lets activate it and hope for the best
-			ln -sf "/usr/share/qtchooser/$QT_CANDIDATES" "/usr/share/qtchooser/default.conf" \
+			ln -sf "$QT_CANDIDATES" "/usr/share/qtchooser/default.conf" \
 					|| perror "Could not link 'default.conf' to '/usr/share/qtchooser/$QT_CANDIDATES'"
 		elif [ "$QTS" -eq 0 ]; then
 			perror "No qt ${QT_VERSION} config found in /usr/share/qtchooser"
