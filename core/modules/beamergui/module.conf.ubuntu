@@ -1,9 +1,8 @@
 #!/bin/bash
 REQUIRED_INSTALLED_PACKAGES="
-libqt4-dev
-libxrandr-dev
+	libqt5gui5
+	libxrandr-dev
 "
 REQUIRED_CONTENT_PACKAGES="
-libqt4-dev
-libxrandr-dev
+	libxrandr-dev
 "

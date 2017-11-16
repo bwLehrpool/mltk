@@ -1,5 +1,5 @@
 #!/bin/bash
 REQUIRED_INSTALLED_PACKAGES="	
-				cmake
-				libqt4-dev
+	cmake
+	libqt5gui5
 "

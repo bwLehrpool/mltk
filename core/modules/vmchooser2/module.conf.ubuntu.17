@@ -2,5 +2,6 @@
 REQUIRED_INSTALLED_PACKAGES="	
 	cmake
 	libqt5gui5
-	qttools5-dev
+	libqt5x11extras5-dev
+	qttools5-dev-tools
 "
