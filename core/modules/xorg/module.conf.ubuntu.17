@@ -12,9 +12,12 @@ REQUIRED_INSTALLED_PACKAGES="
 			x11-xserver-utils
 			x11-utils
 			xdotool
+			libinput10
+			libwacom2
 			xserver-xorg-input-evdev$UBUNTU_XORG_PKG_SUFFIX
 			xserver-xorg-input-synaptics$UBUNTU_XORG_PKG_SUFFIX
 			xserver-xorg-input-wacom$UBUNTU_XORG_PKG_SUFFIX
+			xserver-xorg-input-libinput$UBUNTU_XORG_PKG_SUFFIX
 			xserver-xorg-video-ati$UBUNTU_XORG_PKG_SUFFIX
 			xserver-xorg-video-fbdev$UBUNTU_XORG_PKG_SUFFIX
 			xserver-xorg-video-intel$UBUNTU_XORG_PKG_SUFFIX
@@ -38,6 +41,7 @@ REQUIRED_CONTENT_PACKAGES="
 			x11-utils
 			xdotool
 			xserver-xorg-input-evdev$UBUNTU_XORG_PKG_SUFFIX
+			xserver-xorg-input-libinput$UBUNTU_XORG_PKG_SUFFIX
 			xserver-xorg-input-synaptics$UBUNTU_XORG_PKG_SUFFIX
 			xserver-xorg-input-wacom$UBUNTU_XORG_PKG_SUFFIX
 			xserver-xorg-video-ati$UBUNTU_XORG_PKG_SUFFIX
