@@ -37,6 +37,7 @@ fetch_source() {
 }
 
 build() {
+	local KMOD SHORT PATCH MIN_KERN MAX_KERN
 	[ -z "$VMWARE_BUNDLE_FILE" ] && VMWARE_BUNDLE_FILE=$(basename "$(find "${MODULE_WORK_DIR}/src" -iname "vmware-*" | head -n 1)")
 	local DELETE_FILES=$(for LINE in $REQUIRED_VMWARE_DELETIONS;do echo "rm -rf -- $LINE"; done)
 
@@ -50,7 +51,23 @@ build() {
 
 	# prepare the build directory with the files needed during the chroot
 	cp "${MODULE_WORK_DIR}/src/$VMWARE_BUNDLE_FILE" "${MODULE_BUILD_DIR}/$VMWARE_BUNDLE_FILE"
-	cp -r "${MODULE_DIR}/patches" "${MODULE_BUILD_DIR}"
+	# copy required patches
+	mkdir -p "${MODULE_BUILD_DIR}/patches"
+	for PATCH in $(find "${MODULE_DIR}/patches/" -name "*__*__*.patch"); do
+		parse_patch_name "$PATCH"
+		[ -z "${MIN_KERN}" -o -z "${MAX_KERN}" ] && perror "Could not parse patch filename"
+		if version_lt "$TARGET_KERNEL_SHORT" "$MIN_KERN" || version_gt "$TARGET_KERNEL_SHORT" "$MAX_KERN"; then
+			pinfo "*NOT* applying $PATCH (min=$MIN_KERN max=$MAX_KERN cmp=$TARGET_KERNEL_SHORT)"
+			continue # Not suitable for our kernel
+		fi
+		if version_lt "$OFFICIAL_VERSION" "$MIN_VMWARE" || version_gt "$OFFICIAL_VERSION" "$MAX_VMWARE"; then
+			pinfo "*NOT* applying $PATCH (min=$MIN_VMWARE max=$MAX_VMWARE cmp=$OFFICIAL_VERSION)"
+			continue # Not suitable for our kernel
+		fi
+		pinfo "Kernel: Applying $PATCH (min=$MIN_KERN max=$MAX_KERN cmp=$TARGET_KERNEL_SHORT)"
+		pinfo "VMware: Applying $PATCH (min=$MIN_VMWARE max=$MAX_VMWARE cmp=$OFFICIAL_VERSION)"
+		cp "$PATCH" "${MODULE_BUILD_DIR}/patches/" || perror "Could not copy patch $PATCH to $MODULE_BUILD_DIR/patches"
+	done
 
 	# sanity check to see if KERNEL_HEADERS_DIR is set and exists
 	[ -z "${KERNEL_HEADERS_DIR}" -o ! -e "${KERNEL_HEADERS_DIR}" ] && perror "KERNEL_HEADERS_DIR ('"${KERNEL_HEADERS_DIR}"') not found. Was the kernel module built?"
@@ -58,54 +75,42 @@ build() {
 	# build in two steps, to be able to use mltk function while patching modules
 	pinfo "Installing vmware per chroot..."
 	chroot_run "${MODULE_BUILD_DIR}" <<-EOF
+		perror() {
+			echo "[ERROR ERROR] " "$@" >&6
+			exit 1
+		}
 		# PS1='\[\e[1;33m\](chroot) \u@\h:\w\$ \[\e[1;32m\]' /bin/bash -norc	# un-comment for debugging within chroot
 		$DELETE_FILES
 		yes | sh /"${VMWARE_BUNDLE_FILE}" --eulas-agreed --console --required
-	EOF
-	# check if we need to patch modules
-	cd "${MODULE_BUILD_DIR}/usr/lib/vmware/modules/source" \
-		|| perror "Could not cd to '${MODULE_BUILD_DIR}/usr/lib/vmware/modules/source'"
-
-	local KMOD SHORT PATCH MIN_KERN MAX_KERN
-	for KMOD in *.tar; do
-		SHORT="${KMOD%%.tar}"
-		[ -e ".${SHORT}.patched" ] && continue
-		for PATCH in $(find "${MODULE_DIR}/patches/" -name "${SHORT}__*__*.patch"); do
-			parse_patch_name "$PATCH"
-			[ -z "${MIN_KERN}" -o -z "${MAX_KERN}" ] && perror "Could not parse patch filename"
-			if version_lt "$TARGET_KERNEL_SHORT" "$MIN_KERN" || version_gt "$TARGET_KERNEL_SHORT" "$MAX_KERN"; then
-				pinfo "*NOT* applying $PATCH (min=$MIN_KERN max=$MAX_KERN cmp=$TARGET_KERNEL_SHORT)"
-				continue # Not suitable for our kernel
-			fi
-			if version_lt "$OFFICIAL_VERSION" "$MIN_VMWARE" || version_gt "$OFFICIAL_VERSION" "$MAX_VMWARE"; then
-				pinfo "*NOT* applying $PATCH (min=$MIN_VMWARE max=$MAX_VMWARE cmp=$OFFICIAL_VERSION)"
-				continue # Not suitable for our kernel
-			fi
-			pinfo "Kernel: Applying $PATCH (min=$MIN_KERN max=$MAX_KERN cmp=$TARGET_KERNEL_SHORT)"
-			pinfo "VMware: Applying $PATCH (min=$MIN_VMWARE max=$MAX_VMWARE cmp=$OFFICIAL_VERSION)"
-			[ ! -d "${SHORT}-only" ] && tar xf "$KMOD"
-			[ ! -d "${SHORT}-only" ] && perror "untar of $KMOD failed."
-			cd "${SHORT}-only" || perror "Where is ${SHORT}-only?"
-			if ! patch -p1 < "$PATCH"; then
+		set -x
+		# Patch kernel modules
+		# check if we need to patch modules
+		cd "/usr/lib/vmware/modules/source" \
+			|| perror "Could not cd to '/usr/lib/vmware/modules/source'"
+		for file in /patches/*.patch; do
+			echo "Applying patch $file"
+			SHORT="\$(basename "\${file%%__*}")"
+			KMOD="\${SHORT}.tar"
+			[ -s "\$KMOD" ] || perror "Kmod \$KMOD does not exist"
+			[ ! -d "\${SHORT}-only" ] && tar xf "\$KMOD"
+			[ ! -d "\${SHORT}-only" ] && perror "untar of \$KMOD failed."
+			cd "\${SHORT}-only" || perror "Where is \${SHORT}-only?"
+			if ! patch -p1 < "\$file"; then
 				cd ..
-				rm -rf -- "${SHORT}-only"
-				perror "Applying $PATCH failed."
+				rm -rf -- "\${SHORT}-only"
+				perror "Applying \$file failed."
 			fi
 			cd ..
+			if [ -d "\${SHORT}-only" ]; then
+				tar cf "\$KMOD" "\${SHORT}-only/" || perror "repacking of \$KMOD failed."
+				rm -rf -- "\${SHORT}-only"
+			fi
 		done
-		if [ -d "${SHORT}-only" ]; then
-			tar cf "$KMOD" "${SHORT}-only/" || perror "repacking of $KMOD failed."
-			rm -rf -- "${SHORT}-only"
-			touch ".${SHORT}.patched"
-		fi
-	done
-	cd "${MODULE_WORK_DIR}" || perror "Could not cd to '${MODULE_WORK_DIR}'"
-
-	# now build modules inside the chroot
-	chroot_run "${MODULE_BUILD_DIR}" <<-EOF
-		vmware-modconfig --console --build-mod -k "${TARGET_KERNEL_LONG}" vmnet $(which gcc) "${KERNEL_HEADERS_DIR}/include" vmplayer vmnet
-		vmware-modconfig --console --build-mod -k "${TARGET_KERNEL_LONG}" vmmon $(which gcc) "${KERNEL_HEADERS_DIR}/include" vmplayer vmmon
+		vmware-modconfig --console --build-mod -k "${TARGET_KERNEL_LONG}" vmnet $(which gcc) "${KERNEL_HEADERS_DIR}/include" vmplayer vmnet || perror "vmnet build failed"
+		vmware-modconfig --console --build-mod -k "${TARGET_KERNEL_LONG}" vmmon $(which gcc) "${KERNEL_HEADERS_DIR}/include" vmplayer vmmon || perror "vmmon build failed"
 	EOF
+
+	cd "${MODULE_WORK_DIR}" || perror "Could not cd to '${MODULE_WORK_DIR}'"
 
 	# cleanup unneeded files
 	rm -rf -- "${MODULE_BUILD_DIR}/etc/vmware-installer"
@@ -154,6 +159,9 @@ post_copy() {
 parse_patch_name() {
 	[ $# -ne 1 ] && perror "parse_patch_name: Wrong parameter count."
 	local PATCH="$1"
+	# Module
+	SHORT=$(echo "$PATCH" | sed -r 's/^([^_]+)__.*$/\1/g')
+	KMOD="${SHORT}.tar"
 	# Kernel restriction
 	MIN_KERN=$(echo "$PATCH" | sed -r 's/^[^_]+__([0-9\.]+)-[0-9\.]+__[^_]+\.patch$/\1/g')
 	[[ "$MIN_KERN" == /* ]] && MIN_KERN=$(echo "$PATCH" | sed -r 's/^[^_]+__([0-9\.]+)__[^_]+\.patch$/\1/g')
