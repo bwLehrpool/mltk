@@ -9,9 +9,6 @@ build() {
 	local BUILDDIR="${SRCDIR}/build/"
 	local DESTDIR="${MODULE_BUILD_DIR}/opt/openslx/bin"
 
-	# first activate qt 4
-	activate_qt 4
-
 	mkdir -p "${DESTDIR}" || perror "Could not mkdir ${DESTDIR}!"
 	mkdir -p "${BUILDDIR}" || perror "Could not mkdir ${BUILDDIR}!"
 	cd "${BUILDDIR}" || perror "Could not cd to ${BUILDDIR}!"
