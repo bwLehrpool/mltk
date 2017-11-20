@@ -1,0 +1,106 @@
+#!/bin/ash
+# -----------------------------------------------------------------------------
+# Copyright (c) 2013 - OpenSLX GmbH 
+# 
+# This program is free software distributed under the GPL version 2. 
+# See http://openslx.org/COPYING 
+# 
+# If you have any feedback please consult http://openslx.org/feedback and 
+# send your suggestions, praise, or complaints to feedback@openslx.org 
+# 
+# General information about OpenSLX can be found at http://openslx.org/ 
+# -----------------------------------------------------------------------------
+# systemd-vmware_env
+#    - This is the systemd configuration and provisioning script for the various
+#      VMware modules and services
+################################################################################
+
+VMWARE_CONF_DIR=/opt/openslx/vmchooser/vmware
+VMCHOOSER_CONF_DIR=/opt/openslx/vmchooser/config
+
+load_modules () {
+	local FAILED=""
+   # module stuff
+   insmod /lib/modules/vmware/vmmon.ko || FAILED="$FAILED vmmon"
+   insmod /lib/modules/vmware/vmnet.ko || FAILED="$FAILED vmnet"
+   #insmod /lib/modules/vmware/vmci.ko || FAILED="$FAILED vmci"
+   #insmod /lib/modules/vmware/vmblock.ko || FAILED="$FAILED vmblock"
+   #insmod /lib/modules/vmware/vsock.ko || FAILED="$FAILED vsock"
+	[ -n "$FAILED" ] && slxlog "vmware-insmod" "Error loading vmware kernel module(s) $FAILED"
+}
+
+unload_modules () { 
+   rmmod vmnet vmmon #vsock vmci vmblock
+}
+
+vmnetif () { 
+	# create the needed devices which effects all vmware options
+	# they are not created automatically via module load
+	for device in "/dev/vmnet0 c 119 0" "/dev/vmnet1 c 119 1" \
+		            "/dev/vmnet2 c 119 2" "/dev/vmmon c 10 165"; do
+		 mknod ${device}
+	done
+	chmod 0700 /dev/vmnet*
+
+	# setup bridge (vmnet0), nat (vmnet1) and software defined networking (vmnet2) interfaces
+	if ! /usr/bin/vmnet-netifup -d /var/run/vmnet-netifup-vmnet0.pid /dev/vmnet0 vmnet0 ; then
+			slxlog "vmware-netifup" "Launching /usr/bin/vmnet-netifup for vmnet0 failed."
+	fi
+  ip link set dev vmnet0 up
+  brctl addif br0 vmnet0
+	if ! /usr/bin/vmnet-netifup -d /var/run/vmnet-netifup-vmnet1.pid /dev/vmnet1 vmnet1; then
+			slxlog "vmware-netifup" "Launching /usr/bin/vmnet-netifup for vmnet1 failed."
+	fi
+  ip link set dev vmnet1 up
+  brctl addif nat1 vmnet1
+	if ! /usr/bin/vmnet-netifup -d /var/run/vmnet-netifup-vmnet2.pid /dev/vmnet2 vmnet2; then
+			slxlog "vmware-netifup" "Launching /usr/bin/vmnet-netifup for vmnet2 failed."
+	fi
+  ip link set dev vmnet2 up
+  brctl addif vsw2 vmnet2
+}
+
+vmblock () { 
+	if ! /usr/bin/vmware-usbarbitrator; then
+		slxlog "vmware-usbarb" "Launching /usr/bin/vmware-usbarbitrator failed."
+	fi
+}
+
+# create required standard directories
+mkdir -p "/tmp/virt/vmware" "/dev/shm/vmware" "/run/vmware" -m 1777
+
+# FixMe: Should be rewritten for proper systemd operation
+case "$1" in 
+  start)
+    # hack to access the first serial/parallel port
+    [ -c /dev/ttyS0 ] && chmod a+rw /dev/ttyS0
+    [ -c /dev/parport0 ] && chmod a+rw /dev/parport0
+    load_modules
+    vmnetif
+    vmblock
+  ;;
+  stop)
+    #stop: defines stop function for initscript
+    killall vmnet-netifup vmnet-bridge vmware vmplayer vmware-tray
+    # might take a while until all services are shut down
+    sleep 0.5
+    unload_modules
+    
+  ;;
+  restart)
+    #restart: defines restart function for initscript
+    $0 stop && $0 start
+  ;;
+  status)
+    #status: defines status function for initscript
+    vmstatus
+  ;;
+esac
+
+# Breaks performance with certain workloads, so disable.
+# See https://unix.stackexchange.com/a/185172 for details and further references
+echo never > /sys/kernel/mm/transparent_hugepage/defrag
+echo 0 > /sys/kernel/mm/transparent_hugepage/khugepaged/defrag
+
+exit 0
+
