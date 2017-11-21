@@ -141,8 +141,6 @@ build() {
 		vmware-modconfig --console --build-mod -k "${TARGET_KERNEL_LONG}" vmmon /bin/gccw "${KERNEL_HEADERS_DIR}/include" vmplayer vmmon || perror "vmmon build failed"
 	EOF
 
-	cd "${MODULE_WORK_DIR}" || perror "Could not cd to '${MODULE_WORK_DIR}'"
-
 	# cleanup unneeded files
 	rm -rf -- "${MODULE_BUILD_DIR}/etc/vmware-installer"
 	rm -rf -- "${MODULE_BUILD_DIR}/usr/lib/vmware-installer"
@@ -170,6 +168,22 @@ build() {
 		installerDefaults.componentDownloadEnabled = "no"
 		installerDefaults.dataCollectionEnabled = "no"
 	HEREDOC
+
+	# HACK: vmplayer 12.5.8 libfontconfig needs libexpat.so.0 but vmware ships with libexpat.so.1
+	# To fix crashes, rename the shipped .1 lib to the expected .0 lib...
+	local SHIPPED_LIBEXPAT="libexpat.so.1"
+	if [ -f "${MODULE_BUILD_DIR}/usr/lib/vmware/lib/${SHIPPED_LIBEXPAT}/${SHIPPED_LIBEXPAT}" ]; then
+		mv "${MODULE_BUILD_DIR}/usr/lib/vmware/lib/${SHIPPED_LIBEXPAT}/${SHIPPED_LIBEXPAT}" \
+			"${MODULE_BUILD_DIR}/usr/lib/vmware/lib/${SHIPPED_LIBEXPAT}/${SHIPPED_LIBEXPAT%?}0" || \
+			perror "Failed to rename vmware's lib 'libexpat.so.1'."
+		mv "${MODULE_BUILD_DIR}/usr/lib/vmware/lib/${SHIPPED_LIBEXPAT}" \
+			"${MODULE_BUILD_DIR}/usr/lib/vmware/lib/${SHIPPED_LIBEXPAT%?}0" || \
+			perror "Failed to rename vmware's dir 'libexpat.so.1'."
+	elif [ -f "${MODULE_BUILD_DIR}/usr/lib/vmware/lib/${SHIPPED_LIBEXPAT%?}0/${SHIPPED_LIBEXPAT%?}0" ]; then
+		pnfo "Found '${MODULE_BUILD_DIR}/usr/lib/vmware/lib/${SHIPPED_LIBEXPAT%?}0/${SHIPPED_LIBEXPAT%?}0'"
+	else
+		pwarning "Could not find '${MODULE_BUILD_DIR}/usr/lib/vmware/lib/${SHIPPED_LIBEXPAT}'"
+	fi
 }
 
 post_copy() {
