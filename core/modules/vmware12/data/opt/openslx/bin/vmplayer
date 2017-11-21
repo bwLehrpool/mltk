@@ -5,12 +5,14 @@ PREFIX=/usr/lib/vmware # depends on the vmware location
 # HACK: Let the OpenGL driver report s3tc capability even if not present, so 3D will be enabled
 export force_s3tc_enable=true
 
-# Turn off "helpful" DE features
-export APPMENU_DISPLAY_BOTH=1
-export UBUNTU_MENUPROXY=0
-export GNOME_DISABLE_CRASH_DIALOG=1
-
 PROG=$(basename $0)
 
-exec "$PREFIX/bin/$PROG" "$@"
+# various hacks to help vmplayer find its own libs -.-
+export VMWARE_USE_SHIPPED_LIBS=force
+export LD_LIBRARY_PATH=$( find /usr/lib/vmware/lib/ -maxdepth 1 -mindepth 1 -type d | awk 'BEGIN{p=""}{p=p$0":"}END{print p}' )
+
+exec "$PREFIX/lib/wrapper-gtk24.sh" \
+     "$PREFIX/lib" \
+     "$PREFIX/bin/$PROG" \
+     "$PREFIX/libconf" "$@"
 
