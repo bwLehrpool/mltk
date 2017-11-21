@@ -85,7 +85,7 @@ if [ -z "$UUID" ] || [ "${#UUID}" -ne "36" ]; then
 fi
 if [ "${#UUID}" -ne "36" ]; then
 	echo "Determined UUID (${UUID}) has not expected length of 36, falling back to MAC..."
-	UUID="000000000000000-$BOOTIF"
+	UUID="000000000000001-$BOOTIF"
 fi
 echo "UUID=$UUID"
 
