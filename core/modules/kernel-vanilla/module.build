@@ -83,6 +83,7 @@ build() {
 	cd - 2> /dev/null
 
 	# copy most recent firmware
+	mkdir -p "${MODULE_BUILD_DIR}/lib/firmware"
 	cp -r ./fw/* "${MODULE_BUILD_DIR}/lib/firmware/" || perror "Could not copy linux-firmware to '${MODULE_BUILD_DIR}/lib/firmware/'"
 
 	# copy kernel to build
