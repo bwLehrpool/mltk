@@ -103,7 +103,7 @@ check_devtools() {
 	# Checking for needed development tools, compilers etc.
 	# Required: m4 make gcc g++ binutils
 	# no qmake here, qmake (libqt4-devel) should be installed in a module!
-	local DEV_TOOLS="gcc g++ make cmake m4 strip git depmod patch pkg-config" # 'strip' as marker for binutils
+	local DEV_TOOLS="gcc g++ make cmake m4 strip git depmod patch pkg-config automake autoconf aclocal" # 'strip' as marker for binutils
 
 	# DEV_CHECK marks missing dev-tools
 	local DEV_TOOLS_MISSING=""
@@ -117,7 +117,7 @@ check_devtools() {
 		pinfo "For $SYS_DISTRIBUTION you probably need to run:"
 		case $SYS_DISTRIBUTION in
 			ubuntu | debian)
-				pinfo "apt-get install build-essential m4 squashfs-tools pkg-config cmake"
+				pinfo "apt-get install build-essential m4 squashfs-tools pkg-config cmake automake autoconf"
 				pinfo "to install missing development tools."
 				;;
 			# FIXME: Don't know how precise this filter works so we might want to have a better matching ...
