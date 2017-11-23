@@ -18,6 +18,8 @@
 VMWARE_CONF_DIR=/opt/openslx/vmchooser/vmware
 VMCHOOSER_CONF_DIR=/opt/openslx/vmchooser/config
 
+. /opt/openslx/config
+
 load_modules () {
 	local FAILED=""
 	# module stuff
@@ -33,31 +35,53 @@ unload_modules () {
 	rmmod vmnet vmmon #vsock vmci vmblock
 }
 
+vmnet_create() {
+	vmnet="$1"
+	# first, create device node
+	dev="/dev/vmnet${vmnet}"
+	if ! [ -c "$dev" ] && ! mknod "${dev}" c 119 "${vmnet}"; then
+		slxlog "vmware-node-vmnet" "Could not create ${dev}"
+		return 1
+	fi
+	chmod 0700 "${dev}"
+	# now bring it up
+	if ! /usr/bin/vmnet-netifup -d "/var/run/vmnet-netifup-vmnet${vmnet}.pid" "${dev}" "vmnet${vmnet}" ; then
+		slxlog "vmware-netifup" "Launching /usr/bin/vmnet-netifup for vmnet${vmnet} failed."
+	fi
+	ip link set dev "vmnet${vmnet}" up
+}
+
 vmnetif () {
+	local vmnet nic NICS
 	# create the needed devices which effects all vmware options
 	# they are not created automatically via module load
-	for device in "/dev/vmnet0 c 119 0" "/dev/vmnet1 c 119 1" \
-				"/dev/vmnet2 c 119 2" "/dev/vmmon c 10 165"; do
-		mknod ${device}
+	mknod /dev/vmmon c 10 165 || slxlog "vmware-node-vmmon" "Could not create /dev/vmmon"
+	# network interfaces
+	# 1) default ones
+	for vmnet in 0 1 2; do
+		vmnet_create "$vmnet"
 	done
-	chmod 0700 /dev/vmnet*
-
 	# setup bridge (vmnet0), nat (vmnet1) and software defined networking (vmnet2) interfaces
-	if ! /usr/bin/vmnet-netifup -d /var/run/vmnet-netifup-vmnet0.pid /dev/vmnet0 vmnet0 ; then
-		slxlog "vmware-netifup" "Launching /usr/bin/vmnet-netifup for vmnet0 failed."
-	fi
-	ip link set dev vmnet0 up
 	brctl addif br0 vmnet0
-	if ! /usr/bin/vmnet-netifup -d /var/run/vmnet-netifup-vmnet1.pid /dev/vmnet1 vmnet1; then
-		slxlog "vmware-netifup" "Launching /usr/bin/vmnet-netifup for vmnet1 failed."
-	fi
-	ip link set dev vmnet1 up
 	brctl addif nat1 vmnet1
-	if ! /usr/bin/vmnet-netifup -d /var/run/vmnet-netifup-vmnet2.pid /dev/vmnet2 vmnet2; then
-		slxlog "vmware-netifup" "Launching /usr/bin/vmnet-netifup for vmnet2 failed."
-	fi
-	ip link set dev vmnet2 up
 	brctl addif vsw2 vmnet2
+	# 2) see if we should bridge additional interfaces
+	NICS=
+	if [ "$SLX_BRIDGE_OTHER_NICS" = "ON" ]; then
+		# These will have been set up in our init
+		NICS=$( ls -1 /sys/class/net | grep '^br-nic-' | cut -c 8- )
+		for nic in $NICS; do
+			if ! [ "$nic" -gt 0 ] && ! [ "$nic" -eq 0 ]; then
+				slxlog "vmware-other-nics" "NaN: br-nic-X has X='$nic'"
+				continue
+			fi
+			# create vmnet10 - vmnetN for these
+			vmnet="$(( nic + 10 ))"
+			vmnet_create "$vmnet"
+			brctl addif "br-nic-${nic}" "vmnet${vmnet}"
+		done
+	fi
+
 }
 
 vmblock () {
