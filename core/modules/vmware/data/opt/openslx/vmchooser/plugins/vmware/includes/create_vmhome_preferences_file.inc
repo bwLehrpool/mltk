@@ -58,6 +58,8 @@ create_vmhome_preferences_file() {
 		pref.vmplayer.confirmOnExit = "TRUE"
 		pref.backgroundOnClose = "FALSE"
 		pref.trayicon.enabled = "FALSE"
+		pref.keyboardAndMouse.vmHotKey.enabled = "FALSE"
+		pref.keyboardAndMouse.vmHotKey.count = "0"
 		
 		# shared folders
 		pref.enableAllSharedFolders = "TRUE"
