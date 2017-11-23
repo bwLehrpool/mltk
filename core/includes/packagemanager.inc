@@ -71,7 +71,9 @@ list_content_package(){
 	[ -z "$FILES" ] && pwarning "list_packet_files empty for packet ${PACKAGE}." && continue
 	pdebug "Packet $PACKAGE has $(echo $FILES | wc -w) files..."
 	for FILE in $FILES; do
-		[ "$OP" "$FILE" ] && echo "$FILE"
+		if [ "$OP" "$FILE" ] || [ -h "$FILE" ]; then
+			echo "$FILE"
+		fi
 	done
 }
 #
