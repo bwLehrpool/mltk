@@ -42,6 +42,7 @@ Check output of dmesg for missing firmware (dmesg | less)"
 	:
 fi
 
+ADD_NIC=1
 for LINE in $IP_OUT; do
 	IFACE=$(echo "$LINE" | awk -F '==' '{printf $1}')
 	IFMAC=$(echo "$LINE" | awk -F '==' '{printf $2}' | tr '[A-Z]' '[a-z]') # udev requires mac addesses to be lowercase (a-f), see http://www.debianhelp.co.uk/udev.htm
@@ -71,6 +72,16 @@ for LINE in $IP_OUT; do
 		fi
 		# Ignore this device later on when systemd handles network interfaces (see hacked 99-systemd.rules in systemd data dir)
 		echo "SUBSYSTEM==\"net\", ACTION==\"add\", KERNEL==\"eth*\", ATTR{address}==\"$IFMAC\", TAG+=\"openslxignore\"" >> "${FUTURE_ROOT}/etc/udev/rules.d/01-ignore-boot-interface.rules"
+	else
+		# Additional NIC - prepare bridge in case we want to add these to a VM or do other fancy things
+		ADD_BR="br-nic-$ADD_NIC"
+		brctl addbr "$ADD_BR"
+		brctl stp "$ADD_BR" 0
+		ip link set addr "$IFMAC" "$ADD_BR"
+		ip link set dev "$IFACE" up
+		brctl addif "$ADD_BR" "$IFACE"
+		ip link set dev "$ADD_BR" up
+		ADD_NIC=$(( ADD_NIC + 1 ))
 	fi
 	# youdev
 	echo "SUBSYSTEM==\"net\", ACTION==\"add\", DRIVERS==\"?*\", ATTR{address}==\"$IFMAC\", ATTR{dev_id}==\"0x0\", ATTR{type}==\"1\", KERNEL==\"eth*\", NAME=\"$IFACE\"" >> "${FUTURE_ROOT}/etc/udev/rules.d/70-net-boot-nic-name.rules"
