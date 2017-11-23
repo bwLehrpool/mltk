@@ -50,11 +50,15 @@ if [ -z "$SLX_NO_PVS" ]; then
 	fi
 fi
 
-# No quotes around $EXTRA!
-if [ -z "$SLX_LOCATIONS" ]; then
-	exec vmchooser.real "$@" --url "$URL" --fullscreen --tab "$TAB" --start-uuid "$SLX_EXAM_START" --autoquit 120 $EXTRA
+if [ -z "${SLX_AUTOLOGIN%OFF}" ] && [ -n "$SLX_VMCHOOSER_TIMEOUT" ] && [ "$SLX_VMCHOOSER_TIMEOUT" -gt 0 ]; then
+	EXTRA="$EXTRA --autoquit $SLX_VMCHOOSER_TIMEOUT"
 fi
 
 # No quotes around $EXTRA!
-exec vmchooser.real "$@" --url "$URL" --fullscreen --tab "$TAB" --start-uuid "$SLX_EXAM_START" --locations "$SLX_LOCATIONS" --autoquit 120 $EXTRA
+if [ -z "$SLX_LOCATIONS" ]; then
+	exec vmchooser.real "$@" --url "$URL" --fullscreen --tab "$TAB" --start-uuid "$SLX_EXAM_START" $EXTRA
+fi
+
+# No quotes around $EXTRA!
+exec vmchooser.real "$@" --url "$URL" --fullscreen --tab "$TAB" --start-uuid "$SLX_EXAM_START" --locations "$SLX_LOCATIONS" $EXTRA
 

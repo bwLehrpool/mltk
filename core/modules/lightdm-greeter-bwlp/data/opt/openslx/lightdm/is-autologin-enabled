@@ -2,4 +2,4 @@
 
 . /opt/openslx/config
 
-[ -n "$SLX_AUTOLOGIN" ]
+[ -n "${SLX_AUTOLOGIN%OFF}" ]
