@@ -1,7 +1,15 @@
 #!/bin/bash
 
 fetch_source() {
-	:
+	if [ -n "$REQUIRED_XORG_DRIVERS" ]; then
+		mkdir -p src
+		cd src || perror "No cd to xorg src dir"
+		for drv in $REQUIRED_XORG_DRIVERS; do
+			[ -d "${drv}/.git" ] && continue
+			git clone --depth 1 "git://anongit.freedesktop.org/xorg/driver/${drv}" "${drv}" || perror "Could not clone $drv"
+		done
+		cd -
+	fi
 }
 
 build() {
@@ -21,6 +29,21 @@ build() {
 	rm -rf -- "${MODULE_BUILD_DIR}/lib/udev" "${MODULE_BUILD_DIR}/etc/udev"
 	# This freezed/crashed X with certain gfx cards (radeon R240)
 	rm -f -- "${MODULE_BUILD_DIR}/usr/lib/xorg/modules/libglamoregl.so"
+
+	# See if we should build more up to date versions of drivers
+	local drv
+	if [ -n "$REQUIRED_XORG_DRIVERS" ]; then
+		pinfo "Compiling requested xorg drivers from source"
+		mkdir -p "${MODULE_BUILD_DIR}/usr/lib/xorg/modules/drivers"
+		for drv in $REQUIRED_XORG_DRIVERS; do
+			pinfo "Compiling $drv"
+			cd "${MODULE_WORK_DIR}/src/${drv}" || perror "No src dir for xorg driver $drv"
+			./autogen.sh || perror "Autogen for $drv failed"
+			./configure || perror "configure for $drv failed"
+			make || perror "Make for $drv failed"
+			find . -type f -name "*_drv.so" -exec cp {} "${MODULE_BUILD_DIR}/usr/lib/xorg/modules/drivers" \;
+		done
+	fi
 }
 
 post_copy() {
