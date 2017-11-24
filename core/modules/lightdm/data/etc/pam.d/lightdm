@@ -1,0 +1,11 @@
+#
+# /etc/pam.d/lightdm - specify the PAM behaviour of lightdm
+#
+auth       required     pam_nologin.so
+auth       required     pam_env.so readenv=1
+auth       required     pam_env.so readenv=1 envfile=/etc/default/locale
+auth       include      common-auth
+account    include      common-account
+password   include      common-password
+session    include      common-session
+session    required     pam_limits.so
