@@ -26,7 +26,7 @@ setup_ethernet() {
 		local devtype mac cnt eth
 		# Copy type of eth0, in case the others don't specify a type in the vmx, we'll use the same
 		# so we know the drivers are there
-		devtype=$(grep -m1 -i '^ethernet0\.virtualDev' | sed -r 's/^[^=]+//;s/^(\s|=|")*//;s/(\s|")+$//') # TODO: Make a helper like "getVmxOption"
+		devtype=$(< "${TMPCONFIG}"  grep -m1 -i '^ethernet0\.virtualDev' | sed -r 's/^[^=]+//;s/^(\s|=|")*//;s/(\s|")+$//') # TODO: Make a helper like "getVmxOption"
 		cnt=0
 		for mac in $OTHER_NICS; do
 			vmnet=$(( cnt + 10 ))
