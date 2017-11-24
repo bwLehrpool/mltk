@@ -22,6 +22,38 @@ replace_placeholders() {
 setup_ethernet() {
 	echo 'ethernet0.addressType = "static"'		>> "${TMPCONFIG}"
 	echo 'ethernet0.address = "'"${VM_MAC_ADDR}"'"'	>> "${TMPCONFIG}"
+	if [ -n "$OTHER_NICS" ]; then
+		local devtype mac cnt eth
+		# Copy type of eth0, in case the others don't specify a type in the vmx, we'll use the same
+		# so we know the drivers are there
+		devtype=$(grep -m1 -i '^ethernet0\.virtualDev' | sed -r 's/^[^=]+//;s/^(\s|=|")*//;s/(\s|")+$//') # TODO: Make a helper like "getVmxOption"
+		cnt=0
+		for mac in $OTHER_NICS; do
+			vmnet=$(( cnt + 10 ))
+			cnt=$(( cnt + 1 ))
+			eth="ethernet${cnt}"
+			# Check device exists
+			if ! [ -c "/dev/vmnet${vmnet}" ]; then
+				slxlog "vmware-bridge-setup" "Cannot bridge NIC into VM: /dev/vmnet${vmnet} does not exist"
+				continue
+			fi
+			# Remove lines that could break things
+			sed -i "/^${eth}\.connectionType/Id;/^${eth}\.present/Id" "${TMPCONFIG}"
+			# Set up devType
+			devline=
+			if ! grep -q -i "^${eth}\.virtualDev" "${TMPCONFIG}" && [ -n "$devtype" ]; then
+				devline="${eth}.virtualDev = "'"'"${devtype}"'"'
+			fi
+			cat >> "${TMPCONFIG}" <<-HEND
+			${eth}.connectionType = "custom"
+			${eth}.present = "TRUE"
+			${eth}.vnet = "vmnet${vmnet}"
+			${eth}.addressType = "static"
+			${eth}.address = "${mac}"
+			${devline}
+			HEND
+		done
+	fi
 }
 
 # DVD, CDROM

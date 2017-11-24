@@ -69,6 +69,7 @@ set_virt_memory() {
 # Suffix template is taken from /opt/openslx/vmchooser/config/virtualization.conf
 # and will have the VMID inserted as first byte.
 set_virt_mac() {
+	local i mac byte
 	# First, determine prefix of the host's MAC address
 	isset HOSTMACADDR || writelog "Host's MAC address was not defined in ${VMCHOOSER_CONF_DIR}/virtualizer.conf"
 	isset MACADDRPREFIX || writelog "No MAC address prefix was defined in ${VMCHOOSER_CONF_DIR}/virtualizer.conf"
@@ -83,6 +84,20 @@ set_virt_mac() {
 		slxlog "virt-mac" "Could not properly generate mac address suffix (got $MACADDRSUFFIX)"
 	fi
 	declare -g VM_MAC_ADDR="$MACADDRPREFIX:$MACADDRSUFFIX"
+	declare -g OTHER_NICS=
+	# Set up additional NICs if enabled
+	if [ "$SLX_BRIDGE_OTHER_NICS" = "yes" ]; then
+		for i in /sys/class/net/br-nic-*/address; do
+			[ -s "$i" ] || continue
+			mac=$(tr '[a-f]' '[A-F]' < "$i")
+			# Calc checksum of mac by summing the bytes mod 256
+			byte=$(( $(<<<$mac sed 's/^/ ( 0x/;s/:/ + 0x/g;s/$/ ) % 256/') ))
+			byte=$(printf "%02X" "$byte")
+			# (PR:EF:IX):LA:ST:CH - use general prefix for VMs, then last two octets of source mac, plus the checksum
+			mac="${MACADDRPREFIX}:${mac:12:5}:${byte}"
+			OTHER_NICS+=" $mac"
+		done
+	fi
 }
 
 # Virtual fd/cd/dvd and drive devices, floppy b: for configuration

@@ -67,18 +67,19 @@ vmnetif () {
 	brctl addif vsw2 vmnet2
 	# 2) see if we should bridge additional interfaces
 	NICS=
-	if [ "$SLX_BRIDGE_OTHER_NICS" = "ON" ]; then
+	if [ "$SLX_BRIDGE_OTHER_NICS" = "yes" ]; then
 		# These will have been set up in our init
 		NICS=$( ls -1 /sys/class/net | grep '^br-nic-' | cut -c 8- )
+		vmnet=10
 		for nic in $NICS; do
 			if ! [ "$nic" -gt 0 ] && ! [ "$nic" -eq 0 ]; then
 				slxlog "vmware-other-nics" "NaN: br-nic-X has X='$nic'"
 				continue
 			fi
 			# create vmnet10 - vmnetN for these
-			vmnet="$(( nic + 10 ))"
 			vmnet_create "$vmnet"
 			brctl addif "br-nic-${nic}" "vmnet${vmnet}"
+			vmnet="$(( vmnet + 1 ))"
 		done
 	fi
 
