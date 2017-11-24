@@ -5,10 +5,10 @@ After=syslog.target
 
 [Service]
 EnvironmentFile=-/etc/sysconfig/sssd
-ExecStart=%PATH% -D -f
+ExecStartPre=/opt/openslx/scripts/systemd-patch_sssd_conf
+ExecStart=%PATH% -i -f
 # These two should be used with traditional UNIX forking daemons
 # consult systemd.service(5) for more details
-Type=forking
 PIDFile=/var/run/sssd.pid
 Restart=on-failure
 
