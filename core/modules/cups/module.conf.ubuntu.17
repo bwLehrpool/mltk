@@ -17,3 +17,7 @@ REQUIRED_CONTENT_PACKAGES="
 		ghostscript
 		libgs9-common
 "
+REQUIRED_DIRECTORIES+="
+	/usr/share/color
+"
+
