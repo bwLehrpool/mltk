@@ -1,0 +1,11 @@
+[Unit]
+Description=Tell server we woke up from suspend
+DefaultDependencies=no
+After=systemd-suspend.service systemd-hybrid-sleep.service systemd-hibernate.service
+RefuseManualStart=true
+
+[Service]
+Type=oneshot
+ExecStart=/opt/openslx/scripts/systemd-hws_standby resume
+RemainAfterExit=no
+

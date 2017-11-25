@@ -86,6 +86,7 @@ fi
 if [ "${#UUID}" -ne "36" ]; then
 	echo "Determined UUID (${UUID}) has not expected length of 36, falling back to MAC..."
 	UUID="000000000000001-$BOOTIF"
+	echo "$UUID" > /etc/system-uuid
 fi
 echo "UUID=$UUID"
 

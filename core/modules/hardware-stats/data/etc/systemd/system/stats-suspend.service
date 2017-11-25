@@ -1,0 +1,11 @@
+[Unit]
+Description=Tell server we're about to suspend the system
+DefaultDependencies=no
+Before=sleep.target
+RefuseManualStart=true
+
+[Service]
+Type=oneshot
+ExecStart=/opt/openslx/scripts/systemd-hws_standby suspend
+RemainAfterExit=no
+

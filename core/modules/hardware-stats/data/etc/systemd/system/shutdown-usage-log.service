@@ -1,5 +1,5 @@
 [Unit]
-Description=Gather statistics about this machine and send to boot server
+Description=Tell server we're shuttong down
 DefaultDependencies=no
 Before=shutdown.target
 RefuseManualStart=yes
