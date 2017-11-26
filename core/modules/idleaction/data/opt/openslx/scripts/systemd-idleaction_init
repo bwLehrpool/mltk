@@ -39,8 +39,14 @@ if [ -n "$SCHEDULE" ]; then
 		[ -z "$HOUR" -o -z "$MINUTE" ] && continue
 		[ "$HOUR" -lt 0 -o "$HOUR" -gt 23 ] && continue
 		[ "$MINUTE" -lt 0 -o "$MINUTE" -gt 59 ] && continue
-		TS=$(date --date "$TODAY $t" +%s)
-		[ "$TS" -le "$NOW" ] && TS=$(date --date "$TOMORROW $t" +%s)
+		# wake up 2 minutes early; for the shutdown/reboot times this is required
+		# so the actual cronjob for the shutdown/reboot will run.
+		# Otherwise, since the wakeup will take some seconds, the actual cronjob
+		# will not trigger, since it lies a few seconds in the past.
+		# For the scheduled wakeups this would't be needed, but two minutes
+		# early shouldn't hurt anyone.
+		TS=$(date --date "-2 minutes $TODAY $t" +%s)
+		[ "$TS" -le "$NOW" ] && TS=$(date --date "-2 minutes $TOMORROW $t" +%s)
 		if [ -z "$NEXT" ] || [ "$NEXT" -gt "$TS" ]; then
 			NEXT="$TS"
 		fi
