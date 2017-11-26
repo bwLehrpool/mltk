@@ -1,0 +1,64 @@
+#!/bin/ash
+
+if [ "$1" = "test" ]; then
+	shift
+	TEST=1
+	SCHEDULE="$@"
+else
+	SCHEDULE=
+	TEST=
+	. /opt/openslx/config
+fi
+
+# Figure out the next rtcwake
+SCHEDULE="$SCHEDULE $SLX_WAKEUP_SCHEDULE"
+if [ "x$1" = "xsuspend" ]; then
+	# If we're about to suspend, consider reboot and shutdown too - we
+	# need to wake up to execute these
+	SCHEDULE="$SCHEDULE $SLX_SHUTDOWN_SCHEDULE $SLX_REBOOT_SCHEDULE"
+	# Delete this so the idle timeout will be reset
+	# Otherwise a user might wake the PC up right before
+	# cron fires the idle action check, which could
+	# shut the machine down right away because the timestamp
+	# from the file looks quite old
+	rm -f -- /run/openslx/idlehint
+fi # suspend == true
+
+SCHEDULE=$( echo ${SCHEDULE} ) # poor man's trim
+
+NEXT=
+if [ -n "$SCHEDULE" ]; then
+	# Time-math in ash - yay
+	TODAY=$(date +%Y-%m-%d)
+	# Use tomorrow instead of adding 86400 seconds so it (hopefully) works when DST changes
+	TOMORROW=$(date --date="+1 day" +%Y-%m-%d)
+	NOW=$(date --date="+1 minute" +%s) # don't wake up again immediately
+	for t in $SCHEDULE; do
+		HOUR=${t%%:*}
+		MINUTE=${t##*:}
+		[ -z "$HOUR" -o -z "$MINUTE" ] && continue
+		[ "$HOUR" -lt 0 -o "$HOUR" -gt 23 ] && continue
+		[ "$MINUTE" -lt 0 -o "$MINUTE" -gt 59 ] && continue
+		TS=$(date --date "$TODAY $t" +%s)
+		[ "$TS" -le "$NOW" ] && TS=$(date --date "$TOMORROW $t" +%s)
+		if [ -z "$NEXT" ] || [ "$NEXT" -gt "$TS" ]; then
+			NEXT="$TS"
+		fi
+	done
+fi
+
+if [ -n "$TEST" ]; then
+	echo -n "Next wakeup: "
+	date -d "@$NEXT"
+	exit 0
+fi
+
+if [ -n "$NEXT" ]; then
+	# Always assume RTC is UTC so rtcwake will not assume the RTC does DST changes
+	rtcwake -u -m no -t "$NEXT"
+else
+	rtcwake -m disable
+fi
+
+exit 0
+

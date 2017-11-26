@@ -1,0 +1,11 @@
+[Unit]
+Description=Reset idletime and setup next rtcwake before suspend
+DefaultDependencies=no
+RefuseManualStart=true
+Before=sleep.target
+
+[Service]
+Type=oneshot
+ExecStart=/opt/openslx/scripts/systemd-idleaction_init suspend
+RemainAfterExit=no
+

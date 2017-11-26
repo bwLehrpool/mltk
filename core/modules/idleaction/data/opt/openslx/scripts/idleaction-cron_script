@@ -2,10 +2,11 @@
 
 . /opt/openslx/config || exit 1
 
+CRONFILE="/etc/cron.d/idleaction-shutdown_schedule"
+
 # If existent, no session is open. Will contain timestamp of last activity.
 # If not existent, at least one user is logged in
-CRONFILE="/etc/cron.d/idleaction-shutdown_schedule"
-IDLEHINT="/dev/shm/idlehint"
+IDLEHINT="/run/openslx/idlehint"
 NOW=$(date +%s)
 
 #
@@ -76,8 +77,8 @@ if [ -n "${SLX_LOGOUT_TIMEOUT}" ] && [ "${SLX_LOGOUT_TIMEOUT}" -gt 0 ]; then
 		rm -f -- "$IDLEHINT"
 	fi
 else
-	# No logout timeout is set, take shortcut for shutdown timeout (if set)
-	if [ -n "$SLX_SHUTDOWN_TIMEOUT" ]; then
+	# No logout timeout is set, take shortcut for shutdown/suspend timeout (if set)
+	if [ -n "$SLX_SHUTDOWN_TIMEOUT" ] || [ -n "$SLX_SYSTEM_STANDBY_TIMEOUT" ]; then
 		SESSIONS=$(loginctl | wc -l)
 		if [ "$SESSIONS" = "0" ]; then
 			[ ! -e "$IDLEHINT" ] && echo "$NOW" > "$IDLEHINT"
@@ -88,19 +89,23 @@ else
 fi
 
 #
-# 2) Check for no-session-shutdown timeout
+# 2) Check for no-session shutdown/suspend timeout
 #
-if [ -n "${SLX_SHUTDOWN_TIMEOUT}" ] && [ "${SLX_SHUTDOWN_TIMEOUT}" -gt 0 ] && [ -e "$IDLEHINT" ]; then
+if [ -e "$IDLEHINT" ]; then
 	IDLE=$(cat "$IDLEHINT")
 	[ "$IDLE" -gt "$NOW" ] && IDLE="$NOW"
 	IDLE=$(( $NOW - $IDLE ))
-	if [ "$IDLE" -gt "$SLX_SHUTDOWN_TIMEOUT" ]; then
-		poweroff
+	if [ -n "${SLX_SHUTDOWN_TIMEOUT}" ] && [ "${SLX_SHUTDOWN_TIMEOUT}" -gt 0 ] && [ "$IDLE" -gt "$SLX_SHUTDOWN_TIMEOUT" ]; then
+		poweroff &
+		exit 0
+	elif [ -n "${SLX_SYSTEM_STANDBY_TIMEOUT}" ] && [ "${SLX_SYSTEM_STANDBY_TIMEOUT}" -gt 0 ] && [ "$IDLE" -gt "$SLX_SYSTEM_STANDBY_TIMEOUT" ]; then
+		systemctl suspend &
+		exit 0
 	fi
 fi
 
 #
-# 3) Check for hard scheduled shutdown
+# 3) Check for hard scheduled shutdown/reboot
 #
 # A cron file is created dynamically here so there's everything
 # in one module and you don't need to repack config.tgz
@@ -111,28 +116,33 @@ invalid_time ()
 	return 0
 }
 
+write_crontab ()
+{
+	local ACTION time HOUR MINUTE
+	[ $# -lt 1 ] && return
+	ACTION=$1
+	shift
+	for time in $*; do
+		HOUR=${time%%:*}
+		MINUTE=${time##*:}
+		[ -z "$HOUR" -o -z "$MINUTE" ] && invalid_time && continue
+		[ "$HOUR" -lt 0 -o "$HOUR" -gt 23 ] && invalid_time && continue
+		[ "$MINUTE" -lt 0 -o "$MINUTE" -gt 59 ] && invalid_time && continue
+		echo "$MINUTE $HOUR	* * *	root	/opt/openslx/scripts/idleaction-scheduled_action $ACTION" >> "$CRONFILE"
+	done
+}
+
 if [ -n "$SLX_SHUTDOWN_SCHEDULE" -o -n "$SLX_REBOOT_SCHEDULE" ] && [ ! -e "$CRONFILE" ]; then
-	echo "# OpenSLX: Trigger poweroff at certain time of day" > "$CRONFILE"
+	echo "# OpenSLX: Trigger poweroff/reboot at certain time of day" > "$CRONFILE"
 	echo "SHELL=/bin/ash" >> "$CRONFILE"
 	echo "PATH=/usr/sbin:/usr/bin:/sbin:/bin:/opt/openslx/sbin:/opt/openslx/bin" >> "$CRONFILE"
 	echo "" >> "$CRONFILE"
-	for time in $SLX_SHUTDOWN_SCHEDULE; do
-		HOUR=${time%%:*}
-		MINUTE=${time##*:}
-		[ -z "$HOUR$MINUTE" ] && invalid_time && continue
-		[ "$HOUR" -lt 0 -o "$HOUR" -gt 23 ] && invalid_time && continue
-		[ "$MINUTE" -lt 0 -o "$MINUTE" -gt 59 ] && invalid_time && continue
-		echo "$MINUTE $HOUR	* * *	root	/opt/openslx/scripts/idleaction-scheduled_action poweroff" >> "$CRONFILE"
-	done
-	# do it again for SLX_REBOOT_SCHEDULE
-	for time in $SLX_REBOOT_SCHEDULE; do
-		HOUR=${time%%:*}
-		MINUTE=${time##*:}
-		[ -z "$HOUR$MINUTE" ] && invalid_time && continue
-		[ "$HOUR" -lt 0 -o "$HOUR" -gt 23 ] && invalid_time && continue
-		[ "$MINUTE" -lt 0 -o "$MINUTE" -gt 59 ] && invalid_time && continue
-		echo "$MINUTE $HOUR	* * *	root	/opt/openslx/scripts/idleaction-scheduled_action reboot" >> "$CRONFILE"
-	done
+	write_crontab "poweroff" "$SLX_SHUTDOWN_SCHEDULE"
+	write_crontab "reboot" "$SLX_REBOOT_SCHEDULE"
+	# Might want to re-set rtcwake timestamp periodically
+	if [ -n "$SLX_WAKEUP_SCHEDULE" ]; then
+		echo "0 *	* * *	root	/opt/openslx/scripts/systemd-idleaction_init" >> "$CRONFILE"
+	fi
 	touch "/etc/cron.d" # Aufs bug where it won't update dir mtime when creating the file within
 fi
 

@@ -1,0 +1,10 @@
+[Unit]
+Description=Setup next rtcwake
+DefaultDependencies=no
+RefuseManualStart=true
+
+[Service]
+Type=oneshot
+ExecStart=/opt/openslx/scripts/systemd-idleaction_init
+RemainAfterExit=no
+
