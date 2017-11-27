@@ -10,6 +10,9 @@ fetch_source() {
 	if ! grep -q "bfill_background" "miscutils/fbsplash.c"; then
 		git apply "${MODULE_DIR}/fbsplash-fillbg.patch" || perror "Could not apply busybox patch for fbsplash background filling"
 	fi
+	if ! grep -q 'suspend.*"no"' "util-linux/rtcwake.c"; then
+		git apply "${MODULE_DIR}/rtcwake-mode-no.patch" || perror "Could not apply busybox patch for rtcwake 'no'-mode"
+	fi
 	cd .. || perror "cd .. failed"
 }
 
