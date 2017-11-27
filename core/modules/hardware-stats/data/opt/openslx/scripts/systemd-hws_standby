@@ -10,6 +10,8 @@ if [ "x$ACTION" != "xresume" ] && [ "x$ACTION" != "xsuspend" ]; then
 	exit 1
 fi
 
+. /opt/openslx/config
+
 UUID=$(cat /etc/system-uuid)
 
 for DELAY in 1 1 2 3 5 8 0; do
