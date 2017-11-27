@@ -9,6 +9,19 @@ CRONFILE="/etc/cron.d/idleaction-shutdown_schedule"
 IDLEHINT="/run/openslx/idlehint"
 NOW=$(date +%s)
 
+get_sessions() {
+	local LEGEND State Class
+	LEGEND=
+	loginctl --help 2>&1 | grep -q -- '--no-legend' && LEGEND="--no-legend"
+	for SESSION in $(loginctl $LEGEND | awk '{print $1}'); do
+		unset Display Remote State
+		eval $(loginctl -p State -p Class show-session "$SESSION")
+		if [ "$State" = "active" -o "$State" = "online" ] && [ "$Class" = "user" ]; then
+			echo "$SESSION"
+		fi
+	done
+}
+
 #
 # 1) Check for idle timeout
 #
@@ -16,9 +29,9 @@ if [ -n "${SLX_LOGOUT_TIMEOUT}" ] && [ "${SLX_LOGOUT_TIMEOUT}" -gt 0 ]; then
 	# Logout timeout is set, see which users we should kick
 	IS_IDLE=yes
 	# get all sessions
-	SESSIONS=$(loginctl | awk '{print $1}')
+	SESSIONS=$(get_sessions)
 	if [ -n "$SESSIONS" ]; then
-		TMP="/dev/shm/idlecheck.tmp"
+		TMP="/run/openslx/idlecheck.tmp"
 		# Iterate over sessions
 		for ses in $SESSIONS; do
 			# Get information
@@ -79,8 +92,8 @@ if [ -n "${SLX_LOGOUT_TIMEOUT}" ] && [ "${SLX_LOGOUT_TIMEOUT}" -gt 0 ]; then
 else
 	# No logout timeout is set, take shortcut for shutdown/suspend timeout (if set)
 	if [ -n "$SLX_SHUTDOWN_TIMEOUT" ] || [ -n "$SLX_SYSTEM_STANDBY_TIMEOUT" ]; then
-		SESSIONS=$(loginctl | wc -l)
-		if [ "$SESSIONS" = "0" ]; then
+		SESSIONS=$(get_sessions)
+		if [ -z "$SESSIONS" ]; then
 			[ ! -e "$IDLEHINT" ] && echo "$NOW" > "$IDLEHINT"
 		else
 			rm -f -- "$IDLEHINT"
