@@ -15,6 +15,9 @@ fetch_source() {
 	if ! grep -q 'suspend.*"no"' "util-linux/rtcwake.c"; then
 		git apply "${MODULE_DIR}/rtcwake-mode-no.patch" || perror "Could not apply busybox patch for rtcwake 'no'-mode"
 	fi
+	if ! grep -q 'rtc0' "util-linux/rtcwake.c"; then
+		git apply "${MODULE_DIR}/rtcwake-default-rtc0.patch" || perror "Could not apply busybox patch for rtcwake default to rtc0"
+	fi
 	cd .. || perror "cd .. failed"
 }
 
