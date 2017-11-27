@@ -17,6 +17,7 @@ fetch_text_config() {
 
 	echo "# Config fetched from $URL" >> "$CONFIG"
 	echo "#_RCONFIG_TAG" >> "$CONFIG"
+	CONFIG_DOWNLOAD_TIME=$(sed -r 's/^([0-9]+)\.([0-9]+).*$/\1\2/' /proc/uptime)
 	cat "${CONFIG}-remote" >> "$CONFIG"
 }
 #########################################################################

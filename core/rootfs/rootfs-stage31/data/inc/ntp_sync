@@ -1,22 +1,49 @@
+#!/bin/ash
 # Sync time via network
 
 func_sync_net_time() {
-	local SERVER
-	if [ -n "$SLX_NTP_SERVER" ]; then
-		for SERVER in $SLX_NTP_SERVER; do
-			if ntpdate -u -p 2 "$SERVER"; then
-				echo "Successfully queried $SERVER for time."
-				if [ "x$SLX_BIOS_CLOCK" = "xlocal" ]; then
-					usleep 100000
-					hwclock -l -w || echo "... but could not set BIOS clock to localtime"
-				elif [ "x$SLX_BIOS_CLOCK" = "xutc" ]; then
-					usleep 100000
-					hwclock -u -w || echo "... but could not set BIOS clock to UTC"
-				fi
-				break
+	local SERVER SUCCESS NTPSRV
+	# Try to merge with servers from DHCP. Prefer DHCP, skip duplicates
+	touch /run/ntpsrv
+	for SERVER in $SLX_NTP_SERVER; do
+		if ! grep -Fxq "$SERVER" /run/ntpsrv; then
+			echo "$SERVER" >> /run/ntpsrv
+		fi
+	done
+	fi
+	NTPSRV=$(cat /run/ntpsrv)
+	SUCCESS=
+	for SERVER in $NTPSRV; do
+		if ntpdate -u -p 2 "$SERVER"; then
+			echo "Successfully queried $SERVER for time."
+			if [ "x$SLX_BIOS_CLOCK" = "xlocal" ]; then
+				usleep 100000
+				hwclock -l -w || echo "... but could not set BIOS clock to localtime"
+			elif [ "x$SLX_BIOS_CLOCK" = "xutc" ]; then
+				usleep 100000
+				hwclock -u -w || echo "... but could not set BIOS clock to UTC"
 			fi
-			echo "Error querying $SERVER for current time."
-		done
+			SUCCESS=1
+			break
+		fi
+		echo "Error querying $SERVER for current time."
+	done
+	if [ -z "$SUCCESS" ]; then
+		echo "No NTP server reachable"
+		# See if we have a timestamp in our server-config - should only be a few seconds off by now
+		if [ -n "$SLX_NOW" ] && [ "$SLX_NOW" -gt 1234567890 ]; then
+			TTS="$SLX_NOW"
+			if [ -n "$CONFIG_DOWNLOAD_TIME" ]; then
+				NOW_TIME=$(sed -r 's/^([0-9]+)\.([0-9]+).*$/\1\2/' /proc/uptime)
+				if [ "$CONFIG_DOWNLOAD_TIME" -gt 0 ] && [ "$NOW_TIME" -gt 0 ]; then
+					TTS=$(( TTS + ( NOW_TIME - CONFIG_DOWNLOAD_TIME ) / 100 ))
+				fi
+			fi
+			echo "Setting time to SLX_NOW ($SLX_NOW, corrected $TTS)"
+			date -s "@$TTS"
+		else
+			echo "No fallback option for timesync available, relying on correct RTC setup"
+		fi
 	fi
 }
 

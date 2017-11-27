@@ -82,6 +82,9 @@ if [ -n "$search" ]; then
 	echo "SLX_NET_SEARCH='$search'" >> /run/config
 fi
 
+for i in $ntpsrv; do
+	echo "$i" >> "/run/ntpsrv"
+done
 
 # Hostname
 if [ -z "$hostname" ]; then

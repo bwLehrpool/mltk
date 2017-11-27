@@ -104,5 +104,5 @@ echo "CLIENTIP=$CLIENTIP" >> /run/network.conf
 echo "GATEWAY=$GATEWAY" >> /run/network.conf
 echo "BRIDGE=$BRIDGE" >> /run/network.conf
 
-udhcpc $PARAM -O domain -O nissrv -O nisdomain -O wpad -O search -t 5 -T 2 -s "/inc/udhcpc-trigger" -f -n -q -i "$BRIDGE"
+udhcpc $PARAM -O ntpsrv -O domain -O wpad -O search -t 5 -T 2 -s "/inc/udhcpc-trigger" -f -n -q -i "$BRIDGE"
 # udhcpc return value will be return value of this script
