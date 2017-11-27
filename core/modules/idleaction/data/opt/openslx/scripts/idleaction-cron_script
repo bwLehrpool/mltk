@@ -99,7 +99,10 @@ if [ -e "$IDLEHINT" ]; then
 		poweroff &
 		exit 0
 	elif [ -n "${SLX_SYSTEM_STANDBY_TIMEOUT}" ] && [ "${SLX_SYSTEM_STANDBY_TIMEOUT}" -gt 0 ] && [ "$IDLE" -gt "$SLX_SYSTEM_STANDBY_TIMEOUT" ]; then
-		systemctl suspend &
+		rm -f -- "$IDLEHINT"
+		if ! systemctl suspend; then
+			slxlog --sync "idleaction-no-suspend" "Client does not support standby/suspend, doing nothing"
+		fi
 		exit 0
 	fi
 fi
