@@ -10,7 +10,6 @@ func_sync_net_time() {
 			echo "$SERVER" >> /run/ntpsrv
 		fi
 	done
-	fi
 	NTPSRV=$(cat /run/ntpsrv)
 	SUCCESS=
 	for SERVER in $NTPSRV; do
