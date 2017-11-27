@@ -1,7 +1,9 @@
 #!/bin/bash
 
 fetch_source() {
-	git clone --depth 1 "${REQUIRED_GIT}" --branch "$REQUIRED_BRANCH" src || perror "Could not clone busybox git"
+	if ! [ -d "etc/.git" ]; then
+		git clone --depth 1 "${REQUIRED_GIT}" --branch "$REQUIRED_BRANCH" src || perror "Could not clone busybox git"
+	fi
 	cd src || perror "Could not cd to src"
 	# Patch image centering and background filling if not patched yet
 	if ! grep -q "bcenter_image" "miscutils/fbsplash.c"; then
