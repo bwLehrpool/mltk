@@ -1,7 +1,7 @@
 #!/bin/bash
 
 fetch_source() {
-	if ! [ -d "etc/.git" ]; then
+	if ! [ -d "src/.git" ]; then
 		git clone --depth 1 "${REQUIRED_GIT}" --branch "$REQUIRED_BRANCH" src || perror "Could not clone busybox git"
 	fi
 	cd src || perror "Could not cd to src"
