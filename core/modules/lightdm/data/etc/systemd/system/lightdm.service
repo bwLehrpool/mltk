@@ -1,7 +1,8 @@
 [Unit]
 Description=LightDM Display Manager
+Conflicts=getty@tty7.service
 Requires=dev-tty7.device
-After=dev-tty7.device systemd-user-sessions.service
+After=dev-tty7.device systemd-user-sessions.service setup-slx-addon@nvidia_libs.service setup-slx-addon@vmware.service
 
 [Service]
 ExecStart=/usr/sbin/lightdm
