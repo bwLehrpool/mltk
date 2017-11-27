@@ -144,7 +144,7 @@ write_crontab ()
 		[ -z "$HOUR" -o -z "$MINUTE" ] && invalid_time && continue
 		[ "$HOUR" -lt 0 -o "$HOUR" -gt 23 ] && invalid_time && continue
 		[ "$MINUTE" -lt 0 -o "$MINUTE" -gt 59 ] && invalid_time && continue
-		echo "$MINUTE $HOUR	* * *	root	/opt/openslx/scripts/idleaction-scheduled_action $ACTION" >> "$CRONFILE"
+		echo "$MINUTE $HOUR	* * *	root	/opt/openslx/scripts/idleaction-scheduled_action $ACTION --time $time" >> "$CRONFILE"
 	done
 }
 

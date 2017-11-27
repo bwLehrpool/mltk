@@ -60,8 +60,8 @@ if [ -n "$TEST" ]; then
 fi
 
 if [ -n "$NEXT" ]; then
-	# Always assume RTC is UTC so rtcwake will not assume the RTC does DST changes
-	rtcwake -u -m no -t "$NEXT"
+	# Set -l and hope it does the right thing on DST
+	rtcwake -l -m no -t "$NEXT"
 else
 	rtcwake -m disable
 fi
