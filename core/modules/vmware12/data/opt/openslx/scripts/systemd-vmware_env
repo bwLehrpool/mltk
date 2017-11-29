@@ -55,7 +55,9 @@ vmnetif () {
 	local vmnet nic NICS
 	# create the needed devices which effects all vmware options
 	# they are not created automatically via module load
-	mknod /dev/vmmon c 10 165 || slxlog "vmware-node-vmmon" "Could not create /dev/vmmon"
+	if ! [ -e /dev/vmmon ]; then
+		mknod /dev/vmmon c 10 165 || slxlog "vmware-node-vmmon" "Could not create /dev/vmmon"
+	fi
 	# network interfaces
 	# 1) default ones
 	for vmnet in 0 1 2; do
