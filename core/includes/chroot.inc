@@ -162,10 +162,11 @@ chroot_gen_autoexec() {
 
 chroot_handle_whiteouts() {
 	local WHITEOUT_LIST="${CHROOT_UPPERDIR}/overlay.whiteout.list"
-	rm -f -- "$WHITEOUT_LIST="
-	#mkdir -p "$(dirname "$WHITEOUT_LIST")" || perror "Could not create $(dirname "$WHITEOUT_LIST")"
+	rm -f -- "$WHITEOUT_LIST"
+	mkdir -p "$(dirname "$WHITEOUT_LIST")" || perror "Could not create $(dirname "$WHITEOUT_LIST")"
+	touch "$WHITEOUT_LIST"
 	pdebug "Searching for overlayfs-whiteouts ..."
-	for WHITEOUT in $(find "$CHROOT_UPPERDIR" -lname "(overlay-whiteout)"); do
+	for WHITEOUT in $(find "$CHROOT_UPPERDIR" \( -type c -perm 0000 \) -o -lname "(overlay-whiteout)"); do
 		pdebug "Whiteout found: $WHITEOUT"
 		echo "/./${WHITEOUT#$CHROOT_UPPERDIR}" >> "$WHITEOUT_LIST"
 		rm -f -- "$WHITEOUT" || perror "Could not delete whiteout $WHITEOUT!"
