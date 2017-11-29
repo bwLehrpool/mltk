@@ -76,7 +76,7 @@ build() {
 	pinfo "Installing vmware per chroot..."
 	chroot_run "${MODULE_BUILD_DIR}" <<-EOF
 		perror() {
-			echo "[ERROR ERROR] " "$@" >&6
+			echo "[ERROR ERROR] " "\$@" >&6
 			exit 1
 		}
 		# PS1='\[\e[1;33m\](chroot) \u@\h:\w\$ \[\e[1;32m\]' /bin/bash -norc	# un-comment for debugging within chroot
@@ -88,6 +88,7 @@ build() {
 		cd "/usr/lib/vmware/modules/source" \
 			|| perror "Could not cd to '/usr/lib/vmware/modules/source'"
 		for file in /patches/*.patch; do
+			[ -s "\$file" ] || continue
 			echo "Applying patch $file"
 			SHORT="\$(basename "\${file%%__*}")"
 			KMOD="\${SHORT}.tar"
