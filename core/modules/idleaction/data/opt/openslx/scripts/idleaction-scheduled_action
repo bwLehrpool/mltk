@@ -37,6 +37,8 @@ done
 
 if [ -n "$TS" ]; then
 	# Sanity check for trigger by cron
+	# Sleep first so the clock has time to get adjusted
+	sleep 10
 	NOW=$(date +%s)
 	SHOULD=$(date -d "today $TS" +%s)
 	DIFF=$(( NOW - SHOULD ))

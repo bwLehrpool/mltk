@@ -32,7 +32,7 @@ if [ -n "$SCHEDULE" ]; then
 	TODAY=$(date +%Y-%m-%d)
 	# Use tomorrow instead of adding 86400 seconds so it (hopefully) works when DST changes
 	TOMORROW=$(date --date="+1 day" +%Y-%m-%d)
-	NOW=$(date --date="+1 minute" +%s) # don't wake up again immediately
+	NOW=$(date +%s)
 	for t in $SCHEDULE; do
 		HOUR=${t%%:*}
 		MINUTE=${t##*:}
