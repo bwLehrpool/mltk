@@ -1,7 +1,6 @@
 #!/bin/bash
 REQUIRED_INSTALLED_PACKAGES="
 			intltool
-			gperf
 			dbus
 			libcap-dev
 			libudev-dev
