@@ -9,14 +9,5 @@ if [ -n "$SLX_PVS_CONFIG_URL" ]; then
 	[ -s "${DST}.new" ] && mv -f "${DST}.new" "${DST}"
 fi
 
-# If this is a dedicated PVS station, make it launch right away
-if [ -n "$SLX_PVS_DEDICATED" ] && cd /opt/openslx/xsessions; then
-	for file in *.desktop; do
-		cp -f "/usr/share/xsessions/pvs2mgr.desktop" "$file"
-	done
-	# patch autologin into kdmrc
-	sed -i '/AutoLogin.*=/d;/^\[X-.*-Core\]/a AutoLoginEnable=true\nAutoLoginUser=demo\nAutoLoginAgain=true\nAutoLoginDelay=0' "/etc/kde/kdm/kdmrc"
-fi
-
 exit 0
 

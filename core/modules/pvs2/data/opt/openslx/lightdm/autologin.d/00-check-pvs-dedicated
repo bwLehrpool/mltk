@@ -1,0 +1,10 @@
+#!/bin/ash
+# This file is SOURCED
+
+# PVSMGR?
+if [ -n "$SLX_PVS_DEDICATED" ]; then
+	exec /opt/openslx/scripts/setup-pvsmgr
+fi
+
+true
+
