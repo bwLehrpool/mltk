@@ -123,7 +123,7 @@ chmod -R a+Xr "${DNBD3_CONF_DIR}"
 # create rpc.acl to allow the satellite only
 rm -f "${DNBD3_CONF_DIR}/rpc.acl"
 for SRV in ${SLX_KCL_SERVERS}; do
-	echo "$SRV STATS CLIENT_LIST IMAGE_LIST" >> "${DNBD3_CONF_DIR}/rpc.acl"
+	echo "$SRV ALL" >> "${DNBD3_CONF_DIR}/rpc.acl"
 done
 
 rm -f "/opt/openslx/iptables/rules.d/99-dnbd3"
