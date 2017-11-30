@@ -25,7 +25,6 @@ REQUIRED_INSTALLED_PACKAGES="
 			xserver-xorg-video-sisusb$UBUNTU_XORG_PKG_SUFFIX
 			xserver-xorg-video-vesa$UBUNTU_XORG_PKG_SUFFIX
 			xserver-xorg-video-vmware$UBUNTU_XORG_PKG_SUFFIX
-
 			libdrm-dev
 			libgbm-dev
 			libgl-dev
@@ -51,6 +50,12 @@ REQUIRED_CONTENT_PACKAGES="
 			xserver-xorg-core$UBUNTU_XORG_PKG_SUFFIX
 			libgl1-mesa-dri$UBUNTU_XORG_PKG_SUFFIX
 			libgl1-mesa-glx$UBUNTU_XORG_PKG_SUFFIX
+			libegl1-mesa
+			libgbm1
+			libcapnp-0.5.3
+			libmirclient9
+			libwayland-client0
+			libwayland-server0
 			xkb-data
 			x11-xkb-utils
 			x11-xserver-utils

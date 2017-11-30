@@ -27,8 +27,10 @@ build() {
 		cp -r "${MODULE_BUILD_DIR}/etc/udev" "${MODULE_BUILD_DIR}/usr/lib/"
 	fi
 	rm -rf -- "${MODULE_BUILD_DIR}/lib/udev" "${MODULE_BUILD_DIR}/etc/udev"
-	# This freezed/crashed X with certain gfx cards (radeon R240)
-	rm -f -- "${MODULE_BUILD_DIR}/usr/lib/xorg/modules/libglamoregl.so"
+
+	# This used to freeze/crashe X with certain gfx cards (radeon R240)
+	# /usr/lib/xorg/modules/libglamoregl.so
+	# Newer X versions seems to have this fixed, so we included it again
 
 	# See if we should build more up to date versions of drivers
 	local drv
