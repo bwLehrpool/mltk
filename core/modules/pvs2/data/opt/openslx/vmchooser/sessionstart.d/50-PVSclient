@@ -42,9 +42,9 @@ fi
 
 # If the ENV var PVS has been set by vmchooser start pvsclient
 if [ "$PVS_AUTO_CONNECT" == "TRUE" ]; then
-	pvsstartup "$PVSCONFIG" --auto &
+	pvsstartup $PVSCONFIG --auto &
 else
-	pvsstartup "$PVSCONFIG" &
+	pvsstartup $PVSCONFIG &
 fi
 
 # Finally, handle hybrid mode where the pvsmgr is launched on the second desktop
