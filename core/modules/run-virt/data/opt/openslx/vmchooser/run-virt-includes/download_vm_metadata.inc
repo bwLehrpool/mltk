@@ -32,6 +32,14 @@ download_metadata() {
 			writelog "Downloaded VM description from '${SLX_VMCHOOSER_BASE_URL}/lecture/${IMGUUID}' successfully."
 			if [ -s "$TMPCONFIG" ]; then
 				# Downloaded a non-zero VM description file, all good
+				# sanitize what we got to make sure, we don't have a bad starting
+				# point
+				local TMPTMPCONFIG="$(mktemp)"
+				grep -E '^\s*(#|[^=]+=[^"]*"[^"]*"\s*$|[^=]+=[^"]+$|$)' "$TMPCONFIG" > "$TMPTMPCONFIG"
+				if ! diff -q "$TMPCONFIG" "$TMPTMPCONFIG"; then
+					writelog "'$TMPCONFIG' was pruned by the post-download sanitizer!"
+				fi
+				mv "$TMPTMPCONFIG" "$TMPCONFIG"
 				return 0
 			else
 				writelog "Server sent zero byte virtual machine description file."
