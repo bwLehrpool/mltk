@@ -83,7 +83,13 @@ setup_virtual_floppy() {
 	# which is coincidentally the one we received from dmsd :)
 	if load_dmsd_resource NETSHARES; then
 		if [ -s "${NETSHARES}" ]; then
-			cat $NETSHARES >> "${SHARES}"
+			# try to detect if we are running windows and replace '/' with '\'
+			# in an attempt to fix an improperly given samba path
+			cmd="cat"
+			if [[ "$( tr '[A-Z]' '[a-z]' <<< ${VM_OS_TYPE})" = *windows* ]]; then
+				cmd="tr '/' '\'"
+			fi
+			< $NETSHARES ${cmd} >> "${SHARES}"
 		fi
 	fi
 
