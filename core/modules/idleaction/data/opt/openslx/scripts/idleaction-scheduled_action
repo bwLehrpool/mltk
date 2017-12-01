@@ -86,7 +86,7 @@ runaction () {
 				MESSAGE="Dieser Rechner wird in $MINUTES Minute(n) abgeschaltet, bitte beenden Sie Ihre Sitzung.
 	The system will power off in $MINUTES minute(s). Please save your work and end the session."
 			fi
-			for d in $(who | awk '{print $2}' | sort -u); do
+			for d in $(who | awk '{print $2 " " $NF}' | sort -u); do
 				if [ "${d:0:1}" = ":" ]; then
 					# X11
 					export DISPLAY=$d
