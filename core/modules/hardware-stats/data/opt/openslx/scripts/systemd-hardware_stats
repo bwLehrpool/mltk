@@ -49,12 +49,13 @@ cleanup() {
 	done < "/tmp/hw-delete-list"
 }
 
-fdisk() {
+slxfdisk() {
 	local binary RET
 	for binary in "/opt/openslx/sbin/fdisk" "busybox fdisk" "fdisk"; do
 		$binary "$@"
 		RET=$?
 		[ "$RET" = "127" ] && continue # command not found
+		[ "$RET" = "1" ] && [ "$binary" = "busybox fdisk" ] && continue # maybe applet not found
 		return $RET
 	done
 	return 127
@@ -82,6 +83,7 @@ echo "Determined MAC=$MAC"
 UUID=$(cat /etc/system-uuid)
 if [ -z "$UUID" ] || [ "${#UUID}" -ne "36" ]; then
 	UUID=$(dmidecode -q -s system-uuid | grep -v '^#' | head -n 1 | tr '[a-z]' '[A-Z]')
+	echo "$UUID" > /etc/system-uuid
 fi
 if [ "${#UUID}" -ne "36" ]; then
 	echo "Determined UUID (${UUID}) has not expected length of 36, falling back to MAC..."
@@ -163,8 +165,8 @@ if [ -n "${df_size}" ] && [ "${df_dev:0:5}" = "/dev/" ]; then
 	ID44=$(( df_size / 1024 ))
 fi
 if [ "$ID44" = 0 ]; then
-	# fdisk fallback
-	for c in $(fdisk -l | grep -E '[0-9]+[\-\+]?\s+44\s+' | awk '{print $1}'); do
+	# slxfdisk fallback
+	for c in $(slxfdisk -l | grep -E '[0-9]+[\-\+]?\s+44\s+' | awk '{print $1}'); do
 		val=$(blockdev --getsize64 "$c")
 		[ -z "$val" ] && continue
 		[ "$val" -gt "$ID44" ] && ID44=$val
@@ -176,7 +178,7 @@ echo "Temp partition: $ID44 MB"
 
 # 9) check smart values
 FDISK=$(mktemp)
-fdisk -l > "$FDISK"
+slxfdisk -l > "$FDISK"
 BADSECTORS=0
 if which smartctl; then
 	ALLSMART=$(mktemp)
