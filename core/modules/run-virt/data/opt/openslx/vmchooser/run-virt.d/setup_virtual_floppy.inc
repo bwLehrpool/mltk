@@ -85,11 +85,11 @@ setup_virtual_floppy() {
 		if [ -s "${NETSHARES}" ]; then
 			# try to detect if we are running windows and replace '/' with '\'
 			# in an attempt to fix an improperly given samba path
-			cmd="cat"
+			cmd=(cat)
 			if [[ "$( tr '[A-Z]' '[a-z]' <<< ${VM_OS_TYPE})" = *windows* ]]; then
-				cmd="tr '/' '\'"
+				cmd=(tr / '\\')
 			fi
-			< $NETSHARES ${cmd} >> "${SHARES}"
+			< $NETSHARES "${cmd[@]}" >> "${SHARES}"
 		fi
 	fi
 
