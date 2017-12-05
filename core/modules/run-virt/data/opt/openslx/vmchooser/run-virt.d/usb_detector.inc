@@ -2,8 +2,25 @@
 ##################################################
 # Include: Detect and pass USB devices to the VM #
 ##################################################
-# TODO USB devices
-declare -rg PASSTHROUGH_USB_DEVICES="2 0:5 0:6 0:7 0:14 0:16 0:17 239"
+
+declare -g PASSTHROUGH_USB_DEVICES="2 0:5 0:6 0:7 0:14 0:16 0:17 239"
+
+# include USB IDs explicitly given by SLX_PASSTHROUGH_USB_ID
+# which is expected to be a space-separated list!
+. /opt/openslx/config
+if [ -n "${SLX_PASSTHROUGH_USB_ID}" ]; then
+	while IFS= read -ra USB_ID; do
+		for ID in ${USB_ID[@]}; do
+			# validate each entry and add them to the list if they pass
+			if ! [[ "${ID}" =~ ^[0-9a-f]{4}:[0-9a-f]{4}$ ]]; then
+				writelog "Rejected USB ID: '${ID}'."
+				continue
+			fi
+			PASSTHROUGH_USB_DEVICES+=" ${ID}"
+		done
+	done <<< "${SLX_PASSTHROUGH_USB_ID}"
+fi
+readonly PASSTHROUGH_USB_DEVICES
 
 # Helper function that will scan /dev/bus/usb for devices matching specific classes
 # and then output the corresponding device ids. This can be used for selective
@@ -62,7 +79,8 @@ get_usb_devices_int() {
 					[[ "$MATCH" == *";${DC}:${value};"* ]] && OK=yo
 				fi
 			fi
-			if [ -n "$OK" -a -n "$VENDOR" -a -n "$PRODUCT" ]; then
+			if [ -n "$OK" -a -n "$VENDOR" -a -n "$PRODUCT" ] || \
+				[[ "$MATCH" == *";${VENDOR}:${PRODUCT};"* ]]; then
 				echo "$EXP" | sed "s/%VENDOR%/${VENDOR}/g;s/%PRODUCT%/${PRODUCT}/g"
 				break
 			fi
