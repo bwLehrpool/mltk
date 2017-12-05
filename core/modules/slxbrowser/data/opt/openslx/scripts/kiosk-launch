@@ -11,5 +11,6 @@ openbox &
 
 [ -n "$SLX_BROWSER_INSECURE" ] && SLX_BROWSER_INSECURE="--insecure"
 
+xdotool mousemove 20000 20000 &
 exec slxbrowser $SLX_BROWSER_INSECURE --fullscreen "$SLX_BROWSER_URL"
 
