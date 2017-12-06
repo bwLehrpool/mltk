@@ -42,7 +42,7 @@ format_disk () {
 		if which "mkfs.$fs" ; then
 			case "$fs" in
 			xfs)
-				fopt="-f -b size=4k -s size=4k -l size=512b" # fastest formatting possible :)
+				fopt="-f -b size=4k -s size=4k" # fastest formatting possible :)
 				MOUNT_OPTIONS_SET_BY_FORMAT_DISK="-o noexec"
 				;;
 			ext2)
