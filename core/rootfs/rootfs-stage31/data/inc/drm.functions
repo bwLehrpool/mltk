@@ -41,8 +41,12 @@ setup_gfx () {
 		load_gfx @nvidia
 		return
 	fi
-	if [ "x$GFX" == "xamd" ]; then
-		load_gfx @amd
+	if [ "x$GFX" == "xamdgpu" ]; then
+		load_gfx @amdgpu
+		return
+	fi
+	if [ "x$GFX" == "xradeon" ]; then
+		load_gfx @radeon
 		return
 	fi
 	# not forced - check which driver to load

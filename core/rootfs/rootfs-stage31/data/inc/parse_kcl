@@ -43,8 +43,10 @@ for opts in ${KCL}; do
 			SPLASH=1 ;;
 		nvidia)
 			GFX=nvidia ;;
-		ati|amd)
-			GFX=amd ;;
+		amdgpu)
+			GFX=amdgpu ;;
+		radeon)
+			GFX=radeon ;;
 	esac
 done
 
