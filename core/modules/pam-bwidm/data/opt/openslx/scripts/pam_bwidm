@@ -17,20 +17,35 @@ if [ "x$PAM_TYPE" == "xauth" ]; then
 	[ -z "$USER_PASSWORD" ] && echo "No password given." && exit 1
 fi
 
+# sanity check on PAM_USER: contains '@'?
+if [ -z "$PAM_USER" ] || [ "x${PAM_USER}" == "x${PAM_USER%@*}" ]; then
+	# no @ contained, invalid username, abort
+	#echo "Invalid username '$PAM_USER'. Aborting."
+	exit 1
+fi
+
 if ! busybox which curl || ! busybox which mktemp; then
 	echo "'curl/mktemp' missing. This script won't work without it."
 	exit 1
 fi
 
+# determine proper tmp dir, prefer one in RAM
+for TMPDIR in "/run" "/run/user/$(id -u)" "/dev/shm" "/home/$(whoami)" "/tmp"; do
+	[ -d "$TMPDIR" ] && [ -w "$TMPDIR" ] && [ -r "$TMPDIR" ] && break
+done
+readonly TMPDIR
+
 # redirect stdout/stderr to temporary logfile
-readonly LOGFILE="$(mktemp)"
+readonly LOGFILE="$(mktemp -p "$TMPDIR")"
 # URL to query masterserver for IDPs
 readonly IDP_QUERY_URL="https://bwlp-masterserver.ruf.uni-freiburg.de/webif/pam.php"
 readonly IDP_QUERY_CACHE="/run/openslx/bwlp-idp"
 
 # everything in a subshell in an effort to hide sensitive information
 # from this script's environment
-(
+###
+( #
+###
 # redirect stdout and stderr to logfile
 exec > "${LOGFILE}" 2>&1
 
@@ -45,13 +60,6 @@ elif [ "x${SLX_BWIDM_AUTH}" = "xselective"  ]; then
 	fi
 else
 	echo "bwIDM login disabled in openslx-config."
-	exit 1
-fi
-
-# sanity check on PAM_USER: contains '@'?
-if [ -z "$PAM_USER" ] || [ "x${PAM_USER}" == "x${PAM_USER%@*}" ]; then
-	# no @ contained, invalid username, abort
-	echo "Invalid username '$PAM_USER'. Aborting."
 	exit 1
 fi
 
@@ -82,9 +90,13 @@ fi
 mkdir -p /run/openslx
 
 # check if we have a (non-zero bytes) cached copy of the list
-if [ ! -s "${IDP_QUERY_CACHE}" ]; then
+if ! [ -s "${IDP_QUERY_CACHE}" ]; then
+	if ! [ -w "/run/openslx" ]; then
+		echo "No IDP info cached, cache path not writable for current user."
+		exit 7
+	fi
 	idpret="$(curl -w "%{http_code}" -o "${IDP_QUERY_CACHE}" --connect-timeout 5 --max-time 15 "$IDP_QUERY_URL")"
-	if [ "x$idpret" != "x200" ]; then
+	if [ "x${idpret:0:1}" != "x2" ]; then
 		echo "Could not download the list of identity providers from '$IDP_QUERY_URL'. Aborting."
 		rm -f -- "$IDP_QUERY_CACHE"
 		exit 7
@@ -141,8 +153,8 @@ if [ "x$PAM_TYPE" == "xauth" ]; then
 	RID="_c${RANDOM}a${RANDOM}f${RANDOM}f${RANDOM}e${RANDOM}e${RANDOM}"
 	RID="${RID:0:32}"
 	REQUEST=$(sed "s/%TIMESTAMP%/${NOW}/g;s/%REQUESTID%/${RID}/g" "${SOAP_ENVELOPE}")
-	NETRC=$(mktemp -p /run/)
-	[ -z "$NETRC" ] && NETRC="/run/netrc_$$_${USER}_${RANDOM}.tmp"
+	NETRC=$(mktemp -p "$TMPDIR")
+	[ -z "$NETRC" ] && NETRC="$TMPDIR/netrc_$$_${USER}_${RANDOM}.tmp"
 	touch "$NETRC"
 	chmod 0600 "$NETRC"
 	# now we are ready to actually send the credentials to the IdP
@@ -204,7 +216,9 @@ fi
 # script should never get to the following line
 echo "$0 called for unsupported PAM_TYPE '$PAM_TYPE'. Aborting."
 exit 1
-)
+###
+) #
+# #
 ## main script
 mainret=$?
 if [ "x$mainret" == "x7" ]; then
