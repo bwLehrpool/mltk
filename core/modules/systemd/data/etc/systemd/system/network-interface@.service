@@ -5,5 +5,5 @@ Before=dhcpc@%i.service
 
 [Service]
 Type=simple
-ExecStart=/opt/openslx/sbin/ip link set dev %I up
+ExecStart=/opt/openslx/sbin/ip link set dev %i up
 
