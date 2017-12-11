@@ -33,7 +33,7 @@ SUBSYSTEM=="block", KERNEL!="ram*|loop*", ENV{DM_UUID}=="CRYPT-*", ENV{ID_PART_T
 
 SUBSYSTEM=="net", KERNEL=="eth*", TAG=="openslxignore", GOTO="systemd_end"
 
-SUBSYSTEM=="net", KERNEL=="br0|eth*", TAG+="systemd", ENV{SYSTEMD_ALIAS}="/sys/subsystem/net/devices/$name", ENV{SYSTEMD_WANTS}="network-interface@$name.service"
+SUBSYSTEM=="net", KERNEL=="br0|br-nic-*", TAG+="systemd", ENV{SYSTEMD_ALIAS}="/sys/subsystem/net/devices/$name", ENV{SYSTEMD_WANTS}="network-interface@$name.service"
 SUBSYSTEM=="bluetooth", TAG+="systemd", ENV{SYSTEMD_ALIAS}="/sys/subsystem/bluetooth/devices/%k"
 
 SUBSYSTEM=="bluetooth", TAG+="systemd", ENV{SYSTEMD_WANTS}="bluetooth.target"
