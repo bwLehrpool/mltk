@@ -870,7 +870,11 @@ static void postSuccessfulMount(const netdrive_t *d, wchar_t *letter)
 		MultiByteToWideChar(CP_UTF8, 0, d->path, -1, tmp, MAX_PATH);
 		StringCchPrintfW(wTarget, MAX_PATH, L"\"%s\"", tmp);
 		DeleteFileW(wShortcut);
-		createFolderShortcut(wTarget, wShortcut, letter);
+		if (letter == NULL || *letter == '\0' || d->path[0] == '\\' || d->path[1] == '\\') {
+			createFolderShortcut(wTarget, wShortcut, letter);
+		} else {
+			createFolderShortcut(letter, wShortcut, letter);
+		}
 		// Fix paths and kill explorer if it's the home directory
 		if (_folderStatus != FS_OK && strncmp(d->shortcut, "Home-", 5) == 0) {
 			BOOL isVmware = strcmp(d->path, "\\\\vmware-host\\Shared Folders\\home") == 0;
