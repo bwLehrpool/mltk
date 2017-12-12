@@ -114,8 +114,10 @@ setup_virtual_floppy() {
 	createMissingRemap=${SHARE_CREATE_MISSING_REMAP}
 	remapMode=${SHARE_REMAP_MODE_INI}
 	homeDrive=${SHARE_HOME_DRIVE}
+	megaDrive=SEGA
 	scriptExt=${EXT}
 	passCreds=${SHARE_CREDENTIAL_PASSTHROUGH}
+	bootIp=${SLX_PXE_CLIENT_IP}
 	
 	[remap]
 	documents=${SHARE_DOCUMENTS}
