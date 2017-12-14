@@ -95,7 +95,13 @@ echo -n "."
 ps auxf > "generated/ps-out" 2> "generated/ps-err"
 echo -n "."
 
-if [ -n "$DISPLAY" ]; then
+if [ -z "$DISPLAY" ]; then
+	DISPLAY=:0
+	XAUTHORITY=$(ps a | grep " $DISPLAY " | grep -o -- '-auth.*$' | grep -m1 -v grep | awk '{print $2}')
+fi
+if [ -n "$XAUTHORITY" ]; then
+	export DISPLAY
+	export XAUTHORITY
 	xrandr --verbose > "generated/xrandr-out" 2> "generated/xrandr-err"
 	echo -n "."
 fi
