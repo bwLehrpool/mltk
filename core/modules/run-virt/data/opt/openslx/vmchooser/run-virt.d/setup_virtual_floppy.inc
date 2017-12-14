@@ -91,7 +91,7 @@ setup_virtual_floppy() {
 			fi
 			< $NETSHARES "${cmd[@]}" >> "${SHARES}"
 			# replace the tag for the username, if present
-			sed -i 's/%user%/'"${USER}"'/g' "${SHARES}"
+			sed -i 's/%loginuser%/'"${USER}"'/g' "${SHARES}"
 		fi
 	fi
 
