@@ -89,8 +89,16 @@ echo -n "."
 systemctl status > "generated/systemctl-status-out" 2> "generated/systemctl-status-err"
 echo -n "."
 
+systemd-analyze plot > "generated/systemd-plot.svg" 2> "generated/systemd-plot.err"
+echo -n "."
+
 ps auxf > "generated/ps-out" 2> "generated/ps-err"
 echo -n "."
+
+if [ -n "$DISPLAY" ]; then
+	xrandr --verbose > "generated/xrandr-out" 2> "generated/xrandr-err"
+	echo -n "."
+fi
 
 find generated/ -type f -name "*-err" -size 0 -delete > /dev/null 2>/dev/null
 
