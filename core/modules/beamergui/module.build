@@ -6,16 +6,11 @@ fetch_source() {
 
 build() {
 	local SRCDIR="${MODULE_WORK_DIR}/src/"
-	QMAKE="$(which qmake-qt5)"
-	[ -z "$QMAKE" ] && QMAKE=qmake
-
-	# first activate qt 5
-	activate_qt 5
 
 	mkdir -p "$MODULE_BUILD_DIR/opt/openslx/bin"
 	cd "${MODULE_BUILD_DIR}/opt/openslx/bin" || perror "Could not cd!"
-	pinfo "Running qmake"
-	"$QMAKE" "$SRCDIR/src/beamergui.pro" -r -spec linux-g++ || perror "'$QMAKE' failed (e.g. not installed)."
+	pinfo "Running cmake"
+	cmake "$SRCDIR" || perror "'$QMAKE' failed (e.g. not installed)."
 	pinfo "Running make"
 	make || perror "'make' failed."
 
