@@ -63,6 +63,8 @@ vmnetif () {
 	for vmnet in 0 1 2; do
 		vmnet_create "$vmnet"
 	done
+	# Set the vmware interface to 9000 too, as br0 will use the smallest of all slave devices
+	[ "x$SLX_JUMBO_FRAMES" = "xyes" ] && ip link set dev vmnet0 mtu 9000
 	# setup bridge (vmnet0), nat (vmnet1) and software defined networking (vmnet2) interfaces
 	brctl addif br0 vmnet0
 	brctl addif nat1 vmnet1
