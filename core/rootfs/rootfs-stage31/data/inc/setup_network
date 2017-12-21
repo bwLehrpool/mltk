@@ -54,7 +54,6 @@ for LINE in $IP_OUT; do
 		brctl setfd "$BRIDGE" 0.000000000001
 		ip link set addr "$IFMAC" "$BRIDGE" || drop_shell "Could not set mac of $BRIDGE"
 		ip link set dev "$IFACE" up
-		[ "x$SLX_JUMBO_FRAMES" = "xyes" ] && ip link set dev "$IFACE" mtu 9000
 		wait_for_iface "$IFACE"
 		brctl addif "$BRIDGE" "$IFACE" || drop_shell "Could not add $IFACE to $BRIDGE"
 

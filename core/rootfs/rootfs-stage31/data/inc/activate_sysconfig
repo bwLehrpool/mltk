@@ -140,5 +140,11 @@ if [ -n "$SLX_SYSTEMD_TARGET" ]; then
 	done
 fi
 
+# Activate jumbo frames if requested
+(
+	. /run/network.conf
+	[ -n "$IFACE" ] && [ "x$SLX_JUMBO_FRAMES" = "xyes" ] && ip link set dev "$IFACE" mtu 9000
+)
+
 true
 
