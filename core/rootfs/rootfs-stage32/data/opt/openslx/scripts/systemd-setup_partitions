@@ -171,7 +171,11 @@ for PART_DEV in $(get_all_with_id 46); do
 	#  ln -sf /media/${PART_DEV#/dev/*} /var/home
 	echo -e "${PART_DEV}\t/media/${PART_DEV#/dev/*}\tauto\t\tnoauto\t\t 0 0" >> "/etc/fstab"
 done
-if [ "$HAVE_PARTITION_45" = "no" ] && [ -d "$MOUNT_POINT_45" ]; then
+if [ "$HAVE_PARTITION_45" = "yes" ]; then
+	mkdir -p "$MOUNT_POINT_45/data"
+	chown root:root "$MOUNT_POINT_45" "$MOUNT_POINT_45/data"
+	chmod a+rwxt "$MOUNT_POINT_45/data"
+elif [ -d "$MOUNT_POINT_45" ]; then
 	rm -f -- "$MOUNT_POINT_45"
 fi
 
