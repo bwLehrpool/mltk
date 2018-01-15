@@ -10,7 +10,9 @@ xset -dpms
 openbox &
 
 [ -n "$SLX_BROWSER_INSECURE" ] && SLX_BROWSER_INSECURE="--insecure"
+RELOAD=
+[ -n "$SLX_BROWSER_RELOAD_SECS" ] && [ "$SLX_BROWSER_RELOAD_SECS" -gt 0 ] && RELOAD="--reload-interval $SLX_BROWSER_RELOAD_SECS"
 
 xdotool mousemove 20000 20000 &
-exec slxbrowser $SLX_BROWSER_INSECURE --fullscreen "$SLX_BROWSER_URL"
+exec slxbrowser $SLX_BROWSER_INSECURE $RELOAD --fullscreen "$SLX_BROWSER_URL"
 
