@@ -39,9 +39,9 @@ fi > "$OUTFILE" 2>&1
 
 if [ "$RET" -ne "0" ]; then
 	if [ -s "$OUTFILE" ]; then
-		slxlog --delete "mount-vmstore-fail" "Mounting '$SLX_VM_NFS' failed. VMs will not boot." "$OUTFILE"
+		slxlog --sync --delete "mount-vmstore-fail" "Mounting '$SLX_VM_NFS' failed. VMs will not boot." "$OUTFILE"
 	else
-		slxlog "mount-vmstore-fail" "Mounting '$SLX_VM_NFS' failed. VMs will not boot."
+		slxlog --sync "mount-vmstore-fail" "Mounting '$SLX_VM_NFS' failed. VMs will not boot."
 		rm -f -- "$OUTFILE"
 	fi
 fi
