@@ -6,7 +6,12 @@ export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/o
 # check if the script runs as root
 [ "x$(whoami)" != "xroot" ] && exit 0
 
-PASSWD=$(getent passwd "$PAM_USER")
+USER_UID=$(id -u "$PAM_USER")
+if [ -n "$USER_UID" ]; then
+	PASSWD=$(getent passwd "$USER_UID")
+else
+	PASSWD=$(getent passwd "$PAM_USER")
+fi
 USER_NAME=$(echo "$PASSWD" | awk -F ':' '{print $1}')
 USER_UID=$(echo "$PASSWD" | awk -F ':' '{print $3}')
 USER_GID=$(echo "$PASSWD" | awk -F ':' '{print $4}')

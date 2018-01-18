@@ -29,6 +29,9 @@ fi
 # do not kill all root processes :)
 [ "x${PAM_USER}" = "xroot" ] && exit 0
 
+USERID=$(id -u "$PAM_USER")
+[ -z "$USERID" ] && USERID="$PAM_USER"
+
 # Async block: Check if user has no session open anymore, if not
 # kill any remaining processes belonging to the user and unmount
 # everything at $USERHOME and below.
@@ -41,17 +44,17 @@ fi
 	if [ "$SESSIONCOUNT" = "0" ]; then
 
 		# last session, close all ghost user processes
-		pkill -u "${PAM_USER}"
+		pkill -u "${USERID}"
 
 		# check if user's processes are still running
 		for TIMEOUT in 1 1 2 FAIL; do
-			if ! ps -o pid,s -u "$PAM_USER" -U "$PAM_USER" | grep -q -v -E "PID|Z"; then
+			if ! ps -o pid,s -u "$USERID" -U "$USERID" | grep -q -v -E "PID|Z"; then
 				# nothing running anymore
 				break
 			fi
 			if [ "$TIMEOUT" = "FAIL" ]; then
 				# still something running, send SIGKILL
-				pkill -9 -u "${PAM_USER}"
+				pkill -9 -u "${USERID}"
 			else
 				# give some time
 				sleep "${TIMEOUT}"
@@ -65,7 +68,7 @@ fi
 	if [ "$SESSIONCOUNT" = "0" ]; then
 
 		# unmount the home directory structure
-		USER_HOME=$(getent passwd "$PAM_USER" | awk -F ':' '{print $6}')
+		USER_HOME=$(getent passwd "$USERID" | awk -F ':' '{print $6}')
 		if [ -n "$USER_HOME" ]; then
 			for TIMEOUT in 0 0 2 2 FAIL; do
 				OK=yes

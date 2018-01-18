@@ -48,7 +48,9 @@ if [ -n "${SLX_LOGOUT_TIMEOUT}" ] && [ "${SLX_LOGOUT_TIMEOUT}" -gt 0 ]; then
 				# Now that we have DISPLAY and XAUTHORITY set, xprintidle should work
 				if [ -z "$IDLE" ]; then
 					# Try user's xauth
-					USRHOME=$(/usr/bin/getent passwd "$NAME" | awk -F ':' '{print $6}')
+					USERID=$(id -u "$NAME")
+					[ -z "$USERID" ] && USERID="$NAME"
+					USRHOME=$(/usr/bin/getent passwd "$USERID" | awk -F ':' '{print $6}')
 					export XAUTHORITY="$USRHOME/.Xauthority"
 					[ -f "$XAUTHORITY" ] && IDLE=$(xprintidle)
 				fi

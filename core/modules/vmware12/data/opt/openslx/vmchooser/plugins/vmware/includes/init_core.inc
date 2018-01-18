@@ -27,7 +27,9 @@ declare -rg VM_CONF_DIR="/tmp/virt/vmware/${USER}.$$"
 declare -rg VM_RUN_FILE="${VM_CONF_DIR}/run-vmware.conf"
 	
 # Users vmware config folder
-[ -z "${HOME}" ] && declare -rg HOME=$(getent passwd "$(whoami)" | awk -F ':' '{print $6}')
+[ -z "$UID" ] && UID=$(id -u)
+[ -z "${HOME}" ] && declare -rg HOME=$(getent passwd "$UID" | awk -F ':' '{print $6}')
+[ -z "${HOME}" ] && slxlog "run-virt-vmware-home" "Could not get home directory of user $(whoami) ($UID)"
 declare -rg VM_HOME="${HOME}/.vmware"
 	
 # mltk generates a vmware config file with several version infos for vmware/player, read it
