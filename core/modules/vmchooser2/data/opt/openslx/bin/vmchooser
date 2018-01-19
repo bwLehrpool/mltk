@@ -45,7 +45,7 @@ elif [ -n "$SLX_AUTOSTART_UUID" ]; then
 fi
 if [ -z "$SLX_NO_PVS" ]; then
 	EXTRA="$EXTRA --pvs"
-	if [ "x$SLX_PVS_DEFAULT" = "xON" ]; then
+	if [ "x$SLX_PVS_DEFAULT" = "xON" ] || [ "x$SLX_PVS_HYBRID" = "xyes" ]; then
 		EXTRA="$EXTRA --pvs-checked"
 	fi
 fi
