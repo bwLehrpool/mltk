@@ -76,6 +76,8 @@ mkdir -p "$FUTURE_ROOT/opt/openslx"
 # Get all variables we care about from the KCL
 . /inc/parse_kcl
 
+[ $DEBUG -ge 5 ] && drop_shell "Requested Debug Shell: before kernel modules."
+
 # NOTE: this is only relevant when using the distro's kernel
 # load kernel modules as given in /etc/modules
 modprobe -a -b $(cat /etc/modules) 2>/dev/null
