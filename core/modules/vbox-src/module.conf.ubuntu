@@ -1,0 +1,19 @@
+REQUIRED_INSTALLED_PACKAGES="
+	iasl
+	libcurl4-openssl-dev
+	libidl-dev
+	libsdl1.2-dev
+	libxml2-dev
+	libxinerama-dev
+	libxrandr-dev
+	$REQUIRED_INSTALLED_PACKAGES_X64
+"
+# These are required for building 32-bit guest additions on 64-bit systemd
+REQUIRED_INSTALLED_PACKGES_X64="
+	ia32-libs
+	libc6-dev-i386
+	lib32gcc1
+	lib32stdc++6
+	gcc-multilib
+	g++-multilib
+"

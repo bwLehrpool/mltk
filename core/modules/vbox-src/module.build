@@ -1,0 +1,35 @@
+#!/bin/bash
+fetch_source() {
+	[ -d "${MODULE_WORK_DIR}/src" ] && rm -rf "${MODULE_WORK_DIR}/src"
+	[ -z "${REQUIRED_VBOX_VERSION}" ] && perror "REQUIRED_VBOX_VERSION is not set!"
+
+	local BASE_URL="https://download.virtualbox.org/virtualbox"
+	local DOWNLOAD_URL="${BASE_URL}/${REQUIRED_VBOX_VERSION}/VirtualBox-${REQUIRED_VBOX_VERSION}.tar.bz2"
+	download_untar "$DOWNLOAD_URL" "${MODULE_WORK_DIR}/src" || \
+		perror "Could not download_untar '$DOWNLOAD_URL' to '${MODULE_WORK_DIR}/src'."
+}
+
+build() {
+	cd "${MODULE_WORK_DIR}/src/VirtualBox-${REQUIRED_VBOX_VERSION}" || \
+		perror "Could not cd to '${MODULE_WORK_DIR}/src/VirtualBox-${REQUIRED_VBOX_VERSION}'."
+	[ -n "${KERNEL_HEADERS_DIR}" ] || perror "KERNEL_HEADERS_DIR not set, kernel module present?"
+	local VBOX_BUILD_DIR="${MODULE_WORK_DIR}/build"
+	./configure \
+		--disable-docs				\
+		--disable-java				\
+		--disable-python			\
+		--disable-libvpx			\
+		--build-headless			\
+		--with-linux="${KERNEL_HEADERS_DIR}"	\
+		--out-path="${VBOX_BUILD_DIR}"		\
+			|| perror "'configure' failed."
+
+	# the configure script should have created a file called 'env.sh'
+	[ -r "${VBOX_BUILD_DIR}/env.sh" ] || perror "Generated file '${VBOX_BUILD_DIR}/env.sh' not found."
+	source "${VBOX_BUILD_DIR}/env.sh" || perror "Failed to source '${VBOX_BUILD_DIR}/env.sh'."
+	kmk || perror "Failed to execute 'kmk'."
+}
+
+post_copy() {
+	:
+}
