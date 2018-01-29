@@ -4,6 +4,7 @@ REQUIRED_INSTALLED_PACKAGES="
 			squashfs-tools
 			whois
 			xfsprogs
+			jfsutils
 			curl
 			openssl
 			gawk
