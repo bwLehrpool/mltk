@@ -6,7 +6,7 @@ fetch_source() {
 }
 
 build() {
-	local ROOTUPPERDIR="$MODULE_DIR/rootupper"
+	local ROOTUPPERDIR="$MODULE_WORK_DIR/rootupper"
 
 	local NVIDIA="$MODULE_WORK_DIR/src/$REQUIRED_NVIDIA"
 	local NVIDIAEXTRACTDIR="$ROOTUPPERDIR/NVIDIA"
