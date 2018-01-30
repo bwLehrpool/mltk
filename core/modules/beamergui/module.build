@@ -10,7 +10,7 @@ build() {
 	mkdir -p "$MODULE_BUILD_DIR/opt/openslx/bin"
 	cd "${MODULE_BUILD_DIR}/opt/openslx/bin" || perror "Could not cd!"
 	pinfo "Running cmake"
-	cmake "$SRCDIR" || perror "'$QMAKE' failed (e.g. not installed)."
+	cmake "$SRCDIR" || perror "'cmake $SRCDIR' failed."
 	pinfo "Running make"
 	make || perror "'make' failed."
 
