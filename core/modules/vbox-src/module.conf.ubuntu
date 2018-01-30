@@ -1,19 +1,22 @@
 REQUIRED_INSTALLED_PACKAGES="
 	iasl
+	makeself
 	libcurl4-openssl-dev
+	libdevmapper-dev
 	libidl-dev
 	libsdl1.2-dev
 	libxml2-dev
+	libxmu-dev
 	libxinerama-dev
 	libxrandr-dev
-	$REQUIRED_INSTALLED_PACKAGES_X64
 "
-# These are required for building 32-bit guest additions on 64-bit systemd
-REQUIRED_INSTALLED_PACKGES_X64="
-	ia32-libs
+# These are required for building 32-bit guest additions on 64-bit systems
+REQUIRED_INSTALLED_PACKAGES_X64_X86="
 	libc6-dev-i386
 	lib32gcc1
 	lib32stdc++6
 	gcc-multilib
 	g++-multilib
 "
+[ "$(uname -m)x" = "x86_64x" ] && REQUIRED_INSTALLED_PACKAGES+="$REQUIRED_INSTALLED_PACKAGES_X64_X86"
+true

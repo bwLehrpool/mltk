@@ -25,7 +25,6 @@ build() {
 			|| perror "'configure' failed."
 
 	# the configure script should have created a file called 'env.sh'
-	[ -r "${VBOX_BUILD_DIR}/env.sh" ] || perror "Generated file '${VBOX_BUILD_DIR}/env.sh' not found."
 	source "${VBOX_BUILD_DIR}/env.sh" || perror "Failed to source '${VBOX_BUILD_DIR}/env.sh'."
 	kmk || perror "Failed to execute 'kmk'."
 }
