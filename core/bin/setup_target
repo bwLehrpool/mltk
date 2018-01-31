@@ -534,10 +534,24 @@ clean_module() {
 
 	local TARGET=${1%:*}
 	local MODULE=${1#*:}
+	local MODULE_DIR="${TARGET}/${MODULE}"
 	local MODULE_WORK_DIR="${ROOT_DIR}/tmp/work/${MODULE}"
 
+	if ! [ -d "$MODULE_DIR" ]; then
+		pwarning "No such module '$MODULE' in current target '$TARGET'"
+		pwarning "Check your spelling"
+		if [ -d "$MODULE_WORK_DIR" ]; then
+			pwarning "Continuing anyways since the according work dir exists..."
+		else
+			return 1
+		fi
+	fi
+
 	# if kernel is to be cleaned, do it separately and return
-	[ "x$MODULE" == "xkernel" ] && clean_kernel_module "${TARGET}:${MODULE}" && return
+	if [ "x$MODULE" == "xkernel" ]; then
+		clean_kernel_module "${TARGET}:${MODULE}"
+		return
+	fi
 
 	pinfo "Cleaning '$1'..."
 	rm -rf -- "${MODULE_WORK_DIR}/build" || perror "Could not delete build path"
@@ -548,6 +562,7 @@ clean_module() {
 	# These are not in use anymore, but leave the cleanup here for upgraders
 	rm -f -- "${MODULE_WORK_DIR}/.built"
 	rm -f -- "${MODULE_WORK_DIR}/.fetched_source"
+	return 1
 }
 
 clean_kernel_module() {
