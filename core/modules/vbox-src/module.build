@@ -13,7 +13,6 @@ build() {
 	cd "${MODULE_WORK_DIR}/src/VirtualBox-${REQUIRED_VBOX_VERSION}" || \
 		perror "Could not cd to '${MODULE_WORK_DIR}/src/VirtualBox-${REQUIRED_VBOX_VERSION}'."
 	[ -n "${KERNEL_HEADERS_DIR}" ] || perror "KERNEL_HEADERS_DIR not set, kernel module present?"
-	local VBOX_BUILD_DIR="${MODULE_WORK_DIR}/build"
 	./configure \
 		--disable-docs				\
 		--disable-java				\
@@ -21,12 +20,53 @@ build() {
 		--disable-libvpx			\
 		--build-headless			\
 		--with-linux="${KERNEL_HEADERS_DIR}"	\
-		--out-path="${VBOX_BUILD_DIR}"		\
+		--out-path="${MODULE_BUILD_DIR}"	\
 			|| perror "'configure' failed."
 
 	# the configure script should have created a file called 'env.sh'
-	source "${VBOX_BUILD_DIR}/env.sh" || perror "Failed to source '${VBOX_BUILD_DIR}/env.sh'."
+	source "${MODULE_BUILD_DIR}/env.sh" || perror "Failed to source '${MODULE_BUILD_DIR}/env.sh'."
+	# copy the LocalConfig.kmk to the build dir to be more LSB-compliant
+	cp "${MODULE_DIR}/LocalConfig.kmk" "${MODULE_BUILD_DIR}" || \
+		perror "Failed to cp LocalConfig.kmk to build dir"
 	kmk || perror "Failed to execute 'kmk'."
+
+	# check the generated build directory, use BUILD_PLATFORM_ARCH defined in env.sh
+	local VBOX_RELEASE_BUILD_DIR="${MODULE_BUILD_DIR}/linux.${BUILD_PLATFORM_ARCH}/release"
+	[ -d "${VBOX_RELEASE_BUILD_DIR}" ] || \
+		perror "No release build dir found under '${VBOX_RELEASE_BUILD_DIR}'. Build failed?"
+
+	# the resulting linux.<arch>/release/bin folder contains the whole build,
+	# copy it over to usr/lib/virtualbox
+	mkdir -p "${MODULE_BUILD_DIR}/usr/lib/virtualbox" || \
+		perror "Failed to mkdir '${MODULE_BUILD_DIR}/usr/lib/virtualbox'."
+	cp -r "${VBOX_RELEASE_BUILD_DIR}/bin/"* "${MODULE_BUILD_DIR}/usr/lib/virtualbox" || \
+		perror "Failed to cp -r '${VBOX_RELEASE_BUILD_DIR}/bin' to '${MODULE_BUILD_DIR}/usr/lib/virtualbox'."
+
+	# set suid bits
+	for BIN in VBoxHeadless VBoxNetAdpCtl VBoxNetDHCP VBoxSDL VBoxVolInfo VirtualBox VBoxNetAdpCtl; do
+		if ! [ -e "${MODULE_BUILD_DIR}/usr/lib/virtualbox/$BIN" ]; then
+			pwarning "No such file: '${MODULE_BUILD_DIR}/usr/lib/virtualbox/$BIN', cannot add suid bit."
+			continue
+		fi
+		chmod u+s "${MODULE_BUILD_DIR}/usr/lib/virtualbox/${BIN}" || perror "Failed to set suid bit on '${BIN}'."
+	done
+
+	## Kernel modules
+	# build kernel modules from the release dir
+	cd "${VBOX_RELEASE_BUILD_DIR}/bin/src" || \
+		perror "Failed to cd to '${VBOX_RELEASE_BUILD_DIR}/bin/src'."
+	make \
+		KERN_DIR="${KERNEL_HEADERS_DIR}" \
+		KERN_VER="${TARGET_KERNEL_LONG}" \
+			|| perror "Build kernel modules failed."
+	# check they were, in fact, built and copy them to build dir
+	mkdir -p "${MODULE_BUILD_DIR}/lib/modules/vbox" || \
+		perror "Failed to mkdir '${MODULE_BUILD_DIR}/lib/modules/vbox'."
+	for MOD in $(find * -maxdepth 0 -type d); do
+		[ -e "$MOD.ko" ] || perror "Module '$MOD' was not built!"
+		cp "$MOD.ko" "${MODULE_BUILD_DIR}/lib/modules/vbox/" || \
+			perror "Failed to cp $MOD.ko to '${MODULE_BUILD_DIR}/lib/modules/vbox/'."
+	done
 }
 
 post_copy() {
