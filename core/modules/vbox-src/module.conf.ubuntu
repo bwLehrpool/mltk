@@ -7,6 +7,7 @@ REQUIRED_INSTALLED_PACKAGES="
 	libsdl1.2-dev
 	libxml2-dev
 	libxmu-dev
+	libxcursor-dev
 	libxinerama-dev
 	libxrandr-dev
 "
