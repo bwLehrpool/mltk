@@ -1,0 +1,7 @@
+[Unit]
+Description=Sets up the virtual box environment
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/opt/openslx/scripts/systemd-vbox_env
