@@ -1,0 +1,6 @@
+#!/bin/ash
+
+systemctl daemon-reload
+systemctl start vbox
+exit 0
+
