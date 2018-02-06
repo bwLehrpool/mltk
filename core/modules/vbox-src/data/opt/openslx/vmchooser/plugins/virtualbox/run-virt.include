@@ -26,19 +26,19 @@ run_plugin() {
 	$(safesource --exit "${VBOX_INCLUDE_DIR}/init_core.inc")
 
 	# determine hardware limits based on guest OD
-	$(safesource --exit "${VBOX_INCLUDE_DIR}/guest_hardware_limits.inc")
+	$(safesource "${VBOX_INCLUDE_DIR}/guest_hardware_limits.inc")
 	
 	# prepare volatile rw layer for the disk image using a snapshot
-	$(safesource --exit "${VBOX_INCLUDE_DIR}/prepare_snapshot.inc")
+	$(safesource "${VBOX_INCLUDE_DIR}/prepare_snapshot.inc")
 
 	# create main virtualbox configuration
-	$(safesource --exit "${VBOX_INCLUDE_DIR}/create_vbox_config.inc")
+	$(safesource "${VBOX_INCLUDE_DIR}/create_vbox_config.inc")
 	
 	# finalize machine configuration
-	$(safesource --exit "${VBOX_INCLUDE_DIR}/finalize_machine_config.inc")
+	$(safesource "${VBOX_INCLUDE_DIR}/finalize_machine_config.inc")
 
 	# log config summary
-	$(safesource --exit "${VBOX_INCLUDE_DIR}/log_config_summary.inc")
+	$(safesource "${VBOX_INCLUDE_DIR}/log_config_summary.inc")
 
 	# This is necessary for the VM to start (don't ask me why, yet!)
 	VBMANPID=$(pstree -p | grep VBoxXPCOMIPCD | grep -ivE "VirtualBox|VBoxHeadless"\

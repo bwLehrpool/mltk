@@ -1,6 +1,105 @@
 #######################################################################
 # Include: Declaration of core variables and some sanity checks       #
 #######################################################################
+
+# wrapper for xmlstarlet to add node with attributes and value
+# to the machine configuration
+# Usage:
+#   add_node <parent> <newnode> <attrs...>
+# E.g:
+#   add_node "/VirtualBox" "Machine" "uuid=1234"
+add_node() {
+	if [ $# -lt 2 ]; then
+		writelog "${FUNCNAME[0]} requires 2 or more args, $# given."
+		cleanexit 1
+	fi
+	local PARENT="$1"
+	shift
+	local NODE="$1"
+	shift
+	# if parent does not exists, create it aswell
+	if ! node_exists "${PARENT}"; then
+		add_node "${PARENT%/*}" "${PARENT##*/}"
+	fi
+	# now go over the list of attributes and directly create
+	# the xmlstarlet syntax string: -t attr -n <key> -v <value>
+	local ATTRS_OPTS=
+	while [ $# -ne 0 ]; do
+		# expects key=value syntax
+		local key="${1%=*}"
+		local value="${1#*=}"
+		shift
+		if isempty key || isempty value; then
+			writelog "${FUNCNAME[0]} expecting key=value, got: $1"
+			cleanexit 1
+		fi
+		# the xmlstarlet internal newnode var references the newly created node
+		ATTRS_OPTS+=" -i \$newnode -t attr -n ${key} -v ${value}"
+	done
+	# args parsed, now create the node using xmlstarlet
+	# insert namespace to xpath expression
+	PARENT="$(print_namespaced "x" "${PARENT}")"
+	# create node and set the internal variable newnode to it
+	# to then add the attributes to it
+	xmlstarlet ed -L -N x="${VBOX_NAMESPACE}" \
+		-s "${PARENT}" -t elem -n "${NODE}" \
+		--var newnode '$prev' \
+		${ATTRS_OPTS} \
+		"${TMPCONFIG}"
+}
+# edit_attr [--create] <node_xpath> <attr=value>
+# --create would create the node if it does not exist
+edit_attr() {
+	local CREATE=
+	if [ "$1" = "--create" ]; then
+		CREATE=yo
+		shift
+	fi
+	if [ $# -ne 3 ]; then
+		writelog "${FUNCNAME[0]} requires 3 args, $# given."
+		cleanexit 1
+	fi
+	if notempty CREATE && ! node_exists "$1"; then
+		add_node "${1%/*}" "${1##*/}" \
+			"$2=$3"
+	else
+		xmlstarlet ed -L -N x="${VBOX_NAMESPACE}" \
+			-u "$(print_namespaced "x" "$1")/@$2" \
+			-v "$3" \
+			"${TMPCONFIG}"
+	fi
+}
+del_node() {
+	if [ $# -ne 1]; then
+		writelog "${FUNCNAME[0]} requires one arg, $# given."
+		cleanexit 1
+	fi
+	xmlstarlet ed -L -N x="${VBOX_NAMESPACE}" \
+		-d "$(print_namespaced "x" "$1")" \
+		"${TMPCONFIG}"
+}
+node_exists() {
+	if [ $# -ne 1 ]; then
+		writelog "${FUNCNAME[0]} requires one arg, $# given."
+		cleanexit 1
+	fi
+	xmlstarlet -q sel -N x="${VBOX_NAMESPACE}" \
+		-t -c "$(print_namespaced "x" "$1")" \
+		"${TMPCONFIG}"
+}
+# adds the vbox namespace to an xpath expression using
+# the given placeholder for it. 
+# e.g. print_namespaced "x" "/VirtualBox/Machine"
+# would echo "/x:VirtualBox/x:Machine"
+print_namespaced() {
+	if [ $# -ne 2 ]; then
+		writelog "${FUNCNAME[0]} expects 2 arguments, $# given."
+		cleanexit 1
+	fi
+	# add namespace on single '/' not doubles!
+	sed -E 's,(/)*/,\1/'"$1"':,g' <<< "$2"
+}
+
 init_core() {
 	# check for variables that should have been set by the generic run-virt
 	if ! isset VM_CLEANNAME IMG_BASENAME SRC_IMG_ABSOLUTE VM_OS_TYPE; then
@@ -38,10 +137,8 @@ init_core() {
 	declare -rg VBOX_HDD_LINK="${VM_DISKFILE_RO}"
 	export VBOX_USER_HOME="${VBOX_ROOT}"		# instead of $HOME/.VirtualBox
 
-	# finally generate a random machine UUID, using some default if it fails.
-	declare -g MACHINE_UUID="$(cat /proc/sys/kernel/random/uuid)"
-	notempty MACHINE_UUID || MACHINE_UUID="00000000-0000-0000-0000-12345678"
-	readonly MACHINE_UUID
+	# xml namespace for vbox configs
+	declare -rg VBOX_NAMESPACE="http://www.virtualbox.org/"
 
 	writelog "Directories:"
 	writelog "\tConfig dir:\t\t$VBOX_ROOT"

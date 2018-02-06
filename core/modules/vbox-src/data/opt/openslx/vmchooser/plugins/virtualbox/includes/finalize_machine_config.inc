@@ -31,25 +31,53 @@ finalize_machine_config() {
 	sed -i 's,#OpenSLX_CPU_place_holder,'"${CPU_CORES}"',g' $TMPCONFIG
 	sed -i 's,#OpenSLX_MEMORY_place_holder,'"${VM_MEM}"',g' $TMPCONFIG
 	
-	# Add a HardDisk node
-	xmlstarlet ed -L -N x="http://www.virtualbox.org/" -s "//x:VirtualBox/x:Machine/x:MediaRegistry/x:HardDisks/x:HardDisk" -t elem -n HardDisk $TMPCONFIG
-	# Add attributes:
-	# 1) uuid attribute and point to the snapshotuuid from above
-	# 2) location pointing to the snapshot file
-	# 3) specify that format is VDI
-	# 4) hdd type is "normal" 
-	xmlstarlet ed -L -N x="http://www.virtualbox.org/" \
-		-i "//x:VirtualBox/x:Machine/x:MediaRegistry/x:HardDisks/x:HardDisk/x:HardDisk" -t attr -n uuid -v "{${SNAPSHOT_UUID}}" \
-		-i "//x:VirtualBox/x:Machine/x:MediaRegistry/x:HardDisks/x:HardDisk/x:HardDisk" -t attr -n location -v "$VBOX_SNAPSHOT_DIR/{${SNAPSHOT_UUID}}.vdi" \
-		-i "//x:VirtualBox/x:Machine/x:MediaRegistry/x:HardDisks/x:HardDisk/x:HardDisk" -t attr -n format -v "VDI" \
-		-i "//x:VirtualBox/x:Machine/x:MediaRegistry/x:HardDisks/x:HardDisk/x:HardDisk" -t attr -n type -v "Normal" \
-			$TMPCONFIG
-	# set the MAC address
-	xmlstarlet ed -L -N x="http://www.virtualbox.org/" -u "//x:VirtualBox/x:Machine/x:Hardware/x:Network/x:Adapter/@MACAddress" -v "$VM_VDE_MAC_ADDR" $TMPCONFIG
-	# delete USB controller - TODO fix
-	xmlstarlet ed -L -N x="http://www.virtualbox.org/" -d "//x:VirtualBox/x:Machine/x:Hardware/x:USB"  $TMPCONFIG
+	# Add a HardDisk node for the snapshot
+	add_node \
+		"/VirtualBox/Machine/MediaRegistry/HardDisks/HardDisk" "HardDisk" \
+		"uuid={${SNAPSHOT_UUID}}" \
+		"location=$VBOX_SNAPSHOT_DIR/{${SNAPSHOT_UUID}}.vdi" \
+		"format=VDI" \
+		"type=Normal"
+	# add storage controller and 2 floppies to it
+	add_node \
+		"/VirtualBox/Machine/StorageControllers" "StorageController" \
+		"name=Floppy" \
+		"type=I82078" \
+		"PortCount=1" \
+		"useHostIOCache=true"
+	add_node \
+		'/VirtualBox/Machine/StorageControllers/StorageController[@name="Floppy"]' "AttachedDevice" \
+		"type=Floppy" \
+		"hotpluggable=false" \
+		"port=0" \
+		"device=0"
+	add_node \
+		'/VirtualBox/Machine/StorageControllers/StorageController[@name="Floppy"]' "AttachedDevice" \
+		"type=Floppy" \
+		"hotpluggable=false" \
+		"port=0" \
+		"device=1"
 
-	# TODO VT-x
+	# add the slx floppy to the second drive
+	add_node \
+		'/VirtualBox/Machine/StorageControllers/StorageController/AttachedDevice[@device="1"]' "Image" \
+		"uuid={${SLX_FLOPPY_UUID}}"
+
+
+	# set the MAC address
+	edit_attr "/VirtualBox/Machine/Hardware/Network/Adapter" "MACAddress" "${VM_VDE_MAC_ADDR}"
+
+	# check if KVM is available and activate it if so
+	if source /run/hwinfo && [ "${HW_KVM}" = "ENABLED" ]; then
+		edit_attr --create "/VirtualBox/Machine/Hardware/Paravirt" "provider" "KVM"
+	fi
+	# activate IOAPIC needed for multi core (?)
+	if [ $CPU_CORES -gt 1 ]; then
+		edit_attr --create "/VirtualBox/Machine/Hardware/BIOS/IOAPIC" "enabled" "true"
+	fi
+
+	# TODO fix usb generally, just delete it if present for now ....
+	del_node "/VirtualBox/Machine/Hardware/USB"
 
 	cp $TMPCONFIG /tmp/vbox-last-config
 	cp $TMPCONFIG $VBOX_MACHINE_CONFIG
