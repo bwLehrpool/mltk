@@ -2,7 +2,6 @@
 # Include: log a summary of the configuration state for this machine           #
 ################################################################################
 log_config_summary() {
-	writelog "\tSnapshots dir:\t\t$VBOX_SNAPSHOT_DIR"
 	writelog "Diskimage:"
 	writelog "\tDisk file:\t\t$VBOX_HDD_LINK"
 	writelog "\tDisk type:\t\tVDI"
