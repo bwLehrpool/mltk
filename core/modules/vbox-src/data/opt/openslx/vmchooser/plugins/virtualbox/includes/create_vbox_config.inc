@@ -2,24 +2,9 @@
 # Include: create main vbox config file and add machine, hdd, ... entries      #
 ################################################################################
 create_vbox_config() {
-	# TODO gen_uuid()
-	# generated machine and floppy uuids 
-	# generate random machine/floppies UUIDs using kernel's generator
-	# or some defaults if it failed/does not exists
-	if [ -r "/proc/sys/kernel/random/uuid" ]; then
-		declare -rg MACHINE_UUID="$(cat /proc/sys/kernel/random/uuid)"
-		declare -rg SLX_FLOPPY_UUID="$(cat /proc/sys/kernel/random/uuid)"
-	else
-		# use VM's MAC address, if set (length: 6 * 2 + 5 * ':')
-		if isset VM_MAC_ADDR && [ ${#VM_MAC_ADDR} -eq 17 ]; then
-			local SUFFIX="${VM_MAC_ADDR//:/}"
-			declare -rg MACHINE_UUID="00000000-0000-${SUFFIX:0:4}-${SUFFIX:4:12}"
-			declare -rg SLX_FLOPPY_UUID="00000000-ffff-${SUFFIX:0:4}-${SUFFIX:4:12}"
-		else
-			declare -rg MACHINE_UUID="00000000-0000-0000-12345678"
-			declare -rg SLX_FLOPPY_UUID="00000000-0000-ffff-12345678"
-		fi
-	fi
+	# generate random machine/floppies UUIDs
+	declare -rg MACHINE_UUID="$(gen_uuid)"
+	declare -rg SLX_FLOPPY_UUID="$(gen_uuid)"
 
 	cat <<EOF > "${VBOX_ROOT}/VirtualBox.xml"
 <VirtualBox xmlns="http://www.innotek.de/VirtualBox-settings" version="1.12-linux">

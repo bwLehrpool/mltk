@@ -100,6 +100,19 @@ print_namespaced() {
 	sed -E 's,(/)*/,\1/'"$1"':,g' <<< "$2"
 }
 
+gen_uuid() {
+	local UUID="$(cat /proc/sys/kernel/random/uuid)"
+	notempty UUID && echo $UUID && return 0
+	# fallback using $RANDOM
+	UUID=
+	while [ ${#UUID} -lt 32 ]; do
+		UUID="$UUID$RANDOM"
+	done
+	# sequence might be larger than 32, cut it and insert dashes
+	echo -n "${UUID:0:32}" | \
+		sed -E 's,(.{8})(.{4})(.{4})(.{4})(.{12}),\1-\2-\3-\4-\5,'
+}
+
 init_core() {
 	# check for variables that should have been set by the generic run-virt
 	if ! isset VM_CLEANNAME IMG_BASENAME SRC_IMG_ABSOLUTE VM_OS_TYPE; then
