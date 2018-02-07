@@ -8,7 +8,6 @@ REQUIRED_CONTENT_PACKAGES="
 		qemu
 		qemu-kvm
 		qemu-keymaps
-		qemu-system
 		qemu-system-common
 		qemu-system-x86
 		qemu-user
