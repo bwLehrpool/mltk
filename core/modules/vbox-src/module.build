@@ -7,6 +7,11 @@ fetch_source() {
 	local DOWNLOAD_URL="${BASE_URL}/${REQUIRED_VBOX_VERSION}/VirtualBox-${REQUIRED_VBOX_VERSION}.tar.bz2"
 	download_untar "$DOWNLOAD_URL" "${MODULE_WORK_DIR}/src" || \
 		perror "Could not download_untar '$DOWNLOAD_URL' to '${MODULE_WORK_DIR}/src'."
+
+	# oracle's extension pack
+	DOWNLOAD_URL="${DOWNLOAD_URL%/*}/Oracle_VM_VirtualBox_Extension_Pack-${REQUIRED_VBOX_VERSION}-${REQUIRED_VBOX_EXTPACK_REVISION}.vbox-extpack"
+	download_untar "$DOWNLOAD_URL" "${MODULE_WORK_DIR}/extpack" || \
+		perror "Could not download_untar '$DOWNLOAD_URL' to '${MODULE_WORK_DIR}/extpack'."
 }
 
 build() {
@@ -29,7 +34,7 @@ build() {
 	# copy the LocalConfig.kmk to the build dir to be more LSB-compliant
 	cp "${MODULE_DIR}/LocalConfig.kmk" "${VBOX_BUILD_DIR}" || \
 		perror "Failed to cp LocalConfig.kmk to build dir"
-	kmk || perror "Failed to execute 'kmk'."
+	kmk all || perror "Failed to execute 'kmk'."
 
 	# check the generated build directory, use BUILD_PLATFORM_ARCH defined in env.sh
 	local VBOX_RELEASE_BUILD_DIR="${VBOX_BUILD_DIR}/linux.${BUILD_PLATFORM_ARCH}/release"
@@ -68,6 +73,14 @@ build() {
 		cp "$MOD.ko" "${MODULE_BUILD_DIR}/lib/modules/vbox/" || \
 			perror "Failed to cp $MOD.ko to '${MODULE_BUILD_DIR}/lib/modules/vbox/'."
 	done
+
+	# finally copy the extension pack files, everthing is needed as the subfolders
+	# target the guest architectures and not that of the host!
+	local VBOX_EXTPACK_DIR="${MODULE_BUILD_DIR}/usr/lib/virtualbox/ExtensionPacks/Oracle_VM_VirtualBox_Extension_Pack"
+	cp -ar "${MODULE_WORK_DIR}/extpack" "${VBOX_EXTPACK_DIR}" || \
+		perror "Failed to cp '${MODULE_WORK_DIR}/extpack' to '${VBOX_EXTPACK_DIR}'."
+	chown -R root:root "${VBOX_EXTPACK_DIR}" || \
+		perror "Failed to chown '${VBOX_EXTPACK_DIR}' to root:root."
 }
 
 post_copy() {
