@@ -1,0 +1,15 @@
+[Unit]
+Description=Reboot via kexec
+Documentation=man:kexec(8)
+DefaultDependencies=no
+Wants=kexec-load.service
+After=kexec-load.service
+Requires=shutdown.target final.target
+Before=shutdown.target final.target
+
+[Service]
+Type=oneshot
+ExecStart=/opt/openslx/scripts/systemd-kexec_exec
+
+[Install]
+WantedBy=kexec.target

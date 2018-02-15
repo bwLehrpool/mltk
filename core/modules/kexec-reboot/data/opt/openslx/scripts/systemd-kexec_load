@@ -1,0 +1,40 @@
+#!/bin/ash
+
+kexec=$(which kexec 2>/dev/null)
+if [ -z "$kexec" ]; then
+	echo "Failed to find kexec binary in PATH. Exiting."
+	exit 1
+fi
+
+# download_retry <url> <path>
+download_retry() {
+	[ $# -ne 2 ] && return 1
+	for TIMEOUT in 1 1 2 3 END; do
+		[ "x$TIMEOUT" = "xEND" ] && break
+		if wget -T 2 -O "$2" "$1"; then
+			return 0
+			break
+		fi
+		sleep $TIMEOUT
+	done
+	return 1
+}
+
+kexec_load() {
+	. /opt/openslx/config
+	local DIR="$(mktemp -d)"
+
+	for FILE in kernel initramfs-stage31; do
+		if ! download_retry "http://${SLX_KCL_SERVERS}/${SLX_BASE_PATH}/${FILE}" "${DIR}/${FILE}" ; then
+			echo "Failed to download ${FILE}."
+			exit 1
+		fi
+	done
+
+	if ! kexec -l "${DIR}/kernel" --initrd "${DIR}/initramfs-stage31" --reuse-cmdline; then
+		echo "Failed to load kernel/initrd from ${DIR}"
+		exit 1
+	fi
+}
+
+kexec_load
