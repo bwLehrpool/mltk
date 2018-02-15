@@ -534,7 +534,7 @@ clean_module() {
 
 	local TARGET=${1%:*}
 	local MODULE=${1#*:}
-	local MODULE_DIR="${TARGET}/${MODULE}"
+	local MODULE_DIR="${CORE_DIR}/targets/${TARGET}/${MODULE}"
 	local MODULE_WORK_DIR="${ROOT_DIR}/tmp/work/${MODULE}"
 
 	if ! [ -d "$MODULE_DIR" ]; then
