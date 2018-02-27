@@ -202,6 +202,15 @@ read_params() {
 					REMOTE_EXPORT="1"
 					continue
 					;;
+				--force-sys-version)
+					if [ -z "$1" ]; then
+						perror "--force-sys-version requires an argument, e.g. '18.04'."
+					else
+						FORCE_SYS_VERSION="$1"
+						shift
+					fi
+					continue
+					;;
 				*)
 					pwarning "Unknown flag to target: $PARAM"
 					print_usage

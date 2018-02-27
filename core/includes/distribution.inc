@@ -26,7 +26,11 @@ detect_distribution () {
 		;;
 	esac
 	# Get version - we mangle this quite a bit. first make sure it has no spaces, then split version at period (.), underscore (_) and dash (-)
-	SYS_VERSION=$(lsb_release -rs | tolower)
+	if [ -n "$FORCE_SYS_VERSION" ]; then
+		SYS_VERSION="$FORCE_SYS_VERSION"
+	else
+		SYS_VERSION=$(lsb_release -rs | tolower)
+	fi
 	SYS_CODENAME=$(lsb_release -c|cut -f 2)		# Codename: eg. Ubuntu raring, openSuse: Dartmouth etc.
 	local VERSION=$(echo $SYS_VERSION | sed -r 's/\s//g;s/[\._]/ /g;s/-//g')
 	local STRTMP=""
