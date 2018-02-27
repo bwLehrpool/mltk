@@ -5,6 +5,7 @@ REQUIRED_INSTALLED_PACKAGES="
 	qt5-qmake
 	qtbase5-dev
 	qtbase5-dev-tools
+	qttools5-dev
 	qttools5-dev-tools
 "
 REQUIRED_CONTENT_PACKAGES="
