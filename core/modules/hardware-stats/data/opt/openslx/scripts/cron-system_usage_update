@@ -12,7 +12,10 @@ UUID=$(cat "/etc/system-uuid")
 USED=0
 Name=
 
-for SESSION in $(loginctl | awk '{print $1}'); do
+# detect if we need '--no-legend' or not...
+LEGEND=
+loginctl --help 2>&1 | grep -q -- '--no-legend' && LEGEND="--no-legend"
+for SESSION in $(loginctl $LEGEND | awk '{print $1}'); do
 	unset Display Remote State
 	eval $(loginctl -p Display -p Remote -p State -p Class -p Name show-session "$SESSION")
 	if [ "$Display" = ":0" ] && [ "$Remote" = "no" ] && [ "$State" = "active" -o "$State" = "online" ] && [ "$Class" = "user" ]; then
