@@ -1,5 +1,12 @@
 #!/bin/ash
 
+# # # # # # # # # # # # # # # # # # #
+# Legacy script - present only for
+# backwards compat with old config.tgz
+# modules. Newer approach lies in
+# /opt/openslx/pam
+# # # # # # # # # # # # # # # # # # #
+
 # Needed as pam_script clears PATH
 export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/openslx/sbin:/opt/openslx/bin"
 

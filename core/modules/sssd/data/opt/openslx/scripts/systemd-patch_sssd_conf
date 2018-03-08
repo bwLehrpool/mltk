@@ -1,6 +1,6 @@
 #!/bin/ash
 
-LIST="$(< /etc/passwd awk -F: '{printf $1 ","}')"
+LIST="$(< /etc/shadow awk -F: '{printf $1 ","}')"
 sed -i "s/^filter_users.*\$/filter_users = ${LIST%,}/g" /etc/sssd/sssd.conf
 
 LIST="$(< /etc/group awk -F: '{printf $1 ","}')"

@@ -1,0 +1,8 @@
+#!/bin/ash
+
+# TODO
+
+# PAM_TYPE will be "open_session" or "close_session"
+
+exit 0
+

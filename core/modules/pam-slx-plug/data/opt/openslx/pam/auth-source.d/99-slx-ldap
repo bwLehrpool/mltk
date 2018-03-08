@@ -1,0 +1,183 @@
+#!/bin/ash -- sourced
+
+# Run 'account' or 'auth' PAM mode
+# account:
+# See if user is allowed to login (=exists in our case)
+# auth:
+# Try logging in via ldapsearch
+
+# parameters supplied via
+# /opt/openslx/pam/slx-ldap.d/*
+
+WAIT=
+
+unset_ldap_vars() {
+	local vn
+	for vn in $(set | grep -Eo '^(SHARE|LDAP)_[^=]+'); do
+		unset "$vn"
+	done
+	unset USER_UID USER_GID USER_GROUP REAL_ACCOUNT NETWORK_HOME HOME_MOUNT_OPTS
+}
+
+# ldapsearch can return fields either as
+# field: value
+# or
+# field:: base64encode(value)
+# -- handle both cases and return the value
+# extract_field <fieldname> <resultfile> [another resultfile [...]]
+extract_field() {
+	local l len file
+	local field=$1
+	shift
+	while [ $# -gt 0 ]; do
+		file=$1
+		shift
+		l=$( grep -m 1 -i "^${field}: " "$file" )
+		if [ -n "$l" ]; then
+			len=$(( ${#field} + 2 ))
+			echo "${l:$len}"
+			return
+		fi
+		l=$( grep -m 1 -i "^${field}:: " "$file" )
+		if [ -n "$l" ]; then
+			len=$(( ${#field} + 3 ))
+			echo "${l:$len}" | base64 -d
+			return
+		fi
+	done
+}
+
+run_auth() {
+	local BINDDN SEARCH_ANON SEARCH_USER PW RET
+	if [ -n "$LDAP_CACERT" ]; then
+		export LDAPTLS_CACERT="$LDAP_CACERT"
+	else
+		unset LDAPTLS_CACERT
+	fi
+	# See if user exists
+	SEARCH_ANON=$(mktemp)
+	TEMPFILES_LDAP="$TEMPFILES_LDAP $SEARCH_ANON"
+	for retries in 0 1 1 2 3 END; do
+		ldapsearch -x -LLL -l 3 -o nettimeout=3 -o ldif-wrap=no \
+				-H "$LDAP_URI" -b "$LDAP_BASE" uid="${PAM_USER}" \
+				dn distinguishedName homeMount realAccount uid uidNumber gidNumber ${LDAP_ATTR_MOUNT_OPTS} &> "${SEARCH_ANON}"
+		RET=$?
+		case "$RET" in
+			0) break # OK
+				;;
+			51|52) sleep 3 # busy, let's try again
+				;;
+			255) # Network error
+				# grep the output to see whether the bind succeeded, it should have returned anything but -1
+				< "$SEARCH_ANON"  grep -q '^ldap_bind:.*(-1)$' || break # If == -1, continue
+				;;
+			*)
+				slxlog "pam-slxldap-ldapsearch" "Initial ldapsearch for $PAM_USER returned $RET" "$SEARCH_ANON"
+				WAIT=1
+				break
+				;;
+		esac
+		sleep "$retries" &> /dev/null # lazy END handling
+	done
+	BINDDN=$(extract_field "dn" "$SEARCH_ANON")
+	[ -z "$BINDDN" ] && BINDDN=$(extract_field "distinguishedName" "$SEARCH_ANON")
+	[ -z "$BINDDN" ] && return 1
+	# User exists
+	if [ "$PAM_TYPE" = "account" ]; then
+		# 'account' checks just if the user is allowed to log in, bail out
+		USER_UID=$(extract_field "uidNumber" "$SEARCH_ANON")
+		USER_GID=$(extract_field "gidNumber" "$SEARCH_ANON")
+		USER_HOME=$(extract_field "homeDirectory" "$SEARCH_ANON")
+		return 0
+	fi
+	SEARCH_USER=$(mktemp)
+	TEMPFILES_LDAP="$TEMPFILES_LDAP $SEARCH_USER"
+	PW="/run/pw.${RANDOM}.${RANDOM}.${PAM_USER}.${RANDOM}.$$"
+	for retries in 0 1 1 0; do
+		if ! mkfifo -m 0600 "${PW}"; then
+			slxlog "pam-slxldap-fifo" "Could not create FIFO at ${PW}"
+			return 1
+		fi
+		( # Blocking write to FIFO, fork into bg. Make sure to use a shell that understands echo -n (busybox ash does)
+			echo -n "${USER_PASSWORD}" > "${PW}"
+		) &
+		# unquoted LDAP_ATTR_*
+		ldapsearch -x -LLL -l 5 -o nettimeout=5 -o ldif-wrap=no \
+				-H "$LDAP_URI" -b "$LDAP_BASE" uid="${PAM_USER}" -y "${PW}" -D "$BINDDN" uid="${PAM_USER}" \
+				homeMount realAccount uid uidNumber gidNumber ${LDAP_ATTR_MOUNT_OPTS} &> "${SEARCH_USER}"
+		RET=$?
+		rm -f -- "${PW}"
+		case "$RET" in
+			0|49|50) break # Either success, or access denied / invalid user/pass
+				;;
+			51|52) sleep 3 # busy, let's try again
+				;;
+			255) # Network error
+				# grep the output to see whether the bind succeeded, it should have returned anything but -1
+				< "$SEARCH_USER"  grep -q '^ldap_bind:.*(-1)$' || break # If == -1, continue
+				;;
+			*)
+				slxlog "pam-slxldap-ldapsearch" "User-bind for $PAM_USER returned $RET" "$SEARCH_USER"
+				WAIT=1
+				break
+				;;
+		esac
+		sleep "$retries"
+	done
+	[ "$RET" = 0 ] || return 1
+	USER_UID=$(extract_field "uidNumber" "$SEARCH_USER" "$SEARCH_ANON")
+	if [ -z "$USER_UID" ]; then
+		slxlog --echo "pam-slxldap-nouid" "User $PAM_USER found in ldap, but has no uidNumber"
+		return 1
+	fi
+	USER_GID=$(extract_field "gidNumber" "$SEARCH_USER" "$SEARCH_ANON")
+	if [ -z "$USER_GID" ]; then
+		slxlog --echo "pam-slxldap-nogid" "User $PAM_USER / $USER_UID found in ldap, but has no gidNumber"
+		unset USER_UID
+		return 1
+	fi
+	REAL_ACCOUNT=$(extract_field "realAccount" "$SEARCH_USER" "$SEARCH_ANON")
+	[ -z "$REAL_ACCOUNT" ] && REAL_ACCOUNT=$(extract_field "uid" "$SEARCH_USER" "$SEARCH_ANON")
+	NETWORK_HOME=$(extract_field "homeMount" "$SEARCH_USER" "$SEARCH_ANON")
+	USER_HOME=$(extract_field "homeDirectory" "$SEARCH_USER" "$SEARCH_ANON")
+	HOME_MOUNT_OPTS="${SHARE_HOME_MOUNT_OPTS}"
+	if [ -n "$LDAP_ATTR_HOME_MOUNT_OPTS" ]; then
+		RET=$(extract_field "${LDAP_ATTR_HOME_MOUNT_OPTS}" "$SEARCH_USER" "$SEARCH_ANON")
+		[ -n "$RET" ] && HOME_MOUNT_OPTS="$RET"
+	fi
+	# Group - might need another round trip to LDAP
+	USER_GROUP=$( awk -F: '{ if ($3 == '"$USER_GID"') { print $1; exit } }' /etc/group )
+	if [ -z "$USER_GROUP" ]; then
+		ldapsearch -x -LLL -l 2 -o nettimeout=2 -o ldif-wrap=no \
+				-H "$LDAP_URI" -b "$LDAP_BASE" "(&(objectClass=posixGroup)(gidNumber=${USER_GID}))" \
+				cn &> "${SEARCH_ANON}"
+		USER_GROUP=$(extract_field "cn" "$SEARCH_ANON")
+	fi
+	return 0
+}
+
+TEMPFILES_LDAP=
+
+for s_file in /opt/openslx/pam/slx-ldap.d/*; do
+	unset_ldap_vars
+	[ -f "$s_file" ] || continue
+	. "$s_file"
+	if [ -z "$LDAP_URI" ] || [ -z "$LDAP_BASE" ]; then
+		slxlog --echo "pam-slxldap-empty" "LDAP config '$s_file' is missing URI or BASE"
+		continue
+	fi
+	run_auth && break
+done
+
+if [ -z "$USER_UID" ]; then
+	unset_ldap_vars
+fi
+
+if [ -n "$TEMPFILES_LDAP" ]; then
+	rm -f -- $TEMPFILES_LDAP
+fi
+
+[ -n "$WAIT" ] && sleep 1
+
+true
+

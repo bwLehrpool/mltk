@@ -1,0 +1,8 @@
+[Unit]
+Description=Create fresh pam config and nsswitch.conf
+Before=graphical.target display-manager.target
+
+[Service]
+Type=oneshot
+ExecStart=/opt/openslx/pam/systemd/create-pam-config
+

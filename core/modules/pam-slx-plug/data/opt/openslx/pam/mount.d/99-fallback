@@ -1,0 +1,97 @@
+#!/bin/ash - sourced by exec_auth
+
+[ -z "$NETWORK_HOME" ] && return
+
+OPTION_LIST="$HOME_MOUNT_OPTS"
+EXTRA_OPTS=
+if [ "${NETWORK_HOME:0:2}" = "//" ]; then
+	# CIFS
+	MOUNT="cifs"
+	if [ -z "$OPTION_LIST" ]; then
+		# No opts given, determine list of options we'll try
+		# TODO: Kerberos? How? cruid...
+		OPTION_LIST="vers=3.0,sec=ntlmssp vers=2.1,sec=ntlmssp vers=1.0,sec=ntlm vers=3.0,sec=ntlmv2 vers=1.0,sec=ntlmv2 vers=3.0,sec=ntlm vers=2.0,sec=ntlmssp #"
+		EXTRA_OPTS="forceuid,forcegid,nounix,file_mode=0700,dir_mode=0700,noacl,nobrl"
+	fi
+else
+	# Assume NFS? Leave empty, should work for NFS too
+	MOUNT=
+	if [ -n "$PAM_KRB5CCNAME" ]; then
+		export KRB5CCNAME="$PAM_KRB5CCNAME"
+		[ -z "$OPTION_LIST" ] && OPTION_LIST="sec=krb5 #"
+	fi
+fi
+[ -z "$OPTION_LIST" ] && OPTION_LIST="#"
+
+if [ "$MOUNT" = "cifs" ]; then
+	# Most servers can work without, but some don't
+	XDOMAIN=
+	if [ -n "$LDAP_BASE" ]; then
+		XDOMAIN=$( echo "$LDAP_BASE" | grep -o -E -i 'DC=([^,;]+)' | head -n 1 | cut -c 4- )
+	fi
+	if [ -z "$LDAP_DOMAIN_OVERRIDE" ]; then
+		XDOMAIN="$XDOMAIN #"
+
+	export USER="${REAL_ACCOUNT}"
+	export PASSWD="${USER_PASSWORD}"
+else
+	XDOMAIN="#"
+fi
+
+LOGFILES=
+PIDS=
+CNT=0
+for opt in $OPTION_LIST; do
+	# try with and without explicit domain argument
+	for dom in $LDAP_DOMAIN_OVERRIDE $XDOMAIN; do # No quotes
+		CNT=$(( CNT + 1 ))
+		FILE=$(mktemp)
+		LOGFILES="$LOGFILES $FILE"
+		COMMAND_LINE="-v"
+		OPTS=
+		if [ "$MOUNT" = "cifs" ]; then
+			COMMAND_LINE="$COMMAND_LINE -t cifs"
+			OPTS="${OPTS},uid=${USER_UID},gid=${USER_GID}"
+		fi
+		[ -n "$EXTRA_OPTS" ] && OPTS="${OPTS},${EXTRA_OPTS}"
+		[ "x$dom" != "x#" ] && OPTS="${OPTS},domain=$dom"
+		[ "x$opt" != "x#" ] && OPTS="${OPTS},$opt"
+		echo " ****** Trying '$OPTS'" > "$FILE"
+		[ -n "$OPTS" ] && COMMAND_LINE="$COMMAND_LINE -o ${OPTS:1}"
+		mount ${COMMAND_LINE} "${NETWORK_HOME}" "${PERSISTENT_HOME_DIR}" >> "${FILE}" 2>&1 &
+		PID=$!
+		# Wait max. 1 second; remember PID if this mount call seems to be running after we stop waiting
+		for waits in 1 2 3 4; do
+			usleep 250000
+			if isHomeMounted; then
+				# A previously invoked mount call might have succeeded while this one is still running; try to stop it right away
+				kill "$PID" &> /dev/null
+				break 3
+			fi
+			kill -0 "$PID" || break
+		done
+		kill -0 "$PID" && PIDS="$PIDS $PID" # Remember all PIDs
+	done
+done
+
+unset USER
+unset PASSWD
+
+if [ -n "$PIDS" ]; then
+	CNT=0
+	while ! isHomeMounted && [ "$CNT" -lt 10 ] && kill -0 $PIDS; do # No quotes
+		usleep 333000
+		CNT=$(( CNT + 1 ))
+	done
+	kill -9 $PIDS # Kill any leftovers; No quotes
+fi
+
+if ! isHomeMounted; then
+	LOG_COMBINED=$(mktemp)
+	[ -n "$LOGFILES" ] && cat ${LOGFILES} > "$LOG_COMBINED" # No quotes
+	slxlog --delete "pam-ad-mount" "Mount of '${VOLUME}' to '${PERSISTENT_HOME_DIR}' failed." "${LOG_COMBINED}"
+fi
+
+[ -n "${LOGFILES}" ] && rm -f -- ${LOGFILES} # No quotes
+true
+

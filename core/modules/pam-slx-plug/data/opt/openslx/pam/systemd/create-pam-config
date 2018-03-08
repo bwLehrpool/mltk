@@ -1,0 +1,121 @@
+#!/bin/bash
+# -- bash for arrays
+
+export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/openslx/sbin:/opt/openslx/bin"
+
+declare -a auth
+declare -a account
+declare -a session
+declare -a nss
+declare -a dns
+
+# Our plugin, but account ONLY since it's fast
+account+=("[success=%NUM% new_authtok_reqd=done default=ignore] pam_exec.so quiet /opt/openslx/pam/exec_account")
+
+# unix
+auth+=("[success=%NUM% default=ignore] pam_unix.so nodelay")
+account+=("[success=%NUM% new_authtok_reqd=done default=ignore] pam_unix.so")
+nss+=("files" "cache")
+
+# check for bwIDM
+if [ -x "/opt/openslx/scripts/pam_bwidm" ]; then
+	auth+=("[success=%NUM% default=ignore] pam_exec.so quiet expose_authtok /opt/openslx/scripts/pam_bwidm")
+	account+=("[success=%NUM% new_authtok_reqd=done default=ignore] pam_exec.so quiet /opt/openslx/scripts/pam_bwidm")
+fi
+
+# Insert kerberos before our auth module
+if [ -s "/etc/ksb5.conf" ]; then
+	auth+=("optional pam_krb5.so minimum_uid=1000 use_first_pass")
+	session+=("optional pam_krb5.so minimum_uid=1000")
+fi
+
+# Our plugin, auth now
+auth+=("[success=%NUM% default=ignore] pam_exec.so quiet expose_authtok /opt/openslx/pam/exec_auth")
+
+# sssd if reasonable
+if systemctl is-enabled -q sssd.service && grep -q -e '^\s*id_provider' -e '^\s*auth_provider' "/etc/sssd/sssd.conf"; then
+	auth+=("[success=%NUM% default=ignore] pam_sss.so use_first_pass")
+	account+=("[success=%NUM% new_authtok_reqd=done default=ignore] pam_sss.so")
+	nss+=("sss")
+	# Skip sss if unix worked
+	session+=("[success=1] pam_unix.so")
+	session+=("optional pam_sss.so")
+else
+	session+=("optional pam_unix.so")
+fi
+
+# DNS
+dns+=("files" "cache")
+if systemctl is-enabled -q systemd-resolved; then
+	dns+=("resolve")
+fi
+dns+=("dns")
+
+session+=("optional pam_exec.so quiet /opt/openslx/pam/exec_session")
+
+#
+# Write pam configs
+tmpfile=$(mktemp)
+# common-auth
+skip=$(( ${#auth[@]} + 1 ))
+echo "# Generated $(date)" > "$tmpfile"
+for line in "${auth[@]}"; do
+	echo "auth  ${line//%NUM%/$skip}"
+	skip=$(( skip - 1 ))
+done >> "$tmpfile"
+cat >> "$tmpfile" <<-HERE
+	auth  optional   pam_faildelay.so delay=2123123
+	auth  requisite  pam_deny.so
+	auth  required   pam_permit.so
+	auth  optional   pam_cap.so
+HERE
+cp -f -- "$tmpfile" "/etc/pam.d/common-auth"
+
+# common-account
+skip=${#account[@]}
+echo "# Generated $(date)" > "$tmpfile"
+for line in "${account[@]}"; do
+	echo "account  ${line//%NUM%/$skip}"
+	skip=$(( skip - 1 ))
+done >> "$tmpfile"
+cat >> "$tmpfile" <<-HERE
+	account	requisite  pam_deny.so
+	account	required   pam_permit.so
+HERE
+cp -f -- "$tmpfile" "/etc/pam.d/common-account"
+
+# common-session
+cat > "$tmpfile" <<-HERE
+	session  required pam_permit.so
+	session  optional pam_umask.so
+	session  required pam_systemd.so
+	session  optional pam_env.so readenv=1
+	session  optional pam_env.so readenv=1 envfile=/etc/default/locale
+	session  optional pam_exec.so quiet /opt/openslx/pam/mkhome
+HERE
+for line in "${session[@]}"; do
+	echo "session  $line"
+done >> "$tmpfile"
+cp -f -- "$tmpfile" "/etc/pam.d/common-session"
+
+#
+# Write nsswitch.conf
+cat > "/etc/nsswitch.conf" <<-HERE
+# Generated $(date)
+passwd:         ${nss[@]}
+group:          ${nss[@]}
+shadow:         files
+
+hosts:          ${dns[@]}
+networks:       files
+
+protocols:      db files
+services:       db files
+ethers:         db files
+rpc:            db files
+
+netgroup:       nis
+HERE
+
+exit 0
+

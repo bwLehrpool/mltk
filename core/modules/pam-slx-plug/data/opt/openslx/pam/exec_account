@@ -1,0 +1,50 @@
+#!/bin/ash
+
+[ "$PAM_TYPE" = "account" ] || exit 1
+
+USER_NAME="$PAM_USER"
+readonly PAM_USER USER_NAME
+
+export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/openslx/sbin:/opt/openslx/bin"
+
+# check for invalid char ':'
+if echo "$PAM_USER" | grep -Fq ':'; then
+	slxlog --echo "pam-format-username" "Username '$PAM_USER' contains disallowed character ':', denying access"
+	exit 1
+fi
+
+# check if the script runs as root
+[ "x$(whoami)" = "xroot" ] || exit 1
+
+# passwd but no shadow hints at a user we added - allow
+grep -q "^${PAM_USER}:" "/etc/shadow" && exit 1
+grep -q "^${PAM_USER}:" "/etc/passwd" && exit 0
+
+# Have neither, run hooks
+for auth_file in /opt/openslx/pam/auth-source.d/*; do
+	USER_UID=
+	USER_GID=
+	[ -f "$auth_file" ] || continue
+	. "$auth_file"
+	[ -n "$USER_UID" ] || continue
+	break
+done
+readonly USER_UID USER_GID
+
+[ -n "$USER_UID" ] || exit 1
+# Got ok from hook - cache in passwd if we got a USER_GID
+[ -n "$USER_GID" ] || exit 0 # OK without caching, no GID
+
+if ! echo "$USER_UID" | grep -Exq '[0-9]+'; then
+	slxlog --echo "pam-format-uid" "'$PAM_USER' has invalid userid '$USER_UID'"
+	exit 0
+fi
+if [ -n "$USER_GID" ] && ! echo "$USER_GID" | grep -Exq '[0-9]+'; then
+	slxlog --echo "pam-format-gid" "'$PAM_USER' has invalid groupid '$USER_GID'"
+	exit 0
+fi
+
+. /opt/openslx/pam/common/homedir-passwd
+
+exit 0
+

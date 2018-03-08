@@ -1,0 +1,27 @@
+#!/bin/ash -- sourced
+
+# Required vars from context:
+# USER_UID
+# USER_GID
+# USER_NAME
+
+# 1) Sanitize the user's home directory, stored and updated in USER_HOME
+
+# 2) Write entry to /etc/passwd if it doesn't exist
+
+# Fixup local home path
+if [ -z "$USER_HOME" ] || [ "${USER_HOME:0:1}" = '\' ] || [ "${USER_HOME:1:1}" = ':' ]; then
+	USER_HOME="/home/_temp-home/$USER_NAME"
+else
+	# Make sure it's absolute, replace spaces, '\' and ':' by '_'
+	USER_HOME=$(echo "$USER_HOME" | sed -r 's,^(/*)(.*)$,/\2,;s/(:|\s|\\)+/_/g')
+fi
+readonly USER_HOME
+
+# Add/replace passwd entry if it doesn't exist yet
+PASSWD="${USER_NAME}:x:${USER_UID}:${USER_GID}:${USER_NAME}:${USER_HOME}:/bin/bash"
+readonly PASSWD
+if ! grep -Fxq -- "${PASSWD}" /etc/passwd; then
+	sed -i "/^${USER_NAME}:/d" /etc/passwd
+	echo "${PASSWD}" >> /etc/passwd
+fi

@@ -1,0 +1,13 @@
+#!/bin/ash
+
+U=$(id -u "$PAM_USER")
+[ -z "$U" ] && exit 1
+E="$(getent passwd "$U")"
+[ -z "$E" ] && exit 2
+G="$(echo "$E" | awk -F: '{print $4}')"
+[ -z "$G" ] && exit 3
+DIR="$(echo "$E" | awk -F: '{print $6}')"
+[ -z "$DIR" ] && exit 4
+mkdir -p "$DIR" || exit 5
+chown "$U:$G" "$DIR"
+
