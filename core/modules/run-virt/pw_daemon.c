@@ -256,7 +256,6 @@ static uint8_t* keygen()
 			}
 		}
 		close(fd);
-		fprintf(stderr, "Got %d bytes from urandom\n", (int)done);
 	}
 	while (done < KEYLEN) {
 		key[done++] = (char)(rand() & 0xff);
