@@ -196,6 +196,8 @@ chown "${USER_UID}" "${TEMP_HOME_DIR}/WARNING.txt"
 #
 # execute the stuff in pam_script_auth.d, if it exists
 #
+PAM_AUTHTOK="${USER_PASSWORD}"
+readonly PAM_AUTHTOK
 for file in /opt/openslx/scripts/pam_script_auth.d/*; do
 	[ -f "$file" ] || continue
 	( . "$file" ) || slxlog "pam-source-hooks" "Could not source '$file'."

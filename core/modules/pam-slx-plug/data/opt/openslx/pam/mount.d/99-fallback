@@ -31,6 +31,7 @@ if [ "$MOUNT" = "cifs" ]; then
 	fi
 	if [ -z "$LDAP_DOMAIN_OVERRIDE" ]; then
 		XDOMAIN="$XDOMAIN #"
+	fi
 
 	export USER="${REAL_ACCOUNT}"
 	export PASSWD="${USER_PASSWORD}"
