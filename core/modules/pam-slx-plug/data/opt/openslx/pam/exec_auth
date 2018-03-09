@@ -148,7 +148,7 @@ if ! isHomeMounted; then
 	if ! mkdir -p "${PERSISTENT_HOME_DIR}"; then
 		slxlog "pam-global-mkpersistent" "Could not create '${PERSISTENT_HOME_DIR}'."
 	else
-		for mount_file in /opt/openslx/pam/mount-persistent.d/*; do
+		for mount_file in /opt/openslx/pam/mount.d/*; do
 			[ -f "$mount_file" ] || continue
 			. "$mount_file"
 			if isHomeMounted; then

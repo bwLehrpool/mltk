@@ -60,7 +60,7 @@ run_auth() {
 	for retries in 0 1 1 2 3 END; do
 		ldapsearch -x -LLL -l 3 -o nettimeout=3 -o ldif-wrap=no \
 				-H "$LDAP_URI" -b "$LDAP_BASE" uid="${PAM_USER}" \
-				dn distinguishedName homeMount realAccount uid uidNumber gidNumber ${LDAP_ATTR_MOUNT_OPTS} &> "${SEARCH_ANON}"
+				dn distinguishedName homeMount homeDirectory realAccount uid uidNumber gidNumber ${LDAP_ATTR_MOUNT_OPTS} &> "${SEARCH_ANON}"
 		RET=$?
 		case "$RET" in
 			0) break # OK
@@ -104,7 +104,7 @@ run_auth() {
 		# unquoted LDAP_ATTR_*
 		ldapsearch -x -LLL -l 5 -o nettimeout=5 -o ldif-wrap=no \
 				-H "$LDAP_URI" -b "$LDAP_BASE" uid="${PAM_USER}" -y "${PW}" -D "$BINDDN" uid="${PAM_USER}" \
-				homeMount realAccount uid uidNumber gidNumber ${LDAP_ATTR_MOUNT_OPTS} &> "${SEARCH_USER}"
+				homeMount homeDirectory realAccount uid uidNumber gidNumber ${LDAP_ATTR_MOUNT_OPTS} &> "${SEARCH_USER}"
 		RET=$?
 		rm -f -- "${PW}"
 		case "$RET" in
