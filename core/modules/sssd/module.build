@@ -16,14 +16,6 @@ build() {
 	# Build nslcd service file
 	mkdir -p "${MODULE_BUILD_DIR}/etc/systemd/system"
 	sed "s,%PATH%,${SSSD_PATH},g" "${MODULE_DIR}/templates/sssd-systemd.service" > "${MODULE_BUILD_DIR}/etc/systemd/system/sssd.service" || perror "Could not fill sssd.service template"
-
-	# openSuse sssd does not start when /etc/sssd/sssd.conf is not root:root 600!
-	if [ "$SYS_DISTRIBUTION" == "opensuse" -a "$SYS_VERSION" == "13.2" ]; then
-		sed -i 's#ExecStart#ExecStartPre=/opt/openslx/bin/chmod 600 /etc/sssd/sssd.conf\nExecStart#g' \
-			"${MODULE_BUILD_DIR}/etc/systemd/system/sssd.service"
-	fi
-
-	return 0
 }
 
 post_copy() {
