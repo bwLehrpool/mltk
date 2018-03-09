@@ -44,6 +44,7 @@ for auth_file in /opt/openslx/pam/auth-source.d/*; do
 	USER_GID=
 	USER_GROUP=
 	USER_HOME=
+	USER_DN=
 	[ -f "$auth_file" ] || continue
 	. "$auth_file"
 	[ -n "$USER_UID" ] || continue

@@ -16,7 +16,7 @@ unset_ldap_vars() {
 	for vn in $(set | grep -Eo '^(SHARE|LDAP)_[^=]+'); do
 		unset "$vn"
 	done
-	unset USER_UID USER_GID USER_GROUP REAL_ACCOUNT NETWORK_HOME HOME_MOUNT_OPTS
+	unset USER_DN USER_UID USER_GID USER_GROUP REAL_ACCOUNT NETWORK_HOME HOME_MOUNT_OPTS
 }
 
 # ldapsearch can return fields either as
@@ -136,6 +136,7 @@ run_auth() {
 		unset USER_UID
 		return 1
 	fi
+	USER_DN="$BINDDN"
 	REAL_ACCOUNT=$(extract_field "realAccount" "$SEARCH_USER" "$SEARCH_ANON")
 	[ -z "$REAL_ACCOUNT" ] && REAL_ACCOUNT=$(extract_field "uid" "$SEARCH_USER" "$SEARCH_ANON")
 	NETWORK_HOME=$(extract_field "homeMount" "$SEARCH_USER" "$SEARCH_ANON")
