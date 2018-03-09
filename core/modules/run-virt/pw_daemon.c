@@ -15,6 +15,7 @@
 #include <sys/socket.h>
 #include <sys/prctl.h>
 #include <sys/un.h>
+#include <grp.h>
 
 static const ssize_t KEYLEN = 16;
 
@@ -25,7 +26,7 @@ static size_t passwordLen = 0;
 static uint8_t *key1 = NULL, *key2 = NULL;
 static char *key1s = NULL, *key2s = NULL;
 
-static int mode_daemon();
+static int mode_daemon(const uid_t uidNumber);
 static int mode_query(const char *socketPath);
 static void sig_handler(int sig);
 static int setup_vars(const char *envuser, const char *envpass);
@@ -36,12 +37,18 @@ static int init_udp();
 
 int main(int argc, char **argv)
 {
-	if (argc > 1 && strcmp(argv[1], "--daemon") == 0) {
-		return mode_daemon();
+	if (argc > 2 && strcmp(argv[1], "--daemon") == 0) {
+		char *end = NULL;
+		uid_t uid = (uid_t)strtoul(argv[2], &end, 10);
+		if (argv[2][0] == '\0' || *end != '\0') {
+			fprintf(stderr, "Invalid uidNumber\n");
+			return 1;
+		}
+		return mode_daemon(uid);
 	} else if (argc > 2 && strcmp(argv[1], "--query") == 0) {
 		return mode_query(argv[2]);
 	}
-	fprintf(stderr, "Invalid call. Use --daemon or --query\n");
+	fprintf(stderr, "Invalid call. Use --daemon [uidNumber] or --query [unixSocket]\n");
 	return 1;
 }
 
@@ -90,7 +97,7 @@ static int mode_query(const char *socketPath)
 	return 0;
 }
 
-static int mode_daemon()
+static int mode_daemon(const uid_t uidNumber)
 {
 	int listenFd, udpPort = -1;
 	struct sockaddr_un addr;
@@ -98,6 +105,7 @@ static int mode_daemon()
 	const char *envuser = getenv("USERNAME");
 	const char *envpass = getenv("PASSWORD");
 	const char *pwsocket = getenv("PWSOCKET");
+	gid_t gidNumber = 65534;
 	memset(&addr, 0, sizeof(addr));
 	memset(&sig, 0, sizeof(sig));
 	if (envuser == NULL) {
@@ -116,6 +124,26 @@ static int mode_daemon()
 		fprintf(stderr, "Error setting up variables\n");
 		return 1;
 	}
+	// Drop privs
+	setgroups(1, &gidNumber);
+	if (setregid(gidNumber, gidNumber) == -1) {
+		fprintf(stderr, "Warn: Could not switch to group 'nogroup'\n");
+	}
+	if (setreuid(uidNumber, uidNumber) == -1) {
+		fprintf(stderr, "Warn: Could not switch to user %d\n", (int)uidNumber);
+	}
+	// Only bail out if we're not running as the user requested
+	setuid(0);
+	setgid(0);
+	if (getuid() != uidNumber || geteuid() != uidNumber) {
+		fprintf(stderr, "Fatal: Currently running as user %d\n", (int)getuid());
+		return 1;
+	}
+	if (getgid() == 0 || getegid() == 0) {
+		fprintf(stderr, "Fatal: Current process gid is 0 (root)\n");
+		return 1;
+	}
+	// Create unix socket
 	listenFd = socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0);
 	if (listenFd == -1) {
 		perror("Could not create unix socket");
@@ -138,6 +166,8 @@ static int mode_daemon()
 		perror("Cannot listen on unix socket");
 		return 1;
 	}
+	// Daemon
+	daemon( 0, 0 );
 	// Mainloop
 	sig.sa_handler = &sig_handler;
 	sigaction(SIGCHLD, &sig, NULL);
