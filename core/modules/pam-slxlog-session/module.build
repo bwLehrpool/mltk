@@ -1,0 +1,12 @@
+#!/bin/bash
+fetch_source() {
+	:
+}
+
+build() {
+	pinfo "Static module, nothing to build."
+}
+
+post_copy() {
+	:
+}
