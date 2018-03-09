@@ -1,8 +1,35 @@
 #!/bin/ash
 
-# TODO
-
 # PAM_TYPE will be "open_session" or "close_session"
+
+# Needed as pam_script clears PATH
+export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/openslx/sbin:/opt/openslx/bin"
+
+# can only work if script is run as root
+[ "x$(whoami)" = "xroot" ] || exit 0
+
+# just exit for greeter sessions
+[ "x${PAM_SERVICE%greeter}" != "x${PAM_SERVICE}" ] && exit 0
+
+if [ "$PAM_TYPE" = "open_session" ]; then
+	# OPEN OPEN OPEN
+	# source the stuff in pam_script_ses_open.d, if it exists
+	for HOOK in /opt/openslx/scripts/pam_script_ses_open.d/*; do
+		[ -f "$HOOK" ] || continue
+		# source it, in case of failure do nothing since these scripts are non-critical
+		( . "$HOOK" ) || slxlog "pam-hooks-ses-open" "Could not source '$HOOK'."
+	done
+	#
+elif [ "$PAM_TYPE" = "close_session" ]; then
+	# CLOSE CLOSE CLOSE
+	# source hooks if there are any
+	for HOOK in /opt/openslx/scripts/pam_script_ses_close.d/*; do
+		[ -f "$HOOK" ] || continue
+		# failure is non-critical
+		( . "$HOOK" ) || slxlog "pam-hooks-ses-close" "Could not source '$HOOK'."
+	done
+	#
+fi
 
 exit 0
 
