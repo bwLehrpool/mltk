@@ -1,6 +1,8 @@
 #!/bin/bash
 # -- bash for arrays
 
+# Prepare pam, nss and sssd configs as appropriate
+
 export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/openslx/sbin:/opt/openslx/bin"
 
 declare -a auth
@@ -8,6 +10,64 @@ declare -a account
 declare -a session
 declare -a nss
 declare -a dns
+
+# Add PAM and NSS modules for sssd
+add_sssd_modules() {
+	auth+=("[success=%NUM% default=ignore] pam_sss.so use_first_pass")
+	account+=("[success=%NUM% new_authtok_reqd=done default=ignore] pam_sss.so")
+	nss+=("sss")
+	# Skip sss if unix worked
+	session+=("[success=1] pam_unix.so")
+	session+=("optional pam_sss.so")
+}
+
+# Write a combined sssd config from all our /opt/openslx/pam/slx-ldap.d/* files
+write_sssd_config() {
+	local file ok domains
+	local tmpfile=$(mktemp)
+	ok=0
+	domains=
+	cat > "$tmpfile" <<-HERE
+		# File generated $(date) -- <slx-autogen>
+		# This file might get overwritten again as long as the above tag stays in it
+		[sssd]
+		config_file_version = 2
+		services = nss, pam
+		domains = %DOMAIN_LIST%
+		[nss]
+		filter_users = root
+		[pam]
+	HERE
+	for file in /opt/openslx/pam/slx-ldap.d/*; do
+		[ -f "$file" ] || continue
+		unset LDAP_ATTR_MOUNT_OPTS LDAP_URI LDAP_BASE LDAP_DOMAIN_OVERRIDE LDAP_CACERT
+		. "$file"
+		[ -z "$LDAP_URI" ] && continue
+		[ -z "$LDAP_BASE" ] && continue
+		ok=$(( ok + 1 ))
+		domains="${domains}, dom$ok"
+		cat >> "$tmpfile" <<-HERE
+			[domain/dom$ok]
+			id_provider = ldap
+			auth_provider = ldap
+			ldap_schema = rtf2307
+			ldap_user_email = bogusFieldName42
+			ldap_user_principal = bogusFieldName43
+			cache_credentials = true
+			ldap_uri = $LDAP_URI
+			ldap_search_base = $LDAP_BASE
+			ldap_tls_reqcert = demand
+		HERE
+		[ -n "$LDAP_CACERT" ] && echo "ldap_tls_cacert = $LDAP_CACERT" >> "$tmpfile"
+	done
+	[ "$ok" = 0 ] && return 1 # No config
+	mkdir -p "/etc/sssd"
+	chmod 0755 "/etc/sssd"
+	sed "s/%DOMAIN_LIST%/${domains#, }/" "${tmpfile}" > "/etc/sssd/sssd.conf"
+	chmod 0600 "/etc/sssd/sssd.conf"
+	rm -f -- "${tmpfile}"
+	return 0 # OK
+}
 
 # Our plugin, but account ONLY since it's fast
 account+=("[success=%NUM% new_authtok_reqd=done default=ignore] pam_exec.so quiet /opt/openslx/pam/exec_account")
@@ -33,13 +93,20 @@ fi
 auth+=("[success=%NUM% default=ignore] pam_exec.so quiet expose_authtok /opt/openslx/pam/exec_auth")
 
 # sssd if reasonable
-if systemctl is-enabled -q sssd.service && grep -q -e '^\s*id_provider' -e '^\s*auth_provider' "/etc/sssd/sssd.conf"; then
-	auth+=("[success=%NUM% default=ignore] pam_sss.so use_first_pass")
-	account+=("[success=%NUM% new_authtok_reqd=done default=ignore] pam_sss.so")
-	nss+=("sss")
-	# Skip sss if unix worked
-	session+=("[success=1] pam_unix.so")
-	session+=("optional pam_sss.so")
+if systemctl is-enabled -q sssd.service && grep -q -e '^\s*id_provider' -e '^\s*auth_provider' "/etc/sssd/sssd.conf" \
+		&& ! grep -q -F '<slx-autogen>' "/etc/sssd/sssd.conf"; then
+	# sssd is configured and doesn't have our marker - just add pam and nss config but leave sssd.conf alone
+	add_sssd_modules
+elif ! systemctl show sssd.service | grep -q '^LoadError='; then
+	# We have sssd available and unconfigured, or marked with our config tag, <slx-autogen>
+	if write_sssd_config; then
+		add_sssd_modules
+		systemctl enable sssd.service
+		systemctl restart --no-block sssd.service
+	else
+		# Nothing to configure, don't use sssd
+		session+=("optional pam_unix.so")
+	fi
 else
 	session+=("optional pam_unix.so")
 fi
@@ -116,6 +183,8 @@ rpc:            db files
 
 netgroup:       nis
 HERE
+
+rm -f -- "$tmpfile"
 
 exit 0
 
