@@ -13,16 +13,6 @@ export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/o
 # just exit for greeter sessions
 [ "x${PAM_SERVICE%greeter}" != "x${PAM_SERVICE}" ] && exit 0
 
-# NSA needs to know
-if [ "x$PAM_SERVICE" != "xsu" -a "x$PAM_SERVICE" != "xsudo" ]; then
-	. /opt/openslx/config
-	if [ "x$SLX_REMOTE_LOG_SESSIONS" = "xyes" -o "x$PAM_USER" = "xroot" ]; then
-		slxlog "session-open" "$PAM_USER logged in on $PAM_TTY"
-	elif [ "x$SLX_REMOTE_LOG_SESSIONS" = "xanonymous" ]; then
-		slxlog "session-open" "User logged in on $PAM_TTY"
-	fi
-fi
-
 # source the stuff in pam_script_ses_open.d, if it exists
 if [ -d "/opt/openslx/scripts/pam_script_ses_open.d" ]; then
 	for HOOK in $(ls "/opt/openslx/scripts/pam_script_ses_open.d"); do
