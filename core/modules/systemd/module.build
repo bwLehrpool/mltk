@@ -125,13 +125,6 @@ build () {
 }
 
 post_copy() {
-	#old agetty version doesn't support --noclear option in getty service
-	if [ "x$(dpkg -s util-linux | grep Version: | cut -d' ' -f2)" == "x2.19.1-2ubuntu3" ]; then
-		sed -i "s/ExecStart=-\/sbin\/agetty --noclear %I 38400 linux/ExecStart=-\/sbin\/agetty %I 38400 linux/g" "${TARGET_BUILD_DIR}/usr/lib/systemd/system/getty@.service"
-	fi
-        # eg. systemd expects /bin/less:
-	if [ "$SYS_DISTRIBUTION" == "opensuse" -a "$SYS_VERSION" == "13.2" ]; then
-		ln -s /usr/bin/less "$TARGET_BUILD_DIR/bin/less"
-	fi
+	:
 }
 
