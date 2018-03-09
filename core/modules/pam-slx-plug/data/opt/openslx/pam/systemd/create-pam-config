@@ -50,7 +50,7 @@ write_sssd_config() {
 			[domain/dom$ok]
 			id_provider = ldap
 			auth_provider = ldap
-			ldap_schema = rtf2307
+			ldap_schema = rfc2307
 			ldap_user_email = bogusFieldName42
 			ldap_user_principal = bogusFieldName43
 			cache_credentials = true
