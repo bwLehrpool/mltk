@@ -39,8 +39,11 @@ setup_virtual_floppy() {
 	chmod 0600 "${SLX_FLOPPY_IMG}"
 	mkfs.fat "${SLX_FLOPPY_IMG}" || mkfs.vfat "${SLX_FLOPPY_IMG}" || mkdosfs "${SLX_FLOPPY_IMG}"
 	
-	# Create file with resolution information etc.
-	$(safesource "/opt/openslx/inc/shares")
+	if [ -s "${TMPHOME}/.openslx/shares" ]; then
+		$(safesource "${TMPHOME}/.openslx/shares")
+	else
+		$(safesource "/opt/openslx/inc/shares")
+	fi
 
 	if notempty SHARE_REMAP_MODE; then
 		local SHARE_REMAP_MODE_INI="$SHARE_REMAP_MODE"

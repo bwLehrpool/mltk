@@ -158,6 +158,7 @@ run_auth() {
 }
 
 TEMPFILES_LDAP=
+SLX_LDAP_FILE=
 
 for s_file in /opt/openslx/pam/slx-ldap.d/*; do
 	unset_ldap_vars
@@ -167,7 +168,10 @@ for s_file in /opt/openslx/pam/slx-ldap.d/*; do
 		slxlog --echo "pam-slxldap-empty" "LDAP config '$s_file' is missing URI or BASE"
 		continue
 	fi
-	run_auth && break
+	if run_auth; then
+		SLX_LDAP_FILE="$s_file"
+		break
+	fi
 done
 
 if [ -z "$USER_UID" ]; then
