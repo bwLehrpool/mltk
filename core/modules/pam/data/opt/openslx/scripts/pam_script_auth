@@ -51,13 +51,14 @@ if ! mount | grep -q -F " ${TEMP_HOME_DIR} "; then
 		exit 1
 	fi
 	# now make it a tmpfs
-	if ! mount -t tmpfs -o mode=700,size=1024m tmpfs "${TEMP_HOME_DIR}"; then
+	if ! mount -t tmpfs -o "uid=${USER_UID},gid=${USER_GID},mode=0700,size=1024m" tmpfs "${TEMP_HOME_DIR}"; then
 		slxlog "pam-global-tmpfstemphome" "Could not make a tmpfs on ${TEMP_HOME_DIR}"
 		exit 1
 	fi
-	if ! chown "${USER_UID}:${USER_GID}" "${TEMP_HOME_DIR}"; then
-		slxlog "pam-global-chpersistent" "Could not chown '${TEMP_HOME_DIR}' to '${PAM_USER}'."
-	fi
+	# mount another tmpfs into subdir so we can create files that the user cannot modify
+	# but still read, while at the same time preventing any other user from reading it
+	mkdir -p "${TEMP_HOME_DIR}/.openslx"
+	mount -t tmpfs -o size=1m,uid=0,gid=0,mode=0755 tmpfs "${TEMP_HOME_DIR}/.openslx"
 fi
 
 ###############################################################################
@@ -83,8 +84,8 @@ if [ -e "${PERSISTENT_MOUNT_SCRIPT}" ] && ! mount | grep -q -F " ${PERSISTENT_HO
 		. "${PERSISTENT_MOUNT_SCRIPT}" \
 			|| slxlog "pam-global-sourcepersistent" "Could not source '${PERSISTENT_MOUNT_SCRIPT}'."
 		if [ -n "${REAL_ACCOUNT}" ]; then
-			echo "${REAL_ACCOUNT}" > "${TEMP_HOME_DIR}/.account"
-			chmod 0644 "${TEMP_HOME_DIR}/.account"
+			echo "${REAL_ACCOUNT}" > "${TEMP_HOME_DIR}/.openslx/account"
+			chmod 0644 "${TEMP_HOME_DIR}/.openslx/account"
 		fi
 	fi
 fi # end "mount-home-script-exists"

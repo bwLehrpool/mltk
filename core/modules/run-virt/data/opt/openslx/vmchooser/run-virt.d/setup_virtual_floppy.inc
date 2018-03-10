@@ -66,8 +66,8 @@ setup_virtual_floppy() {
 		slxlog "virt-pwdaemon" "Could not start pwdaemon"
 	else
 		sed -i 's/^/192.168.101.1\t/' "${SHARES}" # TODO: Depending on nettype (in case we have != nat some day)
-		if [ "${SHARE_REMAP_MODE}" = 1 -o "${SHARE_REMAP_MODE}" = 2 ] && [ -e "${TMPHOME}/.home" ]; then
-			NETHOME=$(cat "${TMPHOME}/.home")
+		if [ "${SHARE_REMAP_MODE}" = 1 -o "${SHARE_REMAP_MODE}" = 2 ] && [ -e "${TMPHOME}/.openslx/home" ]; then
+			NETHOME=$(cat "${TMPHOME}/.openslx/home")
 			notempty SHARE_HOME_DRIVE || local SHARE_HOME_DRIVE="H:"
 			# Tab between items, so spaces can be used!
 			echo "${NETHOME}	${SHARE_HOME_DRIVE}	Home-Verzeichnis" >> "${SHARES}"
@@ -107,7 +107,7 @@ setup_virtual_floppy() {
 	
 	# Write info file
 	local UNAME=
-	[ -s "${HOME}/.account" ] && UNAME=$(cat "${HOME}/.account")
+	[ -s "${HOME}/.openslx/account" ] && UNAME=$(cat "${HOME}/.openslx/account")
 	notempty UNAME || UNAME=$(whoami)
 	cat > "${TMPDIR}/openslx.ini" <<-EOF
 	[openslx]
