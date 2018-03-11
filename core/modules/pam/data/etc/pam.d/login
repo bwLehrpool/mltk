@@ -43,46 +43,13 @@ auth       requisite  pam_nologin.so
 # OpenSLX: Not Needed?
 #session [success=ok ignore=ignore module_unknown=ignore default=bad] pam_selinux.so close
 
-# This module parses environment configuration file(s)
-# and also allows you to use an extended config
-# file /etc/security/pam_env.conf.
-# 
-# parsing /etc/environment needs "readenv=1"
-session       required   pam_env.so readenv=1
-# locale variables are also kept into /etc/default/locale in etch
-# reading this file *in addition to /etc/environment* does not hurt
-session       required   pam_env.so readenv=1 envfile=/etc/default/locale
-
 # Standard Un*x authentication.
 auth include common-auth
-
-# TODO do we need this?
-# This allows certain extra groups to be granted to a user
-# based on things like time of day, tty, service, and user.
-# Please edit /etc/security/group.conf to fit your needs
-# (Replaces the `CONSOLE_GROUPS' option in login.defs)
-#auth       optional   pam_group.so
-
-# Uncomment and edit /etc/security/time.conf if you need to set
-# time restrainst on logins.
-# (Replaces the `PORTTIME_CHECKS_ENAB' option from login.defs
-# as well as /etc/porttime)
-# account    requisite  pam_time.so
-
-# Uncomment and edit /etc/security/access.conf if you need to
-# set access limits.
-# (Replaces /etc/login.access file)
-# account  required       pam_access.so
 
 # TODO do we need this?
 # Sets up user limits according to /etc/security/limits.conf
 # (Replaces the use of /etc/limits in old login)
 #session    required   pam_limits.so
-
-# TODO check if this is needed
-# Prints the last login info upon succesful login
-# (Replaces the `LASTLOG_ENAB' option from login.defs)
-session    optional   pam_lastlog.so
 
 # Prints the motd upon succesful login
 # (Replaces the `MOTD_FILE' option in login.defs)
