@@ -92,9 +92,9 @@ setup_virtual_floppy() {
 			if [[ "$( tr '[A-Z]' '[a-z]' <<< ${VM_OS_TYPE})" = *windows* ]]; then
 				cmd=(tr / '\\')
 			fi
-			< $NETSHARES "${cmd[@]}" >> "${SHARES}"
-			# replace the tag for the username, if present
-			sed -i 's/%loginuser%/'"${USER}"'/g' "${SHARES}"
+			# replace the tag for the username, if present; the variable expansion escapes all ':' in $USER
+			sed -i "s:%loginuser%:${USER//:/\\:}:g" "${NETSHARES}"
+			< "${NETSHARES}"  "${cmd[@]}" >> "${SHARES}"
 		fi
 	fi
 
@@ -133,8 +133,15 @@ setup_virtual_floppy() {
 	EOF
 	
 	# Copy all them there filez into floppy image
-	mcopy -i "${SLX_FLOPPY_IMG}" "${TMPDIR}/openslx.ini" "${TMPDIR}/HOSTRES.TXT" "${SHARES}" "::/"
-	mcopy -i "${SLX_FLOPPY_IMG}" "$VMCHOOSER_DIR/data/openslx.exe" "::/"
+	mcopy -i "${SLX_FLOPPY_IMG}" "${TMPDIR}/openslx.ini" "${TMPDIR}/HOSTRES.TXT" "${SHARES}" "${VMCHOOSER_DIR}/data/openslx.exe" "::/"
+	# If we have a kerberos ticket, copy that one too (TODO: Copy keytab too?)
+	if [ -n "$KRB5CCNAME" ]; then
+		kf=${KRB5CCNAME#FILE:}
+		kf=${kf#file:}
+		if [ -n "$kf" ] && [ -f "$kf" ]; then
+			mcopy -i "${SLX_FLOPPY_IMG}" "$kf" "::/krb5user.key"
+		fi
+	fi
 	# Copy guest configuration (with added information) config.xml to be accessed
 	# via virtual floppy
 	mcopy -i "${SLX_FLOPPY_IMG}" "$XML_FILE" "::/config.xml"
