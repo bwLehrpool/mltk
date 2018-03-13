@@ -1,2 +1,0 @@
-This module is broken as of 07.12.16, as the hardcoded urls to the deb packages are dead.
-Why was this pursued instead of using the regular package manager way?

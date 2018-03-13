@@ -1,6 +1,0 @@
-[D-BUS Service]
-Name=org.freedesktop.ConsoleKit
-Exec=%DAEMON% --no-daemon
-User=root
-SystemdService=console-kit-daemon.service
-

@@ -523,9 +523,6 @@ clean_modules() {
 		shift
 	done
 	cd - &> /dev/null
-
-	# libck-connector cleanup
-	rm -f "$TARGET_DIR/post-patch/ck-connector/libck-connector.so"
 }
 
 clean_module() {
