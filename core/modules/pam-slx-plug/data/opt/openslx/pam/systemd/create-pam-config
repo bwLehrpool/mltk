@@ -84,7 +84,7 @@ if [ -x "/opt/openslx/scripts/pam_bwidm" ]; then
 fi
 
 # Insert kerberos before our auth module
-if [ -s "/etc/ksb5.conf" ]; then
+if [ -s "/etc/krb5.conf" ]; then
 	auth+=("optional pam_krb5.so minimum_uid=1000 use_first_pass")
 	session+=("optional pam_krb5.so minimum_uid=1000")
 fi
