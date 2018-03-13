@@ -85,7 +85,7 @@ fi
 
 # Insert kerberos before our auth module
 if [ -s "/etc/krb5.conf" ]; then
-	auth+=("optional pam_krb5.so minimum_uid=1000 use_first_pass")
+	auth+=("optional pam_krb5.so minimum_uid=1000 use_first_pass ccache=FILE:/run/user/krb5cc_%u_XXXXXX ccname_template=FILE:/run/user/krb5cc_%U_XXXXXX")
 	session+=("optional pam_krb5.so minimum_uid=1000")
 fi
 
