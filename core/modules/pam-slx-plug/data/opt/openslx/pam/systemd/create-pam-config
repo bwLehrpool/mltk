@@ -123,66 +123,76 @@ session+=("optional pam_exec.so quiet /opt/openslx/pam/exec_session")
 #
 # Write pam configs
 tmpfile=$(mktemp)
+
 # common-auth
-skip=$(( ${#auth[@]} + 1 ))
-echo "# Generated $(date)" > "$tmpfile"
-for line in "${auth[@]}"; do
-	echo "auth  ${line//%NUM%/$skip}"
-	skip=$(( skip - 1 ))
-done >> "$tmpfile"
-cat >> "$tmpfile" <<-HERE
-	auth  optional   pam_faildelay.so delay=2123123
-	auth  requisite  pam_deny.so
-	auth  required   pam_permit.so
-	auth  optional   pam_cap.so
-HERE
-cp -f -- "$tmpfile" "/etc/pam.d/common-auth"
+if grep -q '<slx-autogen>' "/etc/pam.d/common-auth"; then
+	skip=$(( ${#auth[@]} + 1 ))
+	echo "# <slx-autogen> Generated $(date)" > "$tmpfile"
+	for line in "${auth[@]}"; do
+		echo "auth  ${line//%NUM%/$skip}"
+		skip=$(( skip - 1 ))
+	done >> "$tmpfile"
+	cat >> "$tmpfile" <<-HERE
+		auth  optional   pam_faildelay.so delay=2123123
+		auth  requisite  pam_deny.so
+		auth  required   pam_permit.so
+		auth  optional   pam_cap.so
+	HERE
+	cp -f -- "$tmpfile" "/etc/pam.d/common-auth"
+fi
 
 # common-account
-skip=${#account[@]}
-echo "# Generated $(date)" > "$tmpfile"
-for line in "${account[@]}"; do
-	echo "account  ${line//%NUM%/$skip}"
-	skip=$(( skip - 1 ))
-done >> "$tmpfile"
-cat >> "$tmpfile" <<-HERE
-	account	requisite  pam_deny.so
-	account	required   pam_permit.so
-HERE
-cp -f -- "$tmpfile" "/etc/pam.d/common-account"
+if grep -q '<slx-autogen>' "/etc/pam.d/common-account"; then
+	skip=${#account[@]}
+	echo "# <slx-autogen> Generated $(date)" > "$tmpfile"
+	for line in "${account[@]}"; do
+		echo "account  ${line//%NUM%/$skip}"
+		skip=$(( skip - 1 ))
+	done >> "$tmpfile"
+	cat >> "$tmpfile" <<-HERE
+		account	requisite  pam_deny.so
+		account	required   pam_permit.so
+	HERE
+	cp -f -- "$tmpfile" "/etc/pam.d/common-account"
+fi
 
 # common-session
-cat > "$tmpfile" <<-HERE
-	session  required pam_permit.so
-	session  optional pam_umask.so
-	session  required pam_systemd.so
-	session  optional pam_env.so readenv=1
-	session  optional pam_env.so readenv=1 envfile=/etc/default/locale
-	session  optional pam_exec.so quiet /opt/openslx/pam/mkhome
-HERE
-for line in "${session[@]}"; do
-	echo "session  $line"
-done >> "$tmpfile"
-cp -f -- "$tmpfile" "/etc/pam.d/common-session"
+if grep -q '<slx-autogen>' "/etc/pam.d/common-session"; then
+	cat > "$tmpfile" <<-HERE
+		# <slx-autogen> Generated $(date)
+		session  required pam_permit.so
+		session  optional pam_umask.so
+		session  required pam_systemd.so
+		session  optional pam_env.so readenv=1
+		session  optional pam_env.so readenv=1 envfile=/etc/default/locale
+		session  optional pam_exec.so quiet /opt/openslx/pam/mkhome
+	HERE
+	for line in "${session[@]}"; do
+		echo "session  $line"
+	done >> "$tmpfile"
+	cp -f -- "$tmpfile" "/etc/pam.d/common-session"
+fi
 
 #
 # Write nsswitch.conf
-cat > "/etc/nsswitch.conf" <<-HERE
-# Generated $(date)
-passwd:         ${nss[@]}
-group:          ${nss[@]}
-shadow:         files
+if grep -q '<slx-autogen>' "/etc/nsswitch.conf"; then
+	cat > "/etc/nsswitch.conf" <<-HERE
+		# <slx-autogen> Generated $(date)
+		passwd:         ${nss[@]}
+		group:          ${nss[@]}
+		shadow:         files
 
-hosts:          ${dns[@]}
-networks:       files
+		hosts:          ${dns[@]}
+		networks:       files
 
-protocols:      db files
-services:       db files
-ethers:         db files
-rpc:            db files
+		protocols:      db files
+		services:       db files
+		ethers:         db files
+		rpc:            db files
 
-netgroup:       nis
-HERE
+		netgroup:       nis
+	HERE
+fi
 
 rm -f -- "$tmpfile"
 
