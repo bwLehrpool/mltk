@@ -29,7 +29,10 @@ reload_rules () {
 	done
 
 	# No change? Do nothing...
-	[ -s "${ALL_RULES}" -a -s "${ALL_RULES}.new" ] && diff "${ALL_RULES}" "${ALL_RULES}.new" && exit 0
+	if [ -s "${ALL_RULES}" ] && [ -s "${ALL_RULES}.new" ] && diff "${ALL_RULES}" "${ALL_RULES}.new"; then
+		rm -f -- "${ALL_RULES}.new"
+		exit 0
+	fi
 
 	# Reset
 	# Filter

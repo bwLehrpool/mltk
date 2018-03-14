@@ -1,5 +1,7 @@
 #!/bin/ash
 
+rm -f -- "/run/iptables-reloader.cache" "/run/iptables-reloader.lock"
+
 /opt/openslx/iptables/iptables-reloader-worker
 exec /opt/openslx/sbin/inotifyd /opt/openslx/iptables/iptables-reloader-worker /opt/openslx/iptables/rules.d:cndmy
 

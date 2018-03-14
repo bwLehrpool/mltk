@@ -86,7 +86,8 @@ vmnetif () {
 			vmnet="$(( vmnet + 1 ))"
 		done
 	fi
-
+	# Printergui rules etc.
+	systemctl --no-block restart openslx-iptables.service
 }
 
 vmblock () {
