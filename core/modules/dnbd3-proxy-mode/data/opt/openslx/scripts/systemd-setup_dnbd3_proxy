@@ -11,9 +11,9 @@ errormsg () {
 	slxlog -s -e "dnbd3-setup" "$@"
 }
 
-# Get size of disk/device at given path, in kb
+# Get size of disk/device at given path, in MB
 disksize () {
-	df -k "$1" | tail -n 1 | awk '{print $2}'
+	df -k "$1" | tail -n 1 | awk '{ print substr($2, 0, length($2)-3) }'
 }
 
 # Creates the DNBD3 server configuration under DNBD3_CONF_DIR
@@ -27,16 +27,19 @@ fi
 DNBD3_BASE_DIR="/opt/openslx/persistent"
 if grep -q "^/dev/.* ${DNBD3_BASE_DIR} .*rw" /proc/mounts \
 		&& [ -k "${DNBD3_BASE_DIR}/data" ] \
-		&& [ "$(disksize "${DNBD3_BASE_DIR}/data")" -gt 40000000 ]; then
+		&& [ "$(disksize "${DNBD3_BASE_DIR}/data")" -gt 12000 ]; then
 	# setup_partitions creates a data folder in ID45
+	# TODO: Partition might be filled with garbage belonging to other users, so
+	# the usable space for dnbd3 might be much lower.
+	# avail = "disk size" - "du -s $DNBD3_BASE_DIR"
 	DNBD3_BASE_DIR="${DNBD3_BASE_DIR}/data"
 else
 	# try /tmp fallback
 	DNBD3_BASE_DIR="/tmp"
 	if ! grep -q '^/dev/.* '"${DNBD3_BASE_DIR}"' .*rw' /proc/mounts \
-		|| [ "$(disksize "${DNBD3_BASE_DIR}")" -lt 40000000 ]; then
+		|| ! [ "$(disksize "${DNBD3_BASE_DIR}")" -gt 12000 ]; then
 		# no sane fallback possible
-		errormsg "Neither a persistent part (ID45) nor /tmp (ID44) are available, or they are < 40GB"
+		errormsg "Neither a persistent part (ID45) nor /tmp (ID44) are available, or they are < 12GB"
 	fi
 fi
 # now try to create the actual folder used by the server
@@ -64,6 +67,7 @@ fi
 # Using the information given by the server in /opt/openslx/config
 . /opt/openslx/config
 
+DNBD3_SPARSE="false"
 DNBD3_BGR="false"
 DNBD3_LOOKUP="false"
 DNBD3_SERVER_PENALTY=2000 # no BGR = don't like other servers connecting so much
@@ -73,6 +77,23 @@ if [ -n "${SLX_DNBD3_BGR}" ]; then
 	# Only do chained lookup of image if we're a global proxy with BGR
 	[ -z "${SLX_DNBD3_WHITELIST}" ] && DNBD3_LOOKUP="true"
 fi
+if [ -n "${SLX_DNBD3_SPARSE}" ]; then
+	DNBD3_SPARSE="true"
+fi
+# Determine if we need sparse mode, or override BGR
+cache_size=$(disksize "$DNBD3_DATA_DIR")
+if ! [ "$cache_size" -gt 120000 ]; then
+	# less than 120GiB or NaN, force
+	[ "$DNBD3_BGR" = "true" ] && slxlog -s -e "dnbd3-setup-small" "Cache partition < 120GiB, forcing background replication OFF and sparse mode ON"
+	DNBD3_SPARSE="true"
+	DNBD3_BGR="false"
+	DNBD3_SERVER_PENALTY=5000
+	DNBD3_LOOKUP="false"
+elif [ "$cache_size" -gt 2000000 ]; then
+	# force non-sparse on > 2TiB
+	DNBD3_SPARSE="false"
+fi
+
 DNBD3_PORT=5003
 rm -f "${DNBD3_CONF_DIR}/server.conf"
 # Refer to http://git.openslx.org/dnbd3.git/tree/conf for configuration options
@@ -85,6 +106,7 @@ clientPenalty=0
 isProxy=true
 backgroundReplication=${DNBD3_BGR}
 lookupMissingForProxy=${DNBD3_LOOKUP}
+sparseFiles=${DNBD3_SPARSE}
 removeMissingImages=false
 uplinkTimeout=5000
 clientTimeout=15000
