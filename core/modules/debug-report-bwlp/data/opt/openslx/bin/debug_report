@@ -74,7 +74,7 @@ fi
 echo -n "."
 
 cp /var/log/Xorg.0.lo* static/ 2> /dev/null
-cp /var/log/{auth.log,kdm.log,syslog,messages,user.log} static/ 2> /dev/null
+cp -r /var/log/{auth.log,kdm.log,syslog,messages,user.log,cups} static/ 2> /dev/null
 cp /proc/{cpu,mem}info /proc/{mtrr,interrupts} /proc/driver/nvidia/{params,registry} static/proc/ 2> /dev/null
 echo -n "."
 
