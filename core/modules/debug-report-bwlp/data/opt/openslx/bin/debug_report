@@ -95,6 +95,17 @@ echo -n "."
 ps auxf > "generated/ps-out" 2> "generated/ps-err"
 echo -n "."
 
+for table in filter nat mangle; do
+	iptables -t "$table" -L -v -n > "generated/ipt-${table}-out" 2> "generated/ipt-${table}-err"
+done
+echo -n "."
+
+fdisk -l > "generated/fdisk-out" 2> "generated/fdisk-err"
+echo -n "."
+
+ls -al /dev /dev/disk/* &> "generated/ls-dev-and-disks"
+echo -n "."
+
 if [ -z "$DISPLAY" ]; then
 	DISPLAY=:0
 	XAUTHORITY=$(ps a | grep " $DISPLAY " | grep -o -- '-auth.*$' | grep -m1 -v grep | awk '{print $2}')
