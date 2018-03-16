@@ -7,6 +7,7 @@ for br in br0 nat1 vsw2; do
 	for dev in $devs; do
 		case "$dev" in eth?|eth??|tun?|tun??) continue ;; esac
 		iptables -t nat -A PREROUTING -m physdev --physdev-in "$dev" -d 192.168.101.1 -p tcp --dport 515 -j REDIRECT --to-port 5515
+		iptables -t nat -A PREROUTING -m physdev --physdev-in "$dev" -d 192.169.101.1 -p tcp --dport 515 -j REDIRECT --to-port 5515
 		iptables -t nat -A PREROUTING -m physdev --physdev-in "$dev" -d 100.100.100.100 -p tcp --dport 515 -j REDIRECT --to-port 5515
 		iptables -A INPUT -m physdev --physdev-in "$dev" -p tcp --dport 5515 -j ACCEPT
 	done
