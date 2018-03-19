@@ -18,8 +18,7 @@ declare -rg VBOX_PLUGIN_DIR="$(dirname "${BASH_SOURCE[0]}")"
 declare -rg VBOX_INCLUDE_DIR="${VBOX_PLUGIN_DIR}/includes"
 declare -rg VBOX_BASE_DIR="/usr/lib/virtualbox"
 
-#declare -rg PLUGIN_FEATURES="slxfloppy firewall printer usb sound netshares"
-declare -rg PLUGIN_FEATURES="slxfloppy"
+declare -rg PLUGIN_FEATURES="firewall printer usb slxfloppy sound netshares"
 
 run_plugin() {
 	# declaration of default variables and some sanity checks
