@@ -6,6 +6,9 @@ ERRLOG="/run/dnbd3-proxy.err"
 
 [ -s "$ERRLOG" ] && exit 0 # already ran and failed, don't do it again
 
+# Log error to server and local file in /run.
+# The main startup script will check whether this file is > 0 bytes
+# and start in errormsg-mode.
 errormsg () {
 	echo "$@" >> "$ERRLOG"
 	slxlog -s -e "dnbd3-setup" "$@"
@@ -40,6 +43,9 @@ else
 		|| ! [ "$(disksize "${DNBD3_BASE_DIR}")" -gt 12000 ]; then
 		# no sane fallback possible
 		errormsg "Neither a persistent part (ID45) nor /tmp (ID44) are available, or they are < 12GB"
+	else
+		# We're using /tmp, don't warn about low space
+		touch "/run/openslx/no-ram-warning"
 	fi
 fi
 # now try to create the actual folder used by the server
