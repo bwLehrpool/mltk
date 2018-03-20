@@ -25,7 +25,6 @@ declare -rg CHROOT_BINDMOUNTS="/dev /proc /sys /run"
 # Helper for the helper to detect overlay filesystem name
 chroot_detect_overlayfs() {
 	declare -g OVERLAYFS_FSTYPES="$(grep -oE '\boverlay(fs)?$' /proc/filesystems)"
-	pinfo "OVERLAYFS: $OVERLAYFS_FSTYPES"
 	if [ "$(<<< $OVERLAYFS_FSTYPES wc -w)" -ge 1 ]; then
 		# more than one overlayfs support in /proc/filesystems
 		# either one should work, will try them all later
