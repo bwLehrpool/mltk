@@ -13,8 +13,15 @@ OUTFILE=$(mktemp)
 # no bash, so this is a bit ugly...
 if [ "${SLX_VM_NFS#//}" = "${SLX_VM_NFS}" ]; then
 	# doesn't start with '//' -> assume NFS
-	/opt/openslx/bin/timeout -t 6 -s 9 mount -v -t nfs -o ro,async,nolock "$SLX_VM_NFS" /mnt/vmstore
-	RET=$?
+	RET=1
+	if [ -n "$SLX_VM_NFS_OPTS" ]; then
+		/opt/openslx/bin/timeout -t 10 -s 9 mount -v -t nfs -o "${SLX_VM_NFS_OPTS},ro" "$SLX_VM_NFS" /mnt/vmstore
+		RET=$?
+	fi
+	if [ "$RET" != "0" ]; then
+		/opt/openslx/bin/timeout -t 6 -s 9 mount -v -t nfs -o ro,async,nolock "$SLX_VM_NFS" /mnt/vmstore
+		RET=$?
+	fi
 	if [ "$RET" != "0" ]; then
 		/opt/openslx/bin/timeout -t 6 -s 9 mount -v -t nfs -o vers=3,ro,async,nolock "$SLX_VM_NFS" /mnt/vmstore
 		RET=$?
@@ -23,28 +30,35 @@ else
 	# starts with '//' -> assume CIFS
 	export USER="$SLX_VM_NFS_USER"
 	export PASSWD="$SLX_VM_NFS_PASSWD"
-	for vers in "" "3.0" "2.1" "1.0" "2.0"; do
-		[ -n "$vers" ] && vers=",vers=${vers}"
-		for sec in "" "ntlmssp" "ntlmv2" "ntlm"; do
-			[ -n "$sec" ] && sec=",sec=${sec}"
-			/opt/openslx/bin/timeout -t 10 -s 9 mount -v -t cifs -o "ro,file_mode=0644,dir_mode=0755,uid=0,gid=0,forceuid,forcegid,nounix${vers}${sec}" "$SLX_VM_NFS" /mnt/vmstore
-			RET=$?
+	RET=1
+	if [ -n "$SLX_VM_NFS_OPTS" ]; then
+		/opt/openslx/bin/timeout -t 10 -s 9 mount -v -t cifs -o "${SLX_VM_NFS_OPTS},uid=0,gid=0,forceuid,forcegid,file_mode=0664,dir_mode=0775,ro" "$SLX_VM_NFS" /mnt/vmstore
+		RET=$?
+	fi
+	if [ "$RET" != "0" ]; then
+		for vers in "" "3.0" "2.1" "1.0" "2.0"; do
+			[ -n "$vers" ] && vers=",vers=${vers}"
+			for sec in "" "ntlmssp" "ntlmv2" "ntlm"; do
+				[ -n "$sec" ] && sec=",sec=${sec}"
+				/opt/openslx/bin/timeout -t 10 -s 9 mount -v -t cifs -o "ro,file_mode=0644,dir_mode=0755,uid=0,gid=0,forceuid,forcegid,nounix${vers}${sec}" "$SLX_VM_NFS" /mnt/vmstore
+				RET=$?
+				[ "$RET" = "0" ] && break
+			done
 			[ "$RET" = "0" ] && break
 		done
-		[ "$RET" = "0" ] && break
-	done
+	fi
 	unset USER
 	unset PASSWD
 fi > "$OUTFILE" 2>&1
 
 if [ "$RET" -ne "0" ]; then
 	if [ -s "$OUTFILE" ]; then
-		slxlog --sync --delete "mount-vmstore-fail" "Mounting '$SLX_VM_NFS' failed. VMs will not boot." "$OUTFILE"
+		slxlog --sync "mount-vmstore-fail" "Mounting '$SLX_VM_NFS' failed. VMs will not boot." "$OUTFILE"
 	else
 		slxlog --sync "mount-vmstore-fail" "Mounting '$SLX_VM_NFS' failed. VMs will not boot."
-		rm -f -- "$OUTFILE"
 	fi
 fi
+rm -f -- "$OUTFILE"
 
 exit $RET
 
