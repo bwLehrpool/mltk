@@ -23,10 +23,6 @@ build() {
 	fi
 
 	pinfo "Running cmake"
-
-	# use qt4-dev (in case eg. qt4 and 5 are installed)
-	activate_qt 4
-
 	cmake "$SRCDIR" || perror "'cmake $SRCDIR' failed."
 	make || perror "'make' failed."
 	mv "vmchooser" "vmchooser.real" || perror "Could not rename vmchooser binary to vmchooser.real"
