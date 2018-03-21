@@ -1,0 +1,90 @@
+#!/bin/bash
+REQUIRED_INSTALLED_PACKAGES="
+			fonts-dejavu-core
+			fonts-dejavu-extra
+			ttf-dejavu-core
+			xserver-xorg$UBUNTU_XORG_PKG_SUFFIX
+			xserver-xorg-core$UBUNTU_XORG_PKG_SUFFIX
+			libgl1-mesa-dri$UBUNTU_XORG_PKG_SUFFIX
+			libgl1-mesa-glx$UBUNTU_XORG_PKG_SUFFIX
+			xkb-data
+			x11-xkb-utils
+			x11-xserver-utils
+			x11-utils
+			xdotool
+			libinput10
+			libwacom2
+			xserver-xorg-input-evdev$UBUNTU_XORG_PKG_SUFFIX
+			xserver-xorg-input-synaptics$UBUNTU_XORG_PKG_SUFFIX
+			xserver-xorg-input-wacom$UBUNTU_XORG_PKG_SUFFIX
+			xserver-xorg-input-libinput$UBUNTU_XORG_PKG_SUFFIX
+			xserver-xorg-video-fbdev$UBUNTU_XORG_PKG_SUFFIX
+			xserver-xorg-video-intel$UBUNTU_XORG_PKG_SUFFIX
+			xserver-xorg-video-nouveau$UBUNTU_XORG_PKG_SUFFIX
+			xserver-xorg-video-sisusb$UBUNTU_XORG_PKG_SUFFIX
+			xserver-xorg-video-vesa$UBUNTU_XORG_PKG_SUFFIX
+			xserver-xorg-video-vmware$UBUNTU_XORG_PKG_SUFFIX
+			libdrm-dev
+			libgbm-dev
+			libgl-dev
+			libgl1-mesa-dev
+			libudev-dev
+			pkg-config
+			x11proto-core-dev
+			x11proto-dri2-dev
+			x11proto-fonts-dev
+			x11proto-randr-dev
+			x11proto-render-dev
+			x11proto-video-dev
+			x11proto-xext-dev
+			x11proto-xf86dri-dev
+			xserver-xorg-dev
+			xutils-dev
+"
+REQUIRED_CONTENT_PACKAGES="
+			fonts-dejavu-core
+			fonts-dejavu-extra
+			ttf-dejavu-core
+			xserver-xorg$UBUNTU_XORG_PKG_SUFFIX
+			xserver-xorg-core$UBUNTU_XORG_PKG_SUFFIX
+			libgl1-mesa-dri$UBUNTU_XORG_PKG_SUFFIX
+			libgl1-mesa-glx$UBUNTU_XORG_PKG_SUFFIX
+			libegl1-mesa
+			libgbm1
+			libcapnp-0.6.1
+			libmirclient9
+			libwayland-client0
+			libwayland-server0
+			xkb-data
+			x11-xkb-utils
+			x11-xserver-utils
+			x11-utils
+			xdotool
+			xserver-xorg-input-libinput$UBUNTU_XORG_PKG_SUFFIX
+			xserver-xorg-input-synaptics$UBUNTU_XORG_PKG_SUFFIX
+			xserver-xorg-input-wacom$UBUNTU_XORG_PKG_SUFFIX
+			xserver-xorg-video-fbdev$UBUNTU_XORG_PKG_SUFFIX
+			xserver-xorg-video-intel$UBUNTU_XORG_PKG_SUFFIX
+			xserver-xorg-video-nouveau$UBUNTU_XORG_PKG_SUFFIX
+			xserver-xorg-video-sisusb$UBUNTU_XORG_PKG_SUFFIX
+			xserver-xorg-video-vesa$UBUNTU_XORG_PKG_SUFFIX
+			xserver-xorg-video-vmware$UBUNTU_XORG_PKG_SUFFIX
+			@xserver-xorg-input-mouse$UBUNTU_XORG_PKG_SUFFIX
+			@xserver-xorg-video-openchrome$UBUNTU_XORG_PKG_SUFFIX
+			@xserver-xorg-video-savage$UBUNTU_XORG_PKG_SUFFIX
+			@xserver-xorg-video-trident$UBUNTU_XORG_PKG_SUFFIX
+			@xserver-xorg-video-mach64$UBUNTU_XORG_PKG_SUFFIX
+			@xserver-xorg-video-qxl$UBUNTU_XORG_PKG_SUFFIX
+			@xserver-xorg-video-siliconmotion$UBUNTU_XORG_PKG_SUFFIX
+			@xserver-xorg-video-cirrus$UBUNTU_XORG_PKG_SUFFIX
+			@xserver-xorg-video-r128$UBUNTU_XORG_PKG_SUFFIX
+			@xserver-xorg-video-neomagic$UBUNTU_XORG_PKG_SUFFIX
+			@xserver-xorg-video-geode$UBUNTU_XORG_PKG_SUFFIX
+			@xserver-xorg-video-s3$UBUNTU_XORG_PKG_SUFFIX
+			@xserver-xorg-video-tdfx$UBUNTU_XORG_PKG_SUFFIX
+"
+
+REQUIRED_DIRECTORIES+="
+			/usr/lib
+"
+REQUIRED_FILES=""
