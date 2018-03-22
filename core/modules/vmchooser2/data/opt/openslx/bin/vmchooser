@@ -54,6 +54,17 @@ if [ -z "${SLX_AUTOLOGIN%OFF}" ] && [ -n "$SLX_VMCHOOSER_TIMEOUT" ] && [ "$SLX_V
 	EXTRA="$EXTRA --autoquit $SLX_VMCHOOSER_TIMEOUT"
 fi
 
+# Delay autologin a bit to prevent the old vm process still cleaning up while trying to
+# set up a new one -- this might lead to OOM errors
+if /opt/openslx/lightdm/is-autologin-enabled && [ -s "/run/openslx/session-killed" ]; then
+	KT=$(cat "/run/openslx/session-killed")
+	NOW=$(date +%s)
+	KT=$(( KT + 10 - NOW ))
+	if [ "$KT" -gt 0 ]; then
+		sleep "$KT"
+	fi
+fi
+
 # No quotes around $EXTRA!
 if [ -z "$SLX_LOCATIONS" ]; then
 	exec vmchooser.real "$@" --url "$URL" --fullscreen --tab "$TAB" --start-uuid "$SLX_EXAM_START" $EXTRA
