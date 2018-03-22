@@ -59,6 +59,7 @@ if [ -n "${SLX_LOGOUT_TIMEOUT}" ] && [ "${SLX_LOGOUT_TIMEOUT}" -gt 0 ]; then
 					if [ -z "$IDLE" ] || [ "$IDLE" -lt "$SLX_LOGOUT_TIMEOUT" ]; then
 						IS_IDLE=no
 					else
+						date +%s > /run/openslx/session-killed
 						loginctl terminate-session "$ses"
 					fi
 				else # xprintidle did not work
@@ -80,6 +81,7 @@ if [ -n "${SLX_LOGOUT_TIMEOUT}" ] && [ "${SLX_LOGOUT_TIMEOUT}" -gt 0 ]; then
 			if [ "$IDLE" -lt "$SLX_LOGOUT_TIMEOUT" ]; then
 				IS_IDLE=no
 			else
+				date +%s > /run/openslx/session-killed
 				loginctl terminate-session "$ses"
 			fi
 			# end other sessions
