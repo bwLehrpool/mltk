@@ -1,7 +1,7 @@
 [Unit]
 Description=Setup local disk partitions (tmp, swap)
 DefaultDependencies=no
-Before=basic.target
+Before=basic.target tmp.target
 After=systemd-udev-settle.service
 Wants=tmp.target
 

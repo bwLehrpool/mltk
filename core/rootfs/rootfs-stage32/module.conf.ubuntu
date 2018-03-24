@@ -8,6 +8,8 @@ REQUIRED_INSTALLED_PACKAGES="
 			curl
 			openssl
 			gawk
+			e2fsprogs
+			util-linux
 "
 REQUIRED_CONTENT_PACKAGES="
 			openssl

@@ -1,5 +1,6 @@
-#!/bin/ash
-# Copyright (c) 2013 - OpenSLX GmbH
+#!/bin/bash
+# Arrays etc and $(( )) with big numbers
+# Copyright (c) 2018 - OpenSLX GmbH
 #
 # This program is free software distributed under the GPL version 2.
 # See http://openslx.org/COPYING
@@ -19,6 +20,31 @@ MOUNT_POINT_45="/opt/openslx/persistent"
 PARTITION_FILE="/run/openslx/partitions"
 readonly MOUNT_POINT_45 PARTITION_FILE
 mkdir -p "/run/openslx"
+
+declare -a TMPFILES
+gettmp () {
+	local vn file
+	for vn in "$@"; do
+		file=$(mktemp -p /run/openslx) # since we fiddle around with /tmp in this script
+		declare -g "${vn}=${file}"
+		TMPFILES+=("$file")
+	done
+}
+delalltmp () {
+	rm -f -- "${TMPFILES[@]}"
+}
+trap delalltmp EXIT
+
+mount_options () {
+	case "$1" in
+		ext2)
+			echo "-o nocheck"
+			;;
+		ext4)
+			echo "-o errors=remount-ro,data=ordered,relatime,quota"
+			;;
+	esac
+}
 
 # General formatter for the /tmp partition on a local harddisk
 format_disk () {
@@ -42,31 +68,29 @@ format_disk () {
 		if which "mkfs.$fs" ; then
 			case "$fs" in
 			xfs)
-				fopt="-f -b size=4k -s size=4k" # fastest formatting possible :)
-				MOUNT_OPTIONS_SET_BY_FORMAT_DISK="-o noexec"
+				fopt="-f"
 				;;
 			ext2)
-				fopt="-Fq"
-				MOUNT_OPTIONS_SET_BY_FORMAT_DISK="-o nocheck,noexec"
+				fopt="-F"
 				;;
-			ext3|ext4)
-				fopt="-Fq"
-				MOUNT_OPTIONS_SET_BY_FORMAT_DISK="-o noexec"
+			ext3)
+				fopt="-F"
+				;;
+			ext4)
+				fopt="-F -b 4096 -O extent,huge_file,flex_bg,metadata_csum,64bit,dir_nlink,extra_isize,quota -E quotatype=usrquota:prjquota -I 256"
 				;;
 			reiserfs)
 				fopt="-f"
-				MOUNT_OPTIONS_SET_BY_FORMAT_DISK="-o noexec"
 				;;
 			jfs)
-				fopt="-q"
-				MOUNT_OPTIONS_SET_BY_FORMAT_DISK="-o noexec"
+				fopt=""
 				;;
 			*)
-				fopt=
-				MOUNT_OPTIONS_SET_BY_FORMAT_DISK=
+				fopt=""
 				;;
 			esac
-			mkfs.$fs ${fopt} "${target}" && return 0 # Success!
+			MOUNT_OPTIONS_SET_BY_FORMAT_DISK=$(mount_options "$fs")
+			"mkfs.$fs" ${fopt} "${target}" && return 0 # Success!
 		fi
 	done
 	return 1
@@ -102,6 +126,7 @@ fdisk -l | grep '^/dev/' > "$PARTITION_FILE"
 if [ ! -s "$PARTITION_FILE" ]; then
 	udevadm trigger
 	sleep 3
+	udevadm trigger
 	udevadm settle
 	fdisk -l | grep '^/dev/' > "$PARTITION_FILE"
 fi
@@ -110,16 +135,36 @@ echo "Partitions:"
 cat "$PARTITION_FILE"
 
 # Get all partitions with given id (list of /dev/sdXX)
+# Works for MBR/DOS by looking at the type (1 byte)
+# and for GPT by looking for the label 'OpenSLX-ID$1'
+# in case an id was given, or just at the UUID if some
+# longer string was given
+# The output will be a list of matching devices,
+# sorted from largest to smallest
 get_all_with_id () {
-	[ -z "$1" ] && return
-	local ID=$1
-	awk '{if (($2 == "*" && $6 == "'$ID'") || ($2 != "*" && $5 == "'$ID'")) print $1}' "$PARTITION_FILE" # watch out for non-spaced '$ID'
+	local ID dev exp
+	exp=
+	while [ $# -gt 0 ]; do
+		ID=$1
+		shift
+		[ -z "$ID" ] && continue
+		[ ${#ID} -eq 1 ] && ID="0?$ID" # passed '7' as argument -- look for 0x7 or 0x07
+		if [ ${#ID} -eq 2 ]; then
+			exp="$exp|ID_PART_ENTRY_(NAME=OpenSLX-ID|TYPE=0x)$ID"
+		else
+			exp="$exp|ID_PART_ENTRY_TYPE=$ID"
+		fi
+	done
+	exp=${exp:1}
+	echo "Partition find for '$*' is '$exp'" >&2
+	for dev in $(find /dev/ -type b); do
+		udevadm info --name="$dev" | grep -iqE "($exp)\$" && echo "$(blockdev --getsize64 "$dev") $dev"
+	done | sort -n -k1 -r | cut -d' ' -f2
 }
 
 # Check for standard swap partitions and make them available to the system
 HAVE_SWAP=no
-for PART_DEV in $(get_all_with_id 82) '/dev/disk/by-partlabel/Linux\x20swap'; do
-	[ -e "$PART_DEV" ] || continue # Since Linux\x20swap is hard-coded and might not exist
+for PART_DEV in $(get_all_with_id "82" "0657fd6d-a4ab-43c4-84e5-0933c84b4f4f"); do
 	if swapon "$PART_DEV" -p 10; then
 		HAVE_SWAP=yes # low priority, in case we have zram swap, prefer that)
 		echo -e "$PART_DEV\tswap\t\tswap\t\tdefaults\t 0 0" >> "/etc/fstab"
@@ -130,11 +175,9 @@ done
 # space, thus no normal filesystem will be incidentally deleted or
 # corrupted
 HAVE_TEMP=no
-for PART_DEV in $(get_all_with_id 44) '/dev/disk/by-partlabel/OpenSLX-ID44'; do
-	[ -e "$PART_DEV" ] || continue # Since OpenSLX-ID44 is hard-coded and might not exist
+for PART_DEV in $(get_all_with_id "44"); do
 	# check for supported filesystem and formatter
 	if format_disk "$PART_DEV"; then
-		# echo "$PART_DEV is mounted to /mnt/tmp at $(sysup)" >/tmp/tmpready
 		mount_temp "$MOUNT_OPTIONS_SET_BY_FORMAT_DISK" "$PART_DEV" || continue
 		echo -e "${PART_DEV}\t/tmp\t\tauto\t\tnoexec\t 0 0" >> "/etc/fstab"
 		HAVE_TEMP=yes
@@ -145,32 +188,100 @@ for PART_DEV in $(get_all_with_id 44) '/dev/disk/by-partlabel/OpenSLX-ID44'; do
 done
 
 # Put detected linux partitions (83) into /etc/fstab with "noauto"
-HAVE_PARTITION_45=no
 for PART_DEV in $(get_all_with_id 83); do
 	mkdir -p "/media/${PART_DEV#/dev/*}"
 	echo -e "${PART_DEV}\t/media/${PART_DEV#/dev/*}\tauto\t\tnoauto,noexec\t 0 0" >> "/etc/fstab"
 done
 
 # special partition 45 (persistent scratch) to $MOUNT_POINT_45
-for PART_DEV in $(get_all_with_id 45) '/dev/disk/by-partlabel/OpenSLX-ID45'; do
+HAVE_PARTITION_45=no
+mopts=$(mount_options ext4)
+# try all the ID45 partitions until one succeeds, from large to small
+for PART_DEV in $(get_all_with_id "45"); do
 	mkdir -p "$MOUNT_POINT_45"
-	if ! mount -t auto -o noexec "${PART_DEV}" "$MOUNT_POINT_45"; then
-		format_disk "$PART_DEV" "ext4 xfs jfs ext3" || continue
-		mount -t auto -o noexec "${PART_DEV}" "$MOUNT_POINT_45" || continue
+	# Let's see if this is an ext4 partition and if so, whether it has the proper size
+	# Any fixing should happen first
+	gettmp "logfile"
+	COUNT=0
+	while true; do
+		[ "$COUNT" -ge 4 ] && break
+		let COUNT++
+		fsck.ext4 -y "$PART_DEV" &> "$logfile"
+		RET=$?
+		if [ "$(( RET & 7 ))" = 4 ]; then
+			slxlog "partition-45-fsck" "Error fixing file system errors on ID45 partition" "$logfile"
+			break
+		fi
+		[ "$(( RET & 3 ))" != 1 ] && break
+	done
+	# awk script to take block count and block size from dumpe2fs output and multiply them to get byte size
+	fs_size=$(dumpe2fs -h "$PART_DEV" | awk -F: 'BEGIN{a=0;b=0}{if ($1 == "Block count") a=$2; if($1 == "Block size") b=$2;}END{ if (a>0 && b>0) print a*b}')
+	echo "$PART_DEV has ext4 fs of size $fs_size"
+	if [ -n "$fs_size" ] && [ "$fs_size" -gt 1000000 ]; then
+		# It's ext4, see if partition size was changed offline
+		dev_size=$(blockdev --getsize64 "$PART_DEV")
+		echo "$PART_DEV has actual size of $dev_size"
+		if [ -n "$dev_size" ] && [ "$dev_size" -gt 1000000 ]; then
+			# somewhat sane, see what to do
+			dev_mb=$(( dev_size / 1024 / 1024 ))
+			fs_mb=$(( fs_size / 1024 / 1024 ))
+			echo "Dev: $dev_mb, fs: $fs_mb"
+			if [ "$(( fs_mb + 100 ))" -lt "$dev_mb" ]; then
+				# dev size plus 100MB is still smaller than reported fs size -- resize fs
+				gettmp "logfile"
+				fsck.ext4 -f -y "$PART_DEV" &> "$logfile"
+				if resize2fs "$PART_DEV" &>> "$logfile"; then
+					slxlog "partition-45-resize-ok" "Resized partition $PART_DEV from $fs_mb MiB to $dev_mb MiB" "$logfile"
+				else
+					slxlog "partition-45-resize-fail" "Could not enlarge file system size of $PART_DEV from $fs_mb MiB to $dev_mb MiB" "$logfile"
+					dd if=/dev/zero of="$PART_DEV" bs=1M count=1 &>/dev/null
+				fi
+			elif [ "$dev_size" -lt "$fs_size" ]; then
+				# partition is smaller than expected by fs -- killall
+				slxlog "partition-45-shrink" "$PART_DEV has ext4 file system which is $fs_mb MiB, but partition size is only $dev_mb MiB. Will wipe partition to be safe..."
+				dd if=/dev/zero of="$PART_DEV" bs=1M count=1 &>/dev/null
+			fi
+		fi
 	fi
-	echo -e "${PART_DEV}\t${MOUNT_POINT_45}\tauto\t\tnoauto,noexec\t\t 0 0" >> "/etc/fstab"
+	# try to mount
+	if ! mount -v -t ext4 $mopts "${PART_DEV}" "$MOUNT_POINT_45"; then
+		# failed, try to format
+		gettmp "logfile"
+		if ! format_disk "$PART_DEV" "ext4" &> "$logfile"; then
+			slxlog "partition-45-format" "Cannot format $PART_DEV with ext4" "$logfile"
+			continue
+		fi
+		gettmp "logfile"
+		if ! mount -v -t ext4 $mopts "${PART_DEV}" "$MOUNT_POINT_45" &> "$logfile"; then
+			slxlog "partition-45-newmount" "Cannot mount $PART_DEV with ext4 right after formatting" "$logfile"
+			continue
+		fi
+	fi
+	# Mount success -- clean up lost+found
+	find "${MOUNT_POINT_45}/slx_lost+found" -mindepth 1 -maxdepth 1 -mtime +90 -type d -exec rm -rf -- {} \;
+	if [ -d "${MOUNT_POINT_45}/lost+found" ]; then
+		touch "${MOUNT_POINT_45}/lost+found"
+		mkdir -p "${MOUNT_POINT_45}/slx_lost+found"
+		mv -f -- "${MOUNT_POINT_45}/lost+found" "${MOUNT_POINT_45}/slx_lost+found/$(date +%s)_$$-$RANDOM"
+	fi
+	chmod 0700 "${MOUNT_POINT_45}/slx_lost+found"
+	chown 0:0 "${MOUNT_POINT_45}/slx_lost+found"
+	# fstab entry
+	echo -e "${PART_DEV}\t${MOUNT_POINT_45}\tauto\t\tnoauto\t\t 0 0" >> "/etc/fstab"
 	HAVE_PARTITION_45=yes
-	break
+	break # success, done
 done
 
 # and 46 to /media/devXX
-for PART_DEV in $(get_all_with_id 46); do
+for PART_DEV in $(get_all_with_id "46"); do
 	mkdir -p "/media/${PART_DEV#/dev/*}"
 	#mount -t auto ${PART_DEV} /mnt/media/${PART_DEV#/dev/*} \n\
 	#test -d /mnt/media/${PART_DEV#/dev/*}/home && \
 	#  ln -sf /media/${PART_DEV#/dev/*} /var/home
 	echo -e "${PART_DEV}\t/media/${PART_DEV#/dev/*}\tauto\t\tnoauto\t\t 0 0" >> "/etc/fstab"
 done
+
+# finally, prepare the data subdir on persistent part
 if [ "$HAVE_PARTITION_45" = "yes" ]; then
 	mkdir -p "$MOUNT_POINT_45/data"
 	chown root:root "$MOUNT_POINT_45" "$MOUNT_POINT_45/data"
