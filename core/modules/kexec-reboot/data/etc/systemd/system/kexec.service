@@ -3,9 +3,8 @@ Description=Reboot via kexec
 Documentation=man:kexec(8)
 DefaultDependencies=no
 Wants=kexec-load.service
-After=kexec-load.service
 Requires=shutdown.target final.target
-Before=shutdown.target final.target
+After=kexec-load.service shutdown.target final.target
 
 [Service]
 Type=oneshot
