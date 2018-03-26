@@ -45,14 +45,14 @@ TYPE="$1"
 # you could do it anyways. This is to protect from accidental loops calling this.
 if [ -r "$LOGCHECK" ]; then
 	# Allow max 150 messages in total
-	LINES=$(cat "$LOGCHECK" | wc -l)
+	LINES=$( < "$LOGCHECK"  wc -l)
 	[ "$LINES" -gt "150" ] && exit 1
 	# Allow max 5 of same type messages in 30 seconds
-	LINES=$(grep "$TYPE" "$LOGCHECK" | wc -l)
+	LINES=$(grep -c "$TYPE" "$LOGCHECK")
 	if [ "$LINES" -ge "5" ]; then
 		LAST=$(grep "$TYPE" "$LOGCHECK" | tail -n 5 | head -n 1 | awk '{print $1}')
 		if [ -n "$LAST" ]; then
-			DIFF="$(( $NOW - $LAST ))"
+			DIFF="$(( NOW - LAST ))"
 			[ "$DIFF" -lt "30" ] && exit 2
 		fi
 	fi
@@ -61,7 +61,7 @@ echo "$NOW $TYPE" >> "$LOGCHECK"
 chmod 0600 "$LOGCHECK" 2>/dev/null
 
 if [ $# -lt 2 ]; then
-	MSG="Missing text for $@"
+	MSG="Missing text for $*"
 else
 	MSG="$2"
 fi
@@ -83,7 +83,7 @@ if [ -s /etc/system-uuid ]; then
 fi
 
 submitlog () {
-	if [ -n "$EXTRA" ] && [ -r "$EXTRA" -a -s "$EXTRA" ] && [ "$(stat -c %s "$EXTRA")" -lt "10000" ]; then # valid file attachment
+	if [ -n "$EXTRA" ] && [ -r "$EXTRA" ] && [ -s "$EXTRA" ] && [ "$(stat -c %s "$EXTRA")" -lt "10000" ]; then # valid file attachment
 		curl --data-urlencode "uuid=$UUID" --data-urlencode "type=$TYPE" --data-urlencode "description=$MSG" --data-urlencode "longdesc@$EXTRA" "$SLX_REMOTE_LOG" >> "$CURLLOG" 2>&1
 	elif [ -z "$EXTRA" ]; then # no attachment
 		curl --data-urlencode "uuid=$UUID" --data-urlencode "type=$TYPE" --data-urlencode "description=$MSG" "$SLX_REMOTE_LOG" >> "$CURLLOG" 2>&1
