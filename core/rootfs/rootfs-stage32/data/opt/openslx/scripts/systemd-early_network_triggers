@@ -25,5 +25,9 @@ if route -n | grep -q -E '^0\.0\.0\.0.*U.*G'; then
 	systemctl start network-gateway.target &
 fi
 
+# In case we have multiple NICs per subnet, don't send arp
+# replies on all NICs
+echo 1 > /proc/sys/net/ipv4/conf/all/arp_filter
+
 exit 0
 
