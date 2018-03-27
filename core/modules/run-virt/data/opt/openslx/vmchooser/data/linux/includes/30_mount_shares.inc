@@ -12,9 +12,13 @@ function mount_shares()
 		if [ "${SHAREPATH:0:2}" == '\\' ]  || [ "${SHAREPATH:0:2}" == '//' ]; then
 			USER=$(echo "$SHAREUSER"|cut -d '\' -f 2)
 			SHAREPATH="${SHAREPATH//\\//}"					# '\' --> `/` :-)
-			MOUNTOPTS="$MOUNTOPTSCIFS"
+			MOUNTER=cifs
+			MOUNTPARAM="$MOUNTCIFSPRAE"
+			MOUNTOPTS="$MOUNTCIFSOPTS"
 		else
-			MOUNTOPTS="$MOUNTOPTSNFS"
+			MOUNTER=nfs
+			MOUNTPARAM="$MOUNTNFSPRAE"
+			MOUNTOPTS="$MOUNTNFSOPTS"
 		fi
 
 		# User-Homeverzeichnis?
@@ -22,7 +26,7 @@ function mount_shares()
 			logger "openslx sharemapper: home share \"$SHARENAME\" found (for PERSISTENT)."
 			export USER="${GLOBALUSER}"
 			export PASSWD="${PW}"
-			mounter "${MOUNTOPTS}" "${SHAREPATH}" "${USERHOMEDIR}" 2>/dev/null 1>&2
+			mounter "${MOUNTPARAM}" "${MOUNTOPTS}" "${SHAREPATH}" "${USERHOMEDIR}" 2>/dev/null 1>&2
 			unset USER
 			unset PASSWD
 		else
@@ -43,7 +47,7 @@ function mount_shares()
 			logger "openslx sharemapper: non-home share \"$SHARENAME\" (${CONFIGROW}) found."
 			export USER="${SHAREUSER}"
 			export PASSWD="${SHAREPASS}"
-			mounter "${MOUNTOPTS}" ${SHAREPATH} ${USERSHAREDIR} 2>/dev/null 1>&2
+			mounter "${MOUNTPARAM}" "${MOUNTOPTS}" "${SHAREPATH}" "${USERSHAREDIR}" 2>/dev/null 1>&2
 			ERR=$?
 			unset USER
 			unset PASSWD
@@ -51,7 +55,7 @@ function mount_shares()
 				export USER="${GLOBALUSER}"
 				export PASSWD="${PW}"
 				logger "openslx sharemapper: Could not mount ${USERSHAREDIR}, now trying using user credentials."
-				mounter "${MOUNTOPTS}" ${SHAREPATH} ${USERSHAREDIR} 2>/dev/null 1>&2 
+				mounter "${MOUNTPARAM}" "${MOUNTOPTS}" "${SHAREPATH}" "${USERSHAREDIR}" 2>/dev/null 1>&2 
 				ERR=$?				# ERR merken wg. Links aus USERSHAREDIR
 				if [ "$ERR" -eq 1 ]; then
 					logger "openslx sharemapper: Could not mount ${USERSHAREDIR} even using user credentials; giving up."
