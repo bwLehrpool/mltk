@@ -156,13 +156,15 @@ done
 
 rm -f "/opt/openslx/iptables/rules.d/99-dnbd3"
 # now create iptables helper rules
-if [ -n "${SLX_DNBD3_WHITELIST}" ]; then
+if [ -n "${SLX_DNBD3_WHITELIST}" ] && [ "${SLX_DNBD3_WHITELIST%/*}" != "${SLX_DNBD3_WHITELIST}" ]; then
+	# XXX: Remove the second check above after ~ 2018-10-01 -- it's a workaround for broken slx-admin
+	# that won't properly calculate CIDR notion resulting in a severely locked down proxy :(
 	DNBD3_IPTABLES_CONF="$(mktemp)"
 	echo '#!/bin/ash' > "${DNBD3_IPTABLES_CONF}"
-	for CIDR in ${SLX_DNBD3_WHITELIST}; do
-		echo "iptables -I ipt-helper-INPUT 1 -i br0 -p tcp -s ${CIDR} --dport ${DNBD3_PORT} -j ACCEPT"
+	for CIDR in ${SLX_DNBD3_WHITELIST} ${SLX_KCL_SERVERS}; do
+		echo "iptables -I ipt-helper-INPUT 1 -p tcp -s ${CIDR} --dport ${DNBD3_PORT} -j ACCEPT"
 	done >> "${DNBD3_IPTABLES_CONF}"
-	echo "iptables -A ipt-helper-INPUT -i br0 -p tcp --dport ${DNBD3_PORT} -j REJECT" >> "${DNBD3_IPTABLES_CONF}"
+	echo "iptables -A ipt-helper-INPUT -p tcp --dport ${DNBD3_PORT} -j REJECT" >> "${DNBD3_IPTABLES_CONF}"
 	chmod +x "${DNBD3_IPTABLES_CONF}"
 	mv -f "$DNBD3_IPTABLES_CONF" "/opt/openslx/iptables/rules.d/99-dnbd3"
 fi
