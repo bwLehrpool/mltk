@@ -31,6 +31,14 @@ finalize_machine_config() {
 	sed -i 's,#OpenSLX_CPU_place_holder,'"${CPU_CORES}"',g' $TMPCONFIG
 	sed -i 's,#OpenSLX_MEMORY_place_holder,'"${VM_MEM}"',g' $TMPCONFIG
 	
+	# Add a node for the SharedFolder
+	add_node "/VirtualBox/Machine/Hardware" "SharedFolders"
+	add_node \
+		"/VirtualBox/Machine/Hardware/SharedFolders" "SharedFolder" \
+		"name=${HOME_SHARE_NAME}" \
+		"hostPath=${HOME_SHARE_PATH}" \
+		"writable=true" \
+		"autoMount=true"
 	# Add a HardDisk node for the snapshot
 	add_node \
 		"/VirtualBox/Machine/MediaRegistry/HardDisks/HardDisk" "HardDisk" \
@@ -63,6 +71,9 @@ finalize_machine_config() {
 		'/VirtualBox/Machine/StorageControllers/StorageController/AttachedDevice[@device="1"]' "Image" \
 		"uuid={${SLX_FLOPPY_UUID}}"
 
+	# set Virtual Memory value
+	edit_attr "/VirtualBox/Machine/Hardware/Display" "VRAMSize" "${GUESTVRAM}"
+	edit_attr --create "/VirtualBox/Machine/Hardware/Display" "accelerate2DVideo" "true"
 
 	# set the MAC address
 	edit_attr "/VirtualBox/Machine/Hardware/Network/Adapter" "MACAddress" "${VM_VDE_MAC_ADDR}"
@@ -75,9 +86,6 @@ finalize_machine_config() {
 	if [ $CPU_CORES -gt 1 ]; then
 		edit_attr --create "/VirtualBox/Machine/Hardware/BIOS/IOAPIC" "enabled" "true"
 	fi
-
-	# TODO fix usb generally, just delete it if present for now ....
-	del_node "/VirtualBox/Machine/Hardware/USB"
 
 	cp $TMPCONFIG /tmp/vbox-last-config
 	cp $TMPCONFIG $VBOX_MACHINE_CONFIG

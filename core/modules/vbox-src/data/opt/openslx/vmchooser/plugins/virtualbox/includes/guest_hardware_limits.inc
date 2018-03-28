@@ -108,6 +108,8 @@ set_hardware_limits() {
 		# TODO: FreeBSD, NetBSD, MacOS*, Solaris, Oracle, ...
 	esac
 
+	declare -rg GUESTVRAM=$MAXVRAM
+
 	[ "${CPU_CORES}" -gt "{MAXCORES}" ] && CPU_CORES="${MAXCORES}"
 
 	[ "${VM_MEM}" -gt "${MAXMEM}" ] && VM_MEM="${MAXMEM}"
