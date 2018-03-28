@@ -25,11 +25,11 @@ finalize_machine_config() {
 
 	sed -i "s,%VM_DISK_REDOLOGDIR%,$VBOX_SNAPSHOT_DIR,g" $TMPCONFIG
 	sed -i "s,%VM_DISK_PATH%,${VBOX_HDD_LINK},g" $TMPCONFIG
-	sed -i "s/#OpenSLX_MUUID_place_holder/{${MACHINE_UUID}}/g" $TMPCONFIG
-	sed -i "0,/#OpenSLX_HDDUUID_0_placeholder/ s/#OpenSLX_HDDUUID_0_placeholder/{${HDD_UUID}}/" $TMPCONFIG
-	sed -i "0,/#OpenSLX_HDDUUID_0_placeholder/ s/#OpenSLX_HDDUUID_0_placeholder/{${SNAPSHOT_UUID}}/" $TMPCONFIG
-	sed -i 's,#OpenSLX_CPU_place_holder,'"${CPU_CORES}"',g' $TMPCONFIG
-	sed -i 's,#OpenSLX_MEMORY_place_holder,'"${VM_MEM}"',g' $TMPCONFIG
+	sed -i "s/%OpenSLX_MUUID%/{${MACHINE_UUID}}/g" $TMPCONFIG
+	sed -i "0,/%OpenSLX_HDDUUID_0/ s/%OpenSLX_HDDUUID_0%/{${HDD_UUID}}/" $TMPCONFIG
+	sed -i "0,/%OpenSLX_HDDUUID_0/ s/%OpenSLX_HDDUUID_0%/{${SNAPSHOT_UUID}}/" $TMPCONFIG
+	sed -i 's,%OpenSLX_CPU%,'"${CPU_CORES}"',g' $TMPCONFIG
+	sed -i 's,%OpenSLX_MEMORY%,'"${VM_MEM}"',g' $TMPCONFIG
 	
 	# Add a node for the SharedFolder
 	add_node "/VirtualBox/Machine/Hardware" "SharedFolders"
