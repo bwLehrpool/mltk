@@ -8,18 +8,19 @@
 
 ALL_RULES="/run/iptables-reloader.cache"
 LOCK="/run/iptables-reloader.lock"
+WAIT="/run/iptables-reloader.wait"
 
-# Expects $1 to be the contents of $LOCK
+# Expects $1 to be the PID/ID
 reload_rules () {
-	if [ -z "$1" -o ! -s "$LOCK" ]; then
-		echo "'$1' empty or lock non-existent"
-		exit 0
-	fi
 	sleep 2
-	if [ "x$(cat "$LOCK")" != "x$1" ]; then
-		echo "Wrong lock, lost race"
-		exit 0
-	fi
+	ctr=0
+	while ! mkdir "$WAIT" &> /dev/null && [ "$ctr" -lt 5 ]; do
+		echo "$1 WAITLOOP"
+		sleep 1
+		ctr=$(( ctr + 1 ))
+	done
+	rm -rf -- "$LOCK"
+	echo "$1 RUN"
 
 	rm -f -- "${ALL_RULES}.new"
 
@@ -30,7 +31,8 @@ reload_rules () {
 
 	# No change? Do nothing...
 	if [ -s "${ALL_RULES}" ] && [ -s "${ALL_RULES}.new" ] && diff "${ALL_RULES}" "${ALL_RULES}.new"; then
-		rm -f -- "${ALL_RULES}.new"
+		echo "$1 NOCHANGE"
+		rm -rf -- "${ALL_RULES}.new" "$WAIT"
 		exit 0
 	fi
 
@@ -102,14 +104,15 @@ reload_rules () {
 	mv -f -- "${ALL_RULES}.new" "${ALL_RULES}"
 
 	echo "iptables rules successfully updated."
-	rm -f -- "$LOCK"
+	rm -rf -- "$WAIT"
+	echo "$1 DONE"
 	exit 0
 }
 
-
-ID="$$+$RANDOM"
-echo "$ID" > "$LOCK"
-reload_rules "$ID" &
+echo "$$ INOTIFY"
+if mkdir "$LOCK" &> /dev/null; then
+	reload_rules "$$" &
+fi
 
 exit 0
 

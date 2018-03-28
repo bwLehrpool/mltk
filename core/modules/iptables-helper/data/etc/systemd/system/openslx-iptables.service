@@ -3,4 +3,5 @@ Description=OpenSLX iptables helper
 
 [Service]
 ExecStart=/opt/openslx/iptables/iptables-reloader
+Restart=on-failure
 
