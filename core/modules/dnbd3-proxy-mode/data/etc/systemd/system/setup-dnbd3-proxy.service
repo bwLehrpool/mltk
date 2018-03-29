@@ -1,6 +1,8 @@
 [Unit]
 Description=DNBD3 proxy server config generator
-After=setup-partitions.service
+Wants=tmp.target
+After=tmp.target
+Before=getty.target
 
 [Service]
 Type=oneshot
