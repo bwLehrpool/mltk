@@ -139,6 +139,7 @@ if grep -q '<slx-autogen>' "/etc/pam.d/common-auth"; then
 		auth  optional   pam_cap.so
 	HERE
 	cp -f -- "$tmpfile" "/etc/pam.d/common-auth"
+	chmod 0644 "/etc/pam.d/common-auth"
 fi
 
 # common-account
@@ -154,6 +155,7 @@ if grep -q '<slx-autogen>' "/etc/pam.d/common-account"; then
 		account	required   pam_permit.so
 	HERE
 	cp -f -- "$tmpfile" "/etc/pam.d/common-account"
+	chmod 0644 "/etc/pam.d/common-account"
 fi
 
 # common-session
@@ -171,6 +173,7 @@ if grep -q '<slx-autogen>' "/etc/pam.d/common-session"; then
 		echo "session  $line"
 	done >> "$tmpfile"
 	cp -f -- "$tmpfile" "/etc/pam.d/common-session"
+	chmod 0644 "/etc/pam.d/common-session"
 fi
 
 #
@@ -192,6 +195,7 @@ if grep -q '<slx-autogen>' "/etc/nsswitch.conf"; then
 
 		netgroup:       nis
 	HERE
+	chmod 0644 "/etc/nsswitch.conf"
 fi
 
 rm -f -- "$tmpfile"
