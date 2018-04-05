@@ -1,0 +1,7 @@
+#!/bin/bash
+REQUIRED_CONTENT_PACKAGES="
+	iperf
+"
+REQUIRED_INSTALLED_PACKAGES="
+	iperf
+"
