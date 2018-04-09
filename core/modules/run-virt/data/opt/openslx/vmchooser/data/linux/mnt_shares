@@ -58,5 +58,9 @@ case "$REMAPMODE" in
 		;;
 esac
 
+# By the way: We also have to start a bwLehrpool-Suite given script (runscript). For convenience we will start it here and 
+# after mounting shares, as perhaps a given script needs mounted shares.
+runscript
+
 exit 0
 
