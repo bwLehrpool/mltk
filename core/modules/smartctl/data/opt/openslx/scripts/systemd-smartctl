@@ -1,5 +1,7 @@
 #!/bin/ash
 
+export PATH="$PATH:/opt/openslx/sbin:/opt/openslx/bin"
+
 # Check Reallocated_Sector_Ct and Spin_Retry_Count of local disk(s)
 
 . /opt/openslx/config
