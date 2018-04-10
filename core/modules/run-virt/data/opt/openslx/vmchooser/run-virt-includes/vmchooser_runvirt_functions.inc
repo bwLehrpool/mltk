@@ -468,3 +468,21 @@ clean_string() {
 		tr '[A-Z]' '[a-z]' | tr -d -c '[a-z0-9\-]'
 	fi
 }
+
+# Helper to check whether given directory resides in RAM, either
+# by being mounted as tmpfs or not mounted at all in which case
+# we assume the same. Returns 0 if so, 1 otherwise.
+dir_on_tmpfs() {
+	local current_dir="$1"
+	while [ -n "$current_dir" ]; do
+		local mount_line="$(awk -v dir="$current_dir" '$2 == dir' /proc/mounts)"
+		if [ -z "$mount_line" ]; then
+			# check its parent directory
+			current_dir="${current_dir%/*}"
+			continue
+		fi
+		[ "x$(cut -d' ' -f3 <<< ${mount_line})" == "xtmpfs" ]
+		return $?
+	done
+	return 0
+}
