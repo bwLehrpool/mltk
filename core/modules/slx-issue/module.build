@@ -1,0 +1,20 @@
+#!/bin/bash
+fetch_source() {
+	:
+}
+
+build() {
+	:
+}
+
+post_copy() {
+	# Create issue.template
+	local DIST=$(lsb_release -sd)
+	local GITC=$(git rev-parse --short HEAD)
+	local DATE=$(date "+%Y-%m-%d")
+	local VERSION=$(echo "bwLehrpool/$DIST   $DATE/$GITC" | escape_replace)
+	mkdir -p "$TARGET_BUILD_DIR/opt/openslx/etc"
+	sed "s/%version%/$VERSION/g" "$MODULE_DIR/templates/issue.template" > "$TARGET_BUILD_DIR/opt/openslx/etc/issue.template" || perror "Could not create issue template"
+
+}
+
