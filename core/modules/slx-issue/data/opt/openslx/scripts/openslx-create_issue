@@ -35,7 +35,9 @@ done < "$INFILE" > "$TMPFILE"
 player=$(< /etc/vmware/config grep -m1 '^product.version' | awk -F= '{print $2}')
 kernel=$(uname -r)
 system="$(dmidecode -s system-manufacturer | grep -vP "unknown|filled|^#") $(dmidecode -s system-product-name | grep -vP "unknown|filled|^#")"
-linkspeed=$(cat /sys/class/net/eth0/speed)
+# Support the boot interface name eventually saved as SLX_PXE_NETIF
+# from the new dracut-based stage3, fallback to old eth0 if not set
+linkspeed=$(cat /sys/class/net/${SLX_PXE_NETIF:-eth0}/speed)
 tmpstatus=$(grep -m1 ' /tmp ' /proc/mounts | awk '{print $3}')
 if [ -z "$tmpstatus" ] || [ "$tmpstatus" = "tmpfs" ]; then
 	tmpstatus="RAMDISK"
