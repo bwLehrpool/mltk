@@ -29,7 +29,7 @@ if [ "$MOUNT" = "cifs" ]; then
 	if [ -n "$LDAP_BASE" ]; then
 		XDOMAIN=$( echo "$LDAP_BASE" | grep -o -E -i 'DC=([^,;]+)' | head -n 1 | cut -c 4- )
 	fi
-	if [ -z "$LDAP_DOMAIN_OVERRIDE" ]; then
+	if [ -z "$SHARE_DOMAIN" ]; then
 		XDOMAIN="$XDOMAIN #"
 	fi
 
@@ -44,7 +44,7 @@ PIDS=
 CNT=0
 for opt in $OPTION_LIST; do
 	# try with and without explicit domain argument
-	for dom in $LDAP_DOMAIN_OVERRIDE $XDOMAIN; do # No quotes
+	for dom in $SHARE_DOMAIN $XDOMAIN; do # No quotes
 		CNT=$(( CNT + 1 ))
 		FILE=$(mktemp)
 		LOGFILES="$LOGFILES $FILE"

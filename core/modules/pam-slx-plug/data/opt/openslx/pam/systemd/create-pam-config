@@ -40,7 +40,7 @@ write_sssd_config() {
 	HERE
 	for file in /opt/openslx/pam/slx-ldap.d/*; do
 		[ -f "$file" ] || continue
-		unset LDAP_ATTR_MOUNT_OPTS LDAP_URI LDAP_BASE LDAP_DOMAIN_OVERRIDE LDAP_CACERT
+		unset LDAP_ATTR_MOUNT_OPTS LDAP_URI LDAP_BASE SHARE_DOMAIN LDAP_CACERT
 		. "$file"
 		[ -z "$LDAP_URI" ] && continue
 		[ -z "$LDAP_BASE" ] && continue
