@@ -1,0 +1,63 @@
+#!/bin/bash
+
+# OBJECTIVES
+# udev rules to detect usb type etc.
+# figuring out the bus thing.
+
+# check that udev gave us a serial number to work with
+udev_serial="$1"
+if [ -z "$udev_serial" ]; then
+	logger "$0: Did not receive serial from udev"
+	exit 1
+fi
+logger "udev_serial: $udev_serial"
+
+udev_vendorid="$2"
+if [ -z "$udev_vendorid" ]; then
+	logger "$0: Did not receive vendorid from udev"
+	exit 1
+fi
+logger "udev_vendorid: $udev_vendorid"
+
+user=$(ps auxf | grep /usr/lib/virtualbox/VirtualBox | grep -v grep | awk '{print $1}')
+if [ -z "$user" ]; then
+	logger "$0: could not determine user"
+	exit 1
+fi
+
+# find UUID of running VM
+vmuuid=$(su -c "/usr/lib/virtualbox/VBoxManage list runningvms | sed -r 's,^\"[^\{]+\{([a-z0-9\-]+)\}$,\1,g'" "$user") 
+if [ -z "$vmuuid" ]; then
+	logger "Failed to find running VirtualBox VM"
+	exit 1
+fi
+logger "vmuuid: $vmuuid"
+
+devname="/dev/vboxusb/$BUSNUM/$DEVNUM"
+for tts in 1 1 2 3 5 5 STOP; do
+	if [ "x$tts" = "xSTOP" ]; then
+		logger "$0: Could not find '$devname' as expected..."
+		exit 1
+	fi
+	[ -e "$devname" ] && break
+	echo "waiting for $devname..."
+	sleep $tts
+done
+
+usblistgrep=$(su -c "/usr/lib/virtualbox/VBoxManage list usbhost" "$user")
+logger "USB list: $usblistgrep"
+
+usbaddress=$(su -c "/usr/lib/virtualbox/VBoxManage list usbhost | grep -A1 -E 'SerialNumber:\s*'"$1" | awk '/Address:/ {print \$2}'" "$user")
+logger "USB address: $usbaddress"
+
+logger "Trying to attach...."
+for tries in 1 2 3 4 5 6 7 8 9 10 STOP; do
+	if [ "$tries" = "STOP" ]; then
+		logger "$0: Failed to attach usb after 5 tries"
+		exit
+	fi
+	if su -c '/usr/lib/virtualbox/VBoxManage controlvm '"$vmuuid"' usbattach '"$usbaddress"'' "$user"; then
+		exit 0
+	fi
+	sleep 1
+done

@@ -110,8 +110,14 @@ set_hardware_limits() {
 
 	declare -rg GUESTVRAM=$MAXVRAM
 
+	# check /run/hwinfo for CORE not THREADS
+	# vbox seems to only want maximum cores = number of
+	# physical cores of the cpu, so use that
+	if [ -e /run/hwinfo ]; then
+		. /run/hwinfo
+		notempty HW_CORES && CPU_CORES="$HW_CORES"
+	fi
 	[ "${CPU_CORES}" -gt "{MAXCORES}" ] && CPU_CORES="${MAXCORES}"
-
 	[ "${VM_MEM}" -gt "${MAXMEM}" ] && VM_MEM="${MAXMEM}"
 
 	return 0

@@ -103,27 +103,8 @@ MEM_SWAPCACHED=$(grep -i "^swapcached:" /proc/meminfo | awk '{print $2}')
 MEM_TOTAL="$(expr $(expr $MEM_FREE + $MEM_CACHED + $MEM_SWAPCACHED) / 1024)"
 echo "HOST_MEM_TOTAL=${MEM_TOTAL}" > "${VMCHOOSER_VIRT_CONF}"
 
-# determine number of cpu cores
-CPU_CORES=$(grep '^processor.*:' /proc/cpuinfo | wc -l)
-if [ "${CPU_CORES}" -gt "1" 2>/dev/null ]; then
-  echo "CPU_CORES=${CPU_CORES}" >> "${VMCHOOSER_VIRT_CONF}"
-else
-  echo 'CPU_CORES=1' >> "${VMCHOOSER_VIRT_CONF}"
-fi
-
 # general machine architecture (32/64bit)
 echo "HOST_ARCH=$(uname -m)" >> "${VMCHOOSER_VIRT_CONF}"
-
-# check for VT enabled CPU
-if grep -q '^flags.*\<vmx\>' "/proc/cpuinfo"; then
-    echo "VTFLAG=1" >> "${VMCHOOSER_VIRT_CONF}"
-    echo 'KVM_MODULE="kvm_intel"' >> "${VMCHOOSER_VIRT_CONF}"
-  elif grep -q '^flags.*\<svm\>' "/proc/cpuinfo"; then
-    echo "VTFLAG=1" >> "${VMCHOOSER_VIRT_CONF}"
-    echo 'KVM_MODULE="kvm_amd"' >> "${VMCHOOSER_VIRT_CONF}"
-  else
-    echo "VTFLAG=0" >> "${VMCHOOSER_VIRT_CONF}"
-fi
 
 # generated mac address parts from the host's mac address
 if [ -n "$SLX_PXE_MAC" ]; then
@@ -175,6 +156,7 @@ done
 
 # Serial ports
 echo "SERIAL_PORTS='$(dmesg | grep -Eo 'ttyS[0-9]+' | sed 's,^,/dev/,' | tr '\n' ' ')'" >> "${VMCHOOSER_VIRT_CONF}"
+
 # Parallel ports
 modprobe parport_pc
 

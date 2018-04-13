@@ -31,14 +31,6 @@ finalize_machine_config() {
 	sed -i 's,%OpenSLX_CPU%,'"${CPU_CORES}"',g' $TMPCONFIG
 	sed -i 's,%OpenSLX_MEMORY%,'"${VM_MEM}"',g' $TMPCONFIG
 	
-	# Add a node for the SharedFolder
-	add_node "/VirtualBox/Machine/Hardware" "SharedFolders"
-	add_node \
-		"/VirtualBox/Machine/Hardware/SharedFolders" "SharedFolder" \
-		"name=${HOME_SHARE_NAME}" \
-		"hostPath=${HOME_SHARE_PATH}" \
-		"writable=true" \
-		"autoMount=true"
 	# Add a HardDisk node for the snapshot
 	add_node \
 		"/VirtualBox/Machine/MediaRegistry/HardDisks/HardDisk" "HardDisk" \
@@ -46,6 +38,7 @@ finalize_machine_config() {
 		"location=$VBOX_SNAPSHOT_DIR/{${SNAPSHOT_UUID}}.vdi" \
 		"format=VDI" \
 		"type=Normal"
+
 	# add storage controller and 2 floppies to it
 	add_node \
 		"/VirtualBox/Machine/StorageControllers" "StorageController" \
@@ -71,20 +64,54 @@ finalize_machine_config() {
 		'/VirtualBox/Machine/StorageControllers/StorageController/AttachedDevice[@device="1"]' "Image" \
 		"uuid={${SLX_FLOPPY_UUID}}"
 
-	# set Virtual Memory value
-	edit_attr "/VirtualBox/Machine/Hardware/Display" "VRAMSize" "${GUESTVRAM}"
-	edit_attr --create "/VirtualBox/Machine/Hardware/Display" "accelerate2DVideo" "true"
+
+	# Add a node for the SharedFolder
+	add_node "/VirtualBox/Machine/Hardware" "SharedFolders"
+	if [ -n "${HOME_SHARE_NAME}" -a -n "${HOME_SHARE_PATH}" -a -d "${HOME_SHARE_PATH}" ]; then
+		add_node \
+			"/VirtualBox/Machine/Hardware/SharedFolders" "SharedFolder" \
+			"name=${HOME_SHARE_NAME}" \
+			"hostPath=${HOME_SHARE_PATH}" \
+			"writable=true" \
+			"autoMount=true"
+	fi
 
 	# set the MAC address
-	edit_attr "/VirtualBox/Machine/Hardware/Network/Adapter" "MACAddress" "${VM_VDE_MAC_ADDR}"
+	set_attr "/VirtualBox/Machine/Hardware/Network/Adapter" "MACAddress" "${VM_VDE_MAC_ADDR}"
 
 	# check if KVM is available and activate it if so
 	if source /run/hwinfo && [ "${HW_KVM}" = "ENABLED" ]; then
-		edit_attr --create "/VirtualBox/Machine/Hardware/Paravirt" "provider" "KVM"
+		set_attr "/VirtualBox/Machine/Hardware/Paravirt" "provider" "KVM"
 	fi
+
 	# activate IOAPIC needed for multi core (?)
 	if [ $CPU_CORES -gt 1 ]; then
-		edit_attr --create "/VirtualBox/Machine/Hardware/BIOS/IOAPIC" "enabled" "true"
+		set_attr "/VirtualBox/Machine/Hardware/BIOS/IOAPIC" "enabled" "true"
+	fi
+
+	# PAE support?
+	local PAE_SUPPORT="$(grep -oE '\s+pae\s+' /proc/cpuinfo)"
+	local PAE_ENABLE="true"
+	[ -z "$PAE_SUPPORT" ] && PAE_ENABLE="false"
+	set_attr "/VirtualBox/Machine/Hardware/CPU/PAE" "enabled" "${PAE_ENABLE}"
+
+	# LongMode?
+	local LM_SUPPORT="$(grep -oE '\s+lm\s+' /proc/cpuinfo)"
+	local LM_ENABLE="true"
+	[ -z "$LM_SUPPORT" ] && LM_ENABLE="false"
+	set_attr "/VirtualBox/Machine/Hardware/CPU/LongMode" "enabled" "${LM_ENABLE}"
+
+	# Page size extensions?
+	local PSE_SUPPORT="$(grep -oE '\s+pse\s+' /proc/cpuinfo)"
+	local PSE_ENABLE="true"
+	[ -z "$PSE_SUPPORT" ] && PSE_ENABLE="false"
+	set_attr "/VirtualBox/Machine/Hardware/CPU/HardwareVirtExLargePages" "enabled" "${PSE_ENABLE}"
+
+	# EXPERIMENTAL: check for USB 3 support
+	local XHCI_OK="$(lsusb -t | grep xhci)"
+	if [ -n "$XHCI_OK" ]; then
+		del_node "/VirtualBox/Machine/Hardware/USB"
+		add_node "/VirtualBox/Machine/Hardware/USB/Controllers" "Controller" "name=xHCI" "type=XHCI"
 	fi
 
 	cp $TMPCONFIG /tmp/vbox-last-config

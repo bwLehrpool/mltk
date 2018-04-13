@@ -47,26 +47,32 @@ add_node() {
 		${ATTRS_OPTS} \
 		"${TMPCONFIG}"
 }
-# edit_attr [--create] <node_xpath> <attr=value>
-# --create would create the node if it does not exist
-edit_attr() {
-	local CREATE=
-	if [ "$1" = "--create" ]; then
-		CREATE=yo
-		shift
-	fi
+# set_attr <node_xpath> <attr> <value>
+set_attr() {
 	if [ $# -ne 3 ]; then
 		writelog "${FUNCNAME[0]} requires 3 args, $# given."
 		cleanexit 1
 	fi
-	if notempty CREATE && ! node_exists "$1"; then
+	if ! node_exists "$1"; then
+		writelog "Node $1 missing"
 		add_node "${1%/*}" "${1##*/}" \
 			"$2=$3"
 	else
-		xmlstarlet ed -L -N x="${VBOX_NAMESPACE}" \
-			-u "$(print_namespaced "x" "$1")/@$2" \
-			-v "$3" \
-			"${TMPCONFIG}"
+		if ! attr_exists "$1" "$2"; then
+			writelog "Attr $2 of $1 missing"
+			xmlstarlet ed -L -N x="${VBOX_NAMESPACE}" \
+				-i "$(print_namespaced "x" "$1")" \
+				-t attr -n "$2" -v "$3" \
+				"${TMPCONFIG}"
+			writelog "Returned with $?"
+		else
+			writelog "Attr $2 exists"
+			xmlstarlet ed -L -N x="${VBOX_NAMESPACE}" \
+				-u "$(print_namespaced "x" "$1")/@$2" \
+				-v "$3" \
+				"${TMPCONFIG}"
+			writelog "Returned with $?"
+		fi
 	fi
 }
 del_node() {
@@ -76,6 +82,15 @@ del_node() {
 	fi
 	xmlstarlet ed -L -N x="${VBOX_NAMESPACE}" \
 		-d "$(print_namespaced "x" "$1")" \
+		"${TMPCONFIG}"
+}
+attr_exists() {
+	if [ $# -ne 2 ]; then
+		writelog "${FUNCNAME[0]} requires node and attribute as args, $# given."
+		cleanexit 1
+	fi
+	xmlstarlet -q sel -N x="${VBOX_NAMESPACE}" \
+		-t -v "$(print_namespaced "x" "$1")/@$2" \
 		"${TMPCONFIG}"
 }
 node_exists() {

@@ -1,0 +1,2 @@
+SUBSYSTEM=="usb_device", ACTION=="add", ENV{PATH}="/usr/bin:/bin:/usr/sbin:/sbin:/opt/openslx/bin:/opt/openslx/sbin", RUN+="/opt/openslx/bin/attach-usb-to-vbox $attr{serial} $attr{idVendor}"
+SUBSYSTEM=="usb", ACTION=="add", ENV{DEVTYPE}=="usb_device", ENV{PATH}="/usr/bin:/bin:/usr/sbin:/sbin:/opt/openslx/bin:/opt/openslx/sbin", RUN+="/opt/openslx/bin/attach-usb-to-vbox $attr{serial} $attr{idVendor}"
