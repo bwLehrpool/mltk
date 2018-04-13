@@ -51,11 +51,11 @@ cleanup() {
 
 slxfdisk() {
 	local binary RET
-	for binary in "/opt/openslx/sbin/fdisk" "busybox fdisk" "fdisk"; do
+	for binary in "/opt/openslx/sbin/fdisk -u" "busybox fdisk -u" "fdisk"; do
 		$binary "$@"
 		RET=$?
 		[ "$RET" = "127" ] && continue # command not found
-		[ "$RET" = "1" ] && [ "$binary" = "busybox fdisk" ] && continue # maybe applet not found
+		[ "$RET" = "1" ] && [ "${binary%% *}" = "busybox" ] && continue # maybe applet not found
 		return $RET
 	done
 	return 127
