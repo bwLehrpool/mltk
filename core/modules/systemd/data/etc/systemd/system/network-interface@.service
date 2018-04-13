@@ -4,6 +4,6 @@ Wants=dhcpc@%i.service
 Before=dhcpc@%i.service
 
 [Service]
-Type=simple
+Type=oneshot
 ExecStart=/opt/openslx/sbin/ip link set dev %i up
 
