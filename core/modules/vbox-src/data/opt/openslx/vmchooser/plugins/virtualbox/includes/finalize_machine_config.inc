@@ -89,23 +89,24 @@ finalize_machine_config() {
 		set_attr "/VirtualBox/Machine/Hardware/BIOS/IOAPIC" "enabled" "true"
 	fi
 
+	detect_cpu_flag() {
+		grep -m1 '^flags\s*:' /proc/cpuinfo | grep -qw -e "$1"
+	}
+
 	# PAE support?
-	local PAE_SUPPORT="$(grep -oE '\s+pae\s+' /proc/cpuinfo)"
-	local PAE_ENABLE="true"
-	[ -z "$PAE_SUPPORT" ] && PAE_ENABLE="false"
-	set_attr "/VirtualBox/Machine/Hardware/CPU/PAE" "enabled" "${PAE_ENABLE}"
+	local PAE_SUPPORT="false"
+	detect_cpu_flag "pae" && PAE_SUPPORT="true"
+	set_attr "/VirtualBox/Machine/Hardware/CPU/PAE" "enabled" "${PAE_SUPPORT}"
 
 	# LongMode?
-	local LM_SUPPORT="$(grep -oE '\s+lm\s+' /proc/cpuinfo)"
-	local LM_ENABLE="true"
-	[ -z "$LM_SUPPORT" ] && LM_ENABLE="false"
-	set_attr "/VirtualBox/Machine/Hardware/CPU/LongMode" "enabled" "${LM_ENABLE}"
+	local LM_SUPPORT="false"
+	detect_cpu_flag "lm" && LM_SUPPORT="true"
+	set_attr "/VirtualBox/Machine/Hardware/CPU/LongMode" "enabled" "${LM_SUPPORT}"
 
 	# Page size extensions?
-	local PSE_SUPPORT="$(grep -oE '\s+pse\s+' /proc/cpuinfo)"
-	local PSE_ENABLE="true"
-	[ -z "$PSE_SUPPORT" ] && PSE_ENABLE="false"
-	set_attr "/VirtualBox/Machine/Hardware/CPU/HardwareVirtExLargePages" "enabled" "${PSE_ENABLE}"
+	local PSE_SUPPORT="false"
+	detect_cpu_flag "pse" && PSE_SUPPORT="true"
+	set_attr "/VirtualBox/Machine/Hardware/CPU/HardwareVirtExLargePages" "enabled" "${PSE_SUPPORT}"
 
 	# EXPERIMENTAL: check for USB 3 support
 	local XHCI_OK="$(lsusb -t | grep xhci)"
