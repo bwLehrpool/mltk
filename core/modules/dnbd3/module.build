@@ -43,6 +43,7 @@ build() {
 	chown root:root "dnbd3-client" "dnbd3-fuse" "dnbd3-server"
 	chmod +xs "dnbd3-client"
 	chmod +x "dnbd3-fuse" "dnbd3-server"
+	add_group "fuse"
 	cd "$MODULE_WORK_DIR"
 
 	COPYLIST="list_dpkg_output"
