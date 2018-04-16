@@ -118,7 +118,10 @@ finalize_machine_config() {
 		add_node "/VirtualBox/Machine/Hardware/USB/Controllers" "Controller" "name=xHCI" "type=XHCI"
 	fi
 
-	cp $TMPCONFIG /tmp/vbox-last-config
+	# EXPERIMENTAL: ALSA-driven sound is buggy as of vbox 5.2.8
+	# we still force alsa as we only have this driver in the current minilinux
+	set_attr "/VirtualBox/Machine/Hardware/AudioAdapter" "driver" "ALSA"
+
 	cp $TMPCONFIG $VBOX_MACHINE_CONFIG
 }
 
