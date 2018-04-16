@@ -6,9 +6,7 @@ finalize_machine_config() {
 	VBOX_MACHINE_CONFIG="${VBOX_MACHINES_DIR}/${VM_CLEANNAME}/${VM_CLEANNAME}.xml"
 
 	# remove ':' from MAC addr for vbox and generate a VDE (virtual device ethernet)
-	# MAC addr from the first one (put in prefix 00DE)
-	VM_MAC_ADDR=$(echo ${VM_MAC_ADDR} | sed 's/://g')
-	VM_VDE_MAC_ADDR=$(echo ${VM_MAC_ADDR} | sed 's/^..../00DE/g')
+	VM_MAC_ADDR="$(sed 's/://g' <<< ${VM_MAC_ADDR})"
 
 	# translate network kinds (nat, bridged, host-only)
 	# TODO: Server should prepare this in returned xml
@@ -77,7 +75,7 @@ finalize_machine_config() {
 	fi
 
 	# set the MAC address
-	set_attr "/VirtualBox/Machine/Hardware/Network/Adapter" "MACAddress" "${VM_VDE_MAC_ADDR}"
+	set_attr "/VirtualBox/Machine/Hardware/Network/Adapter" "MACAddress" "${VM_MAC_ADDR}"
 
 	# check if KVM is available and activate it if so
 	if source /run/hwinfo && [ "${HW_KVM}" = "ENABLED" ]; then
