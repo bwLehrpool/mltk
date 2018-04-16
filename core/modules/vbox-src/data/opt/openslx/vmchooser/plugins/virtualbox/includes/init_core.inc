@@ -41,11 +41,17 @@ add_node() {
 	PARENT="$(print_namespaced "x" "${PARENT}")"
 	# create node and set the internal variable newnode to it
 	# to then add the attributes to it
+	local ret
 	xmlstarlet ed -L -N x="${VBOX_NAMESPACE}" \
 		-s "${PARENT}" -t elem -n "${NODE}" \
 		--var newnode '$prev' \
 		${ATTRS_OPTS} \
 		"${TMPCONFIG}"
+	ret=$?
+	if [ "$ret" -ne 0 ]; then
+		writelog "${FUNCNAME[0]} failed with '$ret' for args: $@"
+	fi
+	return $ret
 }
 # set_attr <node_xpath> <attr> <value>
 set_attr() {
@@ -54,25 +60,27 @@ set_attr() {
 		cleanexit 1
 	fi
 	if ! node_exists "$1"; then
-		writelog "Node $1 missing"
 		add_node "${1%/*}" "${1##*/}" \
 			"$2=$3"
 	else
+		local ret
 		if ! attr_exists "$1" "$2"; then
-			writelog "Attr $2 of $1 missing"
 			xmlstarlet ed -L -N x="${VBOX_NAMESPACE}" \
 				-i "$(print_namespaced "x" "$1")" \
 				-t attr -n "$2" -v "$3" \
 				"${TMPCONFIG}"
-			writelog "Returned with $?"
+			ret=$?
 		else
-			writelog "Attr $2 exists"
 			xmlstarlet ed -L -N x="${VBOX_NAMESPACE}" \
 				-u "$(print_namespaced "x" "$1")/@$2" \
 				-v "$3" \
 				"${TMPCONFIG}"
-			writelog "Returned with $?"
+			ret=$?
 		fi
+		if [ "$ret" -ne 0 ]; then
+			writelog "${FUNCNAME[0]} failed with '$ret' for args: $@"
+		fi
+		return $ret
 	fi
 }
 del_node() {
@@ -80,9 +88,15 @@ del_node() {
 		writelog "${FUNCNAME[0]} requires one arg, $# given."
 		cleanexit 1
 	fi
+	local ret
 	xmlstarlet ed -L -N x="${VBOX_NAMESPACE}" \
 		-d "$(print_namespaced "x" "$1")" \
 		"${TMPCONFIG}"
+	ret=$?
+	if [ "$ret" -ne 0 ]; then
+		writelog "${FUNCNAME[0]} failed with '$ret' for args: $@"
+	fi
+	return $ret
 }
 attr_exists() {
 	if [ $# -ne 2 ]; then
