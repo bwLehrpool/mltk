@@ -8,27 +8,20 @@ finalize_machine_config() {
 	# remove ':' from MAC addr for vbox and generate a VDE (virtual device ethernet)
 	VM_MAC_ADDR="$(sed 's/://g' <<< ${VM_MAC_ADDR})"
 
-	# translate network kinds (nat, bridged, host-only)
-	# TODO: Server should prepare this in returned xml
-	case "${network_kind}" in
-		bridge*)
-			network_kind='HostOnlyInterface name="vboxnet0"'
-			;;
-		host*)
-			network_kind='HostOnlyInterface name="vboxnet2"'
-			;;
-		*)
-			network_kind='HostOnlyInterface name="vboxnet1"'
-	esac
+	# set machine uuid
+	set_attr "/VirtualBox/Machine" "uuid" "{${MACHINE_UUID}}"
 
-	sed -i "s,%VM_DISK_REDOLOGDIR%,$VBOX_SNAPSHOT_DIR,g" $TMPCONFIG
-	sed -i "s,%VM_DISK_PATH%,${VBOX_HDD_LINK},g" $TMPCONFIG
-	sed -i "s/%OpenSLX_MUUID%/{${MACHINE_UUID}}/g" $TMPCONFIG
-	sed -i "0,/%OpenSLX_HDDUUID_0/ s/%OpenSLX_HDDUUID_0%/{${HDD_UUID}}/" $TMPCONFIG
-	sed -i "0,/%OpenSLX_HDDUUID_0/ s/%OpenSLX_HDDUUID_0%/{${SNAPSHOT_UUID}}/" $TMPCONFIG
-	sed -i 's,%OpenSLX_CPU%,'"${CPU_CORES}"',g' $TMPCONFIG
-	sed -i 's,%OpenSLX_MEMORY%,'"${VM_MEM}"',g' $TMPCONFIG
+	# set read-only image path and uuid
+	set_attr \
+		"/VirtualBox/Machine/MediaRegistry/HardDisks/HardDisk" \
+		"location" "${VBOX_HDD_LINK}"
+	set_attr \
+		"/VirtualBox/Machine/MediaRegistry/HardDisks/HardDisk" \
+		"uuid" "{${HDD_UUID}}"
 	
+	# set snapshot dir
+	set_attr "/VirtualBox/Machine" "snapshotFolder" "${VBOX_SNAPSHOT_DIR}"
+
 	# Add a HardDisk node for the snapshot
 	add_node \
 		"/VirtualBox/Machine/MediaRegistry/HardDisks/HardDisk" "HardDisk" \
@@ -36,6 +29,12 @@ finalize_machine_config() {
 		"location=$VBOX_SNAPSHOT_DIR/{${SNAPSHOT_UUID}}.vdi" \
 		"format=VDI" \
 		"type=Normal"
+
+	# set snapshot uuid to the storage controller
+	set_attr \
+		"/VirtualBox/Machine/StorageControllers/StorageController/AttachedDevice/Image" \
+		"uuid" "{${SNAPSHOT_UUID}}"
+
 
 	# add storage controller and 2 floppies to it
 	add_node \
@@ -76,6 +75,12 @@ finalize_machine_config() {
 
 	# set the MAC address
 	set_attr "/VirtualBox/Machine/Hardware/Network/Adapter" "MACAddress" "${VM_MAC_ADDR}"
+
+	# set vm's memory
+	set_attr "/VirtualBox/Machine/Hardware/Memory" "RAMSize" "${VM_MEM}"
+
+	# set cpu cores and features
+	set_attr "/VirtualBox/Machine/Hardware/CPU" "count" "${CPU_CORES}"
 
 	# check if KVM is available and activate it if so
 	if source /run/hwinfo && [ "${HW_KVM}" = "ENABLED" ]; then
