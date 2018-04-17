@@ -255,7 +255,7 @@ finalize_hardware() {
 
 	# Enable nested virtualization if not specified in remote vmx
 	if [ -e "/run/hwinfo" ] && ! grep -qi '^vhv\.enable' "${TMPCONFIG}" \
-			&& grep -qE '^flags\s*:.*\b(ept|npt)\b' "/proc/cpuinfo" \
+			&& detect_cpu_flag "ept" "npt" \
 			&& [ "$VM_HW_VERSION" -ge "9" ]; then
 		. "/run/hwinfo"
 		[ "${HW_KVM}" = "ENABLED" ] && echo 'vhv.enable = "TRUE"' >> "${TMPCONFIG}"

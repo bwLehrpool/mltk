@@ -92,10 +92,6 @@ finalize_machine_config() {
 		set_attr "/VirtualBox/Machine/Hardware/BIOS/IOAPIC" "enabled" "true"
 	fi
 
-	detect_cpu_flag() {
-		grep -m1 '^flags\s*:' /proc/cpuinfo | grep -qw -e "$1"
-	}
-
 	# PAE support?
 	local PAE_SUPPORT="false"
 	detect_cpu_flag "pae" && PAE_SUPPORT="true"

@@ -451,8 +451,6 @@ check_dep() {
 	isset ONEOF && return 1 || return 0
 }
 
-
-
 # TODO: This is only used once in the whole script:
 # to cleanup the os string stored in the xml
 # Since the rework of this script, the os strings come from
@@ -485,4 +483,21 @@ dir_on_tmpfs() {
 		return $?
 	done
 	return 0
+}
+
+# Helper to detect given cpu flags.
+# If more than one flag is given, assume that matching
+# any of them is sufficient.
+# Returns 0 if detected, 1 otherwise.
+detect_cpu_flag() {
+	if [ "$#" -eq 0 ]; then
+		writelog "${FUNCNAME[0]} requires at least one argument, 0 given."
+		return 1
+	fi
+	local flags=$1
+	while [ "$#" -ne 0 ]; do
+		flags="$flags|$1"
+		shift
+	done
+	grep -m1 -qE '^flags\s*:.*\b('"${flags}"')\b' /proc/cpuinfo
 }
