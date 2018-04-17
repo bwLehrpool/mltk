@@ -26,6 +26,10 @@ if ! [ -d "${VBOX_BASE_DIR}" -o -x "${VBOX_BASE_DIR}/VBoxManage" -o "${VBOX_KMOD
 	exit 1
 fi
 
+# reload udev rules since aufs'ing the layer on top do not
+# trigger its inotify watch
+udevadm control --reload
+
 # create required standard directories
 mkdir -p "/tmp/virt/virtualbox" -m 1777
 
