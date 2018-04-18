@@ -164,7 +164,8 @@ init_core() {
 	done
 
 	# Define which features the VMware plugin supports
-	declare -rg VBOX_ROOT="${TMPDIR}/vbox"	# dir for configs
+	# Session specific dir for VM configs
+	declare -rg VBOX_ROOT="/tmp/virt/${PLUGIN_ID}/${USER}.$$"
 	declare -rg VBOX_MACHINES_DIR="${VBOX_ROOT}/Machines"
 	declare -rg VBOX_SNAPSHOT_DIR="${VBOX_MACHINES_DIR}/${VM_CLEANNAME}/Snapshots"
 	if ! mkdir -p "${VBOX_SNAPSHOT_DIR}"; then
@@ -177,7 +178,8 @@ init_core() {
 		cleanexit 1
 	fi
 	declare -rg VBOX_HDD_LINK="${VM_DISKFILE_RO}"
-	export VBOX_USER_HOME="${VBOX_ROOT}"		# instead of $HOME/.VirtualBox
+	# Virtualbox configuration dir instead of $HOME/.VirtualBox
+	export VBOX_USER_HOME="${VBOX_ROOT}"
 
 	# xml namespace for vbox configs
 	declare -rg VBOX_NAMESPACE="http://www.virtualbox.org/"
