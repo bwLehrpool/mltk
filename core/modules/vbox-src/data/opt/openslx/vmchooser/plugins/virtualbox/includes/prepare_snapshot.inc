@@ -1,5 +1,9 @@
+delete_snapshot() {
+	rm -f "${VBOX_SNAPSHOT_DIR}/{${SNAPSHOT_UUID}}.vdi" || \
+		writelog "Could not cleanup snapshot file: ${VBOX_SNAPSHOT_DIR}/{${SNAPSHOT_UUID}}.vdi"
+}
 prepare_snapshot() {
-	SNAPSHOT_UUID="34f617be-192a-46b3-a8ae-bce1029e093f"	# snapshot UUID is static
+	declare -rg SNAPSHOT_UUID="34f617be-192a-46b3-a8ae-bce1029e093f"	# snapshot UUID is static
 	
 	# get UUID of VBox image
 	HDD_UUID=$(${VBOX_BASE_DIR}/VBoxManage -q showvdiinfo ${VBOX_HDD_LINK} \
@@ -23,6 +27,7 @@ prepare_snapshot() {
 		dd if=${VBOX_HDD_LINK} of="${VBOX_SNAPSHOT_DIR}/{${SNAPSHOT_UUID}}.vdi" seek=424 \
 			skip=392 bs=1 count=16 conv=notrunc || \
 				writelog "Could not patch snapshot file"
+		add_cleanup delete_snapshot
 	elif isset VM_DISKFILE_RW; then
 		# Image is already RW - easy
 		VBOX_HDD_TYPE="Normal"
