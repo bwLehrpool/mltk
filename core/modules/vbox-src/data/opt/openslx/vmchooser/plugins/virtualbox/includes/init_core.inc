@@ -184,6 +184,9 @@ init_core() {
 	# xml namespace for vbox configs
 	declare -rg VBOX_NAMESPACE="http://www.virtualbox.org/"
 
+	# path to the main machine configuration file
+	declare -rg VBOX_MACHINE_CONFIG="${VBOX_MACHINES_DIR}/${VM_CLEANNAME}/${VM_CLEANNAME}.xml"
+
 	writelog "Directories:"
 	writelog "\tConfig dir:\t\t$VBOX_ROOT"
 	writelog "\tMachines dir:\t\t$VBOX_MACHINES_DIR"

@@ -2,13 +2,8 @@
 # Include: write final machine configuration file                              #
 ################################################################################
 finalize_machine_config() {
-	# Expected path to the final vbox file
-	VBOX_MACHINE_CONFIG="${VBOX_MACHINES_DIR}/${VM_CLEANNAME}/${VM_CLEANNAME}.xml"
 
-	# remove ':' from MAC addr for vbox and generate a VDE (virtual device ethernet)
-	VM_MAC_ADDR="$(sed 's/://g' <<< ${VM_MAC_ADDR})"
-
-	# set machine uuid
+	# set the generated machine uuid
 	set_attr "/VirtualBox/Machine" "uuid" "{${MACHINE_UUID}}"
 
 	# set read-only image path and uuid
@@ -62,18 +57,23 @@ finalize_machine_config() {
 		"uuid={${SLX_FLOPPY_UUID}}"
 
 
-	# Add a node for the SharedFolder
-	add_node "/VirtualBox/Machine/Hardware" "SharedFolders"
-	if [ -n "${HOME_SHARE_NAME}" -a -n "${HOME_SHARE_PATH}" -a -d "${HOME_SHARE_PATH}" ]; then
+	setup_shared_folders() {
+		# TODO common share through shared folders?
+		if isempty SHARED_FOLDERS HOME_SHARE_NAME HOME_SHARE_PATH; then
+			writelog "Missing information to setup shared folders."
+			return 1
+		fi
 		add_node \
 			"/VirtualBox/Machine/Hardware/SharedFolders" "SharedFolder" \
 			"name=${HOME_SHARE_NAME}" \
 			"hostPath=${HOME_SHARE_PATH}" \
 			"writable=true" \
 			"autoMount=true"
-	fi
+	}
+	notempty VBOX_SHARED_FOLDERS && setup_shared_folders
 
-	# set the MAC address
+	# remove ':' from MAC address and set it to the main network adapter
+	VM_MAC_ADDR="$(sed 's/://g' <<< ${VM_MAC_ADDR})"
 	set_attr "/VirtualBox/Machine/Hardware/Network/Adapter" "MACAddress" "${VM_MAC_ADDR}"
 
 	# set vm's memory

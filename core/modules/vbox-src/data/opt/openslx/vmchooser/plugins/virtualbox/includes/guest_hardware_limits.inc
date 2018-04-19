@@ -3,10 +3,9 @@
 ################################################################################
 
 set_hardware_limits() {
-	#SHARED_FOLDERS="TRUE"
-	#enablevt="true"
-	#enable2d
-	#enable3d
+
+	# support shared folders by default, disable it if guest OS doesn't support it
+	declare -g SHARED_FOLDERS="TRUE"
 	
 	# set some base configuration depending on the guest operating system
 	# NOTE: list supported OS type with: VBoxManage list ostypes
@@ -33,19 +32,16 @@ set_hardware_limits() {
 			MAXCORES="1"
 			MAXMEM="256"
 			MAXVRAM="64"
-			SHARED_FOLDERS="FALSE"
 			;;
 		WindowsMe)
 			MAXCORES="1"
 			MAXMEM="384"
 			MAXVRAM="64"
-			SHARED_FOLDERS="FALSE"
 			;;
 		Windows2000|Windows2003)
 			MAXCORES="4"
 			MAXMEM="4000"
 			MAXVRAM="128"
-			SHARED_FOLDERS="FALSE"
 			;;
 		Windows2003_64|WindowsXP_64)
 			MAXCORES="4"
@@ -108,8 +104,6 @@ set_hardware_limits() {
 		# TODO: FreeBSD, NetBSD, MacOS*, Solaris, Oracle, ...
 	esac
 
-	declare -rg GUESTVRAM=$MAXVRAM
-
 	# check /run/hwinfo for CORE not THREADS
 	# vbox seems to only want maximum cores = number of
 	# physical cores of the cpu, so use that
@@ -120,6 +114,15 @@ set_hardware_limits() {
 	[ "${CPU_CORES}" -gt "{MAXCORES}" ] && CPU_CORES="${MAXCORES}"
 	[ "${VM_MEM}" -gt "${MAXMEM}" ] && VM_MEM="${MAXMEM}"
 
+	# currently not used, keep the VRAMSize setting from the uploaded configuration
+	declare -rg GUESTVRAM=$MAXVRAM
+
+	# check if shared folders should be activated according
+	# to SHARE_REMAP_MODE set by /opt/openslx/inc/shares
+	VBOX_SHARED_FOLDERS=
+	if [ "x$SHARED_FOLDERS" != "xFALSE" ] && [ "$SHARE_REMAP_MODE" -gt 1 ]; then
+		declare -rg VBOX_SHARED_FOLDERS="1"
+	fi
 	return 0
 }
 
