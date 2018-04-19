@@ -46,6 +46,12 @@ setup_floppies() {
 		"hotpluggable=false" \
 		"port=0" \
 		"device=0"
+	if notempty FLOPPY_0; then
+		add_node \
+			'/VirtualBox/Machine/StorageControllers/StorageController[@name="Floppy"]/AttachedDevice[@device="0"]' \
+			"HostDrive" \
+			"src=${FLOPPY_0}"
+	fi
 	add_node \
 		'/VirtualBox/Machine/StorageControllers/StorageController[@name="Floppy"]' "AttachedDevice" \
 		"type=Floppy" \
