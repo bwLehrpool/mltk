@@ -53,4 +53,7 @@ run_plugin() {
 	# set headless mode (-v off to disable vrdp)
 	declare -rg VIRTCMDHL="${VBOX_BASE_DIR}/VBoxHeadless"
 	declare -rg VIRTCMDOPTSHL="-s ${MACHINE_UUID}"
+
+	# for debugging purposes
+	cp "$VBOX_MACHINE_CONFIG" "/tmp/vbox-last-config.$USER"
 }
