@@ -65,6 +65,44 @@ setup_floppies() {
 		"uuid={${SLX_FLOPPY_UUID}}"
 }
 
+setup_optical_drives() {
+	if isempty CDROM_0 && isempty CDROM_1; then
+		writelog "No host CD-ROM detected."
+		return 1
+	fi
+	local controller='StorageController[@type="AHCI"]'
+	local devnum=1
+	if node_exists '/VirtualBox/Machine/StorageControllers/'"$controller"; then
+		# TODO validating port count...
+		writelog "AHCI controller found, will add CDROMs to it."
+	else
+		writelog "Adding SATA controller for CDROMs."
+		add_node \
+			"/VirtualBox/Machine/StorageControllers" "StorageController" \
+			"name=SATA-CDROM" \
+			"type=AHCI" \
+			"PortCount=1" \
+			"useHostIOCache=true"
+		controller='StorageController[@name="SATA-CDROM"]'
+		devnum=0
+	fi
+	# now add the devices
+	for cdrom in $CDROM_0 $CDROM_1; do
+		writelog "Adding passthrough CDROM"
+		add_node \
+			'/VirtualBox/Machine/StorageControllers/'"$controller" "AttachedDevice" \
+			"type=DVD" \
+			"passthrough=true" \
+			"hotpluggable=false" \
+			"port=1" \
+			"device=$devnum"
+		(( devnum ++ ))
+		add_node \
+			'/VirtualBox/Machine/StorageControllers/'"$controller"'/AttachedDevice[@type="DVD"]' "HostDrive" \
+			"src=${cdrom}"
+	done
+}
+
 setup_shared_folders() {
 	# TODO common share through shared folders?
 	if isempty SHARED_FOLDERS HOME_SHARE_NAME HOME_SHARE_PATH; then
@@ -148,6 +186,7 @@ finalize_machine_config() {
 
 	setup_disk_image
 	setup_floppies
+	setup_optical_drives
 	setup_ethernet
 	setup_cpu_ram
 	setup_sound
