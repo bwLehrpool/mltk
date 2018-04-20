@@ -20,8 +20,9 @@ export PATH="$PATH":/opt/openslx/bin:/opt/openslx/sbin
 ## sanity checks
 VBOX_BASE_DIR="/usr/lib/virtualbox"
 VBOX_KMOD_DIR="/lib/modules/vbox"
+
 # VBoxManage should be under /usr/lib/virtualbox
-if ! [ -d "${VBOX_BASE_DIR}" -o -x "${VBOX_BASE_DIR}/VBoxManage" -o "${VBOX_KMOD_DIR}" ]; then
+if ! [ -d "${VBOX_BASE_DIR}" -o -x "${VBOX_BASE_DIR}/VBoxManage" -o -d "${VBOX_KMOD_DIR}" ]; then
 	echo "Failed to find VirtualBox installation at expected paths."
 	exit 1
 fi
@@ -46,8 +47,6 @@ chown root:vboxusers /dev/vboxdrv
 chmod 666 /dev/vboxdrv
 chown root:vboxusers /dev/vboxdrvu
 chmod 666 /dev/vboxdrvu
-#chown root:vboxusers /dev/vboxusb
-#chmod 755 /dev/vboxusb
 
 # pretty dumb you can just create host-only interfaces,
 # but not assign a specific name/number
@@ -63,3 +62,5 @@ brctl addif nat1 vboxnet1
 ${VBOXMANAGE} hostonlyif create
 ip link set dev vboxnet2 up
 brctl addif vsw2 vboxnet2
+
+true
