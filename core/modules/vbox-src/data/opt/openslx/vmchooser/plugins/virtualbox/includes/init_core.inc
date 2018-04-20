@@ -11,12 +11,20 @@
 add_node() {
 	if [ $# -lt 2 ]; then
 		writelog "${FUNCNAME[0]} requires 2 or more args, $# given."
-		cleanexit 1
+		return 1
 	fi
 	local PARENT="$1"
 	shift
+	if isempty PARENT; then
+		writelog "${FUNCNAME[0]} empty parent given!"
+		return 1
+	fi
 	local NODE="$1"
 	shift
+	if isempty NODE; then
+		writelog "${FUNCNAME[0]} empty node given!"
+		return 1
+	fi
 	# if parent does not exists, create it aswell
 	if ! node_exists "${PARENT}"; then
 		add_node "${PARENT%/*}" "${PARENT##*/}"
@@ -57,7 +65,11 @@ add_node() {
 set_attr() {
 	if [ $# -ne 3 ]; then
 		writelog "${FUNCNAME[0]} requires 3 args, $# given."
-		cleanexit 1
+		return 1
+	fi
+	if [ -z "$1" -o -z "$2" -o -z "$3" ]; then
+		writelog "${FUNCNAME[0]} empty arguments given: $@"
+		return 1
 	fi
 	if ! node_exists "$1"; then
 		add_node "${1%/*}" "${1##*/}" \
@@ -83,10 +95,15 @@ set_attr() {
 		return $ret
 	fi
 }
+# del_node <node_xpath>
 del_node() {
-	if [ $# -ne 1]; then
+	if [ $# -ne 1 ]; then
 		writelog "${FUNCNAME[0]} requires one arg, $# given."
-		cleanexit 1
+		return 1
+	fi
+	if [ -z "$1" ]; then
+		writelog "${FUNCNAME[0]} empty xpath expression given."
+		return 1
 	fi
 	local ret
 	xmlstarlet ed -L -N x="${VBOX_NAMESPACE}" \
@@ -98,23 +115,42 @@ del_node() {
 	fi
 	return $ret
 }
+# attr_exists <node_xpath> <attr_name>
 attr_exists() {
 	if [ $# -ne 2 ]; then
 		writelog "${FUNCNAME[0]} requires node and attribute as args, $# given."
-		cleanexit 1
+		return 1
+	fi
+	if [ -z "$1" -o -z "$2" ]; then
+		writelog "${FUNCNAME[0]} some arguments were empty: $@"
 	fi
 	xmlstarlet -q sel -N x="${VBOX_NAMESPACE}" \
 		-t -v "$(print_namespaced "x" "$1")/@$2" \
 		"${TMPCONFIG}"
+	ret=$?
+	if [ "$ret" -ne 0 ]; then
+		writelog "${FUNCNAME[0]} failed with '$ret' for args: $@"
+	fi
+	return $ret
 }
+# node_exists <node_xpath>
 node_exists() {
 	if [ $# -ne 1 ]; then
 		writelog "${FUNCNAME[0]} requires one arg, $# given."
-		cleanexit 1
+		return 1
+	fi
+	if [ -z "$1" ]; then
+		writelog "${FUNCNAME[0]} empty xpath expression given."
+		return 1
 	fi
 	xmlstarlet -q sel -N x="${VBOX_NAMESPACE}" \
 		-t -c "$(print_namespaced "x" "$1")" \
 		"${TMPCONFIG}"
+	ret=$?
+	if [ "$ret" -ne 0 ]; then
+		writelog "${FUNCNAME[0]} failed with '$ret' for args: $@"
+	fi
+	return $ret
 }
 # adds the vbox namespace to an xpath expression using
 # the given placeholder for it. 
