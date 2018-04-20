@@ -43,7 +43,7 @@ HandleLidSwitch=ignore
 IdleAction=ignore
 EOF
 	# reload
-	systemd daemon-reload
+	systemctl daemon-reload
 	systemctl restart systemd-logind
 }
 
