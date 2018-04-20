@@ -6,6 +6,7 @@ do_standby_stuff () {
 	. /opt/openslx/config
 	# Make sure SLX_SCREEN_STANDBY_TIMEOUT is numeric
 	TO=${SLX_SCREEN_STANDBY_TIMEOUT}
+	[ -n "${SLX_EXAM}" ] && TO=0
 	[ -z "${TO}" ] && TO=0
 	[ "${TO}" -gt 0 ] || [ "${TO}" -lt 100 ] || TO=600
 	[ "${TO}" -lt 0 ] && TO=0
