@@ -19,10 +19,6 @@ disable_magic_keys() {
 	echo 0 > /proc/sys/kernel/sysrq
 }
 
-disable_screen_standby() {
-	xset s off -dpms
-}
-
 change_loginscreen() {
 	local CF="/etc/lightdm/qt-lightdm-greeter.conf"
 	sed -r -i '/^greeter-background/d;s:(^greeter-banner-image=).*$:\1/opt/openslx/lightdm/bwlp-banner-exam.svg:' "$CF"
@@ -57,11 +53,9 @@ ssh_banner() {
 	echo "++++++++++++++++++++++++++++++++++++++" >> "/etc/issue.net"
 }
 
-
 disable_tty_switch
 disable_openbox_menu
 disable_magic_keys
-disable_screen_standby
 change_loginscreen
 systemd_config
 ssh_banner
