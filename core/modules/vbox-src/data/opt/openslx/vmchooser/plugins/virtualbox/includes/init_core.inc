@@ -163,6 +163,21 @@ init_core() {
 		fi
 	done
 
+	# check if the systemd vbox setup service ran successfully
+	if ! systemctl is-active vbox.service; then
+		local STATUSDUMP=$(mktemp)
+		systemctl status vbox.service > "$STATUSDUMP"
+		slxlog "virt-vbox-env" "vbox.service failed to start properly" "$STATUSDUMP"
+		EXIT_TYPE="internal" EXIT_REASON="VirtualBox wurde nicht richtig initialisiert!" cleanexit 1
+	fi
+
+	# validate that TMPCONFIG is actually an xml file
+	if ! xmlstarlet val "$TMPCONFIG"; then
+		slxlog "virt-vbox-noxml" "Downloaded machine description was not a valid xml." "$TMPCONFIG"
+		EXIT_TYPE="internal" EXIT_REASON="Die VM-Konfiguration ist keine valide VirtualBox-Datei!
+Ihren Satelliten scheint VirtualBox nicht zu unterstützen." cleanexit 1
+	fi
+
 	# Define which features the VMware plugin supports
 	# Session specific dir for VM configs
 	declare -rg VBOX_ROOT="/tmp/virt/${PLUGIN_ID}/${USER}.$$"
