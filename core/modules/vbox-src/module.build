@@ -81,6 +81,12 @@ build() {
 		perror "Failed to cp '${MODULE_WORK_DIR}/extpack' to '${VBOX_EXTPACK_DIR}'."
 	chown -R root:root "${VBOX_EXTPACK_DIR}" || \
 		perror "Failed to chown '${VBOX_EXTPACK_DIR}' to root:root."
+
+	# od binary
+	local OD_BIN="$(which od 2>/dev/null)"
+	if [ -n "$OD_BIN" -a -e "$OD_BIN" ]; then
+		tarcopy "$OD_BIN" "$MODULE_BUILD_DIR"
+	fi
 }
 
 post_copy() {

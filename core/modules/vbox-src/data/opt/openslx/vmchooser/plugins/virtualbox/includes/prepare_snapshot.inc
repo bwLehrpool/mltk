@@ -5,12 +5,14 @@ delete_snapshot() {
 prepare_snapshot() {
 	declare -rg SNAPSHOT_UUID="34f617be-192a-46b3-a8ae-bce1029e093f"	# snapshot UUID is static
 	
-	# get UUID of VBox image
-	HDD_UUID=$(${VBOX_BASE_DIR}/VBoxManage -q showvdiinfo ${VBOX_HDD_LINK} \
-					| grep UUID | grep -v "Parent UUID" | awk '{print $2}' \
-					| grep -v use )	# nec. for VBox >= 4
+	# get UUID of disk image using od to get 16 bytes (starting at 392) and
+	# order them according to the VDI UUID format with awk
+	HDD_UUID="$(od -An -t x1 -j 392 -N 16 ${VBOX_HDD_LINK} | awk '{print $4$3$2$1"-"$6$5"-"$8$7"-"$9$10"-"$11$12$13$14$15$16}')"
+	if isempty HDD_UUID; then
+		writelog "Failed to extract VDI UUID of '${VBOX_HDD_LINK}'"
+		EXIT_TYPE="internal" EXIT_REASON="Konnte UUID der virtuellen Festplatte nicht extrahieren." cleanexit 1
+	fi
 
-	# TODO support vmdk disks?
 	VBOX_HDD_FORMAT="VDI"
 
 	if isset VM_DISKFILE_RO; then

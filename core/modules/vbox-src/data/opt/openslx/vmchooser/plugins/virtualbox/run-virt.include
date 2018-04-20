@@ -39,13 +39,6 @@ run_plugin() {
 	# log config summary
 	$(safesource "${VBOX_INCLUDE_DIR}/log_config_summary.inc")
 
-	# This is necessary for the VM to start (don't ask me why, yet!)
-	VBMANPID=$(pstree -p | grep VBoxXPCOMIPCD | grep -ivE "VirtualBox|VBoxHeadless"\
-		| sed -e "s/.*VBoxXPCOMIPCD(\(.*\)).*/\1/")
-	for i in $(echo ${VBMANPID}); do
-		kill -9 ${VBMANPID} >/dev/null 2>&1
-	done
-
 	# set the variables appropriately (several interfaces with different names)
 	declare -rg VIRTCMD="${VBOX_BASE_DIR}/VirtualBox"
 	declare -rg VIRTCMDOPTS="--startvm ${MACHINE_UUID} --start-running --fullscreen"
