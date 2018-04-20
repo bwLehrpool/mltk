@@ -118,6 +118,10 @@ mount_temp_fallback () {
 	return 0
 }
 
+udevadm trigger
+sleep 0.2
+udevadm settle
+sleep 0.2
 /opt/openslx/sbin/fdisk -l | grep '^/dev/' > "$PARTITION_FILE"
 
 if [ ! -s "$PARTITION_FILE" ]; then
@@ -153,7 +157,7 @@ get_all_with_id () {
 		fi
 	done
 	exp=${exp:1}
-	echo "Partition find for '$*' is '$exp'" >&2
+	#echo "Partition find is '$exp'" >&2
 	for dev in $(find /dev/ -type b); do
 		udevadm info --name="$dev" | grep -iqE "($exp)\$" && echo "$(blockdev --getsize64 "$dev") $dev"
 	done | sort -n -k1 -r | cut -d' ' -f2
