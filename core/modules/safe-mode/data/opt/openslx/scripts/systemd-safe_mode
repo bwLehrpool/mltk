@@ -21,9 +21,7 @@ disable_magic_keys() {
 
 change_loginscreen() {
 	local CF="/etc/lightdm/qt-lightdm-greeter.conf"
-	sed -r -i 's/#[a-fA-F0-9]{6}/#757575/g' "/opt/openslx/lightdm/bwlp-banner.svg"
-	sed -r -i '/^greeter-background/d' "$CF"
-	sed -r -i 's:(^greeter-banner-image=).*$:\1/opt/openslx/lightdm/bwlp-banner-exam.svg:'
+	sed -r -i '/^greeter-background/d;s:(^greeter-banner-image=).*$:\1/opt/openslx/lightdm/bwlp-banner-exam.svg:' "$CF"
 	echo "greeter-background-gradient=FFB22C FFB22C" >> "$CF"
 }
 
