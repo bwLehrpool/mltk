@@ -20,41 +20,82 @@
 # So make sure you're up to date
 
 make_swap () {
-	[ $# -ne 2 ] && echo "make_swap: Wrong parameter count $#" && exit 1
+	[ $# -ne 2 ] && echo "make_swap: Wrong parameter count $#" && return 1
 	local USE="$1"
 	local DEV="$2"
-	echo "$USE" > "/sys/block/zram${DEV}/disksize"
-	mkswap "/dev/zram${DEV}"
-	swapon "/dev/zram${DEV}" -p 1000 # high priority (in case we have hdd swap 0x82, prefer zram)
+	local STREAMS="$3"
+	echo "$USE" > "/sys/block/zram${DEV}/disksize" || return 1
+	[ -n "$STREAMS" ] && echo "$STREAMS" > "/sys/block/zram${DEV}/max_comp_streams"
+	(
+		mkswap "/dev/zram${DEV}"
+		swapon "/dev/zram${DEV}" -p 1000 # high priority (in case we have hdd swap 0x82, prefer zram)
+	) &
 }
 
-CPUS=$(grep -c -E "^processor.*[0-9]+$" "/proc/cpuinfo")
+# Count physical CPUs
+CPUS=$(cat /sys/devices/system/cpu/cpu*/topology/thread_siblings_list | sort -u | wc -l) # cat for *
 if [ -z "$CPUS" ]; then
 	echo "ERROR: Could not determine CPU core count"
-	exit 1
+else
+	CPUS=1
 fi
 
-[ "$CPUS" -gt "16" ] && CPUS=16 # zram can only handle up to 32 devices, the system can apparently even just handle 29 swap partitions, so use a reasonable upper limit
-if ! modprobe zram "num_devices=$CPUS"; then
+KERN=$(uname -r)
+if [ "${KERN%%.*}" -le 4 ]; then
+	DEVS=$CPUS
+	[ "$DEVS" -gt "16" ] && DEVS=16 # zram can only handle up to 32 devices, the system can apparently even just handle 29 swap partitions, so use a reasonable upper limit
+	STREAMS=
+else
+	DEVS=1
+	STREAMS=$CPUS
+fi
+
+if [ -e "/sys/class/zram-control/hot_add" ]; then
+	: # nothing to do, loaded and hot_add available
+elif ! modprobe zram "num_devices=$DEVS"; then
 	echo "ERROR: Could not load zram module"
 	exit 1
 fi
 
 TOTAL=$(grep ^MemTotal /proc/meminfo | awk '{print $2}')
-USE=$(( $TOTAL / ( 2 * $CPUS ) ))
-echo "Have $CPUS cores, $TOTAL kb mem, use $USE kb zram swap per core"
-USE=$(( $USE * 1024 ))
+USE=$(( TOTAL / ( 2 * DEVS ) ))
+echo "Have $CPUS cores, $TOTAL kb mem, use $USE kb zram swap each for $DEVS devices."
+USE=$(( USE * 1024 ))
 DEV=0
-while [ "$DEV" -lt "$CPUS" ]; do
-	make_swap "$USE" "$DEV" &
-	LAST=$!
-	DEV=$(( $DEV + 1 ))
+NUM=0
+FAILS=0
+while [ "$NUM" -lt "$DEVS" ]; do
+	if [ -e "/sys/block/zram${DEV}" ]; then
+		if ! [ -e "/sys/block/zram${DEV}/initstate" ] || [ "$(cat "/sys/block/zram${DEV}/initstate")" = 0 ]; then
+			if make_swap "$USE" "$DEV" "$STREAMS"; then
+				NUM=$(( NUM + 1 ))
+			fi
+		fi
+		DEV=$(( DEV + 1 ))
+	elif [ -e "/sys/class/zram-control/hot_add" ]; then
+		DEV=$(cat /sys/class/zram-control/hot_add)
+		if [ -z "$DEV" ]; then
+			echo "ERROR: Cannot hot_add another zram device"
+			break
+		fi
+		if make_swap "$USE" "$DEV" "$STREAMS"; then
+			NUM=$(( NUM + 1 ))
+		else
+			FAILS=$(( FAILS + 1 ))
+			if [ "$FAILS" -gt 4 ]; then
+				echo "ERROR: Could not swap on hot added device -- giving up"
+				break
+			fi
+		fi
+		DEV=$(( DEV + 1 ))
+	else
+		echo "ERROR: Cannot add another zram device: No hot_add support"
+		break
+	fi
 done
 
 # Wait, so we don't trigger swap.target too early
-while kill -0 "$LAST"; do
-	usleep 100000
-done
+wait
 
 exit 0
 
