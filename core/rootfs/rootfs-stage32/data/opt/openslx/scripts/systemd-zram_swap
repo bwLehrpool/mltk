@@ -94,6 +94,16 @@ while [ "$NUM" -lt "$DEVS" ]; do
 	fi
 done
 
+# Increase min free memory so we have enough mem available when trying to move
+# something to zram swap. We want 1%, or at least 64MiB
+CURRENT=$(cat "/proc/sys/vm/min_free_kbytes")
+TOTAL=$(awk '{ if ($1 == "MemTotal:") { print $2; exit } }' /proc/meminfo)
+WANT=$(( TOTAL / 100 ))
+[ "$WANT" -gt 65535 ] || WANT=65535 # minimum 64M
+if [ "$CURRENT" -lt "$WANT" ]; then
+	echo "$WANT" > "/proc/sys/vm/min_free_kbytes"
+fi
+
 # Wait, so we don't trigger swap.target too early
 wait
 
