@@ -12,7 +12,7 @@ if [ "$1" = "--detach" ]; then
 fi
 
 if [ $# -lt 1 ]; then
-	echo "$0 [--detach] <reboot|poweroff> [delay_minutes]" >&2
+	echo "$0 [--detach] <reboot|poweroff|kexec-reboot> [delay_minutes]" >&2
 	exit 2
 fi
 
@@ -49,7 +49,7 @@ if [ -n "$TS" ]; then
 	fi
 fi
 
-if [ "$MODE" != "reboot" ] && [ "$MODE" != "poweroff" ]; then
+if [ "$MODE" != "reboot" ] && [ "$MODE" != "poweroff" ] && [ "$MODE" != "kexec-reboot" ]; then
 	slxlog --echo "idleaction-failed-call" "Invalid call to idleaction-scheduled_action. Mode '$MODE' unknown." >&2
 	exit 3
 fi
@@ -79,7 +79,7 @@ runaction () {
 		[ "$NUM" = "0" ] && break
 		if [ "$MINUTES" != "X" ]; then
 			USERS=0
-			if [ "$MODE" = "reboot" ]; then
+			if [ "${MODE#*-}" = "reboot" ]; then
 				MESSAGE="Das System wird in $MINUTES Minute(n) neugestartet, bitte beenden Sie Ihre Sitzung.
 	The system will reboot in $MINUTES minute(s). Please save your work and end the session."
 			else
