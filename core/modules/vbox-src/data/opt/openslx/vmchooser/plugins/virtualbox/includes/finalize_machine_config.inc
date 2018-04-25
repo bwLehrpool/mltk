@@ -34,12 +34,14 @@ setup_disk_image() {
 
 setup_floppies() {
 	# add storage controller and 2 floppies to it
-	add_node \
-		"/VirtualBox/Machine/StorageControllers" "StorageController" \
-		"name=Floppy" \
-		"type=I82078" \
-		"PortCount=1" \
-		"useHostIOCache=true"
+	if ! node_exists '/VirtualBox/Machine/StorageControllers/StorageController[@name="Floppy"]'; then
+		add_node \
+			"/VirtualBox/Machine/StorageControllers" "StorageController" \
+			"name=Floppy" \
+			"type=I82078" \
+			"PortCount=1" \
+			"useHostIOCache=true"
+	fi
 	add_node \
 		'/VirtualBox/Machine/StorageControllers/StorageController[@name="Floppy"]' "AttachedDevice" \
 		"type=Floppy" \
