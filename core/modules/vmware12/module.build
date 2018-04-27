@@ -51,23 +51,30 @@ build() {
 
 	# prepare the build directory with the files needed during the chroot
 	cp "${MODULE_WORK_DIR}/src/$VMWARE_BUNDLE_FILE" "${MODULE_BUILD_DIR}/$VMWARE_BUNDLE_FILE"
-	# copy required patches
-	mkdir -p "${MODULE_BUILD_DIR}/patches"
-	for PATCH in $(find "${MODULE_DIR}/patches/" -name "*__*__*.patch"); do
-		parse_patch_name "$PATCH"
-		[ -z "${MIN_KERN}" -o -z "${MAX_KERN}" ] && perror "Could not parse patch filename"
-		if version_lt "$TARGET_KERNEL_SHORT" "$MIN_KERN" || version_gt "$TARGET_KERNEL_SHORT" "$MAX_KERN"; then
-			pinfo "*NOT* applying $PATCH (min=$MIN_KERN max=$MAX_KERN cmp=$TARGET_KERNEL_SHORT)"
-			continue # Not suitable for our kernel
-		fi
-		if version_lt "$OFFICIAL_VERSION" "$MIN_VMWARE" || version_gt "$OFFICIAL_VERSION" "$MAX_VMWARE"; then
-			pinfo "*NOT* applying $PATCH (min=$MIN_VMWARE max=$MAX_VMWARE cmp=$OFFICIAL_VERSION)"
-			continue # Not suitable for our kernel
-		fi
-		pinfo "Kernel: Applying $PATCH (min=$MIN_KERN max=$MAX_KERN cmp=$TARGET_KERNEL_SHORT)"
-		pinfo "VMware: Applying $PATCH (min=$MIN_VMWARE max=$MAX_VMWARE cmp=$OFFICIAL_VERSION)"
-		cp "$PATCH" "${MODULE_BUILD_DIR}/patches/" || perror "Could not copy patch $PATCH to $MODULE_BUILD_DIR/patches"
-	done
+	# checkout pre-patched sources
+	local KVER2=$TARGET_KERNEL_SHORT
+	[ ${#KVER2} -gt 4 ] && KVER2=${KVER2%.*}
+	git clone --depth 1 -b "w${OFFICIAL_VERSION}-k${KVER2}" "https://github.com/mkubecek/vmware-host-modules.git" "${MODULE_BUILD_DIR}/prepatched" \
+		&& pinfo "Have prepatched kernel modules"
+	if ! [ -d "${MODULE_BUILD_DIR}/prepatched" ]; then
+		# copy required patches
+		mkdir -p "${MODULE_BUILD_DIR}/patches"
+		for PATCH in $(find "${MODULE_DIR}/patches/" -name "*__*__*.patch"); do
+			parse_patch_name "$PATCH"
+			[ -z "${MIN_KERN}" -o -z "${MAX_KERN}" ] && perror "Could not parse patch filename"
+			if version_lt "$TARGET_KERNEL_SHORT" "$MIN_KERN" || version_gt "$TARGET_KERNEL_SHORT" "$MAX_KERN"; then
+				pinfo "*NOT* applying $PATCH (min=$MIN_KERN max=$MAX_KERN cmp=$TARGET_KERNEL_SHORT)"
+				continue # Not suitable for our kernel
+			fi
+			if version_lt "$OFFICIAL_VERSION" "$MIN_VMWARE" || version_gt "$OFFICIAL_VERSION" "$MAX_VMWARE"; then
+				pinfo "*NOT* applying $PATCH (min=$MIN_VMWARE max=$MAX_VMWARE cmp=$OFFICIAL_VERSION)"
+				continue # Not suitable for our kernel
+			fi
+			pinfo "Kernel: Applying $PATCH (min=$MIN_KERN max=$MAX_KERN cmp=$TARGET_KERNEL_SHORT)"
+			pinfo "VMware: Applying $PATCH (min=$MIN_VMWARE max=$MAX_VMWARE cmp=$OFFICIAL_VERSION)"
+			cp "$PATCH" "${MODULE_BUILD_DIR}/patches/" || perror "Could not copy patch $PATCH to $MODULE_BUILD_DIR/patches"
+		done
+	fi
 
 	# sanity check to see if KERNEL_HEADERS_DIR is set and exists
 	[ -z "${KERNEL_HEADERS_DIR}" -o ! -e "${KERNEL_HEADERS_DIR}" ] && perror "KERNEL_HEADERS_DIR ('"${KERNEL_HEADERS_DIR}"') not found. Was the kernel module built?"
@@ -114,13 +121,22 @@ build() {
 		set -x
 		# Patch kernel modules
 		# check if we need to patch modules
+		if cd /prepatched; then
+			echo "Found prepatched directory"
+			for file in *-only; do
+				[ -d "\$file" ] || continue
+				KMOD=\${file%-only}.tar
+				tar cf "/usr/lib/vmware/modules/source/\$KMOD" "\$file/" || perror "repacking prepatched \$file failed"
+			done
+		fi
 		cd "/usr/lib/vmware/modules/source" \
 			|| perror "Could not cd to '/usr/lib/vmware/modules/source'"
 		for file in /patches/*.patch; do
 			[ -s "\$file" ] || continue
-			echo "Applying patch \$file"
 			SHORT="\$(basename "\${file%%__*}")"
+			[ -d "/prepatched/\${SHORT}-only" ] && continue
 			KMOD="\${SHORT}.tar"
+			echo "Applying patch \$file"
 			[ -s "\$KMOD" ] || perror "Kmod \$KMOD does not exist"
 			[ ! -d "\${SHORT}-only" ] && tar xf "\$KMOD"
 			[ ! -d "\${SHORT}-only" ] && perror "untar of \$KMOD failed."
