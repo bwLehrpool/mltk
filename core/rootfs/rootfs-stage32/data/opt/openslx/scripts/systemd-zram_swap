@@ -20,7 +20,7 @@
 # So make sure you're up to date
 
 make_swap () {
-	[ $# -ne 2 ] && echo "make_swap: Wrong parameter count $#" && return 1
+	[ $# -ne 3 ] && echo "make_swap: Wrong parameter count $#" && return 1
 	local USE="$1"
 	local DEV="$2"
 	local STREAMS="$3"
