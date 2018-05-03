@@ -48,7 +48,11 @@ download() {
 	[ $# -ne 2 ] && echo "Error - 'download' requires 2 arguments, $# given." && return 1
 	
 	if [ -z "$SLX_KCL_SERVERS" ]; then
-		. "/opt/openslx/config" || echo "Error - could not source '/opt/openslx/config'"
+		if ! [ -s "/opt/openslx/config" ]; then
+			echo "Don't have any servers to download from."
+		elif ! . "/opt/openslx/config"; then
+			echo "Error - could not source '/opt/openslx/config'"
+		fi
 	fi
 	
 	local FILE_URL="$1"
