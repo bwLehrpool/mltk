@@ -65,11 +65,11 @@ for LINE in $IP_OUT; do
 		if [ -n "$CLIENTIP" ] ; then
 			# set static ip address
 			ip addr add "$CLIENTIP/$(ipcalc -s -p "$CLIENTIP" "$SUBNET_MASK" | sed "s/.*=//")" broadcast "$BROADCAST_ADDRESS" dev "$BRIDGE"
-			ip link set dev "$BRIDGE" up
 			[ -n "$GATEWAY" ] && ip route add default via "$GATEWAY" dev "$BRIDGE"
 		else
 			NOIPYET="yes"
 		fi
+		ip link set dev "$BRIDGE" up
 		# Ignore this device later on when systemd handles network interfaces (see hacked 99-systemd.rules in systemd data dir)
 		echo "SUBSYSTEM==\"net\", ACTION==\"add\", KERNEL==\"eth*\", ATTR{address}==\"$IFMAC\", TAG+=\"openslxignore\"" >> "${FUTURE_ROOT}/etc/udev/rules.d/01-ignore-boot-interface.rules"
 	else
