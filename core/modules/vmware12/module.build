@@ -152,9 +152,18 @@ build() {
 				rm -rf -- "\${SHORT}-only"
 			fi
 		done
-		export LD_LIBRARY_PATH=/usr/lib/vmware/lib/libglibmm-2.4.so.1/:/usr/lib/x86_64-linux-gnu/gtk-2.0/modules/:\$LD_LIBRARY_PATH
-		vmware-modconfig --console --build-mod -k "${TARGET_KERNEL_LONG}" vmnet /bin/gccw "${KERNEL_HEADERS_DIR}/include" vmplayer vmnet || perror "vmnet build failed"
-		vmware-modconfig --console --build-mod -k "${TARGET_KERNEL_LONG}" vmmon /bin/gccw "${KERNEL_HEADERS_DIR}/include" vmplayer vmmon || perror "vmmon build failed"
+		for KMOD in vmnet vmmon; do
+			# if we have prepatched directory, we can safely compile them manually
+			if cd "/prepatched/\${KMOD}-only"; then
+				LINUXINCLUDE="${KERNEL_HEADERS_DIR}/include" make || perror "manual build of \$KMOD failed."
+				KMOD_DIR="/lib/modules/${TARGET_KERNEL_LONG}/vmplayer"
+				mkdir -p "\$KMOD_DIR" 2>/dev/null || perror "Failed to mkdir \$KMOD_DIR"
+				cp -f "\$KMOD.ko" "\$KMOD_DIR" || perror "Failed to copy \$KMOD.ko to \$KMOD_DIR."
+			else
+				export LD_LIBRARY_PATH=/usr/lib/vmware/lib/libglibmm-2.4.so.1/:/usr/lib/x86_64-linux-gnu/gtk-2.0/modules/:\$LD_LIBRARY_PATH
+				vmware-modconfig --console --build-mod -k "${TARGET_KERNEL_LONG}" \${KMOD} $(which gcc) "${KERNEL_HEADERS_DIR}/include" vmplayer \${KMOD} || perror "vmware-modconfig build of \${KMOD} failed."
+			fi
+		done
 	EOF
 
 	# cleanup unneeded files
