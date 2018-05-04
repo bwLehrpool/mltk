@@ -174,7 +174,7 @@ set_vm_hardware_limits() {
 			MAXCORES="1"
 		;;
 	esac
-	
+	declare -rg CPU_CORES="${HW_THREADS:-1}"
 	declare -rg HOST_CORE_COUNT="$CPU_CORES"
 	[ "$CPU_CORES" -gt "$MAXCORES" ] && CPU_CORES="$MAXCORES"
 	

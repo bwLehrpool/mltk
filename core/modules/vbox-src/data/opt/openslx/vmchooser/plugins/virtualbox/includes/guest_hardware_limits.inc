@@ -104,13 +104,9 @@ set_hardware_limits() {
 		# TODO: FreeBSD, NetBSD, MacOS*, Solaris, Oracle, ...
 	esac
 
-	# check /run/hwinfo for CORE not THREADS
-	# vbox seems to only want maximum cores = number of
-	# physical cores of the cpu, so use that
-	if [ -e /run/hwinfo ]; then
-		. /run/hwinfo
-		notempty HW_CORES && CPU_CORES="$HW_CORES"
-	fi
+	# use HW_CORES not HW_THREADS since virtualbox does not
+	# seem to handle hyperthreading all too well...
+	declare -g CPU_CORES="${HW_CORES:-1}"
 	[ "${CPU_CORES}" -gt "{MAXCORES}" ] && CPU_CORES="${MAXCORES}"
 	[ "${VM_MEM}" -gt "${MAXMEM}" ] && VM_MEM="${MAXMEM}"
 
