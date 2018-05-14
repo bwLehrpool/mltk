@@ -1,5 +1,7 @@
 #!/bin/ash
 
+export PATH="$PATH:/opt/openslx/bin:/opt/openslx/sbin"
+
 if ! touch "/run"; then
 	echo "Only root can call this" >&2
 	exit 1
@@ -33,7 +35,7 @@ while [ $# -gt 0 ]; do
 	fi
 	shift
 done
-[ -n "$1" ] && DELAY=$1
+[ -n "$1" ] && [ -z "$DELAY" ] && DELAY=$1
 
 if [ -n "$TS" ]; then
 	# Sanity check for trigger by cron
