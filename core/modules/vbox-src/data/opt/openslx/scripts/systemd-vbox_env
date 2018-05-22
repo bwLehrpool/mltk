@@ -38,6 +38,9 @@ for MOD in *; do
 	fi
 done
 
+# check/create vboxusers group
+getent group vboxusers || addgroup -S vboxusers
+
 # set their permissions
 chown root:vboxusers /dev/vboxdrv
 chmod 666 /dev/vboxdrv
@@ -46,9 +49,6 @@ chmod 666 /dev/vboxdrvu
 
 # create required standard directories
 mkdir -p "/tmp/virt/virtualbox" -m 1777
-
-# check/create vboxusers group
-getent group vboxusers || addgroup -S vboxusers
 
 # reload udev rules since aufs'ing the layer on top do not trigger its inotify watch
 udevadm control --reload
