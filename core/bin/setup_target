@@ -592,7 +592,8 @@ strip_recursive() {
 	local DIR="$1"
 	[ -n "$DIR" -a -d "$DIR" ] || perror "strip_recursive(): No such directory: '$DIR'"
 	# Will try to strip shell scripts too but shouldn't do any harm
-	find "$DIR" -type f -a \( -executable -o -name "*.so*" \) -exec strip {} \; 2> /dev/null
+	# Ignore anything we compile ourselves so we have usable core dumps
+	find "$DIR" -type f \! -path "*openslx*bin*" -a \( -executable -o -name "*.so*" \) -exec strip {} \; 2> /dev/null
 }
 
 # copies static data files from <MODULE>/data/ to <TARGET_BUILD_DIR>
