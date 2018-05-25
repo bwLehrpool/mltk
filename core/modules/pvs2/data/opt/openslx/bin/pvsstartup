@@ -21,7 +21,7 @@ while [ $timediff -gt 3 ]; do
 	pvsclient $EXAM "$@"
 	ret=$?
 	end="$(date +%s)"
-	for c in core*; do
+	[ "$ret" = 139 ] && for c in core*; do
 		[ -f "$c" ] || continue
 		tar ckzf "cmp-${c}.tgz" "$c"
 		curl -m 3 -H "Expect:" -f -s -S -F "file=@cmp-${c}.tgz;filename=report" "$URL" &> /dev/null
