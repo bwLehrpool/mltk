@@ -9,17 +9,32 @@ if [ -n "$SLX_EXAM" ]; then
 	EXAM="--exam-mode"
 fi
 
+# Report core dumps
+URL="http://132.230.8.113/error_report.php"
+DIR=$(mktemp -d)
+[ -n "$DIR" ] && cd "$DIR"
+
+ulimit -c unlimited
+
 while [ $timediff -gt 3 ]; do
 	start="$(date +%s)"
 	pvsclient $EXAM "$@"
 	ret=$?
 	end="$(date +%s)"
+	[ "$ret" = 139 ] && for c in core*; do
+		[ -f "$c" ] || continue
+		tar ckzf "cmp-${c}.tgz" "$c"
+		curl -m 3 -H "Expect:" -f -s -S -F "file=@cmp-${c}.tgz;filename=report" "$URL" &> /dev/null
+		rm -f -- "$c" "cmp-${c}.tgz"
+	done
 	/opt/openslx/pvs2/kb-unlock.sh
 	[ "$ret" == "0" ] && break
 	timediff=$(( end - start ))
 	counter=$(( counter + 1 ))
 	[ $counter -gt 8 ] && break
 done
+
+rm -rf -- "$DIR"
 
 exit $ret
 

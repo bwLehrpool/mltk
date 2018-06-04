@@ -87,6 +87,6 @@ Subsystem sftp /usr/lib/openssh/sftp-server
 UsePAM yes
 
 # OpenSLX
-DenyUsers demo
+AllowUsers root
 UseDNS no
 

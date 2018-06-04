@@ -42,6 +42,10 @@ func_sync_net_time() {
 			date -s "@$TTS"
 		else
 			echo "No fallback option for timesync available, relying on correct RTC setup"
+			if [ "x$SLX_BIOS_CLOCK" = "xlocal" ]; then
+				# Linux defaults to RTC = UTC, so read again in this case
+				hwclock -l -s
+			fi
 		fi
 	fi
 }

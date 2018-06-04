@@ -178,6 +178,9 @@ for mnt in run tmp; do
 	busybox umount -f -l "/$mnt" 2>/dev/null
 done
 
+echo "Waiting for async processes..."
+wait
+
 echo "Switching root...."
 echo "$bench_result" > "${FUTURE_ROOT}/opt/openslx/.benchmark"
 # Prepare environment (HOME is needed as a hack for nss_ldap with ssl and no caching)

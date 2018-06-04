@@ -31,6 +31,11 @@ launch_runvirt() {
 	# script exited here, check for exit code and send logfile to sat if appropriate
 	local RUNVIRT_RET="$?"
 	if [ ${RUNVIRT_RET} -ne 0 ]; then
+		if [ ${RUNVIRT_RET} -eq 141 ]; then
+			# 141 happens on alt + print screen + k or upon automatic logout via systemd
+			# just sleep here to avoid these annoying (and misleading) slxlogs....
+			sleep 3
+		fi
 		[ -f "${LOGFILE}" ] && log "Runvirt failed with '${RUNVIRT_RET}'."
 		return 1
 	fi

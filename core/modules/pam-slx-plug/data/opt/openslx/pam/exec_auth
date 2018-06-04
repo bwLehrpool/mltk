@@ -160,6 +160,14 @@ if ! isHomeMounted; then
 	fi
 fi
 
+# Remember for hooks in pam_script_auth.d
+if [ "${NETWORK_HOME:0:2}" = '//' ]; then
+	PERSISTENT_NETPATH=$(echo "$NETWORK_HOME" | tr '/' '\')
+else
+	PERSISTENT_NETPATH="$NETWORK_HOME"
+fi
+export PERSISTENT_NETPATH
+
 # Just try to delete the persistent dir. If the mount was successful, it will not work
 # If it was not successful, it will be removed so the user doesn't think he can store
 # anything in there
@@ -169,13 +177,6 @@ rmdir -- "${PERSISTENT_HOME_DIR}" 2> /dev/null
 if [ -n "${PERSISTENT_OK}" ]; then
 	# home directory mount SUCCESS
 	# create a WARNING.txt for the user with hint to PERSISTENT
-	# Remember for hooks in pam_script_auth.d
-	if [ "${NETWORK_HOME:0:2}" = '//' ]; then
-		PERSISTENT_NETPATH=$(echo "$NETWORK_HOME" | tr '/' '\')
-	else
-		PERSISTENT_NETPATH="$NETWORK_HOME"
-	fi
-	export PERSISTENT_NETPATH
 	cat > "${TEMP_HOME_DIR}/WARNING.txt" <<EOF
 ATTENTION: This is the non-persistent home directory!
 Files saved here will be lost on shutdown.

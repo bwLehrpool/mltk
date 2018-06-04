@@ -13,14 +13,14 @@
 # Use: 00:FF:00 for firtual machines ;)
 
 ## Functions ##
+# Import /run/hwinfo variables
+import_hwinfo() {
+	$(safesource "/run/hwinfo")
+}
 # Sets the VM's hostname to the original hostname prefixed with a fixed string and its ID 
 set_virt_hostname() {
 	declare -rg HOSTNAME="virt${VM_ID}-$(hostname)"
 	writelog "\tVM Hostname:\t\t$HOSTNAME"
-}
-set_virt_cpu() {
-	# Make sure CPU_CORES is not empty
-	declare -g CPU_CORES=${CPU_CORES:-"1"}
 }
 # Derives the amount of memory allocated to the VM from the
 # host's total memory (previously determined by systemd-run_virt_env)
@@ -149,7 +149,7 @@ set_serial_ports() {
 
 ## MAIN ##
 call_post_source \
-	set_virt_cpu \
+	import_hwinfo \
 	set_virt_memory \
 	set_virt_mac \
 	set_virt_hostname \
