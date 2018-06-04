@@ -60,7 +60,7 @@ for wartezeit in 1 1 1 2 0 ende; do
 done
 
 # Pruefen, ob xrand eine passende modeline ausgibt:
-if [ "$(DISPLAY=${DISPLAY} XAUTHORITY=${XAUTHORITY} xrandr | grep -c ${RESOLUTION})" -eq 0 ]; then
+if [ "$(DISPLAY=${DISPLAY} XAUTHORITY=${XAUTHORITY} xrandr | grep -c ${RESOLUTION}[[:space:]])" -eq 0 ]; then
 	logger "openslx resolution utility: xrandr yields no fitting modeline; adding one."
 	MODELINE=$(cvt ${RESOLUTION//x/ } | grep -v "^#" | sed "s/Modeline //g" | sed 's/"//g')
 	DISPLAY="${DISPLAY}" XAUTHORITY="${XAUTHORITY}" xrandr --newmode $(echo ${MODELINE})

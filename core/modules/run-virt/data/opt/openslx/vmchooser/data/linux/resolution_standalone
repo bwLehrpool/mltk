@@ -95,7 +95,7 @@ if [ -z "$AUSGABE" ]; then
 fi
 
 # Pruefen, ob xrand eine passende modeline ausgibt:
-if [ "$(xrandr | grep -c ${RESOLUTION})" -eq 0 ]; then
+if [ "$(xrandr | grep -c ${RESOLUTION}[[:space:]])" -eq 0 ]; then
 	logger "openslx resolution utility: xrandr yields no fitting modeline; adding one."
 	MODELINE=$(cvt ${RESOLUTION//x/ } | grep -v "^#" | sed "s/Modeline //g" | sed 's/"//g')
 	xrandr --newmode $(echo ${MODELINE})
