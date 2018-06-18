@@ -8,5 +8,5 @@ build() {
 }
 
 post_copy() {
-	:
+	mkdir -p "${TARGET_BUILD_DIR}/usr/lib/sasl2" "${TARGET_BUILD_DIR}/usr/lib/x86_64-linux-gnu/sasl2"
 }
