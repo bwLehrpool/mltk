@@ -57,8 +57,9 @@ for opt in $OPTION_LIST; do
 		[ -n "$EXTRA_OPTS" ] && OPTS="${OPTS},${EXTRA_OPTS}"
 		[ "x$dom" != "x#" ] && OPTS="${OPTS},domain=$dom"
 		[ "x$opt" != "x#" ] && OPTS="${OPTS},$opt"
+		OPTS=${OPTS:1}
 		echo " ****** Trying '$OPTS'" > "$FILE"
-		[ -n "$OPTS" ] && COMMAND_LINE="$COMMAND_LINE -o ${OPTS:1}"
+		[ -n "$OPTS" ] && COMMAND_LINE="$COMMAND_LINE -o ${OPTS}"
 		mount ${COMMAND_LINE} "${NETWORK_HOME}" "${PERSISTENT_HOME_DIR}" >> "${FILE}" 2>&1 &
 		PID=$!
 		# Wait max. 1 second; remember PID if this mount call seems to be running after we stop waiting
@@ -90,7 +91,7 @@ fi
 if ! isHomeMounted; then
 	LOG_COMBINED=$(mktemp)
 	[ -n "$LOGFILES" ] && cat ${LOGFILES} > "$LOG_COMBINED" # No quotes
-	slxlog --delete "pam-ad-mount" "Mount of '${VOLUME}' to '${PERSISTENT_HOME_DIR}' failed." "${LOG_COMBINED}"
+	slxlog --delete "pam-ad-mount" "Mount of '${NETWORK_HOME}' to '${PERSISTENT_HOME_DIR}' failed." "${LOG_COMBINED}"
 fi
 
 [ -n "${LOGFILES}" ] && rm -f -- ${LOGFILES} # No quotes
