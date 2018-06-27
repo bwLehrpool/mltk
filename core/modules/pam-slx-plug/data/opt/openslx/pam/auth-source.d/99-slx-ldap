@@ -102,9 +102,9 @@ run_auth() {
 			echo -n "${USER_PASSWORD}" > "${PW}"
 		) &
 		# unquoted LDAP_ATTR_*
-		ldapsearch -x -LLL -l 5 -o nettimeout=5 -o ldif-wrap=no \
-				-H "$LDAP_URI" -b "$LDAP_BASE" uid="${PAM_USER}" -y "${PW}" -D "$BINDDN" uid="${PAM_USER}" \
-				homeMount homeDirectory realAccount uid uidNumber gidNumber ${LDAP_ATTR_MOUNT_OPTS} &> "${SEARCH_USER}"
+		# Use "-s base" and BINDDN as search base so Active Directory will return transitive group memberships
+		ldapsearch -s base -x -LLL -l 5 -o nettimeout=5 -o ldif-wrap=no \
+				-H "$LDAP_URI" -b "$BINDDN" -y "${PW}" -D "$BINDDN" uid="${PAM_USER}" msds-memberOfTransitive "*" &> "${SEARCH_USER}"
 		RET=$?
 		rm -f -- "${PW}"
 		case "$RET" in
@@ -154,11 +154,14 @@ run_auth() {
 				cn &> "${SEARCH_ANON}"
 		USER_GROUP=$(extract_field "cn" "$SEARCH_ANON")
 	fi
+	USER_INFO_FILE=$(mktemp)
+	cp "$SEARCH_USER" "$USER_INFO_FILE"
 	return 0
 }
 
 TEMPFILES_LDAP=
 SLX_LDAP_FILE=
+USER_INFO_FILE=
 
 for s_file in /opt/openslx/pam/slx-ldap.d/*; do
 	unset_ldap_vars
