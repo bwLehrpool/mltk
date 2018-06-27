@@ -45,6 +45,7 @@ for auth_file in /opt/openslx/pam/auth-source.d/*; do
 	USER_GROUP=
 	USER_HOME=
 	USER_DN=
+	USER_INFO_FILE=
 	[ -f "$auth_file" ] || continue
 	. "$auth_file"
 	[ -n "$USER_UID" ] || continue
@@ -133,7 +134,10 @@ if [ -n "${REAL_ACCOUNT}" ]; then
 	echo "${REAL_ACCOUNT}" > "${TEMP_HOME_DIR}/.openslx/account"
 	chmod 0644 "${TEMP_HOME_DIR}/.openslx/account"
 fi
-
+if [ -n "$USER_INFO_FILE" ] && [ -s "$USER_INFO_FILE" ]; then
+	mv -- "$USER_INFO_FILE" "${TEMP_HOME_DIR}/.openslx/ldap"
+	chmod 0644 "${TEMP_HOME_DIR}/.openslx/ldap"
+fi
 
 ###############################################################################
 #
