@@ -99,15 +99,22 @@ setup_virtual_floppy() {
 	fi
 
 	## Runscript
-	# Check downloaded runscript, handle extension marker
+	# Check downloaded runscript and handle options like
+	# extension, visibility flag, ...
+	# options are 'key=value' pairs separated with ';'
 	if load_dmsd_resource RUNSCRIPT; then
-		local EXT=
 		if [ -s "$RUNSCRIPT" ]; then
-			EXT=$(head -n 1 "$RUNSCRIPT" | grep -o -i '^EXT=.*$' | cut -d '=' -f 2-)
-			[ -n "$EXT" ] && [ "x${EXT:0:1}" != "x." ] && EXT=".$EXT"
+			declare -A OPTIONS
+			for OPT in $(head -n 1 "$RUNSCRIPT" | tr ";" "\n")
+			do
+				KEY=$(cut -s -d '=' -f 1 <<< "${OPT^^}")
+				[ -n "$KEY" ] && OPTIONS["$KEY"]=$(cut -s -d '=' -f 2- <<< "$OPT")
+			done
+
+			[ ${OPTIONS[EXT]} ] && [ "x${OPTIONS[EXT]:0:1}" != "x." ] && OPTIONS[EXT]=".${OPTIONS[EXT]}"
 		fi
 	fi
-	
+
 	# Write info file
 	local UNAME=
 	[ -s "${HOME}/.openslx/account" ] && UNAME=$(cat "${HOME}/.openslx/account")
@@ -119,8 +126,8 @@ setup_virtual_floppy() {
 	createMissingRemap=${SHARE_CREATE_MISSING_REMAP}
 	remapMode=${SHARE_REMAP_MODE_INI}
 	homeDrive=${SHARE_HOME_DRIVE}
-	megaDrive=SEGA
-	scriptExt=${EXT}
+	scriptExt=${OPTIONS[EXT]}
+	scriptVisibility=${OPTIONS[VISIBILITY]}
 	passCreds=${SHARE_CREDENTIAL_PASSTHROUGH}
 	bootIp=${SLX_PXE_CLIENT_IP}
 	
@@ -150,9 +157,9 @@ setup_virtual_floppy() {
 	mcopy -s -i "${SLX_FLOPPY_IMG}" "$VMCHOOSER_DIR/data/linux" "::/"
 	
 	# User supplied runscript
-	if [ -n "$EXT" ]; then
+	if [ -n "${OPTIONS[EXT]}" ]; then
 		sed -i '1d' "${RUNSCRIPT}"
-		mcopy -i "${SLX_FLOPPY_IMG}" "${RUNSCRIPT}" "::/runscript${EXT}"
+		mcopy -i "${SLX_FLOPPY_IMG}" "${RUNSCRIPT}" "::/runscript${OPTIONS[EXT]}"
 	fi
 	
 	# Admin supplied runscript(s)
