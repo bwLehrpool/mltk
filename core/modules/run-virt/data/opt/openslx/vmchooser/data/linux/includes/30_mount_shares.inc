@@ -1,3 +1,46 @@
+function mount_nothome()
+{
+	if [ -z "${SHARELETTER}" ]; then
+		logger "openslx sharemapper: $SHARELETTER not found. Do not know where to mount."
+		continue
+	else
+		USERSHAREDIR="${USERHOME}"/SHARE_"${CONFIGROW}"	# ROHSHARES: Zeilennummer; Shares >=1
+		if [ ! -d "$USERSHAREDIR" ]; then
+			mkdir -p "$USERSHAREDIR" 2>/dev/null
+			chown "$LOCALUSER":$(id --group "$LOCALUSER") "$USERSHAREDIR"
+			chmod 700 "$USERSHAREDIR"
+			logger "openslx sharemapper: share mount dir $USERSHAREDIR created."
+		fi
+	fi
+	# Wenn kein Homeverzeichnis, dann share zuerst mit den Credentials aus der share-Konfig
+	# versuchen zu mounten; wenn nicht, dann mit den Hauptcredentials nachversuchen.
+	logger "openslx sharemapper: non-home share \"$SHARENAME\" (${CONFIGROW}) found."
+	export USER="${SHAREUSER}"
+	export PASSWD="${SHAREPASS}"
+	mounter "${MOUNTPARAM}" "${MOUNTOPTS}" "${SHAREPATH}" "${USERSHAREDIR}" 2>/dev/null 1>&2
+	ERR=$?
+	unset USER
+	unset PASSWD
+	if [ "$ERR" -eq 1 ]; then
+		export USER="${GLOBALUSER}"
+		export PASSWD="${PW}"
+		logger "openslx sharemapper: Could not mount ${USERSHAREDIR}, now trying using user credentials."
+		mounter "${MOUNTPARAM}" "${MOUNTOPTS}" "${SHAREPATH}" "${USERSHAREDIR}" 2>/dev/null 1>&2 
+		ERR=$?				# ERR merken wg. Links aus USERSHAREDIR
+		if [ "$ERR" -eq 1 ]; then
+			logger "openslx sharemapper: Could not mount ${USERSHAREDIR} even using user credentials; giving up."
+		fi
+		unset USER
+		unset PASSWD
+	fi
+	if [ "$ERR" -eq 0 ]; then
+		logger "openslx sharemapper: Linking ${SHARELETTER} and $SHARENAME, if possible."
+		[ -n "${SHARELETTER}" ] && ln -s "$USERSHAREDIR" "${USERHOME}"/"$SHARELETTER"
+		[ -n "${SHARELETTER}" ] && ln -s "$USERSHAREDIR" "${USERHOME}"/"$SHARENAME"
+	fi
+}
+
+
 function mount_shares()
 {
 	for (( CONFIGROW = 1; CONFIGROW < ${#ROHSHARES[@]}; CONFIGROW++ )); do
@@ -26,7 +69,7 @@ function mount_shares()
 			logger "openslx sharemapper: home share \"$SHARENAME\" found (for PERSISTENT)."
 			export USER="${GLOBALUSER}"
 			export PASSWD="${PW}"
-			mounter "${MOUNTPARAM}" "${MOUNTOPTS}" "${SHAREPATH}" "${USERHOMEDIR}" 2>/dev/null 1>&2
+			mounter "${MOUNTPARAM}" "${MOUNTOPTS}" "${SHAREPATH}" "${USERHOMEDIR}" 2>/dev/null 1>&2 &
 			unset USER
 			unset PASSWD
 		else
@@ -34,39 +77,7 @@ function mount_shares()
 				logger "openslx sharemapper: $SHARELETTER not found. Do not know where to mount."
 				continue
 			else
-				USERSHAREDIR="${USERHOME}"/SHARE_"${CONFIGROW}"	# ROHSHARES: Zeilennummer; Shares >=1
-				if [ ! -d "$USERSHAREDIR" ]; then
-					mkdir -p "$USERSHAREDIR" 2>/dev/null
-					chown "$LOCALUSER":$(id --group "$LOCALUSER") "$USERSHAREDIR"
-					chmod 700 "$USERSHAREDIR"
-					logger "openslx sharemapper: share mount dir $USERSHAREDIR created."
-				fi
-			fi
-			# Wenn kein Homeverzeichnis, dann share zuerst mit den Credentials aus der share-Konfig
-			# versuchen zu mounten; wenn nicht, dann mit den Hauptcredentials nachversuchen.
-			logger "openslx sharemapper: non-home share \"$SHARENAME\" (${CONFIGROW}) found."
-			export USER="${SHAREUSER}"
-			export PASSWD="${SHAREPASS}"
-			mounter "${MOUNTPARAM}" "${MOUNTOPTS}" "${SHAREPATH}" "${USERSHAREDIR}" 2>/dev/null 1>&2
-			ERR=$?
-			unset USER
-			unset PASSWD
-			if [ "$ERR" -eq 1 ]; then
-				export USER="${GLOBALUSER}"
-				export PASSWD="${PW}"
-				logger "openslx sharemapper: Could not mount ${USERSHAREDIR}, now trying using user credentials."
-				mounter "${MOUNTPARAM}" "${MOUNTOPTS}" "${SHAREPATH}" "${USERSHAREDIR}" 2>/dev/null 1>&2 
-				ERR=$?				# ERR merken wg. Links aus USERSHAREDIR
-				if [ "$ERR" -eq 1 ]; then
-					logger "openslx sharemapper: Could not mount ${USERSHAREDIR} even using user credentials; giving up."
-				fi
-				unset USER
-				unset PASSWD
-			fi
-			if [ "$ERR" -eq 0 ]; then
-				logger "openslx sharemapper: Linking ${SHARELETTER} and $SHARENAME, if possible."
-				[ -n "${SHARELETTER}" ] && ln -s "$USERSHAREDIR" "${USERHOME}"/"$SHARELETTER"
-				[ -n "${SHARELETTER}" ] && ln -s "$USERSHAREDIR" "${USERHOME}"/"$SHARENAME"
+				mount_share &
 			fi
 		fi
 	done
