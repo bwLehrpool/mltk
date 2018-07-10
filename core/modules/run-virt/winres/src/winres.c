@@ -240,7 +240,7 @@ static void CALLBACK launchRunscript(HWND hWnd, UINT uMsg, UINT_PTR idEvent, DWO
 		wlog(L"Params are '%s'", params);
 	}
 
-	int scriptVisibility = GetPrivateProfileIntA("openslx", "scriptVisibility", 0, SETTINGS_FILE);
+	int scriptVisibility = GetPrivateProfileIntA("openslx", "scriptVisibility", 1, SETTINGS_FILE);
 	int nShowCmd = SW_SHOWNORMAL; // show window as default
 	switch(scriptVisibility) {
 		case 0:

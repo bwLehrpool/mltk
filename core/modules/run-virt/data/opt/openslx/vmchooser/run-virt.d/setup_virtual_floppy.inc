@@ -105,11 +105,12 @@ setup_virtual_floppy() {
 	if load_dmsd_resource RUNSCRIPT; then
 		if [ -s "$RUNSCRIPT" ]; then
 			declare -A OPTIONS
-			for OPT in $(head -n 1 "$RUNSCRIPT" | tr ";" "\n")
-			do
+			IFS=$'\n'
+			for OPT in $(head -n 1 "$RUNSCRIPT" | tr ";" "\n"); do
 				KEY=$(cut -s -d '=' -f 1 <<< "${OPT^^}")
 				[ -n "$KEY" ] && OPTIONS["$KEY"]=$(cut -s -d '=' -f 2- <<< "$OPT")
 			done
+			unset IFS
 
 			[ ${OPTIONS[EXT]} ] && [ "x${OPTIONS[EXT]:0:1}" != "x." ] && OPTIONS[EXT]=".${OPTIONS[EXT]}"
 		fi
