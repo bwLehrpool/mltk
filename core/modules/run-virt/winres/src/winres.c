@@ -239,7 +239,22 @@ static void CALLBACK launchRunscript(HWND hWnd, UINT uMsg, UINT_PTR idEvent, DWO
 	if (_debug) {
 		wlog(L"Params are '%s'", params);
 	}
-	ShellExecuteW(NULL, L"open", _scriptFile, params, L"B:\\", SW_SHOWNORMAL);
+
+	int scriptVisibility = GetPrivateProfileIntA("openslx", "scriptVisibility", 0, SETTINGS_FILE);
+	int nShowCmd = SW_SHOWNORMAL; // show window as default
+	switch(scriptVisibility) {
+		case 0:
+			nShowCmd = SW_HIDE;
+			break;
+		case 1:
+			nShowCmd = SW_SHOWNORMAL;
+			break;
+		case 2:
+			nShowCmd = SW_SHOWMINNOACTIVE;
+			break;
+	}
+
+	ShellExecuteW(NULL, L"open", _scriptFile, params, L"B:\\", nShowCmd);
 	KillTimer(hWnd, idEvent);
 	return;
 failure:
