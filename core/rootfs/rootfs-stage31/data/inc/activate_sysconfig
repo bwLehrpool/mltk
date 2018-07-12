@@ -66,6 +66,8 @@ install_config_tgz() {
 	# TODO perserve existing directories permissions (but overwrite the permissions of files!)
 	mkdir -p "${TEMP_EXTRACT_DIR}"
 	tar xf "${CONFIG}.tgz" -C "${TEMP_EXTRACT_DIR}" || { echo "Could not untar ${CONFIG}.tgz to ${TEMP_EXTRACT_DIR}"; return 1; }
+	# Write list to stage32 for debug
+	tar tvf "${CONFIG}.tgz" > "${FUTURE_ROOT}/opt/openslx/config.tgz.list" 2>&1
 	chown -R 0:0 "${TEMP_EXTRACT_DIR}" 2>/dev/null
 	cd "${TEMP_EXTRACT_DIR}"
 	# first we look for local config.tgz files, which we merge with the common

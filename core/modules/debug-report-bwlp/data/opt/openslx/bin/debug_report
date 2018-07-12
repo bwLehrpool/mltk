@@ -63,7 +63,7 @@ for srv in $SLX_NTP_SERVER 0.de.pool.ntp.org; do
 done
 echo -n "..."
 
-cp /opt/openslx/config /tmp/udhcpclog static/ 2> /dev/null
+cp /opt/openslx/config /tmp/udhcpclog /opt/openslx/config.tgz.list static/ 2> /dev/null
 echo -n "."
 
 FILES=$(find /tmp/vmware* /tmp/virt /tmp/vmchooser* -type f \( -name "*.log" -o -name "*.conf" -o -name "*.xml" \) 2> /dev/null)
