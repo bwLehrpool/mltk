@@ -29,10 +29,15 @@ TMP=$(df -P /tmp | grep -m1 ' /tmp$')
 TMP_SIZE=$(echo $TMP | awk '{print $2}')
 TMP_FREE=$(echo $TMP | awk '{print $4}')
 SWAP_FREE=$(grep -m1 ^SwapFree: /proc/meminfo | awk '{print $2}')
+if [ -n "$SLX_EXAM" ]; then
+	# This isn't an actual runmode, but in case exam mode is active on a client you definitely want
+	# to know about it, more than other runmodes actually
+	SLX_RUNMODE_MODULE="exams"
+fi
 
 curl -s --data-urlencode "type=~runstate" --data-urlencode "uuid=$UUID" --data-urlencode "used=$USED" \
 	--data-urlencode "user=$Name" --data-urlencode "tmpsize=$TMP_SIZE" --data-urlencode "tmpfree=$TMP_FREE" \
-	--data-urlencode "swapfree=$SWAP_FREE" "$SLX_REMOTE_LOG" > /dev/null 2>&1
+	--data-urlencode "swapfree=$SWAP_FREE" --data-urlencode "runmode=$SLX_RUNMODE_MODULE" "$SLX_REMOTE_LOG" > /dev/null 2>&1
 
 # Warn user if tmp or swap usage is high; system might crash soon
 
