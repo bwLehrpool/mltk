@@ -8,6 +8,7 @@ REQUIRED_INSTALLED_PACKAGES="
 	wmctrl
 "
 REQUIRED_CONTENT_PACKAGES="
+	libqt5gui5
 	xinput
 	wmctrl
 "
