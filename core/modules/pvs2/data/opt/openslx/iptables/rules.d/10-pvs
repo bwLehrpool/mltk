@@ -7,5 +7,7 @@ iptables -I ipt-helper-OUTPUT 1 -o br0 -p tcp --dport 5194 -j ACCEPT
 # UDP discovery - server and client perspective
 iptables -I ipt-helper-INPUT 1 -i br0 -p udp --dport 3492 -j ACCEPT
 iptables -I ipt-helper-OUTPUT 1 -o br0 -p udp --dport 3492 -j ACCEPT
-# VNC connection - incoming (client) only - small range as we use -autoport
+iptables -I ipt-helper-OUTPUT 1 -o br0 -p udp --sport 3492 -j ACCEPT
+# VNC connection - incoming and outgoing - small range as we use -autoport
 iptables -I ipt-helper-INPUT 1 -i br0 -p tcp --dport 54112:54122 -j ACCEPT
+iptables -I ipt-helper-OUTPUT 1 -o br0 -p tcp --dport 54112:54122 -j ACCEPT
