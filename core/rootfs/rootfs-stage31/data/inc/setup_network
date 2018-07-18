@@ -102,12 +102,19 @@ if [ -n "$GATEWAY" ]; then
 	echo -n "$GATEWAY" > "/run/firstgw"
 fi
 
+UID=$(dmidecode -s system-uuid | sed -r 's/^(..)(..)(..)(..)-(..)(..)-(..)(..)-(....)-/00\4\3\2\1\6\5\8\7\9/')
+if [ "${#UID}" = 34 ]; then
+	echo "Using SMBIOS UID for DHCP"
+	PARAM="$PARAM -x 0x3d:$UID"
+fi
+
 # save our variables for retry on fail ff.
 echo "CLIENTIP=$CLIENTIP" >> /run/network.conf
 echo "GATEWAY=$GATEWAY" >> /run/network.conf
 echo "BRIDGE=$BRIDGE" >> /run/network.conf
+echo "UID=$UID" >> /run/network.conf
 
-udhcpc $PARAM -O ntpsrv -O domain -O wpad -O search -t 5 -T 2 -s "/inc/udhcpc-trigger" -f -n -q -i "$BRIDGE"
+udhcpc $PARAM -x "0x3d:$UID" -O ntpsrv -O domain -O wpad -O search -t 5 -T 2 -s "/inc/udhcpc-trigger" -f -n -q -i "$BRIDGE"
 URET=$?
 # udhcpc return value will be return value of this script
 [ -z "$CLIENTIP" ] && CLIENTIP=$(cat /run/firstip)

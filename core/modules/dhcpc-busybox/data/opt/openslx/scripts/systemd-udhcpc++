@@ -4,7 +4,15 @@ NET_IF="$1"
 NET_IP="$(ip addr show dev "${NET_IF}" | grep -m1 '^\s*inet ' | awk -F " " '{print $2}' | awk -F "/" '{print $1}')"
 
 UDHCPC_OPTS=""
-[ ! -z "$NET_IP" ] && UDHCPC_OPTS=" -r $NET_IP"
+if [ -n "$NET_IP" ]; then
+	UDHCPC_OPTS="$UDHCPC_OPTS -r $NET_IP"
+fi
+
+UID=$(dmidecode -s system-uuid | sed -r 's/^(..)(..)(..)(..)-(..)(..)-(..)(..)-(....)-/00\4\3\2\1\6\5\8\7\9/')
+if [ "${#UID}" = 34 ]; then
+	echo "Using SMBIOS UID for DHCP"
+	UDHCPC_OPTS="$UDHCPC_OPTS -x 0x3d:$UID"
+fi
 
 mkdir -p /run/udhcpc || echo "Could not create '/run/udhcpc'."
 
@@ -12,7 +20,7 @@ mkdir -p /run/udhcpc || echo "Could not create '/run/udhcpc'."
 RET=$?
 
 if [ "$RET" != 0 ]; then
-	slxlog "udhcpc" "Could not run 'udhcpc${UDHCPC_OPTS}' on ${NET_IF}."
+	slxlog "udhcpc" "Could not run 'udhcpc ${UDHCPC_OPTS}' on ${NET_IF}."
 fi
 
 exit "$RET"
