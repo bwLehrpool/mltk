@@ -87,7 +87,7 @@ if [ -n "${SLX_DNBD3_SPARSE}" ]; then
 	DNBD3_SPARSE="true"
 fi
 # Determine if we need sparse mode, or override BGR
-cache_size=$(disksize "$DNBD3_DATA_DIR")
+cache_size=$(disksize "$DNBD3_DATA_DIR") # MB
 if ! [ "$cache_size" -gt 120000 ]; then
 	# less than 120GiB or NaN, force
 	[ "$DNBD3_BGR" = "true" ] && slxlog -s -e "dnbd3-setup-small" "Cache partition < 120GiB, forcing background replication OFF and sparse mode ON"
@@ -99,6 +99,9 @@ elif [ "$cache_size" -gt 2000000 ]; then
 	# force non-sparse on > 2TiB
 	DNBD3_SPARSE="false"
 fi
+
+MAX_REPLICATION_SIZE=$(( cache_size / 6 ))
+[ "$MAX_REPLICATION_SIZE" -lt 100000 ] && MAX_REPLICATION_SIZE=100000
 
 DNBD3_PORT=5003
 rm -f "${DNBD3_CONF_DIR}/server.conf"
@@ -116,6 +119,9 @@ sparseFiles=${DNBD3_SPARSE}
 removeMissingImages=false
 uplinkTimeout=5000
 clientTimeout=15000
+
+[limits]
+maxReplicationSize=${MAX_REPLICATION_SIZE}M
 
 [logging]
 consoleMask=ERROR WARNING MINOR INFO
