@@ -35,11 +35,9 @@ rebuild_resolv_conf () {
 	sort -u /run/network/*.resolv > "$RESOLV_CONF" 2> /dev/null
 
 	# add support for resolv.conf update scripts // see man(8) resolvconf
-	if [ -d /etc/resolvconf/update.d ]; then
-		for s in $(ls -1 /etc/resolvconf/update.d/*.sh); do
-			$s
-		done
-	fi
+	for s in /etc/resolvconf/update.d/*.sh; do
+		[ -f "$s" ] && [ -x "$s" ] && "$s"
+	done
 }
 
 escape_search() {
@@ -51,7 +49,7 @@ escape_replace() {
 }
 
 check_env() {
-	if [ -z "$ip" -o -z "$subnet" -o -z "$interface" ]; then
+	if [ -z "$ip" ] || [ -z "$subnet" ] || [ -z "$interface" ]; then
 		echo "$1 event with missing data" >&2
 		echo "ip = '$ip'" >&2
 		echo "subnet = '$subnet'" >&2
@@ -89,7 +87,7 @@ case "$1" in
 		fi
 
 		# Update resolver configuration file
-		CONF=""
+		conf_file="$(mktemp)"
 		# Own domain suffix
 		if [ -n "$domain" ]; then
 			:
@@ -100,7 +98,7 @@ case "$1" in
 			domain="$SLX_NET_DOMAIN"
 		fi
 		if [ -n "$domain" ]; then
-			printf -v CONF "${CONF}domain ${domain%% *}\n"
+			echo "domain ${domain%% *}" >> "${conf_file}"
 		fi
 		# Add domain to list of search domains if not in there yet
 		if [ -n "$domain" ] && [ -n "$search" ]; then
@@ -114,25 +112,26 @@ case "$1" in
 		fi
 		# Search domains
 		if [ -n "$search" ]; then
-			printf -v CONF "${CONF}search $search\n"
+			echo "search $search" >> "${conf_file}"
 		elif [ -n "$SLX_NET_SEARCH" ]; then
-			printf -v CONF "${CONF}search $SLX_NET_SEARCH\n"
+			echo "search $SLX_NET_SEARCH" >> "${conf_file}"
 		elif [ -n "$SLX_NET_DOMAIN" ]; then
-			printf -v CONF "${CONF}search $SLX_NET_DOMAIN\n"
+			echo "search $SLX_NET_DOMAIN" >> "${conf_file}"
 		fi
 		for i in $dns; do
 			echo "$0: Adding DNS $i"
-			printf -v CONF "${CONF}nameserver $i\n"
+			echo "nameserver $i" >> "${conf_file}"
 		done
 		
 		if [ -x "/sbin/resolvconf" ] && [ -L "/etc/resolv.conf" ] && [ -d "/etc/resolvconf/update.d" ]; then
 			# Automatic handling :-)
 			resolvconf --create-runtime-directories
 			resolvconf --enable-updates
-			echo -n "$CONF" | resolvconf -a "${interface}.udhcpc"
+			< "$conf_file"  resolvconf -a "${interface}.udhcpc"
+			rm -- "$conf_file"
 		else
 			# Manual handling required :-(
-			echo -n "$CONF" > "$THIS_RESOLV"
+			mv -f "$conf_file" "$THIS_RESOLV"
 			rebuild_resolv_conf
 		fi
 
@@ -203,7 +202,7 @@ case "$1" in
 		touch "/etc/hosts"
 		hostlist=""
 		[ -n "$dns_fqdn" ] && hostlist="$dns_fqdn"
-		[ -n "$hostname" -a -n "$domain" -a "x${hostname}.${domain}" != "x$dns_fqdn" ] && hostlist="$hostlist ${hostname}.${domain}"
+		[ -n "$hostname" ] && [ -n "$domain" ] && [ "x${hostname}.${domain}" != "x$dns_fqdn" ] && hostlist="$hostlist ${hostname}.${domain}"
 		if [ -n "$hostlist" ]; then
 			for host in $hostlist; do
 				host_short="${host%%.*}"
