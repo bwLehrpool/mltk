@@ -1,27 +1,27 @@
 #!/bin/bash
 
-NET_IF="$1"
-NET_IP="$(ip addr show dev "${NET_IF}" | grep -m1 '^\s*inet ' | awk -F " " '{print $2}' | awk -F "/" '{print $1}')"
+net_if="$1"
+net_ip="$(ip addr show dev "${net_if}" | grep -m1 '^\s*inet ' | awk -F " " '{print $2}' | awk -F "/" '{print $1}')"
 
-UDHCPC_OPTS=""
-if [ -n "$NET_IP" ]; then
-	UDHCPC_OPTS="$UDHCPC_OPTS -r $NET_IP"
+udhcpc_opts=""
+if [ -n "$net_ip" ]; then
+	udhcpc_opts="$udhcpc_opts -r $net_ip"
 fi
 
-UID=$(dmidecode -s system-uuid | sed -r 's/^(..)(..)(..)(..)-(..)(..)-(..)(..)-(....)-/00\4\3\2\1\6\5\8\7\9/')
-if [ "${#UID}" = 34 ]; then
-	echo "Using SMBIOS UID for DHCP"
-	UDHCPC_OPTS="$UDHCPC_OPTS -x 0x3d:$UID"
+uid=$(dmidecode -s system-uuid | sed -r 's/^(..)(..)(..)(..)-(..)(..)-(..)(..)-(....)-/00\4\3\2\1\6\5\8\7\9/')
+if [ "${#uid}" = 34 ]; then
+	echo "Using SMBIOS uid for DHCP"
+	udhcpc_opts="$udhcpc_opts -x 0x3d:$uid"
 fi
 
 mkdir -p /run/udhcpc || echo "Could not create '/run/udhcpc'."
 
-/opt/openslx/sbin/udhcpc $UDHCPC_OPTS -O domain -O nissrv -O nisdomain -O wpad -O search -O wins -t 8 -s /opt/openslx/scripts/udhcpc-openslx -i "$NET_IF" -p "/run/udhcpc/udhcpc.$NET_IF.pid"
-RET=$?
+/opt/openslx/sbin/udhcpc ${udhcpc_opts} -O domain -O nissrv -O nisdomain -O wpad -O search -O wins -t 8 -s /opt/openslx/scripts/udhcpc-openslx -i "${net_if}" -p "/run/udhcpc/udhcpc.${net_if}.pid"
+ret=$?
 
-if [ "$RET" != 0 ]; then
-	slxlog "udhcpc" "Could not run 'udhcpc ${UDHCPC_OPTS}' on ${NET_IF}."
+if [ "${ret}" != 0 ]; then
+	slxlog "udhcpc" "Could not run 'udhcpc ${udhcpc_opts}' on ${net_if}."
 fi
 
-exit "$RET"
+exit "${ret}"
 
