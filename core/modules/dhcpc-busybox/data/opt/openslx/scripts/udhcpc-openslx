@@ -19,6 +19,9 @@
 
 . /opt/openslx/config
 
+primary="br0"
+[ -n "$SLX_BRIDGE" ] && primary="$SLX_BRIDGE"
+
 RESOLV_CONF="/opt/openslx/resolv.conf"
 THIS_RESOLV="/run/network/${interface}.resolv"
 
@@ -71,7 +74,7 @@ case "$1" in
 		check_env "$1"
 		mkdir -p "/run/dhcpc"
 		# Set address on interface
-		ip addr add "$ip/$(ipcalc -s -p $ip $subnet|sed s/.*=//)" dev "$interface"
+		ip addr add "$ip/$(ipcalc -s -p "$ip" "$subnet" | sed s/.*=//)" dev "$interface"
 		# Set default route, if given
 		if [ -n "$router" ]; then
 			ip route add default via "$router"
@@ -135,7 +138,7 @@ case "$1" in
 
 		
 		# Things that should only happen for the main interface that was used for booting
-		if [ "$interface" == "br0" ]; then
+		if [ "$interface" = "$primary" ]; then
 			# Update IP
 			sed -i "s/^\(SLX_PXE_CLIENT_IP=\).*$/\1'$ip'/" /opt/openslx/config
 			# Write DOMAIN and SEARCH to /opt/openslx/config if empty
@@ -156,7 +159,7 @@ case "$1" in
 			# Only if network is not ready yet
 			if [ ! -e "/run/network/network-ready" ]; then
 				# Update hostname
-				if [ -z "$dns_fqdn" -a -n "$domain" -a -n "$hostname" ]; then
+				if [ -z "$dns_fqdn" ] && [ -n "$domain" ] && [ -n "$hostname" ]; then
 					# fallback to what the dhcp told us
 					dns_fqdn="${hostname}.${domain}"
 				fi
@@ -183,7 +186,18 @@ case "$1" in
 				# Mark network target as reached
 				systemctl start network.target &
 			fi # end "network not ready yet"
-		fi # end "br0 only"
+			# Remove any stray addresses; we expect the primary interface to only have one
+			# address supplied via DHCP. We do this after adding the new one, obviously.
+			rem_list=$( ip -o addr show "$interface" | awk '{ for (i=1;i<NF;++i) if ($i == "inet") print $(i+1) }' | grep -v "^${ip}/" )
+			if [ -n "$rem_list" ]; then
+				echo "PRIMARY: Removing $rem_list since we just got assigned $ip"
+				echo 1 > "/proc/sys/net/ipv4/conf/$interface/promote_secondaries"
+				for addr in $rem_list; do
+					ip addr del "$addr" dev "$interface"
+					sed -i "/^$(escape_search "${addr%/*}")(\s|$)/d" /etc/hosts
+				done
+			fi
+		fi # end "primary only"
 		
 		# Hostname in /etc/hosts
 		touch "/etc/hosts"
@@ -228,13 +242,13 @@ case "$1" in
 	
 	deconfig)
 		check_env "$1"
-		if [ $(grep -c "nfs=" /proc/cmdline) == 0 ]; then
+		if [ "$interface" = "$primary" ]; then
+			echo "Ignoring deconfig for primary interface"
+		else
 			echo 1 > "/proc/sys/net/ipv4/conf/$interface/promote_secondaries"
 			clientip=${ip%%:*}
-			ip addr del "$clientip/$(ipcalc -s -p $clientip $subnet|sed s/.*=//)" dev "$interface"
+			ip addr del "$clientip/$(ipcalc -s -p "$clientip" "$subnet" | sed s/.*=//)" dev "$interface"
 			sed -i "/^$(escape_search "$ip")(\s|$)/d" /etc/hosts
-		else
-			echo "NFS is active, not removing old ip adress. warning: lease may expire after a while."
 		fi
 		
 		if [ -x /sbin/resolvconf ] && [ -L /etc/resolv.conf ] && [ -d /etc/resolvconf/update.d ]; then
