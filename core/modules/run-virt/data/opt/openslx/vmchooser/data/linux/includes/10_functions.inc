@@ -1,5 +1,7 @@
 ### Funktionen ####################################
 
+### Funktionen Mounter ############################
+
 function xor()
 {	local RES=($(echo "$1" | sed "s/../0x& /g"))
 	shift 1
@@ -111,6 +113,35 @@ function mount_share()
 		rmdir "$USERSHAREDIR" 2>/dev/null
 	fi
 }
+
+### Funktionen Mounter Ende #######################
+
+### Funktionen resolution #########################
+
+get_xauthfile()
+{
+	# Das ist mitunter ein Problem, da die richtige xauth zu finden - Distroabhängig!
+	for wartezeit in 1 2 3 5 10 10 0 ende; do
+		[ "$wartezeit" = "ende" ] && { logger "openslx resolution utility: XAUTHFILE not found. Exiting."; exit 1; }
+		XAUTHORITY=$(ps aux | grep -o "root.*X.* \-auth *[^ ]*" | awk '{print $NF}')
+		[ -n "${XAUTHORITY}" ] && break
+		sleep $wartezeit
+	done
+	logger "openslx resolution utility: XAUTHFILE found."
+}
+
+
+check_resolution() {
+	ACTRES=$(DISPLAY="${DISPLAY}" XAUTHORITY="${XAUTHORITY}" xrandr|grep '*'|tr -s " "|cut -f 2 -d " ")
+	if [ "$ACTRES" != "$RESOLUTION" ]; then
+		logger "openslx resolution utility: resolution changed; re-changing."
+		DISPLAY="${DISPLAY}" XAUTHORITY="${XAUTHORITY}" xrandr --output ${AUSGABE} --mode ${RESOLUTION}
+	else
+		logger "openslx resolution utility: resolution unchanged."
+	fi
+}
+
+### Funktionen resolution Ende ####################
 
 ### Funktionen Ende ###############################
 

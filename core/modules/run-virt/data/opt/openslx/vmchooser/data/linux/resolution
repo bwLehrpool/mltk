@@ -7,35 +7,22 @@
 # Zu erledigen: Jede Menge, zB anständiges Trapping, Fehler abfangen usw...
 # set -x
 
-MOUNTDIR=/mnt/diskmount
-RESFILE="${MOUNTDIR}"/openslx.ini
 DISPLAY=:0.0
-
-check_resolution() {
-	# Now, let's wait even more seconds to see if another process re-changes res.:
-	ACTRES=$(DISPLAY="${DISPLAY}" XAUTHORITY="${XAUTHORITY}" xrandr|grep '*'|tr -s " "|cut -f 2 -d " ")
-	if [ "$ACTRES" != "$RESOLUTION" ]; then
-		logger "openslx resolution utility: resolution changed; re-changing."
-		DISPLAY="${DISPLAY}" XAUTHORITY="${XAUTHORITY}" xrandr --output ${AUSGABE} --mode ${RESOLUTION}
-	else
-		logger "openslx resolution utility: resolution unchanged."
-	fi
-}
 
 logger "openslx resolution utility started."
 
 # Da nun fremdgemountet wird, hier sicherheitshalber zur Kontrolle wg. Gross-/Kleinschreibung:
-RESFILE=$(find "${MOUNTDIR}" -iwholename "${RESFILE}")
+SLXCONFIGFILE=$(find "${DISKMOUNTDIR}" -iwholename "${SLXCONFIGFILE}")
 
-if [ -f "$RESFILE" ]; then
-	RESOLUTION=$(grep 'resolution=' "$RESFILE" | cut -d '=' -f 2)
+if [ -f "$SLXCONFIGFILE" ]; then
+	RESOLUTION=$(grep 'resolution=' "$SLXCONFIGFILE" | cut -d '=' -f 2)
 	if [ -z $RESOLUTION ]; then
-		logger "openslx resolution utility: resolution file $RESFILE seems to be empty!"
+		logger "openslx resolution utility: resolution file $SLXCONFIGFILE seems to be empty!"
 		exit 1
 	fi
-	logger "openslx resolution utility: resolution file $RESFILE yields ${RESOLUTION}."
+	logger "openslx resolution utility: resolution file $SLXCONFIGFILE yields ${RESOLUTION}."
 else
-	logger "openslx resolution utility: resolution file $RESFILE not found!"
+	logger "openslx resolution utility: resolution file $SLXCONFIGFILE not found!"
 	exit 1
 fi
 

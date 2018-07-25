@@ -1,0 +1,38 @@
+#!/bin/bash
+
+# set -x
+
+logger "openslx utility script: Started."
+
+OWNDIR=$(dirname $0)
+for i in "$(dirname $0)"/includes/*.inc; do
+	source "$i"
+done    
+
+logger "openslx utility script: spawning resolution script for X displays..."
+OLDPWD=$(pwd)
+i=0
+
+# detecting running X instances:
+cd /tmp/.X11-unix && 	for x in X*; do
+				set_resolution ":${x#X}" &
+				RESPID[i]=$!
+				logger "openslx utility script: spawned resolution script for :${x#X}."
+				let "i++"
+			done
+cd "$OLDPWD"
+
+logger "openslx utility script: spawning share mounter..."
+mnt_shares &
+MNTPID=$!
+
+logger "openslx utility script: Waiting for mounter..."
+# Best to wait until any shares are mounted (and perhaps resolution setting, too?), as perhaps 
+# an user supplied runscript needs a network share?
+wait $MNTPID	# ${RSPID[*]}
+logger "openslx utility script: mounter finished."
+
+
+logger "openslx utility script: starting runscript..."
+runscript
+logger "openslx utility script: runscript finished."

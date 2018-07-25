@@ -39,3 +39,53 @@ function mount_shares()
 		fi
 	done
 }
+
+mnt_shares() {
+	logger "openslx sharemapper: Started."
+	
+	# Wait for network connection to base system
+	x=1
+	while ! ping -w 1 -c 1 "${NATADDR}" 2>/dev/null 1>&2; do
+		[ "$x" -gt 20 ] && { logger "openslx sharemapper: could not reach base system. Giving up."; exit 1; }
+		let x=x+1
+		sleep 2
+	done
+	
+	logger "openslx sharemapper: base system reaching; commencing."
+	
+	# REMAPMODE (remapMode):                0: None, 1 Native, 2 Native Fallback, 3 vmware
+	# CREATEMISSING (createMissingRemap):   0: Nichts tun, 1 xdg-Verzeichnisse
+	
+	case "$REMAPMODE" in
+		0)      logger "openslx sharemapper: remapMode 0 (do nothing) detected."
+		        ;;
+		1)      logger "openslx sharemapper: remapMode 1 (native mode) detected."
+			preliminaries_native
+			get_creds               # fills global var PW with (currently) decrypted password
+			get_shares              # fills array ROHSHARES; row 0 global infos from (shares-)CONFIGFILE,
+						# following rows:       column 1 share path, col 2 drive letter, col 3 share name,
+						#                       column 4 username, col 5 password.
+			mount_shares            # mounts shares given in array ROHSHARES.
+			;;
+		2)      logger "openslx sharemapper: remapMode 2 (fallback mode) detected."
+			preliminaries_native
+			get_creds               # fills global var PW with (currently) decrypted password
+			get_shares              # fills array ROHSHARES; row 0 global infos from (shares-)CONFIGFILE,
+			# following rows:       column 1 share path, col 2 drive letter, col 3 share name,
+			#                       column 4 username, col 5 password.
+			mount_shares            # mounts shares given in array ROHSHARES.
+			check_fallback          # checks for a mounted home and fallbacks to vmware share, if none found.
+			;;
+		3)      logger "openslx sharemapper: remapMode 3 (vmware mode) detected."
+			preliminaries_vmware
+			mount_shares            # mounts shares given in array ROHSHARES - runvirt checks whether there's
+                        			# a home share given or not..
+			;;
+		*)      logger "openslx sharemapper: unknown remapMode in $SLXCONFIGFILE; doing nothing."
+			;;
+	esac
+	
+	# By the way: We also have to start a bwLehrpool-Suite given script (runscript). For convenience we will start it here and 
+	# after mounting shares, as perhaps a given script needs mounted shares.
+	exit 0
+}

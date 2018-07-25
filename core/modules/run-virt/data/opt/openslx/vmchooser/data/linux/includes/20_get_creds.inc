@@ -10,7 +10,7 @@ function get_creds()
 	
 	# Serverantwort pwdaemon in temp. Datei schreiben:
 	timeout 2s dd bs=$BYTES count=1 of="$RAWKEYTEMP" <&13 2>/dev/null
-	
+
 	# Kanal zu Socket schließen:
 	exec 13<&-
 	exec 13>&-

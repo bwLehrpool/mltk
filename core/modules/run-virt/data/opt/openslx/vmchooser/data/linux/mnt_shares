@@ -10,8 +10,6 @@ for i in "$(dirname $0)"/includes/*.inc; do
 done
 
 # Wait for network connection to base system
-#!/bin/bash
-
 x=1
 while ! ping -w 1 -c 1 "${NATADDR}" 2>/dev/null 1>&2; do
 	[ "$x" -gt 20 ] && { logger "openslx sharemapper: could not reach base system. Giving up."; exit 1; } 
@@ -26,7 +24,6 @@ logger "openslx sharemapper: base system reaching; commencing."
 
 case "$REMAPMODE" in
 	0)	logger "openslx sharemapper: remapMode 0 (do nothing) detected."
-		exit 0
 		;;
 	1)	logger "openslx sharemapper: remapMode 1 (native mode) detected."
 		preliminaries_native
@@ -35,7 +32,6 @@ case "$REMAPMODE" in
 					# following rows:	column 1 share path, col 2 drive letter, col 3 share name,
 					# 			column 4 username, col 5 password.
 		mount_shares		# mounts shares given in array ROHSHARES.
-		exit 0
 		;;
 	2)	logger "openslx sharemapper: remapMode 2 (fallback mode) detected."
 		preliminaries_native
@@ -45,16 +41,13 @@ case "$REMAPMODE" in
 					# 			column 4 username, col 5 password.
 		mount_shares		# mounts shares given in array ROHSHARES.
 		check_fallback		# checks for a mounted home and fallbacks to vmware share, if none found.
-		exit 0
 		;;
 	3)	logger "openslx sharemapper: remapMode 3 (vmware mode) detected."
 		preliminaries_vmware
 		mount_shares		# mounts shares given in array ROHSHARES - runvirt checks whether there's
 					# a home share given or not..
-		exit 0
 		;;
-	*)	logger "openslx sharemapper: unknown remapMode in $SLXCONFIGFILE; doing nothing end exiting with error."
-		exit 1
+	*)	logger "openslx sharemapper: unknown remapMode in $SLXCONFIGFILE; doing nothing."
 		;;
 esac
 
