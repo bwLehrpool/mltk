@@ -1,3 +1,11 @@
+function wait_for_wm()
+{
+	# This just waits until there's a window manager.
+	while [[ "$(DISPLAY=:0.0 XAUTHORITY=${XAUTHORITY} xprop -root _NET_SUPPORTING_WM_CHECK)" =~ "no such atom" ]]; do
+		sleep 2
+	done
+}
+
 function runscript()
 {
 	logger "openslx: runscript: looking for a script to run..."
@@ -27,19 +35,16 @@ function runscript()
 				1) 	# 1=normal
 					logger "openslx utility: runscript: Starting script maximised."
 					get_xauthfile
+					wait_for_wm
 					DISPLAY=:0.0 XAUTHORITY="${XAUTHORITY}" $USERPART xterm "$DISKMOUNTDIR/runscript${SCRIPTEXT}" &
 					;;
 				2) 	# 2=minimized (xterm -iconic)
 					logger "openslx utility: runscript: starting script minimised."
 					get_xauthfile
-
-					# warte auf Window manager...
-					while [[ "$(DISPLAY=:0.0 XAUTHORITY=${XAUTHORITY} xprop -root _NET_SUPPORTING_WM_CHECK)" =~ "no such atom" ]]; do
-						sleep 2
-					done
+					wait_for_wm
 
 					# Truly not the best way to wait until the desktop environment is ready, but there's no common way to
-					# check for DE readyness. Until then, we'll sleep.
+					# check for DE readiness. Until then, we'll sleep.
 					sleep 20
 
 					DISPLAY=:0.0 XAUTHORITY="${XAUTHORITY}" $USERPART xterm -iconic "$DISKMOUNTDIR/runscript${SCRIPTEXT}" &
