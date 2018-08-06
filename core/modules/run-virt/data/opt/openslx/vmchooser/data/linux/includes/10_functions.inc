@@ -3,14 +3,19 @@
 ### Funktionen Mounter ############################
 
 function xor()
-{	local RES=($(echo "$1" | sed "s/../0x& /g"))
-	local ONE=($(echo "$2" | sed "s/../0x& /g"))
-	local COUNT1=${#RES[@]}
-	local COUNT2=${#ONE[@]}
-	for (( i = 0; i < $COUNT1; i++ )); do
-		RES[$i]=$((${ONE[$(( i % COUNT2 ))]:-0} ^ ${RES[$i]:-0}))
-	done
+{	local LOGDAT=/tmp/getanzahl.pw.$(date +%H%M%S.%N)
+	echo "Param 1+2: $1 $2" >> $LOGDAT
+	local RES=($(echo "$1" | sed "s/../0x& /g"))
+		local ONE=($(echo "$2" | sed "s/../0x& /g"))
+		local COUNT1=${#RES[@]}
+		local COUNT2=${#ONE[@]}
+		echo "count1+2: $COUNT1 -- $COUNT2 ">>"$LOGDAT"
+		for (( i = 0; i < $COUNT1; i++ )); do
+			RES[$i]=$((${ONE[$(( i % COUNT2 ))]:-0} ^ ${RES[$i]:-0}))
+			echo "${RES[$i]}">>"$LOGDAT"
+		done
 	printf "%02x" "${RES[@]}"
+	printf "%02x" "${RES[@]}" >>"$LOGDAT"
 }
 
 function already_mounted()
@@ -102,8 +107,8 @@ function mount_share()
 	fi
 	if [ "$ERR" -eq 0 ]; then
 		logger "openslx sharemapper: Linking ${SHARELETTER} and $SHARENAME, if possible."
-		[ -n "${SHARELETTER}" ] && ln -s "$USERSHAREDIR" "${USERHOME}"/"$SHARELETTER"
-		[ -n "${SHARELETTER}" ] && ln -s "$USERSHAREDIR" "${USERHOME}"/"$SHARENAME"
+		[ -n "${SHARELETTER}" ] && ln -s "$USERSHAREDIR" "${USERDESKTOP}"/"$SHARELETTER"
+		[ -n "${SHARELETTER}" ] && ln -s "$USERSHAREDIR" "${USERDESKTOP}"/"$SHARENAME"
 	else
 		logger "openslx sharemapper: deleting previously creates share mount dir $USERSHAREDIR."
 		rmdir "$USERSHAREDIR" 2>/dev/null

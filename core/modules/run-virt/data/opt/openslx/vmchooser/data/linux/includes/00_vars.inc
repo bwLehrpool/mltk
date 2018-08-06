@@ -2,6 +2,9 @@
 LOCALUSER=student
 USERHOME=/home/"$LOCALUSER"
 USERHOMEDIR=/home/"$LOCALUSER"/PERSISTENT
+USERDESKTOP=$(xdg-user-dir DESKTOP)
+[ "$USERDESKTOP" == "" ] && USERDESKTOP="$USERHOME"
+
 DISKMOUNTDIR=/mnt/diskmount
 SLXCONFIGFILE="$DISKMOUNTDIR"/openslx.ini
 CONFIGFILE="$DISKMOUNTDIR"/shares.dat
@@ -10,6 +13,7 @@ RAWKEYTEMP=$(mktemp -t XXXXXXXXXX.dat)
 BYTES=256
 declare -a ROHSHARES
 
+# Just to be sure...
 if [ ! $(mount 2>/dev/null | grep -q "$DISKMOUNTDIR") ]; then
 	[ ! -d "$DISKMOUNTDIR" ]        && mkdir -p "$DISKMOUNTDIR"
 	mount /dev/fd1 "$DISKMOUNTDIR" 2>/dev/null 1>&2		# Zu erl.: Fehlerfangen
