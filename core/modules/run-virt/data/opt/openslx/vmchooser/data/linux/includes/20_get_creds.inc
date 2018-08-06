@@ -19,9 +19,9 @@ function get_creds()
 	ANZAHL=$((16#$(dd if=$RAWKEYTEMP bs=1 count=2 2>/dev/null|hexdump -e '1/1 "%02x"')))
 	
 	# Und raus-xor-en:
-	PW=$( xor	$(dd if="$RAWKEYTEMP" bs=1 skip=2 2>/dev/null|hexdump -e '1/1 "%02x"') \
-			$(head -n 1 "$CONFIGFILE" | cut -f 4 -d$'\t') | sed 's/../\\x&/g')
+	PW=$( xor	"$(dd if="$RAWKEYTEMP" bs=1 skip=2 count="$ANZAHL" 2>/dev/null|hexdump -v -e '1/1 "%02x"')" \
+			"$(head -n 1 "$CONFIGFILE" | cut -f 4 -d$'\t')" | sed 's/../\\x&/g')
 	
 	PW=$(echo -e "$PW")     # \x...-Ausdrücke zu ASCII
-	PW="${PW:0:${ANZAHL}}"  # ...und Rest nach ANZAHL abhacken.
+#	PW="${PW:0:${ANZAHL}}"  # ...und Rest nach ANZAHL abhacken.
 }

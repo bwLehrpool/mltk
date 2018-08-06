@@ -60,6 +60,7 @@ case $(${PS} --pid 1 -o comm h) in
 			Description=openslx utility script
 			After=$TARGET
 			Requires=${SERVICEDISKMOUNT}
+			DefaultDependencies=no
 			
 			[Service]
 			Type=oneshot

@@ -25,7 +25,7 @@ set_resolution()
 
 	# Zu verbessern: Der Name des Verbundenen ist nicht immer bekannt. Daher nehmen wir das
 	# erste 'connected' in der Ausgabe xrandrs Und warten evtl. ein Weilchen)::
-	for wartezeit in 1 1 1 2 2 2 4 4 0 ende; do
+	for wartezeit in 1 1 1 2 2 2 4 4 8 8 0 ende; do
 		[ "$wartezeit" = "ende" ] && { logger "openslx resolution utility: Could not detect output device. Exiting." ; exit 1; }
 		AUSGABE=$(DISPLAY="${DISPLAY}" XAUTHORITY="${XAUTHORITY}" xrandr -q|grep -m 1 " connected "|awk '{print $1}')
 		[ -n "$AUSGABE" ] && break
