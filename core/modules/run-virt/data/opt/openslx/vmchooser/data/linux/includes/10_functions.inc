@@ -7,13 +7,10 @@ function xor()
 	local ONE=($(echo "$2" | sed "s/../0x& /g"))
 	local COUNT1=${#RES[@]}
 	local COUNT2=${#ONE[@]}
-	echo "count1+2: $COUNT1 -- $COUNT2 ">>"$LOGDAT"
 	for (( i = 0; i < $COUNT1; i++ )); do
 		RES[$i]=$((${ONE[$(( i % COUNT2 ))]:-0} ^ ${RES[$i]:-0}))
-		echo "${RES[$i]}">>"$LOGDAT"
 	done
 	printf "%02x" "${RES[@]}"
-	printf "%02x" "${RES[@]}" >>"$LOGDAT"
 }
 
 function already_mounted()
