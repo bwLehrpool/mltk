@@ -36,7 +36,7 @@ function runscript()
 					logger "openslx utility: runscript: Starting script maximised."
 					get_xauthfile
 					wait_for_wm
-					DISPLAY=:0.0 XAUTHORITY="${XAUTHORITY}" $USERPART xterm "$DISKMOUNTDIR/runscript${SCRIPTEXT}" &
+					DISPLAY=:0.0 XAUTHORITY="${XAUTHORITY}" $USERPART "xterm $DISKMOUNTDIR/runscript${SCRIPTEXT}" &
 					;;
 				2) 	# 2=minimized (xterm -iconic)
 					logger "openslx utility: runscript: starting script minimised."
@@ -46,7 +46,7 @@ function runscript()
 					# Truly not the best way to wait until the desktop environment is ready, but there's no common way to
 					# check for DE readiness. Until then, we'll sleep.
 					sleep 20
-					DISPLAY=:0.0 XAUTHORITY="${XAUTHORITY}" $USERPART xterm -iconic "$DISKMOUNTDIR/runscript${SCRIPTEXT}" &
+					DISPLAY=:0.0 XAUTHORITY="${XAUTHORITY}" $USERPART "xterm -iconic $DISKMOUNTDIR/runscript${SCRIPTEXT}" &
 					;;
 				*)	# *=?
 					logger "openslx utility: runscript: unkown scriptVisibility $SCRIPTVISIBILITY."
