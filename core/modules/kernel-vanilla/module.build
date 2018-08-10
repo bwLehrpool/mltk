@@ -101,7 +101,12 @@ update_config() {
 
 	# first we need to update the current config
 	local BASE_CONFIG_FILE="/boot/config-$(uname -r)"
-	[ -e "${BASE_CONFIG_FILE}" ] || perror "$BASE_CONFIG_FILE could not be found! This should not happen."
+	if [ ! -e "${BASE_CONFIG_FILE}" ]; then
+		pwarning "$BASE_CONFIG_FILE could not be found! Using default config in the kernel repository as base config."
+		make -C "${MODULE_WORK_DIR}/ksrc" defconfig
+		[ -e "${MODULE_WORK_DIR}/ksrc/.config" ] || perror "Failed to create default kernel config."
+		BASE_CONFIG_FILE="${MODULE_WORK_DIR}/ksrc/.config"
+	fi
 	
 	# check for our wanted config parameter
 	local OPENSLX_WANTED_CONFIG="${ROOT_DIR}/data/kernel.wanted.config"
