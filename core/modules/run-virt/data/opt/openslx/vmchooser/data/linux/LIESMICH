@@ -13,9 +13,9 @@ mkdir, mount, mount.cifs, mv, ping, printf, ps, rmdir, sed, sleep, su,
 systemctl, timeout, unlink, xdg-user-dir, xrandr, xterm.
 
 Als mitunter fehlend haben sich insbesondere mount.cifs und xdg-user-dir 
-erwiesen. Zur Ermittlung eventuell fehlerder binaries ist hilfreich, das 
-Skript openslx mit rootRechen von Hand zu starten und auf "…not found"
-zu achten.
+erwiesen. Zur Ermittlung eventuell fehlender binaries ist hilfreich, das 
+Skript openslx mit root-Rechten von Hand zu starten und auf "…not found"
+u.ä. zu achten.
 
 
 Logeinträge:
