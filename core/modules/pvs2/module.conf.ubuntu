@@ -2,6 +2,7 @@
 REQUIRED_INSTALLED_PACKAGES="
 	libqt5gui5
 	libqt5x11extras5-dev
+	qttools5-dev
 	qttools5-dev-tools
 	libvncserver-dev
 	xinput
