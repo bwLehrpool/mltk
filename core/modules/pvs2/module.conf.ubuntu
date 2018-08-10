@@ -1,6 +1,8 @@
 #!/bin/bash
 REQUIRED_INSTALLED_PACKAGES="
+	libxss-dev
 	libqt5gui5
+	libqt5svg5-dev
 	libqt5x11extras5-dev
 	qttools5-dev
 	qttools5-dev-tools
