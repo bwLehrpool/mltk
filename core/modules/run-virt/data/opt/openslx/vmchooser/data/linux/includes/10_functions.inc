@@ -102,8 +102,17 @@ function mount_share()
 	fi
 	if [ "$ERR" -eq 0 ]; then
 		logger "openslx sharemapper: Linking ${SHARELETTER} and $SHARENAME, if possible."
-		[ -n "${SHARELETTER}" ] && ln -s "$USERSHAREDIR" "${USERDESKTOP}"/"$SHARELETTER"
-		[ -n "${SHARENAME}" ] && ln -s "$USERSHAREDIR" "${USERDESKTOP}"/"$SHARENAME"
+#		[ -n "${SHARELETTER}" ] && ln -s "$USERSHAREDIR" "${USERDESKTOP}"/"$SHARELETTER"
+#		[ -n "${SHARELETTER}" ] && ln -s "$USERSHAREDIR" "${USERDESKTOP}"/"$SHARENAME"
+
+		if [ -n "${SHARENAME}" ]; then
+			ln -s "$USERSHAREDIR" "${USERDESKTOP}"/"$SHARENAME"
+			logger "openslx sharemapper: ${SHARENAME} linked."
+		elif [ -n "${SHARELETTER}" ]; then
+			ln -s "$USERSHAREDIR" "${USERDESKTOP}"/"$SHARELETTER"
+			logger "openslx sharemapper: No sharename found, share letter ${SHARELETTER} linked."
+		fi
+
 	else
 		logger "openslx sharemapper: deleting previously creates share mount dir $USERSHAREDIR."
 		rmdir "$USERSHAREDIR" 2>/dev/null

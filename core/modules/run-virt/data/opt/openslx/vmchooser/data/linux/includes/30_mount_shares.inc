@@ -29,6 +29,17 @@ function mount_shares()
 			mounter "${MOUNTPARAM}" "${MOUNTOPTS}" "${SHAREPATH}" "${USERHOMEDIR}" 2>/dev/null 1>&2 &
 			unset USER
 			unset PASSWD
+
+			# linken: userhomedir <-sharename, userhomedir <- shareletter ln -s "$USERSHAREDIR" "${USERDESKTOP}"/"$SHARENAME"
+			#								ln -s "$USERSHAREDIR" "${USERDESKTOP}"/"$SHARELETTER"
+			logger "openslx sharemapper: Linking ${SHARELETTER} or ${SHARENAME}, if possible."
+			if [ -n "${SHARENAME}" ]; then
+				ln -s "$USERHOMEDIR" "${USERDESKTOP}"/"$SHARENAME"
+				logger "openslx sharemapper: ${SHARENAME} linked."
+			elif [ -n "${SHARELETTER}" ]; then
+				ln -s "$USERHOMEDIR" "${USERDESKTOP}"/"$SHARELETTER"
+				logger "openslx sharemapper: No sharename found, share letter ${SHARELETTER} linked."
+			fi
 		else
 			if [ -z "${SHARELETTER}" ]; then
 				logger "openslx sharemapper: $SHARELETTER not found. Do not know where to mount."
