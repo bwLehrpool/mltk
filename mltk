@@ -103,7 +103,7 @@ check_devtools() {
 	# Checking for needed development tools, compilers etc.
 	# Required: m4 make gcc g++ binutils
 	# no qmake here, qmake (libqt4-devel) should be installed in a module!
-	local DEV_TOOLS="gcc g++ make cmake m4 strip git depmod patch pkg-config automake autoconf aclocal lsb_release strings" # 'strip' as marker for binutils
+	local DEV_TOOLS="gcc g++ make cmake m4 strip git depmod patch pkg-config automake autoconf aclocal lsb_release strings wget" # 'strip' as marker for binutils
 
 	# DEV_CHECK marks missing dev-tools
 	local DEV_TOOLS_MISSING=""
@@ -117,16 +117,16 @@ check_devtools() {
 		pinfo "For $SYS_DISTRIBUTION you probably need to run:"
 		case $SYS_DISTRIBUTION in
 			ubuntu | debian)
-				pinfo "apt-get install build-essential m4 pkg-config cmake automake autoconf binutils lsb-release"
+				pinfo "apt-get install build-essential m4 pkg-config cmake automake autoconf binutils lsb-release wget"
 				pinfo "to install missing development tools."
 				;;
 			# FIXME: Don't know how precise this filter works so we might want to have a better matching ...
 			opensuse)
-				pinfo "zypper install gcc gcc-c++ make m4 binutils git module-init-tools patch pkg-config cmake lsb-release"
+				pinfo "zypper install gcc gcc-c++ make m4 binutils git module-init-tools patch pkg-config cmake lsb-release wget"
 				pinfo "to install missing development tools."
 				;;
 			fedora | scientific | centos)
-				pinfo "yum install redhat-lsb gcc-c++ gcc make m4 binutils pkgconfig patch cmake lsb-release"
+				pinfo "yum install redhat-lsb gcc-c++ gcc make m4 binutils pkgconfig patch cmake lsb-release wget"
 				;;
 			*)
 				perror "No installation help for $SYS_DISTRIBUTION available."
