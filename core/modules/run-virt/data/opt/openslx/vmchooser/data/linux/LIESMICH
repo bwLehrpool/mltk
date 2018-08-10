@@ -1,9 +1,60 @@
-Dieses Paket besteht aus folgenden Skripten:
+Voraussetzungen
+
+Diese Dienstskripte rufen einige externe Programme auf. Die meisten dieser 
+benötigten Programme dürften in einer Standardinstallation enthalten sein; 
+bei Fehlfunktionen bzw. Nicht-Ausführung bestimmter Funktionen sollte nach 
+Prüfung der üblichen Logdateien auch geprüft werden, ob die benötigten 
+Binaries in der genutzen virtuellen Maschine enthalten sind.
+
+Folgende Programme werden benötigt:
+
+awk, cat, chmod, chown, cut, cvt, find, grep, head, hexdump, ln, logger, 
+mkdir, mount, mount.cifs, mv, ping, printf, ps, rmdir, sed, sleep, su, 
+systemctl, timeout, unlink, xdg-user-dir, xrandr, xterm.
+
+Als mitunter fehlend haben sich insbesondere mount.cifs und xdg-user-dir 
+erwiesen. Zur Ermittlung eventuell fehlerder binaries ist hilfreich, das 
+Skript openslx mit rootRechen von Hand zu starten und auf "…not found"
+zu achten.
+
+
+Logeinträge:
+
+Die Skripte loggen eine Vielzahl an Information zu, jeweiligen syslog. 
+Alle Logeinträge sind mit einem vorstehenden 'openslx' gekennzeichnet, 
+die Einträge sind zudem wie folgt aufgeschlüsselt:
+
+'openslx utility script': openslx-Hauptskript
+'openslx sharemapper': Dienstskript zum Einhängen der Netzlaufwerke,
+'openslx resolution utility': Dienstskript zur Bildschirmauflösung.
+
+
+Enthaltene Skripte:
 
 vm_installer:	Dieses Skript einmalig in einer lokalen, permanenten (also 
 		nicht innerhalb des Poolsystems) Virtuellen Maschine ausführen. 
 		Es schreibt drei systemd-Servicedateien und verlinkt diese,
 		um beim Systemstart folgende Skripte zu starten:
+
+openslx:	Das Skript openslx wird von einem durch vm_installer 
+		erzeugten systemd-Dienst gestartet. Es ruft die Funktionen 
+		resolution und mnt_shares auf. Die vorher einzelstehenden 
+		Skripte resolution und mnt_shares sind daher nicht mehr 
+		vonnöten.
+
+umnt_shares:	(Before shutdown.target): Hängt gegebene Laufwerke beim 
+		Herunterfahren der VM wieder aus.
+
+resolution_standalone: Einzelstehende Version des resolution-Skriptes, die 
+		keine Vorarbeiten seitens systemd benötigt. Für geeignete 
+		Einbindung innerhalb der VM (Xsetup/Xreset) muss daher 
+		selbst gesorgt werden.
+
+		Anmerkung: Dieses Skript wird nur unstetig gewartet, die 
+		Nutzung von openslx wird daher empfohlen.
+
+
+Veraltet als Einzelskripte:
 
 resolution:	(after display-manager.service): Dieses Skript wartet eine 
 		gewisse Zeit, ob ein X-Server gestartet wurde, ändert 
@@ -19,15 +70,3 @@ mnt_shares: 	(after basic.target): Wertet die Einträge remapMode (sowie
 		Wertes die in shares.dat angegebenen Netzlaufwerke ein. Die 
 		(evtl. nötige) Authentifizierung wird verschlüsselt vom 
 		Grundsystem übergeben.
-
-umnt_shares:	(Before shutdown.target): Hängt gegebene Laufwerke beim 
-		Herunterfahren der VM wieder aus.
-
-
-
-resolution_standalone: Einzelstehende Version des resolution-Skriptes, die 
-		keine Vorarbeiten seitens systemd benötigt.
-		Für geeignete Einbindung innerhalb der VM (Xsetup/Xreset) 
-		muss daher selbst gesorgt werden.
-
-
