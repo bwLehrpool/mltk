@@ -1,10 +1,59 @@
+Prerequisites
+
+These utilitity scripts are colling some external programs. Most of these 
+binaries should be contained in a standard Linux installation. If these 
+scripts malfunction or a feature does not work it would be wise to verify 
+whether the needed binaries are included in the used virtual machine (and 
+check the usual log files, of course).
+
+These programs are needed:
+
+awk, cat, chmod, chown, cut, cvt, find, grep, head, hexdump, ln, logger,
+mkdir, mount, mount.cifs, mv, ping, printf, ps, rmdir, sed, sleep, su,
+systemctl, timeout, unlink, xdg-user-dir, xrandr, xterm.
+
+Two likely candidates are in particular mount.cifs and xdg-user-dir. Do 
+detect missing binaries it is helpful to start the script openslx with root 
+permissions by hand and check for "…not found" messages.
+
+
+Log file entries:
+
+These script do log a multitude of information to syslog. Every log entry is 
+distinguished by a preceding 'openslx'; the entries are further itemised by:
+
+'openslx utility script': openslx main script,
+'openslx sharemapper': utility to mount network shares,
+'openslx resolution utility': utility to set monitor resolution.
+
+
+Included scripts:
+
 This package consists of following scripts:
 
 vm_installer: 	This script is to be started once in a local, permanent (so 
 		not within the pool system environment) virtual machine. It 
-		writes three systemd service files and links them, so  
-		following scripts will be started at system startup resp. 
-		shutdown:
+		writes two systemd service files and links them, so following 
+		scripts will be started at system startup resp. shutdown.
+
+openslx:	The script openslx will be started via systemd service written 
+		by vm_installer. It calls the functions resolution and 
+		mnt_shares. The formerly solitary scripts resolution and 
+		mnt_shares will be necessary no longer.
+
+umnt_shares:	(before shutdown.target): Unmounts given network shares at 
+		virtual machine shutdown.
+
+resolution_standalone: Standalone version of resolution sctipt. Needs no 
+		preliminary work done by systemd or vm_runtime. It has to be 
+		embedded/startedt via adequate means by hand (eg. 
+		Xsetup/Xreset).
+
+		Annotation: This script will not be maintained regularly, so 
+		it is recommended to use openslx.
+
+
+Obsolete as single scripts:
 
 resolution:     (after display-manager.service): Sets resolution within the 
 		virtual machine according to base system resolution given via 
@@ -14,13 +63,4 @@ mnt_shares:     (after basic.target): Reads entries remapMode (and
 		createMissingRemap, todo) from the file openslx.ini, and 
 		mounts the shares given by shares.dat according to remapMode. 
 		mounts therein given network shares.
-
-umnt_shares:	(Before shutdown.target): Umounts given shares at virtual 
-		machine shutdown time .
-
-
-resolution_standalone: Standalone version of resolution sctipt. Needs no 
-		preliminary work done by systemd or vm_runtime.
-		One has to embed/start it via adequate means by hand 
-		(Xsetup/Xreset).
 

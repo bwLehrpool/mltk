@@ -12,16 +12,17 @@ awk, cat, chmod, chown, cut, cvt, find, grep, head, hexdump, ln, logger,
 mkdir, mount, mount.cifs, mv, ping, printf, ps, rmdir, sed, sleep, su, 
 systemctl, timeout, unlink, xdg-user-dir, xrandr, xterm.
 
-Als mitunter fehlend haben sich insbesondere mount.cifs und xdg-user-dir 
-erwiesen. Zur Ermittlung eventuell fehlender binaries ist hilfreich, das 
-Skript openslx mit root-Rechten von Hand zu starten und auf "…not found"
-u.ä. zu achten.
+Als mitunter fehlend haben sich insbesondere mount.cifs (wenn SMB-Laufwerke 
+nicht eingebunden werden und xdg-user-dir (wenn keine Icons auf dem Desktop 
+erscheinen) erwiesen. Zur Ermittlung eventuell fehlender binaries ist 
+hilfreich, das Skript openslx mit root-Rechten von Hand zu starten und auf 
+"…not found" u.ä. zu achten.
 
 
 Logeinträge:
 
-Die Skripte loggen eine Vielzahl an Information zu, jeweiligen syslog. 
-Alle Logeinträge sind mit einem vorstehenden 'openslx' gekennzeichnet, 
+Die Skripte loggen eine Vielzahl an Information zum jeweiligen syslog. 
+Alle Logeinträge sind mit einem vorgestellten 'openslx' gekennzeichnet; 
 die Einträge sind zudem wie folgt aufgeschlüsselt:
 
 'openslx utility script': openslx-Hauptskript
@@ -33,7 +34,7 @@ Enthaltene Skripte:
 
 vm_installer:	Dieses Skript einmalig in einer lokalen, permanenten (also 
 		nicht innerhalb des Poolsystems) Virtuellen Maschine ausführen. 
-		Es schreibt drei systemd-Servicedateien und verlinkt diese,
+		Es schreibt zwei systemd-Servicedateien und verlinkt diese,
 		um beim Systemstart folgende Skripte zu starten:
 
 openslx:	Das Skript openslx wird von einem durch vm_installer 
