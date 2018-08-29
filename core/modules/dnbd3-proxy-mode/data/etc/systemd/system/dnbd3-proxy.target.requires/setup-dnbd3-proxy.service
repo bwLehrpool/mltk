@@ -1,7 +1,1 @@
-[Unit]
-Description=Setup DNBD3 proxy server
-After=network.target multi-user.target
-
-[Service]
-Type=oneshot
-ExecStart=/opt/openslx/scripts/systemd-setup_dnbd3_proxy
+../setup-dnbd3-proxy.service

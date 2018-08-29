@@ -1,10 +1,1 @@
-[Unit]
-Description=DNBD3 proxy server
-After=network.target multi-user.target setup-dnbd3-proxy.service
-
-[Service]
-User=dnbd3
-ExecStart=/opt/openslx/bin/dnbd3-server -n -c /etc/dnbd3
-Restart=always
-RestartSec=1
-TimeoutStopSec=10
+../dnbd3-proxy.service
