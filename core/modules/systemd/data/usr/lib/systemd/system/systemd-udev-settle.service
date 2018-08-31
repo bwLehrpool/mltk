@@ -16,16 +16,10 @@ DefaultDependencies=no
 Wants=systemd-udevd.service
 After=systemd-udev-trigger.service
 Before=sysinit.target
-ConditionCapability=CAP_MKNOD
+ConditionPathIsReadWrite=/sys
 
 [Service]
 Type=oneshot
 TimeoutSec=180
 RemainAfterExit=yes
-# Don't ask...
-ExecStart=/opt/openslx/bin/usleep 100000
-ExecStart=/usr/bin/udevadm settle --timeout=3
-ExecStart=/opt/openslx/bin/usleep 20000
-ExecStart=/usr/bin/udevadm settle --timeout=3
-ExecStart=/opt/openslx/bin/usleep 20000
-ExecStart=/usr/bin/udevadm settle --timeout=3
+ExecStart=/usr/bin/udevadm settle

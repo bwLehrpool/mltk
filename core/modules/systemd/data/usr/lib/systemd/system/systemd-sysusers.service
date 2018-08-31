@@ -6,12 +6,16 @@
 #  (at your option) any later version.
 
 [Unit]
-Description=Power-Off
-Documentation=man:systemd-halt.service(8)
+Description=Create System Users
+Documentation=man:sysusers.d(5) man:systemd-sysusers.service(8)
 DefaultDependencies=no
-Requires=shutdown.target umount.target final.target
-After=shutdown.target umount.target final.target
+Conflicts=shutdown.target
+After=systemd-remount-fs.service
+Before=sysinit.target shutdown.target systemd-update-done.service
+ConditionNeedsUpdate=/etc
 
 [Service]
 Type=oneshot
-ExecStart=/usr/bin/systemctl --force poweroff
+RemainAfterExit=yes
+ExecStart=/usr/bin/systemd-sysusers
+TimeoutSec=90s

@@ -12,15 +12,15 @@ DefaultDependencies=no
 Before=sockets.target
 
 # Mount and swap units need this. If this socket unit is removed by an
-# isolate request the mount and and swap units would be removed too,
+# isolate request the mount and swap units would be removed too,
 # hence let's exclude this from isolate requests.
 IgnoreOnIsolate=yes
 
 [Socket]
 ListenStream=/run/systemd/journal/stdout
 ListenDatagram=/run/systemd/journal/socket
-ListenDatagram=/dev/log
 SocketMode=0666
 PassCredentials=yes
 PassSecurity=yes
 ReceiveBuffer=8M
+Service=systemd-journald.service

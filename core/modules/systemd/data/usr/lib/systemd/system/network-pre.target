@@ -6,10 +6,7 @@
 #  (at your option) any later version.
 
 [Unit]
-Description=Delayed Shutdown Service
-Documentation=man:systemd-shutdownd.service(8)
-DefaultDependencies=no
-
-[Service]
-ExecStart=/usr/lib/systemd/systemd-shutdownd
-NotifyAccess=all
+Description=Network (Pre)
+Documentation=man:systemd.special(7)
+Documentation=https://www.freedesktop.org/wiki/Software/systemd/NetworkTarget
+RefuseManualStart=yes

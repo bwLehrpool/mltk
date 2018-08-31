@@ -6,12 +6,16 @@
 #  (at your option) any later version.
 
 [Unit]
-Description=Power-Off
-Documentation=man:systemd-halt.service(8)
+Description=Enforce Volatile Root File Systems
+Documentation=man:systemd-volatile-root.service(8)
 DefaultDependencies=no
-Requires=shutdown.target umount.target final.target
-After=shutdown.target umount.target final.target
+Conflicts=shutdown.target
+After=sysroot.mount
+Before=initrd-root-fs.target shutdown.target
+Conflicts=shutdown.target
+AssertPathExists=/etc/initrd-release
 
 [Service]
 Type=oneshot
-ExecStart=/usr/bin/systemctl --force poweroff
+RemainAfterExit=yes
+ExecStart=/usr/lib/systemd/systemd-volatile-root yes /sysroot

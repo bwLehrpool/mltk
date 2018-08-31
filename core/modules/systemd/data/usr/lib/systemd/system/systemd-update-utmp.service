@@ -6,15 +6,16 @@
 #  (at your option) any later version.
 
 [Unit]
-Description=Create Static Device Nodes in /dev
-Documentation=man:tmpfiles.d(5) man:systemd-tmpfiles(8)
+Description=Update UTMP about System Boot/Shutdown
+Documentation=man:systemd-update-utmp.service(8) man:utmp(5)
 DefaultDependencies=no
+RequiresMountsFor=/var/log/wtmp
 Conflicts=shutdown.target
-After=systemd-sysusers.service
-Before=sysinit.target local-fs-pre.target systemd-udevd.service shutdown.target
-ConditionCapability=CAP_SYS_MODULE
+After=systemd-remount-fs.service systemd-tmpfiles-setup.service auditd.service
+Before=sysinit.target shutdown.target
 
 [Service]
 Type=oneshot
 RemainAfterExit=yes
-ExecStart=/usr/bin/systemd-tmpfiles --prefix=/dev --create --boot
+ExecStart=/usr/lib/systemd/systemd-update-utmp reboot
+ExecStop=/usr/lib/systemd/systemd-update-utmp shutdown

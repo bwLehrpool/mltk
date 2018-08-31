@@ -6,15 +6,6 @@
 #  (at your option) any later version.
 
 [Unit]
-Description=udev Control Socket
-Documentation=man:systemd-udevd.service(8) man:udev(7)
-DefaultDependencies=no
-Before=sockets.target
-ConditionPathIsReadWrite=/sys
-
-[Socket]
-Service=systemd-udevd.service
-ListenSequentialPacket=/run/udev/control
-SocketMode=0600
-PassCredentials=yes
-RemoveOnStop=yes
+Description=Remote File Systems (Pre)
+Documentation=man:systemd.special(7)
+RefuseManualStart=yes

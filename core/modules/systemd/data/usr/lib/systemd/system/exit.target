@@ -6,12 +6,12 @@
 #  (at your option) any later version.
 
 [Unit]
-Description=Offline System Update
-Documentation=man:systemd.offline-updates(7)
-Documentation=man:systemd.special(7) man:systemd-system-update-generator(8)
-Requires=sysinit.target
-Conflicts=shutdown.target
-After=sysinit.target
-Before=shutdown.target
+Description=Exit the container
+Documentation=man:systemd.special(7)
+DefaultDependencies=no
+Requires=systemd-exit.service
+After=systemd-exit.service
 AllowIsolate=yes
-Wants=system-update-cleanup.service
+
+[Install]
+Alias=ctrl-alt-del.target

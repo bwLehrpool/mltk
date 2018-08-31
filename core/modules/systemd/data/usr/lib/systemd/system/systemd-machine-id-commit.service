@@ -6,15 +6,17 @@
 #  (at your option) any later version.
 
 [Unit]
-Description=Create Static Device Nodes in /dev
-Documentation=man:tmpfiles.d(5) man:systemd-tmpfiles(8)
+Description=Commit a transient machine-id on disk
+Documentation=man:systemd-machine-id-commit.service(8)
 DefaultDependencies=no
 Conflicts=shutdown.target
-After=systemd-sysusers.service
-Before=sysinit.target local-fs-pre.target systemd-udevd.service shutdown.target
-ConditionCapability=CAP_SYS_MODULE
+Before=sysinit.target shutdown.target
+After=local-fs.target
+ConditionPathIsReadWrite=/etc
+ConditionPathIsMountPoint=/etc/machine-id
 
 [Service]
 Type=oneshot
 RemainAfterExit=yes
-ExecStart=/usr/bin/systemd-tmpfiles --prefix=/dev --create --boot
+ExecStart=/usr/bin/systemd-machine-id-setup --commit
+TimeoutSec=30s

@@ -6,13 +6,12 @@
 #  (at your option) any later version.
 
 [Unit]
-Description=Delayed Shutdown Socket
-Documentation=man:systemd-shutdownd.service(8)
+Description=Exit the Session
+Documentation=man:systemd.special(7)
 DefaultDependencies=no
-Before=sockets.target
+Requires=shutdown.target
+After=shutdown.target
 
-[Socket]
-ListenDatagram=/run/systemd/shutdownd
-SocketMode=0600
-PassCredentials=yes
-PassSecurity=yes
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/systemctl --force exit

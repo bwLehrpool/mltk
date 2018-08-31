@@ -9,4 +9,5 @@ REQUIRED_INSTALLED_PACKAGES="
 			libblkid-dev
 			libacl1-dev
 			libpam-dev
+			libmount-dev
 "

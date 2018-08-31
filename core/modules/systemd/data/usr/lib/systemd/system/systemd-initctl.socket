@@ -6,15 +6,12 @@
 #  (at your option) any later version.
 
 [Unit]
-Description=udev Control Socket
-Documentation=man:systemd-udevd.service(8) man:udev(7)
+Description=/dev/initctl Compatibility Named Pipe
+Documentation=man:systemd-initctl.service(8)
 DefaultDependencies=no
 Before=sockets.target
-ConditionPathIsReadWrite=/sys
 
 [Socket]
-Service=systemd-udevd.service
-ListenSequentialPacket=/run/udev/control
+ListenFIFO=/run/systemd/initctl/fifo
+Symlinks=/dev/initctl
 SocketMode=0600
-PassCredentials=yes
-RemoveOnStop=yes
