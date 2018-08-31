@@ -115,7 +115,7 @@ case "$1" in
 		#stop: defines stop function for initscript
 		killall vmnet-netifup vmnet-bridge vmware vmplayer vmware-tray
 		# might take a while until all services are shut down
-		sleep 0.5
+		sleep 1
 		unload_modules
 
 	;;

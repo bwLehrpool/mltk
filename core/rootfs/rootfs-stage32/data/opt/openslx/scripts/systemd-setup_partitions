@@ -119,9 +119,9 @@ mount_temp_fallback () {
 }
 
 udevadm trigger
-sleep 0.2
+usleep 20000 #20ms
 udevadm settle --timeout 4
-sleep 0.2
+usleep 20000 #20ms
 /opt/openslx/sbin/fdisk -l | grep '^/dev/' > "$PARTITION_FILE"
 
 if [ ! -s "$PARTITION_FILE" ]; then
