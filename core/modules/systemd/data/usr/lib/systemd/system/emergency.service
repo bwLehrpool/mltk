@@ -10,22 +10,18 @@ Description=Emergency Shell
 Documentation=man:sulogin(8)
 DefaultDependencies=no
 Conflicts=shutdown.target
+Conflicts=rescue.service
+Conflicts=syslog.socket
 Before=shutdown.target
 
 [Service]
 Environment=HOME=/root
-WorkingDirectory=/root
-ExecStartPre=-/bin/plymouth quit
-ExecStartPre=-/bin/echo -e 'Welcome to emergency mode! After logging in, type "journalctl -xb" to view\\nsystem logs, "systemctl reboot" to reboot, "systemctl default" to try again\\nto boot into default mode.'
-ExecStart=-/sbin/sulogin
-ExecStopPost=/usr/bin/systemctl --fail --no-block default
+WorkingDirectory=-/root
+ExecStart=-/usr/lib/systemd/systemd-sulogin-shell emergency
 Type=idle
 StandardInput=tty-force
 StandardOutput=inherit
 StandardError=inherit
 KillMode=process
 IgnoreSIGPIPE=no
-
-# Bash ignores SIGTERM, so we send SIGHUP instead, to ensure that bash
-# terminates cleanly.
-KillSignal=SIGHUP
+SendSIGHUP=yes

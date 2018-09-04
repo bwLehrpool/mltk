@@ -10,10 +10,10 @@ Description=udev Kernel Socket
 Documentation=man:systemd-udevd.service(8) man:udev(7)
 DefaultDependencies=no
 Before=sockets.target
-ConditionCapability=CAP_MKNOD
+ConditionPathIsReadWrite=/sys
 
 [Socket]
 Service=systemd-udevd.service
-ReceiveBuffer=134217728
+ReceiveBuffer=128M
 ListenNetlink=kobject-uevent 1
 PassCredentials=yes
