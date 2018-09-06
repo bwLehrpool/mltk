@@ -24,7 +24,7 @@ build() {
 	mkdir -p "${MODULE_BUILD_DIR}/opt/openslx/pvs2/"
 	if [ -d "${SRCDIR}/sample_configuration" ]; then
 		# Do not copy lockDesktop.sh - we ship a modified one
-		cp "${SRCDIR}/sample_configuration"/{kb-lock,kb-unlock,switchToManager,switchBack}.sh "${MODULE_BUILD_DIR}/opt/openslx/pvs2/" \
+		cp "${SRCDIR}/sample_configuration"/{kb-lock,kb-unlock}.sh "${MODULE_BUILD_DIR}/opt/openslx/pvs2/" \
 			|| perror "Could not copy external scripts to '${MODULE_BUILD_DIR}/opt/openslx/pvs2/'!"
 		chmod +x "${MODULE_BUILD_DIR}/opt/openslx/pvs2"/*.sh \
 			|| perror "Could not set executable bit for external scripts."

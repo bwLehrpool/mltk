@@ -1,0 +1,7 @@
+[General]
+type=button
+exec=/opt/openslx/pvs2/lockDesktop.sh
+icon=/opt/openslx/pvs2/lock.svg
+caption=Sperren
+tooltip=Die Sitzung sperren. Entsperren nur mit Passwort des angemeldeten Benutzers möglich.
+async=true

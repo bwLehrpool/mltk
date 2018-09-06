@@ -8,7 +8,7 @@
 
 # So we minimize vmware, lock the screen, and then restore vmware.
 # TODO: Add other virtualizers (vbox, kvm) later if needed.
-WINDOWS=$(xdotool search --class vmplayer)
+WINDOWS=$(xdotool search --onlyvisible --class vmplayer)
 for window in $WINDOWS; do
 	xdotool windowminimize $window
 done
