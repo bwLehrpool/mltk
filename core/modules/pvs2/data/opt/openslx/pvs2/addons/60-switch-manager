@@ -5,3 +5,4 @@ caption=Wechseln
 tooltip=Ansicht zwischen PVS-Manager und Virtueller Maschine wechseln.
 init=true
 connection-events=true
+checkable=true

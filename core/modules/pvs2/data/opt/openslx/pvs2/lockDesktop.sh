@@ -13,7 +13,7 @@ for window in $WINDOWS; do
 	xdotool windowminimize $window
 done
 # move mouse pointer to the center of the screen to avoid some problems with ghost clicks
-xdotool mousemove --polar 0 0 --sync
+xdotool mousemove --sync --polar 0 0
 
 # now actually lock
 xscreensaver-command --lock
