@@ -1,0 +1,5 @@
+[General]
+exec=/opt/openslx/pvs2/showBeamergui.sh
+caption=Beamer + Bildschirm konfigurieren
+tooltip=GUI zum Ändern der Bildschirmkonfiguration öffnen
+type=menu
