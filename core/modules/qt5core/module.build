@@ -1,0 +1,16 @@
+#!/bin/bash
+
+fetch_source() {
+	:
+}
+
+build() {
+	local COPYLIST="$MODULE_BUILD_DIR/list_packet_files"
+	list_packet_files | sort -u > "$COPYLIST"
+	tarcopy "$(cat "$COPYLIST")" "${MODULE_BUILD_DIR}"
+}
+
+post_copy() {
+	:
+}
+
