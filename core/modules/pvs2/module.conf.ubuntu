@@ -1,17 +1,12 @@
 #!/bin/bash
 REQUIRED_INSTALLED_PACKAGES="
 	libxss-dev
-	libqt5gui5
-	libqt5svg5-dev
 	libqt5x11extras5-dev
-	qttools5-dev
-	qttools5-dev-tools
 	libvncserver-dev
 	xinput
 	wmctrl
 "
 REQUIRED_CONTENT_PACKAGES="
-	libqt5gui5
 	xinput
 	wmctrl
 "
