@@ -12,6 +12,8 @@ REQUIRED_INSTALLED_PACKAGES="
 	libxcursor-dev
 	libxinerama-dev
 	libxrandr-dev
+	libopus-dev
+	usbutils
 	xsltproc
 "
 # These are required for building 32-bit guest additions on 64-bit systems
@@ -21,6 +23,9 @@ REQUIRED_INSTALLED_PACKAGES_X64_X86="
 	lib32stdc++6
 	gcc-multilib
 	g++-multilib
+"
+REQUIRED_SYSTEM_FILES="
+	/var/lib/usbutils/usb.ids
 "
 [ "$(uname -m)x" = "x86_64x" ] && REQUIRED_INSTALLED_PACKAGES+="$REQUIRED_INSTALLED_PACKAGES_X64_X86"
 true
