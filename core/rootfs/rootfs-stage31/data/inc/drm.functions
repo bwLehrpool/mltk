@@ -1,7 +1,7 @@
 
 grepmod () {
 	local line
-	line=$( grep -i -m1 "^$1\\s" /drm.cfg.d/* )
+	line=$( grep -h -i -m1 "^$1\\s" /drm.cfg.d/* )
 	[ -z "$line" ] && return
 	echo ${line:${#1}}
 }
