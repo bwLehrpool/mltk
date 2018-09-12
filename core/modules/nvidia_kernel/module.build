@@ -1,8 +1,10 @@
 #!/bin/bash
 fetch_source() {
+	local url="$REQUIRED_URL_BASE/$REQUIRED_VERSION/$REQUIRED_NVIDIA"
 	mkdir -p src 2>/dev/null
 	cd src || perror "Could not change into src directory."
-	download "$REQUIRED_URL"
+	download "$REQUIRED_URL_BASE/$REQUIRED_VERSION/README/supportedchips.html"
+	download "$url"
 }
 
 build() {
@@ -49,6 +51,44 @@ build() {
 	done
 
 	rm -rf "$MODULE_BUILD_DIR/NVIDIA"
+
+	mkdir -p "$MODULE_BUILD_DIR/drm.cfg.d"
+	local drmfile="$MODULE_BUILD_DIR/drm.cfg.d/00-nvidia"
+	cat > "$drmfile" <<-BLOFF
+		@nvidia            acpi_ipmi nvidia/nvidia.ko nvidia/nvidia-uvm.ko nvidia/nvidia-modeset.ko nvidia/nvidia-drm.ko
+		@nvidia_fallback   nouveau
+BLOFF
+	if ! [ -s "$MODULE_WORK_DIR/src/supportedchips.html" ]; then
+		pwarning "No supportedchips.html -- using wildcard drm.cfg"
+		echo "10de         @nvidia" >> "$drmfile"
+	else
+		local mode line name dev version
+		pinfo "Creating drm.cfg"
+		mode=0
+		version=
+		while read -r line; do
+			if [[ "$line" =~ '<a name="legacy_' ]]; then
+				version=$(echo "$line" | sed -r 's/^.*name="legacy_([^"]+)".*$/\1/')
+				break # For now, we stop here; later on we could support legacy drivers
+				# By appending $version below and then having different locations for
+				# the modules, and in stage3.2 load different sqfs containers
+			elif [[ "$mode" = 0 ]] && [[ "$line" =~ ^'<tr' ]]; then
+				mode=1
+			elif [[ "$mode" = 1 ]] && [[ "$line" =~ ^'<td' ]]; then
+				mode=2
+				name=$(echo "$line" | sed -r 's/^.*<td[^>]*>([^<]+)<.*$/\1/')
+			elif [[ "$mode" = 2 ]] && [[ "$line" =~ ^'<td'[^'>']*'>'[0-9A-F]{4}'<' ]]; then
+				mode=0
+				dev=$(echo "$line" | sed -r 's/^.*<td[^>]*>([0-9A-Fa-f]{4})<.*$/\1/' | tr 'A-Z' 'a-z')
+				echo "10de:$dev          @nvidia$version"
+			else
+				mode=0
+				name=
+				dev=
+			fi
+		done < supportedchips.html >> "$drmfile"
+	fi
+
 }
 
 post_copy() {

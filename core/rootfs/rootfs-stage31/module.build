@@ -22,16 +22,17 @@ build() {
 	# generate drm module loading database
 	pinfo "Generating PCI ID database for DRM drivers"
 	local DRM_MODULES="$KERNEL_BASE_DIR/lib/modules/$TARGET_KERNEL_LONG/kernel/drivers/gpu/drm"
-	local PCI_FILE="$MODULE_BUILD_DIR/drm.cfg"
+	mkdir -p "$MODULE_BUILD_DIR/drm.cfg.d"
+	local PCI_FILE="$MODULE_BUILD_DIR/drm.cfg.d/99-modinfo"
+	rm -f -- "$PCI_FILE"
 	[ -d "$DRM_MODULES" ] || perror "DRM dir not found at $DRM_MODULES"
-	cp "$MODULE_DIR/templates/drm.cfg" "$PCI_FILE" || perror "Could not copy drm.cfg from templates dir"
 	echo "# -- generated from kernel $TARGET_KERNEL_LONG modules:" >> "$PCI_FILE"
-	for FILE in $(find "$DRM_MODULES" -name "*.ko"); do
+	for FILE in $(find "$DRM_MODULES" -name "*.ko" | sort -u); do # sort -u is an ugly hack to get amdgpu to take precedence over radeon
 		local MODNAME=$(basename "$FILE")
 		MODNAME=${MODNAME%.ko}
 		[ -z "$MODNAME" ] && perror "$FILE equals empty modname"
 		echo "# $MODNAME" >> "$PCI_FILE"
-		for ALIAS in $(modinfo "$FILE" | grep '^alias:' | grep -o 'pci:v.*' | tr '[A-F]' '[a-f]'); do
+		for ALIAS in $(modinfo "$FILE" | grep '^alias:' | grep -o 'pci:v.*' | tr 'A-F' 'a-f'); do
 			VENDOR=$(echo $ALIAS | cut -c 10-13)
 			if [ "x$(echo $ALIAS | cut -c 15)" == "x*" ]; then
 				# device wildcard

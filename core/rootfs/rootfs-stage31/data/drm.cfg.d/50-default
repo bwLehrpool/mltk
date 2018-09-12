@@ -1,0 +1,7 @@
+## intel
+# Dell GX 620
+8086:2772          i915
+# aliases
+@amdgpu            amdgpu
+@amdgpu_fallback   radeon
+@radeon            radeon

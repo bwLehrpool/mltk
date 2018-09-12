@@ -1,7 +1,14 @@
 
+grepmod () {
+	local line
+	line=$( grep -i -m1 "^$1\\s" /drm.cfg.d/* )
+	[ -z "$line" ] && return
+	echo ${line:${#1}}
+}
+
 # pass module name(s) relative path in /lib/modules with .ko extension, or special like @nvidia or @amd
 load_gfx () {
-	local MOD FILES OFFSET RETVAL
+	local MOD FILES RETVAL
 	RETVAL=1 # default: failure
 	while [ $# -gt 0 ]; do
 		MOD=$(echo $1) # trim :)
@@ -9,16 +16,14 @@ load_gfx () {
 		[ -z "$MOD" ] && continue
 		if [ "x${MOD}" != "x${MOD#@}" ]; then
 			# starts with '@' - special
-			OFFSET=$(( ${#MOD} + 2 ))
-			FILES=$( grep "^$MOD\s" "/drm.cfg" | cut -c ${OFFSET}- )
+			FILES=$( grepmod "$MOD" )
 			[ -z "$FILES" ] && drop_shell "Could not find entry for special $MOD"
 			if load_gfx $FILES; then
 				RETVAL=0
 			else
 				# loading special case failed, try fallback if found
 				MOD="${MOD}_fallback"
-				OFFSET=$(( ${#MOD} + 2 ))
-				FILES=$( grep "^$MOD\s" "/drm.cfg" | cut -c ${OFFSET}- )
+				FILES=$( grepmod "$MOD" )
 				[ -n "$FILES" ] && load_gfx $FILES && RETVAL=0
 			fi
 		else # regular module name or filename
@@ -51,20 +56,20 @@ setup_gfx () {
 	fi
 	# not forced - check which driver to load
 	CARDS=$(lspci | grep 'Class 0300' | awk '{print $4}')
-	if [ -e "/drm.cfg" ] && [ -n "$CARDS" ]; then
+	if [ -d "/drm.cfg.d" ] && [ -n "$CARDS" ]; then
 		SUCCESS="yes"
 		for CARD in $CARDS; do
 			# look up exact pci id of this card
-			[ $DEBUG -ge 1 ] && echo Trying exact matching for drm drivers for $CARD
-			FILES=$(grep "^$CARD\s" "/drm.cfg" | cut -c 11-)
+			[ $DEBUG -ge 1 ] && echo "Trying exact matching for drm drivers for $CARD"
+			FILES=$( grepmod "$CARD" )
 			load_gfx $FILES && continue
 			# failed... try vendor id only
-			CARD=$(echo $CARD | cut -c 1-4)
-			[ $DEBUG -ge 1 ] && echo Trying vendor matching for drm drivers for $CARD
-			FILES=$(grep "^$CARD\s" "/drm.cfg" | cut -c 6-)
+			CARD=${CARD:0:4}
+			[ $DEBUG -ge 1 ] && echo "Trying vendor matching for drm drivers for $CARD"
+			FILES=$( grepmod "$CARD" )
 			load_gfx $FILES && continue
 			# everything failed for this card
-			echo Unknown PCI vendor id: $CARD
+			echo "Unknown PCI vendor id: $CARD"
 			SUCCESS="no"
 		done
 		[ "x$SUCCESS" == "xyes" ] && return 0
