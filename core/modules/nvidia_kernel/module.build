@@ -86,7 +86,7 @@ BLOFF
 				name=
 				dev=
 			fi
-		done < supportedchips.html >> "$drmfile"
+		done < "$MODULE_WORK_DIR/src/supportedchips.html" >> "$drmfile"
 	fi
 
 }
