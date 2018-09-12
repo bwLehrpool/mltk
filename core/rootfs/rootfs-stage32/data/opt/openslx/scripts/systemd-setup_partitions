@@ -118,17 +118,32 @@ mount_temp_fallback () {
 	return 0
 }
 
-udevadm trigger
-usleep 20000 #20ms
-udevadm settle --timeout 4
-usleep 20000 #20ms
+wait_for_udev () {
+	local upid ctr
+	ctr=$(( "$1" * 10 ))
+	if ! [ "$ctr" -gt 0 ]; then # Negation to catch NaN
+		ctr=1
+	fi
+	udevadm trigger &
+	usleep 20000 # 20ms
+	udevadm settle & # --timeout doesn't work reliably, sometimes the process just hangs
+	upid=$!
+	while [ "$ctr" -gt 0 ] && [ -d "/proc/$upid" ]; do
+		usleep 100000 # 100ms
+		ctr=$(( ctr - 1 ))
+	done
+	if [ -d "/proc/$upid" ]; then
+		kill -9 "$upid" &
+	fi
+}
+
+wait_for_udev 2
 /opt/openslx/sbin/fdisk -l | grep '^/dev/' > "$PARTITION_FILE"
 
 if [ ! -s "$PARTITION_FILE" ]; then
-	udevadm trigger
-	sleep 3
-	udevadm trigger
-	udevadm settle
+	udevadm trigger &
+	sleep 1
+	wait_for_udev 3
 	/opt/openslx/sbin/fdisk -l | grep '^/dev/' > "$PARTITION_FILE"
 fi
 
