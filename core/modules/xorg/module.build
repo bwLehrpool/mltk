@@ -2,11 +2,13 @@
 
 fetch_source() {
 	if [ -n "$REQUIRED_XORG_DRIVERS" ]; then
+		local drv
 		mkdir -p src
 		cd src || perror "No cd to xorg src dir"
 		for drv in $REQUIRED_XORG_DRIVERS; do
+			drv=${drv%//*}
 			[ -d "${drv}/.git" ] && continue
-			git clone --depth 1 "git://anongit.freedesktop.org/xorg/driver/${drv}" "${drv}" || perror "Could not clone $drv"
+			git clone "git://anongit.freedesktop.org/xorg/driver/${drv}" "${drv}" || perror "Could not clone $drv"
 		done
 		cd -
 	fi
@@ -33,13 +35,18 @@ build() {
 	# Newer X versions seems to have this fixed, so we included it again
 
 	# See if we should build more up to date versions of drivers
-	local drv
 	if [ -n "$REQUIRED_XORG_DRIVERS" ]; then
+		local repo vers drv
 		pinfo "Compiling requested xorg drivers from source"
 		mkdir -p "${MODULE_BUILD_DIR}/usr/lib/xorg/modules/drivers"
 		for drv in $REQUIRED_XORG_DRIVERS; do
+			repo=${drv%//*}
+			vers=${drv#*//}
 			pinfo "Compiling $drv"
-			cd "${MODULE_WORK_DIR}/src/${drv}" || perror "No src dir for xorg driver $drv"
+			cd "${MODULE_WORK_DIR}/src/${repo}" || perror "No src dir for xorg driver $repo"
+			if [ "$drv" != "$vers" ]; then
+				git checkout "$vers" || pwarn "Could not checkout $vers for $repo"
+			fi
 			./autogen.sh || perror "Autogen for $drv failed"
 			./configure || perror "configure for $drv failed"
 			make || perror "Make for $drv failed"

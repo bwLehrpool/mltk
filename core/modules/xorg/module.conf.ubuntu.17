@@ -93,8 +93,8 @@ REQUIRED_DIRECTORIES+="
 # TODO: Required because the shipped ones crash on VT switch as of 2017-11-24
 # Remove when fixed in ubuntu repos
 REQUIRED_XORG_DRIVERS="
-	xf86-video-ati
-	xf86-video-amdgpu
+	xf86-video-ati//xf86-video-ati-18.0.1
+	xf86-video-amdgpu//xf86-video-amdgpu-18.0.1
 "
 REQUIRED_LIBRARIES+="
 	amdgpu_drv
