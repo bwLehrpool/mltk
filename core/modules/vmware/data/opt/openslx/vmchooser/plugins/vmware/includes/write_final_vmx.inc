@@ -227,7 +227,7 @@ setup_graphics() {
 	# For now, only do it on the odd ones, as we don't know if this has any side effects
 	# This seems unnecessary on Win7 but is required on WinXP - need more research for other OSs
 	case "$RESOLUTION" in
-		1600x900|2560x1440|2880x1800|3200x1800)
+		1600x900|2560x1080|2560x1440|2880x1800|3200x1800|3440x1440)
 			X=${RESOLUTION%x*}
 			Y=${RESOLUTION#*x}
 			BYTES=$(( ( ( X * Y * 4  + 65535 ) / 65536 ) * 65536 ))
