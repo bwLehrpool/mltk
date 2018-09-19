@@ -3,7 +3,7 @@ fetch_source() {
 	[ -d "${MODULE_WORK_DIR}/src" ] && rm -rf "${MODULE_WORK_DIR}/src"
 	[ -z "${REQUIRED_VBOX_VERSION}" ] && perror "REQUIRED_VBOX_VERSION is not set!"
 
-	local BASE_URL="https://download.virtualbox.org/virtualbox"
+	local BASE_URL="http://download.virtualbox.org/virtualbox"
 	local DOWNLOAD_URL="${BASE_URL}/${REQUIRED_VBOX_VERSION}/VirtualBox-${REQUIRED_VBOX_VERSION}.tar.bz2"
 	download_untar "$DOWNLOAD_URL" "${MODULE_WORK_DIR}/src" || \
 		perror "Could not download_untar '$DOWNLOAD_URL' to '${MODULE_WORK_DIR}/src'."
