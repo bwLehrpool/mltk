@@ -7,6 +7,10 @@
 # Zu erledigen: Jede Menge, zB anständiges Trapping, Fehler abfangen usw...
 # set -x
 
+OWNDIR=$(dirname $0)
+source "$(dirname $0)"/includes/00_vars.inc
+source "$(dirname $0)"/includes/60_resolution.inc
+
 DISPLAY=:0.0
 
 logger "openslx resolution utility started."
@@ -39,7 +43,7 @@ logger "openslx resolution utility: XAUTHFILE found."
 
 # Zu verbessern: Der Name des Verbundenen ist nicht immer bekannt. Daher nehmen wir das
 # erste 'connected' in der Ausgabe xrandrs Und warten evtl. ein Weilchen)::
-for wartezeit in 1 1 1 2 0 ende; do
+for wartezeit in 1 1 1 2 2 2 4 4 8 8 0 ende; do
 	[ "$wartezeit" = "ende" ] && { logger "openslx resolution utility: Could not detect output device. Exiting." ; exit 1; }
 	AUSGABE=$(DISPLAY="${DISPLAY}" XAUTHORITY="${XAUTHORITY}" xrandr -q|grep -m 1 " connected "|awk '{print $1}')
 	[ -n "$AUSGABE" ] && break
