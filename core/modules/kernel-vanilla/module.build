@@ -42,6 +42,17 @@ fetch_source() {
 	else
 		pinfo "aufs detected in kernel source :)"
 	fi
+	# Other patches
+	local patch
+	cd "$MODULE_WORK_DIR/ksrc" || perror "Could not CD to kernel-source dir ksrc"
+	for patch in "${MODULE_DIR}/patches/"*; do
+		[ -f "$patch" ] || continue
+		grep -q -F "$patch" "patches-done" && continue
+		pinfo "Applying $(basename "$patch")"
+		git apply < "$patch" || perror "Could not apply $patch"
+		echo "$patch" >> "patches-done"
+	done
+	cd -
 	# remember the current kernel version
 	echo "${SYSTEM_KERNEL_LONG}" > ksrc/KVERSION
 	# Fetch all the firmware
@@ -176,6 +187,6 @@ patch_aufs() {
 		pinfo "Applied '$MODULE_WORK_DIR/${AUFS}-standalone/${PATCH}.patch'"
 	done
 	pinfo "Patched kernel source with aufs-${NEEDED_BRANCH}"
-	cd "$MODULE_WORK_DIR"
+	cd "$MODULE_WORK_DIR" || perror "Where is WORK_DIR?"
 }
 
