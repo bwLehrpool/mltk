@@ -12,7 +12,7 @@ if [ -w "/etc" ]; then
 elif [ -n "$HOME" ]; then
 	FILE="${HOME}/.asoundrc"
 else
-	FILE="$(getent passwd root | awk -F ':' '{print $6}')/.asoundrc"
+	FILE="$(getent passwd "$(id -u)" | awk -F ':' '{print $6}')/.asoundrc"
 fi
 
 if [ -e "${FILE}" -a "x$1" != "x--force" ]; then
@@ -20,8 +20,12 @@ if [ -e "${FILE}" -a "x$1" != "x--force" ]; then
 	exit 1
 fi
 
+GREPOPT="-v"
+if [ "x$SLX_PREFERRED_SOUND_OUTPUT" = "xHDMI" ]; then
+	GREPOPT=
+fi
 # Try to filter HDMI cards first
-CARD=$(grep -v -i 'HDMI' "${PROC}" | grep -E -o '^[[:space:]]*[0-9]+[[:space:]]+' | head -n 1)
+CARD=$(grep $GREPOPT -i 'HDMI' "${PROC}" | grep -E -o '^[[:space:]]*[0-9]+[[:space:]]+' | head -n 1)
 # If empty, try again with all
 [ -z "${CARD}" ] && CARD=$(cat "${PROC}" | grep -E -o '^[[:space:]]*[0-9]+[[:space:]]+' | head -n 1)
 
