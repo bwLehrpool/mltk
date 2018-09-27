@@ -20,6 +20,8 @@ if [ -e "${FILE}" -a "x$1" != "x--force" ]; then
 	exit 1
 fi
 
+. /opt/openslx/config
+
 GREPOPT="-v"
 if [ "x$SLX_PREFERRED_SOUND_OUTPUT" = "xHDMI" ]; then
 	GREPOPT=
