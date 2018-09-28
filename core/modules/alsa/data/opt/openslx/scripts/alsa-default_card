@@ -27,7 +27,11 @@ if [ "x$SLX_PREFERRED_SOUND_OUTPUT" = "xHDMI" ]; then
 	GREPOPT=
 fi
 # Try to filter/prefer HDMI cards
-< <( sort -u "${PROC}" | grep $GREPOPT -i HDMI -m 1 | cut -c1-5 | tr -- '-' ' ' )  read card device _
+tmpf=$( mktemp )
+[ -z "$tmpf" ] && tmpf=/tmp/borkenbämpfong
+sort -u "${PROC}" | grep $GREPOPT -i HDMI -m 1 | cut -c1-5 | tr -- '-' ' ' > "$tmpf"
+< "$tmpf"  read card device _
+rm -f -- "$tmpf"
 
 # If empty, do nothing so defaults get used
 if [ -z "${card}" ]; then
