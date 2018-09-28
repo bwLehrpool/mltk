@@ -1,6 +1,6 @@
 #!/bin/ash
 
-PROC="/proc/asound/cards"
+PROC="/proc/asound/pcm"
 
 if [ ! -r "$PROC" ]; then
 	echo "'${PROC}' not found or not readable."
@@ -26,22 +26,25 @@ GREPOPT="-v"
 if [ "x$SLX_PREFERRED_SOUND_OUTPUT" = "xHDMI" ]; then
 	GREPOPT=
 fi
-# Try to filter HDMI cards first
-CARD=$(grep $GREPOPT -i 'HDMI' "${PROC}" | grep -E -o '^[[:space:]]*[0-9]+[[:space:]]+' | head -n 1)
-# If empty, try again with all
-[ -z "${CARD}" ] && CARD=$(cat "${PROC}" | grep -E -o '^[[:space:]]*[0-9]+[[:space:]]+' | head -n 1)
+# Try to filter/prefer HDMI cards
+< <( sort -u "${PROC}" | grep $GREPOPT -i HDMI -m 1 | cut -c1-5 | tr -- '-' ' ' )  read card device _
 
-if [ -z "${CARD}" ]; then
-	echo "No sound card found."
-	exit 1
+# If empty, do nothing so defaults get used
+if [ -z "${card}" ]; then
+	echo "No suitable sound card found, defaults apply."
+	exit 0
 fi
 
-cat > "${FILE}" <<HEREDOC
-defaults.pcm.!card $CARD
-defaults.ctl.!card $CARD
+# Remove leading zero if any (both values are two digit)
+card=${card#0}
+device=${device#0}
 
-defaults.pcm.!device 0
-defaults.ctl.!device 0
+cat > "${FILE}" <<HEREDOC
+defaults.pcm.!card $card
+defaults.ctl.!card $card
+
+defaults.pcm.!device $device
+defaults.ctl.!device $device
 
 HEREDOC
 
