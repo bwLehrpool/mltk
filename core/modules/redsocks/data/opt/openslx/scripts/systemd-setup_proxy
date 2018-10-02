@@ -2,7 +2,7 @@
 # Needs full bash
 
 for wait in 1 1 2 3 4 6 8 10 end; do
-	grep '^#_RCONFIG_TAG$' /opt/openslx/config > /dev/null && echo "Config found!" && break
+	grep -q '^#_RCONFIG_TAG$' /opt/openslx/config && break
 	[ "$wait" == "end" ] && echo "Giving up!" && exit 1
 	echo "No config yet..."
 	sleep $wait
@@ -17,10 +17,10 @@ if [ "$SLX_PROXY_MODE" == "on" ]; then
 	PROXY=on
 elif [ "$SLX_PROXY_MODE" == "auto" -a -n "$SLX_PXE_CLIENT_IP" ]; then
 	# auto detection: check if it is actually needed
-	RET=$(curl -m 2 -s http://www.google.de/ | grep -o google | wc -l)
+	RET=$(curl -L -m 2 -s http://www.google.de/ | grep -o google | wc -l)
 	if [ $RET -lt 20 ]; then
 		sleep 4
-		RET=$(curl -m 5 -s http://www.google.de/ | grep -o google | wc -l)
+		RET=$(curl -L -m 5 -s http://www.google.de/ | grep -o google | wc -l)
 	fi
 	[ $RET -gt 20 ] && echo "Auto detect: Internet is reachable without proxy." && exit 0
 	PROXY=on
@@ -28,6 +28,14 @@ fi
 
 [ "$PROXY" == "off" ] && echo "Proxy mode not required." && exit 0
 echo "Setting up transparent proxying via $SLX_PROXY_IP"
+
+# Do this in addition so proxy-aware programs can use it directly
+mkdir -p /etc/profile.d
+if [ "${SLX_PROXY_TYPE#0:5}" = "http-" ]; then
+	echo "export http_proxy=http://${SLX_PROXY_IP}:${SLX_PROXY_PORT}/" > "/etc/profile.d/system-proxy.sh"
+elif [ "${SLX_PROXY_TYPE#0:5}" = "socks" ]; then
+	echo "export ALL_PROXY=${SLX_PROXY_TYPE}://${SLX_PROXY_IP}:${SLX_PROXY_PORT}/" > "/etc/profile.d/system-proxy.sh"
+fi
 
 sed -i "s/%%PROXY_IP%%/$SLX_PROXY_IP/g;s/%%PROXY_PORT%%/$SLX_PROXY_PORT/g;s/%%PROXY_TYPE%%/$SLX_PROXY_TYPE/g" /etc/redsocks.conf
 
@@ -58,7 +66,6 @@ fi
 iptables -t nat -A REDSOCKS -p tcp -j REDIRECT --to-port 12345
 iptables -t nat -A PREROUTING -i nat1 -p tcp -j REDSOCKS
 iptables -t nat -A OUTPUT -o br0 -p tcp -j REDSOCKS
-#iptables -t nat -A POSTROUTING -o br0 -j MASQUERADE
 iptables -A INPUT -i br0 -p tcp --dport 12345 -j DROP
 HEREDOCBROWN
 chmod +x "/opt/openslx/iptables/rules.d/10-redoscks-proxy"
