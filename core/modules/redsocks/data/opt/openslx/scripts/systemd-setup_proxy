@@ -31,9 +31,9 @@ echo "Setting up transparent proxying via $SLX_PROXY_IP"
 
 # Do this in addition so proxy-aware programs can use it directly
 mkdir -p /etc/profile.d
-if [ "${SLX_PROXY_TYPE#0:5}" = "http-" ]; then
+if [ "${SLX_PROXY_TYPE:0:5}" = "http-" ]; then
 	echo "export http_proxy=http://${SLX_PROXY_IP}:${SLX_PROXY_PORT}/" > "/etc/profile.d/system-proxy.sh"
-elif [ "${SLX_PROXY_TYPE#0:5}" = "socks" ]; then
+elif [ "${SLX_PROXY_TYPE:0:5}" = "socks" ]; then
 	echo "export ALL_PROXY=${SLX_PROXY_TYPE}://${SLX_PROXY_IP}:${SLX_PROXY_PORT}/" > "/etc/profile.d/system-proxy.sh"
 fi
 
@@ -67,7 +67,7 @@ if [ -n "$SLX_PROXY_BLACKLIST" ]; then
 	done >> "$tfile"
 fi
 
-if [ "${SLX_PROXY_TYPE#0:5}" = "http-" ]; then
+if [ "${SLX_PROXY_TYPE:0:5}" = "http-" ]; then
 	# transparent proxying for HTTP
 	echo "iptables -t nat -A REDSOCKS -p tcp --dport 80 -j DNAT --to-destination ${SLX_PROXY_IP}:${SLX_PROXY_PORT}" >> "$tfile"
 fi
