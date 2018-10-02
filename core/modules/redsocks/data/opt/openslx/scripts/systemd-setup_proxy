@@ -61,6 +61,11 @@ iptables -t nat -A REDSOCKS -d 224.0.0.0/4 -j RETURN
 iptables -t nat -A REDSOCKS -d 240.0.0.0/4 -j RETURN
 HEREDOCBROWN
 
+if [ -n "$SLX_PXE_SERVER_IP" ]; then
+	# Exclude boot server; we wouldn't be here if it weren't reachable directly
+	echo "iptables -t nat -A REDSOCKS -d '$SLX_PXE_SERVER_IP' -j RETURN" >> "$tfile"
+fi
+
 if [ -n "$SLX_PROXY_BLACKLIST" ]; then
 	for ADDR in $SLX_PROXY_BLACKLIST; do
 		echo "iptables -t nat -A REDSOCKS -d '$ADDR'-j RETURN"
