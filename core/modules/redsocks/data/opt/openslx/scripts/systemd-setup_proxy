@@ -43,13 +43,14 @@ mkdir -p /run/redsocks
 chown redsocks:redsocks /run/redsocks
 systemctl start redsocks
 
-cat > "/opt/openslx/iptables/rules.d/10-redoscks-proxy" <<HEREDOCBROWN
+tfile="/opt/openslx/iptables/10-redsocks-proxy"
+
+cat > "$tfile" <<HEREDOCBROWN
 #!/bin/ash
-. /opt/openslx/config
 
 iptables -t nat -N REDSOCKS 2>/dev/null
 iptables -t nat -F REDSOCKS
-iptables -t nat -A REDSOCKS -d "\$SLX_PROXY_IP" -j RETURN
+iptables -t nat -A REDSOCKS -d "$SLX_PROXY_IP" -j RETURN
 iptables -t nat -A REDSOCKS -d 0.0.0.0/8 -j RETURN
 iptables -t nat -A REDSOCKS -d 10.0.0.0/8 -j RETURN
 iptables -t nat -A REDSOCKS -d 127.0.0.0/8 -j RETURN
@@ -58,15 +59,28 @@ iptables -t nat -A REDSOCKS -d 172.16.0.0/12 -j RETURN
 iptables -t nat -A REDSOCKS -d 192.168.0.0/16 -j RETURN
 iptables -t nat -A REDSOCKS -d 224.0.0.0/4 -j RETURN
 iptables -t nat -A REDSOCKS -d 240.0.0.0/4 -j RETURN
-if [ -n "\$SLX_PROXY_BLACKLIST" ]; then
-	for ADDR in \$SLX_PROXY_BLACKLIST; do
-		iptables -t nat -A REDSOCKS -d "\$ADDR" -j RETURN
-	done
+HEREDOCBROWN
+
+if [ -n "$SLX_PROXY_BLACKLIST" ]; then
+	for ADDR in $SLX_PROXY_BLACKLIST; do
+		echo "iptables -t nat -A REDSOCKS -d '$ADDR'-j RETURN"
+	done >> "$tfile"
 fi
+
+if [ "${SLX_PROXY_TYPE#0:5}" = "http-" ]; then
+	# transparent proxying for HTTP
+	echo "iptables -t nat -A REDSOCKS -p tcp --dport 80 -j DNAT --to-destination ${SLX_PROXY_IP}:${SLX_PROXY_PORT}" >> "$tfile"
+fi
+
+cat >> "$tfile" <<HEREDOCBROWN
 iptables -t nat -A REDSOCKS -p tcp -j REDIRECT --to-port 12345
+
 iptables -t nat -A PREROUTING -i nat1 -p tcp -j REDSOCKS
 iptables -t nat -A OUTPUT -o br0 -p tcp -j REDSOCKS
 iptables -A INPUT -i br0 -p tcp --dport 12345 -j DROP
 HEREDOCBROWN
-chmod +x "/opt/openslx/iptables/rules.d/10-redoscks-proxy"
+
+chmod +x "$tfile"
+
+mv -f -- "$tfile" "/opt/openslx/iptables/rules.d/10-redsocks-proxy"
 
