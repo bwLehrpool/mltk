@@ -22,14 +22,28 @@ fi
 
 . /opt/openslx/config
 
-GREPOPT="-v"
+GREPOPT="-v -m 1"
 if [ "x$SLX_PREFERRED_SOUND_OUTPUT" = "xHDMI" ]; then
-	GREPOPT=
+	# Prefer HDMI, so let's check whether there is actually
+	# something connected via HDMI. This might still be screen
+	# that doesn't support sound output, but it's better than nothing
+	found=false
+	cnt=1
+	for i in /sys/class/drm/card*-HDMI*; do
+		if [ "x$(cat "$i/status")" = "xconnected" ]; then
+			found=true
+			break
+		fi
+		cnt=$(( cnt + 1 ))
+	done
+	if $found; then
+		GREPOPT="-m $cnt"
+	fi
 fi
 # Try to filter/prefer HDMI cards
 tmpf=$( mktemp )
 [ -z "$tmpf" ] && tmpf=/tmp/borkenbämpfong
-sort -u "${PROC}" | grep $GREPOPT -i HDMI -m 1 | cut -c1-5 | tr -- '-' ' ' > "$tmpf"
+sort -u "${PROC}" | grep $GREPOPT -i HDMI | tail -n 1 | cut -c1-5 | tr -- '-' ' ' > "$tmpf"
 < "$tmpf"  read card device _
 rm -f -- "$tmpf"
 
