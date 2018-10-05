@@ -7,8 +7,10 @@ build() {
 	# We ship xprintidle's source as suse doesn't have it in one of the default repos
 	# and its just too tiny to do anything fancy like fetching source from somewhere
 	mkdir -p "$MODULE_BUILD_DIR/opt/openslx/bin"
-	gcc -o "$MODULE_BUILD_DIR/opt/openslx/bin/xprintidle" "$MODULE_DIR/xprintidle.c" -lX11 -lXss -lXext \
+	gcc -std=c99 -o "$MODULE_BUILD_DIR/opt/openslx/bin/xprintidle" "$MODULE_DIR/xprintidle.c" -lX11 -lXss -lXext \
 			|| perror "Compilation of xprintidle failed!"
+	gcc -std=c99 -o "$MODULE_BUILD_DIR/opt/openslx/bin/xprintlocktime" "$MODULE_DIR/xprintlocktime.c" -lX11 \
+			|| perror "Compilation of xprintlocktime failed!"
 }
 
 post_copy() {
