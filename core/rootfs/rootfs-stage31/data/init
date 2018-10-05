@@ -34,6 +34,8 @@ busybox mount -n -t devtmpfs -o 'rw,relatime,nosuid,noexec,mode=0755' initramfsd
 busybox mount -n -t tmpfs -o 'mode=755,size=10m' run "/run"
 busybox mount -n -t tmpfs -o 'mode=755,size=50m' temp "/tmp"
 
+haveged
+
 # IMPORTANT - check if kernel modules in initrams match kernel version
 BASEDIR="/lib/modules/$(uname -r)/kernel/drivers"
 for dir in gpu hid misc; do

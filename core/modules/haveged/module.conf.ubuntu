@@ -1,0 +1,7 @@
+#!/bin/bash
+REQUIRED_CONTENT_PACKAGES="
+	haveged
+"
+REQUIRED_INSTALLED_PACKAGES="
+	haveged
+"
