@@ -22,6 +22,25 @@ get_sessions() {
 	done
 }
 
+gen_runfile() {
+	# Calc next reboot/shutdown/standby
+	local i dateline ts
+	dateline=
+	for i in $SLX_REBOOT_SCHEDULE $SLX_SHUTDOWN_SCHEDULE; do
+		ts=$(date -d "today $i" +%s)
+		[ "$ts" -gt "$NOW" ] || ts=$(date -d "tomorrow $i" +%s)
+		[ "$ts" -gt "$NOW" ] || continue
+		if [ -z "$dateline" ] || [ "$ts" -lt "$dateline" ]; then
+			dateline="$ts"
+		fi
+	done
+	cat <<EDOC
+[General]
+lockDeadline=0
+shutdownDeadline=$dateline
+EDOC
+}
+
 #
 # 1) Check for idle timeout
 #
@@ -43,26 +62,57 @@ if [ -n "${SLX_LOGOUT_TIMEOUT}" ] && [ "${SLX_LOGOUT_TIMEOUT}" -gt 0 ]; then
 			if [ -n "$DISPLAY" ]; then
 				# Seems to be x11
 				IDLE=
+				LOCK=
 				export XAUTHORITY=$(ps a | grep " $DISPLAY " | grep -o -- '-auth.*$' | grep -m1 -v grep | awk '{print $2}')
-				[ -n "$XAUTHORITY" ] && [ -f "$XAUTHORITY" ] && IDLE=$(xprintidle)
+				[ -n "$XAUTHORITY" ] && [ -f "$XAUTHORITY" ] && LOCK=$(xprintlocktime)
 				# Now that we have DISPLAY and XAUTHORITY set, xprintidle should work
-				if [ -z "$IDLE" ]; then
+				if [ -z "$LOCK" ]; then
 					# Try user's xauth
 					USERID=$(id -u "$NAME")
 					[ -z "$USERID" ] && USERID="$NAME"
 					USRHOME=$(/usr/bin/getent passwd "$USERID" | awk -F ':' '{print $6}')
 					export XAUTHORITY="$USRHOME/.Xauthority"
-					[ -f "$XAUTHORITY" ] && IDLE=$(xprintidle)
 				fi
-				if [ -n "$IDLE" ]; then
-					IDLE=$(( $IDLE / 1000 ))
-					if [ -z "$IDLE" ] || [ "$IDLE" -lt "$SLX_LOGOUT_TIMEOUT" ]; then
-						IS_IDLE=no
+				if [ -f "$XAUTHORITY" ]; then
+					[ -z "$LOCK" ] && LOCK=$(xprintlocktime)
+					IDLE=$(xprintidle)
+					[ -n "$IDLE" ] && IDLE=$(( NOW - ( IDLE / 1000 ) ))
+				fi
+				# Now consider locking - if the screen is locked, we don't want to consider the current idle time, but
+				# the idle time of when the screen was locked - look it up and if not found, write current value
+				RUNFILE="/run/idleaction-$DISPLAY"
+				[ -f "$RUNFILE" ] || gen_runfile > "$RUNFILE"
+				if [ -z "$LOCK" ]; then
+					# Not locked anymore, nuke old value
+					sed -i '/^lockIdleTime=/d' "$RUNFILE"
+				else
+					# Screen is locked, ignore further idle time updates
+					RET=$(awk -F= '{if ($1 == "lockIdleTime") { print $2; exit } }' "$RUNFILE")
+					if [ -z "$RET" ]; then
+						if [ -z "$IDLE" ]; then
+							IDLE="$LOCK"
+						fi
+						echo "lockIdleTime=$IDLE" >> "$RUNFILE"
 					else
+						# Use previous value
+						IDLE="$RET" # XXX
+					fi
+				fi
+				if [ -z "$IDLE" ] && [ -n "$LOCK" ]; then
+					IDLE="$LOCK"
+				fi
+				if [ -n "$IDLE" ] && [ "$IDLE" -gt 0 ]; then
+					TIMEOUT=$(( IDLE + SLX_LOGOUT_TIMEOUT ))
+
+					if [ "$TIMEOUT" -lt "$NOW" ]; then
 						date +%s > /run/openslx/session-killed
 						loginctl terminate-session "$ses"
+					else
+						IS_IDLE=no
+						sed -i "s/^lockDeadline=.*$/lockDeadline=$TIMEOUT/" "$RUNFILE"
 					fi
-				else # xprintidle did not work
+				else
+					# xprint* did not work?
 					IS_IDLE=no
 				fi
 				continue # Done with this session, skip normal tty/ssh checks

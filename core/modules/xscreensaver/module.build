@@ -1,9 +1,16 @@
 #!/bin/bash
 fetch_source() {
-	:
+	git clone "${REQUIRED_GIT}" "${MODULE_WORK_DIR}/src" || perror "Could not clone $REQUIRED_GIT"
 }
 
 build() {
+	[ ! -d "${MODULE_BUILD_DIR}/${REQUIRED_PREFIX}" ] && mkdir -p "${MODULE_BUILD_DIR}/${REQUIRED_PREFIX}"
+	cd "${MODULE_BUILD_DIR}/${REQUIRED_PREFIX}"
+
+	pinfo "Running cmake"
+
+	cmake "$SRCDIR" || perror "'cmake $SRCDIR' failed."
+	make || perror "'make' failed."
 	COPYLIST="list_dpkg_output"
 	list_packet_files > "$COPYLIST"
 	tarcopy "$(cat "${COPYLIST}" | sort -u)" "${MODULE_BUILD_DIR}"
