@@ -4,6 +4,8 @@ fetch_source() {
 }
 
 build() {
+	local SRCDIR="${MODULE_WORK_DIR}/src/"
+
 	[ ! -d "${MODULE_BUILD_DIR}/${REQUIRED_PREFIX}" ] && mkdir -p "${MODULE_BUILD_DIR}/${REQUIRED_PREFIX}"
 	cd "${MODULE_BUILD_DIR}/${REQUIRED_PREFIX}"
 
