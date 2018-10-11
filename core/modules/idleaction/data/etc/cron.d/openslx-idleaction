@@ -3,5 +3,5 @@
 SHELL=/bin/ash
 PATH=/usr/sbin:/usr/bin:/sbin:/bin:/opt/openslx/sbin:/opt/openslx/bin
 
-*/5 *    * * *   root	/opt/openslx/scripts/idleaction-cron_script
+*/2 *    * * *   root	/opt/openslx/scripts/idleaction-cron_script
 
