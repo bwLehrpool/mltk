@@ -85,7 +85,7 @@ if [ -n "${SLX_LOGOUT_TIMEOUT}" ] && [ "${SLX_LOGOUT_TIMEOUT}" -gt 0 ]; then
 				fi
 				# Now consider locking - if the screen is locked, we don't want to consider the current idle time, but
 				# the idle time of when the screen was locked - look it up and if not found, write current value
-				RUNFILE="/run/idleaction-$DISPLAY"
+				RUNFILE="/run/openslx/idleaction-$DISPLAY"
 				[ -f "$RUNFILE" ] || gen_runfile > "$RUNFILE"
 				OLDLOCKTIME=$(awk -F= '{if ($1 == "lockTime") { print $2; exit } }' "$RUNFILE")
 				[ -z "$OLDLOCKTIME" ] && OLDLOCKTIME=0
@@ -164,6 +164,7 @@ else
 			[ ! -e "$IDLEHINT" ] && echo "$NOW" > "$IDLEHINT"
 		else
 			rm -f -- "$IDLEHINT"
+			gen_runfile > "/run/openslx/idleaction-:0" # hard-code for primary X session
 		fi
 	fi
 fi
