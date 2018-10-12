@@ -105,6 +105,7 @@ if [ -n "${SLX_LOGOUT_TIMEOUT}" ] && [ "${SLX_LOGOUT_TIMEOUT}" -gt 0 ]; then
 					TIMEOUT=$(( IDLE + SLX_LOGOUT_TIMEOUT ))
 
 					if [ "$TIMEOUT" -lt "$NOW" ]; then
+						rm -f -- "$RUNFILE"
 						date +%s > /run/openslx/session-killed
 						loginctl terminate-session "$ses"
 					else
@@ -115,6 +116,7 @@ if [ -n "${SLX_LOGOUT_TIMEOUT}" ] && [ "${SLX_LOGOUT_TIMEOUT}" -gt 0 ]; then
 					# xprint* did not work?
 					IS_IDLE=no
 				fi
+				RUNFILE=
 				continue # Done with this session, skip normal tty/ssh checks
 			fi
 			# end X11
