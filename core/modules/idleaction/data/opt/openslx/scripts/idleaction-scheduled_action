@@ -69,6 +69,21 @@ if [ -z "$DELAY" ] && [ "$NUM" = "0" ]; then
 	exit 0
 fi
 
+NOW=$(date +%s)
+timeout=$(( 300 + NOW )) # 5 minute delay for logged in user
+if [ -n "$DELAY" ] && [ "$DELAY" -gt 0 ]; then
+	timeout=$(( timeout + ( DELAY * 60 ) ))
+fi
+
+for f in /run/openslx/idleaction-*; do
+	[ -f "$f" ] || continue
+	grep -q '^shutdownDeadline=' "$f" || continue
+	RET=$(awk -F= '{if ($1 == "shutdownDeadline") { print $2; exit } }' "$f")
+	if [ -z "$RET" ] || [ "$RET" -eq 0 ] || ! [ "$RET" -lt "$timeout" ]; then
+		sed -i "s/^shutdownDeadline=.*$/shutdownDeadline=$timeout/" "$f"
+	fi
+done
+
 runaction () {
 	# Someone logged in or delay requested
 	[ -n "$DETACH" ] && sleep 1
