@@ -28,7 +28,12 @@ gen_runfile() {
 	dateline=
 	for i in $SLX_REBOOT_SCHEDULE $SLX_SHUTDOWN_SCHEDULE; do
 		ts=$(date -d "today $i" +%s)
-		[ "$ts" -gt "$NOW" ] || ts=$(date -d "tomorrow $i" +%s)
+		[ "$ts" -gt 0 ] || continue # NaN
+		ts=$(( ts + 300 )) # Account for the 5 minute delay if someone is logged in
+		if [ "$ts" -lt "$NOW" ]; then
+			ts=$(date -d "tomorrow $i" +%s)
+			ts=$(( ts + 300 )) # Account for the 5 minute delay if someone is logged in
+		fi
 		[ "$ts" -gt "$NOW" ] || continue
 		if [ -z "$dateline" ] || [ "$ts" -lt "$dateline" ]; then
 			dateline="$ts"
