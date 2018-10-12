@@ -3,6 +3,10 @@
 # Autologin
 sed -i '/^AutoLoginDelay=/d;/^AutoLoginUser=/d;s/^AutoLoginEnable=.*$/AutoLoginEnable=true\nAutoLoginUser=demo\nAutoLoginDelay=0/' "/etc/kde4/kdm/kdmrc"
 
+# Disable logout delay for demo user on shutdown/reboot/...
+mkdir -p "/run/openslx"
+touch "/run/openslx/demo-no-logout-delay"
+
 # desktop session
 cat > /opt/openslx/xsessions/default.desktop <<EOF
 [Desktop Entry]

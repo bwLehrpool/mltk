@@ -77,7 +77,11 @@ runaction () {
 		sleep $(( DELAY * 60 ))
 	fi
 	for MINUTES in 5 X X X X X X X 3 X X X 2 X X X 1 X X X; do
-		NUM=$(who | wc -l)
+		if [ -f "/run/openslx/demo-no-logout-delay" ]; then
+			NUM=$(who | grep -v '^demo ' | wc -l)
+		else
+			NUM=$(who | wc -l)
+		fi
 		[ "$NUM" = "0" ] && break
 		if [ "$MINUTES" != "X" ]; then
 			USERS=0
