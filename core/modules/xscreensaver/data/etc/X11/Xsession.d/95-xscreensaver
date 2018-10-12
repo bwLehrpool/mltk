@@ -28,7 +28,7 @@ if which xscreensaver; then
 		fi
 	fi
 	# Create config value for standby timeout
-	[ "$NUM" -gt 0 ] && DPMS=True
+	[ "$SBY" -gt 0 ] && DPMS=True
 	NUM=$SBY
 	SECS=0$(( NUM % 60 ))
 	MINS=0$(( ( NUM / 60 ) % 60 ))
