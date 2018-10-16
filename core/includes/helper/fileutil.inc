@@ -38,3 +38,8 @@ canonicalize() {
 	cd -P -- "$(dirname -- "$1")" && printf '%s\n' "$(pwd -P)/$(basename -- "$1")"
 }
 
+# "cd error": cd to given directory, perror on failure
+cde () {
+	cd "$1" || perror "Could not cd to $1"
+}
+
