@@ -1,21 +1,31 @@
 #!/bin/bash
 fetch_source() {
-	git clone "${REQUIRED_GIT}" "${MODULE_WORK_DIR}/src" || perror "Could not clone $REQUIRED_GIT"
+	autoclone
 }
 
 build() {
 	local SRCDIR="${MODULE_WORK_DIR}/src/"
 
-	[ ! -d "${MODULE_BUILD_DIR}/${REQUIRED_PREFIX}" ] && mkdir -p "${MODULE_BUILD_DIR}/${REQUIRED_PREFIX}"
-	cd "${MODULE_BUILD_DIR}/${REQUIRED_PREFIX}"
+	# xscreensaver
+	mkdir -p "${MODULE_BUILD_DIR}/usr/bin"
+	cde "$SRCDIR/xscreensaver"
+	pinfo "Building xscreensaver"
+	./configure --enable-locking --disable-root-passwd \
+			--with-dpms-ext --with-xinput-ext --with-xf86vmode-ext \
+			--with-randr-ext --with-pam --with-login-manager \
+			--prefix=/usr --without-proc-interrupts $REQUIRED_CONFIGURE_OPTIONS \
+			|| perror "'./configure' failed"
+	cde driver
+	make xscreensaver xscreensaver-command || perror "'make' failed"
+	cp xscreensaver xscreensaver-command "${MODULE_BUILD_DIR}/usr/bin/" || perror "cp fail"
 
-	pinfo "Running cmake"
+	mkdir -p "${MODULE_BUILD_DIR}/${REQUIRED_PREFIX}"
+	cde "${MODULE_BUILD_DIR}/${REQUIRED_PREFIX}"
 
-	cmake "$SRCDIR" || perror "'cmake $SRCDIR' failed."
+	pinfo "Building bwlp-screensaver"
+
+	cmake "$SRCDIR/bwlp-screensaver" || perror "'cmake $SRCDIR/bwlp-screensaver' failed."
 	make || perror "'make' failed."
-	COPYLIST="list_dpkg_output"
-	list_packet_files > "$COPYLIST"
-	tarcopy "$(cat "${COPYLIST}" | sort -u)" "${MODULE_BUILD_DIR}"
 }
 
 post_copy() {
