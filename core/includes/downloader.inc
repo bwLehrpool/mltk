@@ -79,3 +79,33 @@ download_if_empty() {
 	return 1
 }
 
+autoclone () {
+	[ -z "$REQUIRED_GIT" ] && return 0
+	local url branch dst dstdir checkout
+	if [ -n "$1" ]; then
+		dstdir="$1"
+	else
+		dstdir="${MODULE_WORK_DIR}/src"
+	fi
+	mkdir -p "$dstdir" || perror "Could not create $dstdir"
+	for url in $REQUIRED_GIT; do
+		branch=
+		checkout="${url#*||}"
+		[ -z "$checkout" ] && branch="${url#*|}"
+		url="${url%%|*}"
+		dst=${url##*/}
+		dst=${url%.git}
+		pinfo "Cloning $url to $dst"
+		if [ -n "$branch" ]; then
+			git clone -b "$branch" "$url" "$dstdir/$dst" || perror "Could not clone $url branch $branch"
+		else
+			git clone "$url" "$dstdir/$dst" || perror "Could not clone $url"
+			if [ -n "$checkout" ]; then
+				cd "$dstdir/$dst" || perror "cd error. check redbook."
+				git checkout "$checkout" || perror "Could not checkout $checkout from $url"
+			fi
+		fi
+	done
+	return 0
+}
+
