@@ -98,7 +98,7 @@ autoclone () {
 		fi
 		url="${url%%|*}"
 		dst="${url##*/}"
-		dst="${url%.git}"
+		dst="${dst%.git}"
 		pinfo "Cloning $url to $dst"
 		if [ -n "$branch" ]; then
 			git clone -b "$branch" "$url" "$dstdir/$dst" || perror "Could not clone $url branch $branch"
