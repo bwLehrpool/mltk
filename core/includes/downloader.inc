@@ -91,10 +91,14 @@ autoclone () {
 	for url in $REQUIRED_GIT; do
 		branch=
 		checkout="${url#*||}"
-		[ -z "$checkout" ] && branch="${url#*|}"
+		if [ "x$checkout" = "x$url" ]; then
+			checkout=
+			branch="${url#*|}"
+			[ "x$branch" = "x$url" ] && branch=
+		fi
 		url="${url%%|*}"
-		dst=${url##*/}
-		dst=${url%.git}
+		dst="${url##*/}"
+		dst="${url%.git}"
 		pinfo "Cloning $url to $dst"
 		if [ -n "$branch" ]; then
 			git clone -b "$branch" "$url" "$dstdir/$dst" || perror "Could not clone $url branch $branch"
