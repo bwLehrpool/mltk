@@ -265,6 +265,10 @@ finalize_hardware() {
 	sed -i '/^mainMem.freeSpaceCheck/Id' "${TMPCONFIG}"
 	echo 'mainMem.freeSpaceCheck = "FALSE"' >> "${TMPCONFIG}"
 
+	# Fix keymap fuckup when leaving VM
+	sed -i '/^mks.x.resetModMap/Id' "${TMPCONFIG}"
+	echo 'mks.x.resetModMap = "FALSE"' >> "${TMPCONFIG}"
+
 	# TODO: Need a way to check if supported by hardware before enabling!
 	#grep -qi '^vpmc\.enable' "${TMPCONFIG}" || echo 'vpmc.enable = "TRUE"' >> "${TMPCONFIG}"
 }
