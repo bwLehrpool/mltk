@@ -69,18 +69,18 @@ if [ -n "${SLX_LOGOUT_TIMEOUT}" ] && [ "${SLX_LOGOUT_TIMEOUT}" -gt 0 ]; then
 				IDLE=
 				LOCK=
 				export XAUTHORITY=$(ps a | grep " $DISPLAY " | grep -o -- '-auth.*$' | grep -m1 -v grep | awk '{print $2}')
-				[ -n "$XAUTHORITY" ] && [ -f "$XAUTHORITY" ] && LOCK=$(xprintlocktime)
+				[ -n "$XAUTHORITY" ] && [ -f "$XAUTHORITY" ] && IDLE=$(xprintidle)
 				# Now that we have DISPLAY and XAUTHORITY set, xprintidle should work
-				if [ -z "$LOCK" ]; then
+				if [ -z "$IDLE" ]; then
 					# Try user's xauth
 					USERID=$(id -u "$NAME")
 					[ -z "$USERID" ] && USERID="$NAME"
 					USRHOME=$(/usr/bin/getent passwd "$USERID" | awk -F ':' '{print $6}')
 					export XAUTHORITY="$USRHOME/.Xauthority"
 				fi
-				if [ -f "$XAUTHORITY" ]; then
-					[ -z "$LOCK" ] && LOCK=$(xprintlocktime)
-					IDLE=$(xprintidle)
+				if [ -n "$XAUTHORITY" ] && [ -f "$XAUTHORITY" ]; then
+					LOCK=$(xprintlocktime)
+					[ -z "$IDLE" ] && IDLE=$(xprintidle)
 					[ -n "$IDLE" ] && IDLE=$(( NOW - ( IDLE / 1000 ) ))
 				fi
 				# Now consider locking - if the screen is locked, we don't want to consider the current idle time, but
@@ -92,7 +92,7 @@ if [ -n "${SLX_LOGOUT_TIMEOUT}" ] && [ "${SLX_LOGOUT_TIMEOUT}" -gt 0 ]; then
 				if [ -z "$LOCK" ] || [ "$(( OLDLOCKTIME - LOCK ))" -gt 120 ] || [ "$(( LOCK - OLDLOCKTIME ))" -gt 120 ]; then
 					# Not locked anymore, or lock time has changed (= unlock and relock), nuke old value
 					sed -i '/^lockIdleTime=/d;/^lockTime=/d' "$RUNFILE"
-					if [ -n "$LOCK" ]; then
+					if [ -n "$LOCK" ] && [ "$OLDLOCKTIME" -gt 0 ]; then
 						TIMEOUT=$(( LOCK + SLX_LOGOUT_TIMEOUT ))
 						sed -i "s/^lockDeadline=.*\$/lockDeadline=$TIMEOUT/" "$RUNFILE"
 					fi
