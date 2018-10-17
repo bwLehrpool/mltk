@@ -92,6 +92,10 @@ if [ -n "${SLX_LOGOUT_TIMEOUT}" ] && [ "${SLX_LOGOUT_TIMEOUT}" -gt 0 ]; then
 				if [ -z "$LOCK" ] || [ "$(( OLDLOCKTIME - LOCK ))" -gt 120 ] || [ "$(( LOCK - OLDLOCKTIME ))" -gt 120 ]; then
 					# Not locked anymore, or lock time has changed (= unlock and relock), nuke old value
 					sed -i '/^lockIdleTime=/d;/^lockTime=/d' "$RUNFILE"
+					if [ -n "$LOCK" ]; then
+						TIMEOUT=$(( LOCK + SLX_LOGOUT_TIMEOUT ))
+						sed -i "s/^lockDeadline=.*\$/lockDeadline=$TIMEOUT/" "$RUNFILE"
+					fi
 				fi
 				if [ -n "$LOCK" ]; then
 					# Screen is locked, ignore further idle time updates
@@ -113,7 +117,20 @@ if [ -n "${SLX_LOGOUT_TIMEOUT}" ] && [ "${SLX_LOGOUT_TIMEOUT}" -gt 0 ]; then
 					IDLE="$LOCK"
 				fi
 				if [ -n "$IDLE" ] && [ "$IDLE" -gt 0 ]; then
-					TIMEOUT=$(( IDLE + SLX_LOGOUT_TIMEOUT ))
+					if [ -z "$LOCK" ] || grep -Fxq 'lockDeadline=0' "$RUNFILE"; then
+						# Only update if screen is unlocked, or no deadline was recorded yet
+						TIMEOUT=$(( IDLE + SLX_LOGOUT_TIMEOUT ))
+						sed -i "s/^lockDeadline=.*\$/lockDeadline=$TIMEOUT/" "$RUNFILE"
+					else
+						# Use stored value
+						RET=$(awk -F= '{if ($1 == "lockDeadline") { print $2; exit } }' "$RUNFILE")
+						if [ -n "$RET" ]; then
+							TIMEOUT="$RET"
+						else
+							TIMEOUT=$(( IDLE + SLX_LOGOUT_TIMEOUT ))
+							echo "lockDeadline=$TIMEOUT" >> "$RUNFILE"
+						fi
+					fi
 
 					if [ "$TIMEOUT" -lt "$NOW" ]; then
 						rm -f -- "$RUNFILE"
@@ -121,7 +138,6 @@ if [ -n "${SLX_LOGOUT_TIMEOUT}" ] && [ "${SLX_LOGOUT_TIMEOUT}" -gt 0 ]; then
 						loginctl terminate-session "$ses"
 					else
 						IS_IDLE=no
-						sed -i "s/^lockDeadline=.*$/lockDeadline=$TIMEOUT/" "$RUNFILE"
 					fi
 				else
 					# xprint* did not work?

@@ -68,6 +68,7 @@ dpmsStandby:  $STANDBY
 dpmsSuspend:  $STANDBY
 dpmsOff:      $STANDBY
 newLoginCommand:
+externalUngrabCommand: /opt/openslx/xscreensaver/ungrab
 programs:     /opt/openslx/bin/bwlp-screensaver
 selected:     0
 EOF

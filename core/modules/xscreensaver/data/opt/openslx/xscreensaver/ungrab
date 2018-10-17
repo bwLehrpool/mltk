@@ -1,0 +1,10 @@
+#!/bin/ash
+
+for file in /opt/openslx/xscreensaver/ungrab.d/*; do
+	[ -f "$file" ] || continue
+	[ -x "$file" ] || continue
+	"$file" "$@"
+done
+
+exit 0
+
