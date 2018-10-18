@@ -212,9 +212,6 @@ build() {
 }
 
 post_copy() {
-	# FIXME: gconftool is copied without dependencies
-	tarcopy "$(find /usr/lib/ /usr/lib64 -name gconv -type d)" "$TARGET_BUILD_DIR"
-
 	# Update Icon cache for vmplayer
 	gtk-update-icon-cache-3.0 "${TARGET_BUILD_DIR}/usr/share/icons/hicolor/" || pwarning "update-icon-cache-3.0 failed."
 

@@ -64,6 +64,8 @@ build() {
 		[ ! -f ${FILE} ] && perror "Missing required file $FILE"
 		echo ${FILE} >> "${FILELIST}"
 	done
+	# Grab gconv .so files, required by vmware, mtools and maybe some more tools
+	find /usr/lib/ /usr/lib64 -name gconv -type d | grep -v debug >> "${FILELIST}"
 
 	local NUMFILES=$(cat "${FILELIST}" | wc -l)
 	if [ "x$NUMFILES" != "x" -a "x$NUMFILES" != "x0" ]; then
