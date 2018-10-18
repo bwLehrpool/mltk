@@ -137,6 +137,8 @@ if [ -n "${SLX_LOGOUT_TIMEOUT}" ] && [ "${SLX_LOGOUT_TIMEOUT}" -gt 0 ]; then
 						date +%s > /run/openslx/session-killed
 						loginctl terminate-session "$ses"
 					else
+						# Give user a chance to see that it's going to logout in 5 mins
+						[ "$(( TIMEOUT - NOW ))" -lt 310 ] && xset dpms force on
 						IS_IDLE=no
 					fi
 				else

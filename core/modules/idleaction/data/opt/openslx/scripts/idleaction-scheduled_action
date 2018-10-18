@@ -79,7 +79,7 @@ for f in /run/openslx/idleaction-*; do
 	[ -f "$f" ] || continue
 	grep -q '^shutdownDeadline=' "$f" || continue
 	RET=$(awk -F= '{if ($1 == "shutdownDeadline") { print $2; exit } }' "$f")
-	if [ -z "$RET" ] || [ "$RET" -eq 0 ] || ! [ "$RET" -lt "$timeout" ]; then
+	if [ -z "$RET" ] || [ "$RET" -eq 0 ] || ! [ "$RET" -lt "$timeout" ] || [ 333 -lt "$(( NOW - RET ))" ]; then
 		sed -i "s/^shutdownDeadline=.*$/shutdownDeadline=$timeout/" "$f"
 	fi
 done
@@ -112,6 +112,8 @@ runaction () {
 					# X11
 					export DISPLAY=$d
 					export XAUTHORITY=$(ps a | grep " $DISPLAY " | grep -o -- '-auth.*$' | grep -m1 -v grep | awk '{print $2}')
+					# Make sure user sees warning
+					xset dpms force on
 					# TODO: Don't look... We need to pick a proper util for this
 					/opt/openslx/cups/printergui --error "$MESSAGE" &
 					unset DISPLAY XAUTHORITY
