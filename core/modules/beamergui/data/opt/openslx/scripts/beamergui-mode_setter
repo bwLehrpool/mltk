@@ -142,7 +142,6 @@ if [ ${#OUTPUTNAMES[@]} -eq 2 ]; then
           echo -e "Added mode ${i%% *} to $j."
         else
           echo -e "\e[31mFailed to add mode ${i%% *} to $j!\e[0m"
-          break
         fi
       done
     done
@@ -202,9 +201,9 @@ if [ ${#OUTPUTNAMES[@]} -eq 2 ]; then
       # Maybe the screen has EDID, use its preferred resolution
       OPTIMALRES=$( <<<"$XRANDRV"  grep -Pzo "\n$OTHER\N*\n(\s+\N*\n)+" \
         | grep -m 1 -a preferred | awk '{print $1}' )
-      for res in "$OPTIMALRES" "1280x800" "1280x720"; do
+      for res in "$OPTIMALRES" "1280x800" "1280x720" "1152x864" "1024x768"; do
         [ -z "$res" ] && continue
-        echo -e "\e[31mERROR: Beamer provides no EDID and no config found in $CONFIGFILE. Falling back to ${OPTIMALRES}.\e[0m"
+        echo -e "\e[31mERROR: Beamer provides no EDID and no config found in $CONFIGFILE. Falling back to ${res}.\e[0m"
         xrandr \
           --output "$OTHER" --mode "$res" \
           --primary \
