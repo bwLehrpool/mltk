@@ -67,6 +67,7 @@ dpmsEnabled:  $DPMS
 dpmsStandby:  $STANDBY
 dpmsSuspend:  $STANDBY
 dpmsOff:      $STANDBY
+dpmsFullThrottle: True
 newLoginCommand:
 externalUngrabCommand: /opt/openslx/xscreensaver/ungrab
 programs:     /opt/openslx/bin/bwlp-screensaver
