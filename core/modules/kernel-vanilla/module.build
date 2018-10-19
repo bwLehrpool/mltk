@@ -160,11 +160,26 @@ patch_aufs() {
 		git clone "git://github.com/sfjro/${AUFS}-standalone.git" || perror "Cloning ${AUFS} failed."
 	fi
 	# get the needed version
-	[ -n "${SYSTEM_KERNEL_LONG}" ] && local NEEDED_BRANCH=$(echo $REQUIRED_KERNEL | awk -F "." '{print $1"."$2}') \
-				|| perror "REQUIRED_KERNEL not set, this should not happen!"
-	pinfo "Getting branch origin/$NEEDED_BRANCH"
 	cd "${MODULE_WORK_DIR}/${AUFS}-standalone" || perror "Could not CD to ${AUFS}-standalone"
-	git checkout "origin/aufs$NEEDED_BRANCH" || git checkout "origin/aufs4.x-rcN" || perror "Could not checkout needed branch."
+	local branches=( $( git branch -r | grep -oE 'aufs[0-9\.\+]+$' ) )
+	local major minor patch
+	IFS=. read major minor patch _ <<<"$REQUIRED_KERNEL"
+	if [ -z "$major" ] || [ -z "$minor" ]; then
+		perror "REQUIRED_KERNEL not in properly set, this should not happen!"
+	fi
+	local NEEDED_BRANCH="aufs${major}.${minor}"
+	local testvar
+	while [ "${patch}" -gt 0 ]; do
+		for testvar in "${branches[@]}"; do
+			if [ "$testvar" = "${NEEDED_BRANCH}.${patch}" ] || [ "$testvar" = "${NEEDED_BRANCH}.${patch}+" ]; then
+				NEEDED_BRANCH="$testvar"
+				break 2
+			fi
+		done
+		patch=$(( patch - 1 ))
+	done
+	pinfo "Getting branch origin/$NEEDED_BRANCH"
+	git checkout "origin/$NEEDED_BRANCH" || git checkout "origin/aufs4.x-rcN" || perror "Could not checkout needed branch."
 	pinfo "Starting to patch... $NEEDED_BRANCH"
 	tarcopy "Documentation fs" "$MODULE_WORK_DIR/ksrc"
 
@@ -186,7 +201,7 @@ patch_aufs() {
 		patch -p1 < "$MODULE_WORK_DIR/${AUFS}-standalone/${PATCH}.patch" || pwarning "${PATCH}.patch failed!"
 		pinfo "Applied '$MODULE_WORK_DIR/${AUFS}-standalone/${PATCH}.patch'"
 	done
-	pinfo "Patched kernel source with aufs-${NEEDED_BRANCH}"
+	pinfo "Patched kernel source with ${NEEDED_BRANCH}"
 	cd "$MODULE_WORK_DIR" || perror "Where is WORK_DIR?"
 }
 
