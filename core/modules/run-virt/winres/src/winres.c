@@ -386,8 +386,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		_debug = TRUE;
 		alog("Windows Version %d.%d", (int)winVer.dwMajorVersion, (int)winVer.dwMinorVersion);
 	}
-	// Mute sound by default
-	if (retVer && winVer.dwMajorVersion >= 6)
+	// Mute sound?
+	BOOL mute = GetPrivateProfileIntA("openslx", "muteSound", 1, SETTINGS_FILE) != 0;
+	if (mute && retVer && winVer.dwMajorVersion >= 6)
 		muteSound();
 	// Disable screen saver as it might give the false impression that the session is securely locked
 	SystemParametersInfo(SPI_SETSCREENSAVEACTIVE, FALSE, NULL, 0);

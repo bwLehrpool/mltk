@@ -117,6 +117,9 @@ setup_virtual_floppy() {
 		fi
 	fi
 
+	local MUTED=1
+	[ -n "$SLX_VM_MUTED" ] && [ "$SLX_VM_MUTED" -ge 0 ] && MUTED="$SLX_VM_MUTED"
+
 	# Write info file
 	local UNAME=
 	[ -s "${HOME}/.openslx/account" ] && UNAME=$(cat "${HOME}/.openslx/account")
@@ -132,6 +135,7 @@ setup_virtual_floppy() {
 	scriptVisibility=${OPTIONS[VISIBILITY]}
 	passCreds=${SHARE_CREDENTIAL_PASSTHROUGH}
 	bootIp=${SLX_PXE_CLIENT_IP}
+	muteSound=${MUTED}
 	
 	[remap]
 	documents=${SHARE_DOCUMENTS}
