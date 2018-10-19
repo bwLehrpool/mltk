@@ -67,6 +67,7 @@ setup_virtual_floppy() {
 	chmod 0600 "${SHARES}"
 	if ! pwdaemon --query "${TMPHOME}/.pwsocket" > "${SHARES}"; then
 		slxlog "virt-pwdaemon" "Could not start pwdaemon"
+		echo "- - - - - - -" > "${SHARES}"
 	else
 		sed -i 's/^/192.168.101.1\t/' "${SHARES}" # TODO: Depending on nettype (in case we have != nat some day)
 		if [ "${SHARE_REMAP_MODE}" = 1 -o "${SHARE_REMAP_MODE}" = 2 ] && [ -e "${TMPHOME}/.openslx/home" ]; then
