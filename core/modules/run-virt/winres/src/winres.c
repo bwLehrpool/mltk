@@ -85,7 +85,7 @@ static BOOL _createMissingRemap = FALSE;
 
 static void setPowerState();
 static int setResolution();
-static int muteSound();
+static int muteSound(BOOL bMute);
 static int setShutdownText();
 static void readShareFile();
 static BOOL mountNetworkShares();
@@ -388,8 +388,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	}
 	// Mute sound?
 	BOOL mute = GetPrivateProfileIntA("openslx", "muteSound", 1, SETTINGS_FILE) != 0;
-	if (mute && retVer && winVer.dwMajorVersion >= 6)
-		muteSound();
+	if (retVer && winVer.dwMajorVersion >= 6)
+		muteSound(mute);
 	// Disable screen saver as it might give the false impression that the session is securely locked
 	SystemParametersInfo(SPI_SETSCREENSAVEACTIVE, FALSE, NULL, 0);
 	// Same with standby
@@ -612,7 +612,7 @@ static int setResolution()
 	return 0;
 }
 
-static int muteSound()
+static int muteSound(BOOL bMute)
 {
 	IMMDeviceEnumerator *deviceEnumerator = NULL;
 	HRESULT hr = CoCreateInstance(&ID_MMDeviceEnumerator, NULL, CLSCTX_INPROC_SERVER, &ID_IMMDeviceEnumerator, (LPVOID *)&deviceEnumerator);
@@ -639,7 +639,7 @@ static int muteSound()
 	//defaultDevice->lpVtbl->Release(defaultDevice);
 	float targetVolume = 1;
 	endpointVolume->lpVtbl->SetMasterVolumeLevelScalar(endpointVolume, targetVolume, NULL);
-	endpointVolume->lpVtbl->SetMute(endpointVolume, TRUE, NULL);
+	endpointVolume->lpVtbl->SetMute(endpointVolume, bMute, NULL);
 	//endpointVolume->lpVtbl->Release(endpointVolume);
 	//CoUninitialize();
 	return 0;
