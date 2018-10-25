@@ -52,6 +52,7 @@ fetch_source() {
 		git apply < "$patch" || perror "Could not apply $patch"
 		echo "$patch" >> "patches-done"
 	done
+	sed -i -r 's/^CC\s*=\s*(\S)/CC ?= \1/' Makefile || perror "Could not patch Makefile"
 	cd -
 	# remember the current kernel version
 	echo "${SYSTEM_KERNEL_LONG}" > ksrc/KVERSION
@@ -83,7 +84,7 @@ build() {
 
 	pinfo "Compiling kernel... (this will take some time)"
 	# explicitly state number of cores here, as MAKEFLAGS seems to be overridden
-	make "-j$CPU_CORES" || perror "make failed."
+	make $MAKEFLAGS || perror "make failed."
 
 	# install modules to build directory
 	pinfo "Installing kernel modules..."

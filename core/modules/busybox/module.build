@@ -15,6 +15,7 @@ fetch_source() {
 	if ! grep -q 'suspend.*"no"' "util-linux/rtcwake.c"; then
 		git apply "${MODULE_DIR}/rtcwake-compat.patch" || perror "Could not apply busybox patch for rtcwake compat with util-linux"
 	fi
+	sed -i -r 's/^CC\s*=\s*(\S)/CC ?= \1/' Makefile || perror "Could not patch Makefile"
 	cd .. || perror "cd .. failed"
 }
 
