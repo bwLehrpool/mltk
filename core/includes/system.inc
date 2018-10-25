@@ -12,7 +12,6 @@ __init () {
 
 	# determine number of CPU cores
 	declare -rg CPU_CORES=$(cat /proc/cpuinfo | grep processor | wc -l)
-	export MAKEFLAGS="-j$CPU_CORES"
 
 	# Determine if we have lib64
 	if [ "$(uname -m)x" = "x86_64x" ]; then
@@ -32,6 +31,51 @@ __init () {
 		X86_64_I586=i586
 		AMD64_X86=x86
 		ARCHREGEX="(i[3456]86|x86[_-]32)"
+	fi
+
+	# Set up make args
+	export MAKEFLAGS="-j$CPU_CORES"
+	ver=$(gcc -dumpversion)
+	ver=${ver%%.*}
+	if [ -n "$ver" ]; then
+		# Enable ccache?
+		if which ccache &> /dev/null; then
+			for cdir in "/usr/lib/ccache" "/lib/ccache" "/usr/local/ccache" ""; do
+				[ -d "$cdir" ] && break
+			done
+			if [ -n "$cdir" ] && [ -d "/mnt/ccache" ] && grep -q /mnt/ccache /proc/mounts; then
+				export CCACHE_DIR="/mnt/ccache/gcc-${ver}"
+				export CCACHE_TEMPDIR="/tmp/ccache"
+				export CC="$cdir/gcc-${ver}"
+				export CXX="$cdir/g++-${ver}"
+				mkdir -p "$CCACHE_DIR" "$CCACHE_TEMPDIR"
+				pinfo "ccache detected"
+				export MAKEFLAGS="-j$(( CPU_CORES * 2 ))"
+			fi
+		fi
+		# Enable distcc?
+		testfile="/tmp/test.$$.${RANDOM}.c"
+		echo "int main() { return 0; }" > "$testfile"
+		DISTCC_FALLBACK=0 distcc "gcc-${ver}" -o "${testfile}.bin" -c "$testfile"
+		ret=$?
+		if [ "$ret" = 0 ] && [ -f "${testfile}.bin" ]; then
+			if [[ "$CC$CXX" == */ccache* ]]; then
+				# Both
+				export CCACHE_PREFIX="distcc"
+				pinfo "Using distcc + ccache"
+			else
+				for cdir in "/usr/lib/distcc" "/lib/distcc" "/usr/local/distcc" ""; do
+					[ -d "$cdir" ] && break
+				done
+				if [ -n "$cdir" ]; then
+					export CC="$cdir/gcc-${ver}"
+					export CXX="$cdir/g++-${ver}"
+				fi
+				pinfo "distcc detected"
+			fi
+			export MAKEFLAGS="-j40"
+		fi
+		rm -- "$testfile" "${testfile}.bin"
 	fi
 }
 
