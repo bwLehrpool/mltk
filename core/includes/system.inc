@@ -22,12 +22,14 @@ __init () {
 			*)			perror "Cannot set LIB64, SYS_DISTRIBUTION: $SYS_DISTRIBUTION unknown!" ;;
 		esac
 		AMD64_I386=amd64
+		X86_64_I386=x86_64
 		X86_64_I586=x86_64
 		AMD64_X86=amd64
 		ARCHREGEX="(amd64|x86[_-]64)"
 	else
 		LIB64="lib"
 		AMD64_I386=i386
+		X86_64_I386=i386
 		X86_64_I586=i586
 		AMD64_X86=x86
 		ARCHREGEX="(i[3456]86|x86[_-]32)"
