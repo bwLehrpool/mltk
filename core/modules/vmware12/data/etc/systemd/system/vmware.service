@@ -1,9 +1,0 @@
-[Unit]
-Description=Sets up the vmware environment
-Requires=run-virt-env.service setup-partitions.service network.target
-After=run-virt-env.service setup-partitions.service network.target
-
-[Service]
-Type=oneshot
-RemainAfterExit=yes
-ExecStart=/opt/openslx/scripts/systemd-vmware_env start

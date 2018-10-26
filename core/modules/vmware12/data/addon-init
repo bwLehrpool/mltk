@@ -1,6 +1,0 @@
-#!/bin/ash
-
-systemctl daemon-reload
-systemctl start vmware
-exit 0
-
