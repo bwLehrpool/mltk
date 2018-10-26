@@ -5,6 +5,7 @@ wfile="/run/user/$(id -u)/vmwins"
 if [ "$1" = "pre" ]; then
 	# Find all vmware windows currently visible
 	WINDOWS=$(xdotool search --onlyvisible --class vmplayer)
+	[ -z "$WINDOWS" ] && exit 0
 	for window in $WINDOWS; do
 		xdotool windowminimize $window
 		echo "$window" >> "$wfile" # Remember for later
@@ -14,6 +15,8 @@ if [ "$1" = "pre" ]; then
 	xdotool mousemove 0 0
 	usleep 10000
 	xdotool mousemove --polar 0 0
+	usleep 10000
+	xdotool key "ctrl+alt+shift+super"
 	usleep 10000
 fi
 
