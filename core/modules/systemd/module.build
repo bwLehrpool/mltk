@@ -18,40 +18,8 @@ fetch_source () {
 			perror "'src/systemd-$REQUIRED_VERSION/src/core/socket.c' does not exist."
 		fi
 	fi
-	# now check if the old fix needs to be applied
-	# NOTE: only for systemd-204
-	if [ "x${REQUIRED_VERSION#systemd-}" = "x204" ]; then
-		# Patch PATH, HOME, USER environment
-		# TODO: Newer systemd versions support DefaultEnvironment=xxx in /etc/systemd/system.conf
-		# However, there were lots of changes after systemd 204, so we didn't update yet
-		# See http://cgit.freedesktop.org/systemd/systemd/tree/NEWS for changes.
-		patch -p0 src/systemd-*/src/core/main.c < ${MODULE_DIR}/systemd-openslx.patch || perror "Failed to apply openslx systemd patch."
-		# fix mtd_probe.h missing an include for stdint.h, those types probably used to
-		# be defined elsewhere and that was change with newer libc versions
-		patch -p0 src/systemd-*/src/udev/mtd_probe/mtd_probe.h < ${MODULE_DIR}/systemd-204-mtd_probe.patch || perror "Failed to apply mtd_probe.h patch."
-		# systemd-204 requires gperf 3.0.4 for generating internal code,
-		# starting with ubuntu 17.10, gperf is only available in version 3.1.1.
-		# launchpad has the correct version: https://launchpad.net/ubuntu/artful/amd64/gperf/3.0.4-2
-		if which gperf &> /dev/null; then
-			LOCAL_GPERF_VER="$(gperf --version | head -1 | awk '{print $3}')"
-			if [ "x${LOCAL_GPERF_VER}" != "x3.0.4" ]; then
-				# bad version, no force removal
-				perror "gperf version '3.0.4' expected but '${LOCAL_GPERF_VER}' is installed. Please remove it and try again."
-			fi
-		else
-			# no gperf installed, install it from launchpad
-			REQUIRED_GPERF_URL="http://launchpadlibrarian.net/214035609/gperf_3.0.4-2_amd64.deb"
-			pinfo "Downloading gperf from '${REQUIRED_GPERF_URL}'..."
-			if ! wget -P "${MODULE_WORK_DIR}" "${REQUIRED_GPERF_URL}"; then
-				perror "Failed to download '${REQUIRED_GPERF_URL}'."
-			fi
-			pinfo "Installing gperf from '${MODULE_WORK_DIR}/${REQUIRED_GPERF_URL##*/}'..."
-			if ! dpkg -i "${MODULE_WORK_DIR}/${REQUIRED_GPERF_URL##*/}"; then
-				perror "Failed to install '${MODULE_WORK_DIR}/${REQUIRED_GPERF_URL##*/}'."
-			fi
-		fi
-
-	elif  [ -e "${MODULE_DIR}/systemd-openslx-${REQUIRED_VERSION#systemd-}.patch" ]; then
+	# now check if the a fix needs to be applied
+	if  [ -e "${MODULE_DIR}/systemd-openslx-${REQUIRED_VERSION#systemd-}.patch" ]; then
 		patch -p0 src/systemd-*/src/basic/path-util.h < "${MODULE_DIR}/systemd-openslx-${REQUIRED_VERSION#systemd-}.patch" || perror "Failed to apply openslx systemd patch."
 	else
 		# TODO use the above hint for setting environmenet through /etc/systemd/system.conf
