@@ -47,7 +47,6 @@ writelog "#################### Initialization ####################"
 # Window manager required early for user feedback through popups (e.g. errors) etc.
 $(safesource "${RUN_VIRT_INCLUDE_DIR}/start_windowmanager.inc")
 
-
 # Read vmchooser.conf, (generated) virtualization.conf and slx config files
 $(safesource --exit "${RUN_VIRT_INCLUDE_DIR}/load_configs.inc")
 
