@@ -1,0 +1,16 @@
+#Saver {
+  background: qlineargradient(spread:pad, x1:0, y1:0, x2:0, y2:1, stop:0 #443, stop:1 #000)
+}
+
+QLabel {
+  color: #f64;
+}
+
+#lblClock {
+  color: #999;
+  font-size: 20pt;
+}
+
+#lblHeader {
+  font-size: 20pt;
+}
