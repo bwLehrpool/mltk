@@ -74,14 +74,17 @@ format_disk () {
 		fi
 		if which "mkfs.$fs" ; then
 			case "$fs" in
-			xfs|reiserfs)
+			reiserfs)
 				fopt=("-f")
+				;;
+			xfs)
+				fopt=("-f" "-K")
 				;;
 			ext2|ext3)
 				fopt=("-F")
 				;;
 			ext4)
-				fopt=(-F -b 4096 -O "extent,huge_file,flex_bg,metadata_csum,64bit,dir_nlink,extra_isize,quota" -E "quotatype=usrquota:prjquota" -I 256)
+				fopt=(-F -b 4096 -O "extent,huge_file,flex_bg,metadata_csum,64bit,dir_nlink,extra_isize,quota" -E "nodiscard,quotatype=usrquota:prjquota" -I 256)
 				;;
 			jfs)
 				fopt=()
