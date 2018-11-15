@@ -30,22 +30,28 @@ function mount_shares()
 			unset USER
 			unset PASSWD
 
-			# linken: userhomedir <-sharename, userhomedir <- shareletter ln -s "$USERSHAREDIR" "${USERDESKTOP}"/"$SHARENAME"
-			#								ln -s "$USERSHAREDIR" "${USERDESKTOP}"/"$SHARELETTER"
-			logger "openslx sharemapper: Linking ${SHARELETTER} or ${SHARENAME}, if possible."
-			if [ -n "${SHARENAME}" ]; then
-				ln -s "$USERHOMEDIR" "${USERDESKTOP}"/"$SHARENAME"
-				logger "openslx sharemapper: ${SHARENAME} linked."
-			elif [ -n "${SHARELETTER}" ]; then
-				ln -s "$USERHOMEDIR" "${USERDESKTOP}"/"$SHARELETTER"
-				logger "openslx sharemapper: No sharename found, share letter ${SHARELETTER} linked."
-			fi
+			# linken: userhomedir <-sharename, userhomedir <- shareletter 
+			#logger "openslx sharemapper: Linking ${USERDESKTOP}/$(basename $USERHOMEDIR, if possible."
+			logger "openslx sharemapper: Linking ${USERDESKTOP}/$(basename $USERHOMEDIR), if possible."
+			# Changed: Link on Desktop no longer "Home-verz.", but same
+			# name as last part of $USERHOMEDIR (-->PERSISTENT)
+			# ln -s "$USERHOMEDIR" "${USERDESKTOP}"/"$SHARENAME"
+			ln -s "$USERHOMEDIR" "${USERDESKTOP}"/$(basename "$USERHOMEDIR")
+			logger "openslx sharemapper: "${USERDESKTOP}"/$(basename "$USERHOMEDIR") linked."
 		else
-			if [ -z "${SHARELETTER}" ]; then
-				logger "openslx sharemapper: $SHARELETTER not found. Do not know where to mount."
-				continue
-			else
+			if [ -n "${SHARENAME}" ]; then
 				mount_share &
+			elif [ -n "${SHARELETTER}" ]; then
+				SHARENAME="$SHARELETTER"
+				mount_share &
+			else
+				SHARENAME="$(basename ${SHAREPATH})"
+				if [ -n "${SHARENAME}" ]; then
+					mount_share &
+				else
+					logger "openslx sharemapper: Neither SHARENAME nor SHARELETTER found - giving up! (Config row: $CONFIGROW)"
+					continue
+				fi
 			fi
 		fi
 	done

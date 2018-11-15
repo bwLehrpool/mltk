@@ -38,7 +38,7 @@ function mounter()
 					sleep $x
 					if [ "$x" -gt 6 ]; then
 						AUSGANG=1
-						logger "openslx sharemapper: timeout, could not mount ${3} to ${4}."
+						logger "openslx sharemapper: timeout, could not mount ${3} to ${4}. mount.nfs installed?"
 						break
 					fi
 					let x=x+2
@@ -72,7 +72,8 @@ function mounter()
 
 function mount_share()
 {
-	USERSHAREDIR="${USERHOME}"/SHARE_"${CONFIGROW}" # ROHSHARES: Zeilennummer; Shares >=1
+	# USERSHAREDIR="${USERHOME}"/SHARE_"${CONFIGROW}" # ROHSHARES: Zeilennummer; Shares >=1
+	USERSHAREDIR="${USERHOME}"/"${SHARENAME}"
 	if [ ! -d "$USERSHAREDIR" ]; then
 		mkdir -p "$USERSHAREDIR" 2>/dev/null
 		chown "$LOCALUSER":$(id --group "$LOCALUSER") "$USERSHAREDIR"
@@ -101,9 +102,7 @@ function mount_share()
 		unset PASSWD
 	fi
 	if [ "$ERR" -eq 0 ]; then
-		logger "openslx sharemapper: Linking ${SHARELETTER} and $SHARENAME, if possible."
-#		[ -n "${SHARELETTER}" ] && ln -s "$USERSHAREDIR" "${USERDESKTOP}"/"$SHARELETTER"
-#		[ -n "${SHARELETTER}" ] && ln -s "$USERSHAREDIR" "${USERDESKTOP}"/"$SHARENAME"
+		logger "openslx sharemapper: Linking ${SHARENAME}, if possible."
 
 		if [ -n "${SHARENAME}" ]; then
 			ln -s "$USERSHAREDIR" "${USERDESKTOP}"/"$SHARENAME"
