@@ -21,14 +21,12 @@ getCurrent() {
 	wmctrl -d | awk '{if ($2 == "*") print $1}'
 }
 
-# Do this whenever we're triggered
-moveVm
-moveMgr
-	wmctrl -s 0
-
 case "$EVENT" in
 init)
 	echo "CHECKED=false"
+	moveVm
+	moveMgr
+	wmctrl -s 0
 	;;
 connected)
 	echo "VISIBLE=$ISLOCAL"
