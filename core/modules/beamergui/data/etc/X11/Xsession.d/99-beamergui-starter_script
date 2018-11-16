@@ -1,2 +1,13 @@
 #!/bin/ash
-/opt/openslx/bin/beamergui &
+
+/opt/openslx/bin/beamergui -a
+# Detach
+/bin/bash <<HERE
+{
+	ulimit -c unlimited
+	cd /tmp/
+	/opt/openslx/bin/beamergui -b &
+} &
+HERE
+true
+

@@ -1,0 +1,3 @@
+# Tell beamergui to show up
+#
+SUBSYSTEM=="drm", ACTION=="change", RUN+="/opt/openslx/bin/beamergui -w"
