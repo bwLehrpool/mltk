@@ -100,12 +100,12 @@ setup_virtual_floppy() {
 	fi
 
 	## Runscript
+	declare -A OPTIONS
 	# Check downloaded runscript and handle options like
 	# extension, visibility flag, ...
 	# options are 'key=value' pairs separated with ';'
 	if load_dmsd_resource RUNSCRIPT; then
 		if [ -s "$RUNSCRIPT" ]; then
-			declare -A OPTIONS
 			IFS=$'\n'
 			for OPT in $(head -n 1 "$RUNSCRIPT" | tr ";" "\n"); do
 				KEY=$(cut -s -d '=' -f 1 <<< "${OPT^^}")
@@ -117,8 +117,14 @@ setup_virtual_floppy() {
 		fi
 	fi
 
+	# Default to muted
 	local MUTED=1
+	# Satellite/location setting can override
 	[ -n "$SLX_VM_MUTED" ] && [ "$SLX_VM_MUTED" -ge 0 ] && MUTED="$SLX_VM_MUTED"
+	# finally, lecture can override
+	if [ -n "${OPTIONS[SOUNDMUTED]}" ] && [ "${OPTIONS[SOUNDMUTED]}" != -1 ]; then
+		MUTED="${OPTIONS[SOUNDMUTED]}"
+	fi
 
 	# Write info file
 	local UNAME=

@@ -1,0 +1,11 @@
+#!/bin/ash -- being sourced
+
+# Detach
+/bin/bash <<HERE
+{
+	sleep 1
+	/opt/openslx/bin/beamergui -c
+} &
+HERE
+true
+

@@ -1,5 +1,0 @@
-# Beamergui detection and setup
-
-# Explicitely call bash for the modesetter
-/bin/bash /opt/openslx/scripts/beamergui-mode_setter >/dev/null 2>&1
-

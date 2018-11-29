@@ -1,11 +1,11 @@
 #!/bin/bash
 
 fetch_source() {
-	git clone "${REQUIRED_GIT}" src
+	autoclone
 }
 
 build() {
-	local SRCDIR="${MODULE_WORK_DIR}/src/"
+	local SRCDIR="${MODULE_WORK_DIR}/src/beamergui"
 
 	mkdir -p "$MODULE_BUILD_DIR/opt/openslx/bin"
 	cd "${MODULE_BUILD_DIR}/opt/openslx/bin" || perror "Could not cd!"
@@ -13,9 +13,6 @@ build() {
 	cmake "$SRCDIR" || perror "'cmake $SRCDIR' failed."
 	pinfo "Running make"
 	make || perror "'make' failed."
-
-	# Make read-edid
-	gcc -o "${MODULE_BUILD_DIR}/opt/openslx/bin/parse-edid" "${MODULE_DIR}/source/parse-edid/parse-edid.c" || perror "Compiling parse-edid failed."
 }
 post_copy() {
 	:
