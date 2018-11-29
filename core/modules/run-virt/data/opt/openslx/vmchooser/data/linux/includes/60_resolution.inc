@@ -3,7 +3,8 @@ get_xauthfile()
 	# Das ist mitunter ein Problem, da die richtige xauth zu finden - Distroabhängig!
 	for wartezeit in 1 2 3 5 10 10 0 ende; do
 		[ "$wartezeit" = "ende" ] && { logger "openslx resolution utility: XAUTHFILE not found. Exiting."; exit 1; }
-		XAUTHORITY=$(ps aux | grep -o "root.*X.* \-auth *[^ ]*" | awk '{print $NF}')
+		# XAUTHORITY=$(ps aux | grep -o "root.*X.* \-auth *[^ ]*" | awk '{print $NF}')
+		XAUTHORITY=$(ps aux | grep -o ".*/X.* \-auth *[^ ]*" | head -n 1 | awk '{print $NF}')
 		[ -n "${XAUTHORITY}" ] && break
 		sleep $wartezeit
 		done

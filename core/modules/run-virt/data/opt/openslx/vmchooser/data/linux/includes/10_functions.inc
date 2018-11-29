@@ -97,6 +97,7 @@ function mount_share()
 		ERR=$?                          # ERR merken wg. Links aus USERSHAREDIR
 		if [ "$ERR" -eq 1 ]; then
 			logger "openslx sharemapper: Could not mount ${USERSHAREDIR} even using user credentials; giving up."
+			echo "Konnte Laufwerk ${SHAREPATH} nicht einhängen." >> "$USERLOGFILE"
 		fi
 		unset USER
 		unset PASSWD
@@ -106,9 +107,11 @@ function mount_share()
 
 		if [ -n "${SHARENAME}" ]; then
 			ln -s "$USERSHAREDIR" "${USERDESKTOP}"/"$SHARENAME"
+			chown "$LOCALUSER" "${USERDESKTOP}"/"$SHARENAME"
 			logger "openslx sharemapper: ${SHARENAME} linked."
 		elif [ -n "${SHARELETTER}" ]; then
 			ln -s "$USERSHAREDIR" "${USERDESKTOP}"/"$SHARELETTER"
+			chown "$LOCALUSER" "${USERDESKTOP}"/"$SHARELETTER"
 			logger "openslx sharemapper: No sharename found, share letter ${SHARELETTER} linked."
 		fi
 

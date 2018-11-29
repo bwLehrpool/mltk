@@ -2,7 +2,10 @@ preliminaries_native()
 {
 	# USERHOMEDIR=~/PERSISTENT, not ~! ################
 	[ -h "$USERHOMEDIR" ]		&& unlink "$USERHOMEDIR"
-	[ ! -d "$USERHOMEDIR" ]         && mkdir -p "$USERHOMEDIR"
+	if [ ! -d "$USERHOMEDIR" ]; then
+		mkdir -p "$USERHOMEDIR"
+		chown "$LOCALUSER" "$USERHOMEDIR"
+	fi
 }
 
 preliminaries_vmware()
