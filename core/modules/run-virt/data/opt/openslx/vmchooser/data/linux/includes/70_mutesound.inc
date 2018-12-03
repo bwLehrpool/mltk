@@ -20,7 +20,7 @@ if [ -n "$PACTL" ]; then
 	# while [ $(su -c "pulseaudio --check" "$LOCALUSER") ]; do
 	while [ -z "$(ps aux|grep /pulseaudio|grep -v grep)" ]; do
 		logger "openslx sound muter: Waiting for pulseaudio..."
-		if [ "$x" -gt 30]; then
+		if [ "$x" -gt 30 ]; then
 			logger "openslx sound muter: Waited $x sec for pulseaudio, giving up."
 			[ -n "$AMIXER" ] && SYSTEM=alsa || SYSTEM=""	# unset -v SYSTEM
 			break
