@@ -37,11 +37,11 @@ fi
 	case $MUTESOUND in 0)	logger "openslx sound muter: Unmuting sound, using $SYSTEM."
 				case $SYSTEM in	pulse)	XDG_RUNTIME_DIR=/run/user/$(id -u $LOCALUSER) su -c "pactl set-sink-mute 0 0" "$LOCALUSER"
 							PACTLERR=$?
-							XDG_RUNTIME_DIR=/run/user/$(id -u $LOCALUSER) su -c "$AMIXER" -q -D pulse sset Master unmute "$LOCALUSER"
+							XDG_RUNTIME_DIR=/run/user/$(id -u $LOCALUSER) su -c "$AMIXER -q -D pulse sset Master unmute" "$LOCALUSER"
 							AMIXERERR=$?
 							logger "openslx sound muter: Sound hopefully unmuted, pactl: $PACTLERR, amixer: $AMIXERERR."
 							;;
-						alsa)	"$AMIXER" set Master unmute
+						alsa)	"$AMIXER set Master unmute"
 							AMIXERERR=$?
 							logger "openslx sound muter: Sound hopefully unmuted, amixer: $AMIXERERR."
 							;;
@@ -50,7 +50,7 @@ fi
 			1)	logger "openslx sound muter: Muting sound, using $SYSTEM"
 				case $SYSTEM in pulse)	XDG_RUNTIME_DIR=/run/user/$(id -u $LOCALUSER) su -c "pactl set-sink-mute 0 1" "$LOCALUSER"
 							PACTLERR=$?
-							XDG_RUNTIME_DIR=/run/user/$(id -u $LOCALUSER) su -c "$AMIXER" -q -D pulse sset Master mute "$LOCALUSER"
+							XDG_RUNTIME_DIR=/run/user/$(id -u $LOCALUSER) su -c "$AMIXER -q -D pulse sset Master mute" "$LOCALUSER"
 							AMIXERERR=$?
 							logger "openslx sound muter: Sound hopefully unmuted, pactl: $PACTLERR, amixer: $AMIXERERR."
 							;;
