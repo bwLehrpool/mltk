@@ -32,7 +32,7 @@ CREATEMISSING=$(grep '^createMissingRemap=' "$SLXCONFIGFILE" | cut -d '=' -f 2)
 SCRIPTUSER=$(grep '^scriptUser=' "$SLXCONFIGFILE" | cut -d '=' -f 2)
 SCRIPTVISIBILITY=$(grep '^scriptVisibility=' "$SLXCONFIGFILE" | cut -d '=' -f 2)
 SCRIPTEXT=$(grep scriptExt "$DISKMOUNTDIR/openslx.ini" | cut -f 2 -d "=")
-
+MUTESOUND=$(grep muteSound "$DISKMOUNTDIR/openslx.ini" | cut -f 2 -d "=")
 
 # CIFSVERSIONS="3.11 3.0 2.1 2.0 1.0"
 CIFSVERSIONS="3.0 2.1 1.0 3.11 2.0"

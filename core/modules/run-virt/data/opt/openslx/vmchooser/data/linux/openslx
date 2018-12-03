@@ -22,6 +22,9 @@ cd /tmp/.X11-unix && 	for x in X*; do
 			done
 cd "$OLDPWD"
 
+# Mute/unmute sound:
+mutesound &
+
 logger "openslx utility script: spawning share mounter..."
 mnt_shares &
 MNTPID=$!
@@ -31,7 +34,6 @@ logger "openslx utility script: Waiting for mounter..."
 # an user supplied runscript needs a network share?
 wait $MNTPID	# ${RSPID[*]}
 logger "openslx utility script: mounter finished."
-
 
 logger "openslx utility script: starting runscript..."
 runscript

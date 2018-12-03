@@ -23,30 +23,7 @@ function mount_shares()
 
 		# User-Homeverzeichnis?
 		if [ "${SHARENAME:0:5}" == "Home-" ]; then
-			logger "openslx sharemapper: home share \"$SHARENAME\" found (for PERSISTENT)."
-			export USER="${GLOBALUSER}"
-			export PASSWD="${PW}"
-			ERRORMSG=""
-			mounter "${MOUNTPARAM}" "${MOUNTOPTS}" "${SHAREPATH}" "${USERHOMEDIR}" 2>/dev/null 1>&2 &
-			ERR=$?
-			unset USER
-			unset PASSWD
-
-			case $ERR in	1)	echo "Konnte Home-Laufwerk nicht einhängen!" >> "$USERLOGFILE"
-						;;
-					2)	logger "openslx sharemapper: home share seems to be already mounted."
-						;;
-					0)	logger "openslx sharemapper: Linking ${USERDESKTOP}/$(basename $USERHOMEDIR), if possible."
-						# Changed: Link on Desktop no longer "Home-verz.", but same
-						# name as last part of $USERHOMEDIR (-->PERSISTENT)
-						# ln -s "$USERHOMEDIR" "${USERDESKTOP}"/"$SHARENAME"
-						ln -s "$USERHOMEDIR" "${USERDESKTOP}"/$(basename "$USERHOMEDIR")
-						chown "$LOCALUSER" "${USERDESKTOP}"/$(basename "$USERHOMEDIR")
-						logger "openslx sharemapper: "${USERDESKTOP}"/$(basename "$USERHOMEDIR") linked."
-						;;
-					*)	logger "openslx sharemapper: Unknown error level mounting home share."
-						;;
-			esac
+			mount_home &
 		else
 			if [ -n "${SHARENAME}" ]; then
 				mount_share &
