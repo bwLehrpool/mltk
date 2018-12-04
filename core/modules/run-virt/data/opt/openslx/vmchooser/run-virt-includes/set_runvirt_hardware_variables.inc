@@ -32,7 +32,7 @@ set_virt_memory() {
 	fi
 
 	# Amount of memory for the VM. Be generous if diff is written to HDD
-	local min=768
+	local min=1024
 	local reserve max
 	if notempty TMPDIR_NOT_RAM; then
 		if lsmod | grep -q '^nvidia'; then
