@@ -2,4 +2,11 @@
 
 [ "$EVENT" = "clicked" ] || exit 0
 
-exec beamergui -w
+if ps u | grep -v grep | grep -q 'beamergui -b'; then
+	exec beamergui -w
+fi
+
+(
+	beamergui -b -g &
+) &
+

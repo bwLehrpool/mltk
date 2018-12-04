@@ -1,0 +1,48 @@
+#!/bin/ash
+
+PAM_USER="$1"
+
+if [ -z "$PAM_USER" ]; then
+	echo "Usage: $0 <username>" >&2
+	exit 1
+fi
+
+PAM_TYPE="account"
+USER_NAME=
+readonly PAM_USER PAM_TYPE
+
+export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/openslx/sbin:/opt/openslx/bin"
+
+# check for invalid char ':'
+if echo "$PAM_USER" | grep -Fq ':'; then
+	echo "Username '$PAM_USER' contains disallowed character ':'" >&2
+	exit 1
+fi
+
+grepname=$( echo "$PAM_USER" | sed 's/\./\\./g;s/*/\\*/g' )
+
+existing=$( grep -i -m1 "^${grepname}:" "/etc/passwd" | awk -F: '{print $1}' )
+if [ -n "$existing" ]; then
+	echo "$existing"
+	exit 0
+fi
+
+# Have neither, run hooks
+for auth_file in /opt/openslx/pam/auth-source.d/*; do
+	USER_UID=
+	USER_GID=
+	[ -f "$auth_file" ] || continue
+	. "$auth_file"
+	[ -n "$USER_UID" ] || continue
+	break
+done
+readonly USER_UID USER_GID USER_NAME
+
+if [ -z "$USER_UID" ] || [ -z "$USER_NAME" ]; then
+	echo "User not found" >&2
+	exit 1
+fi
+
+echo "$USER_NAME"
+exit 0
+
