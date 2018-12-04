@@ -24,12 +24,14 @@ SCRIPT_USER=$(whoami)
 readonly SCRIPT_USER
 [ "x$SCRIPT_USER" = "xroot" ] || [ "x$SCRIPT_USER" = "x$PAM_USER" ] || exit 1
 
-if [ "$PAM_USER" = "root" ]; then
+grepname=$( echo "$PAM_USER" | sed 's/\./\\./g;s/*/\\*/g' )
+
+if [ "$SCRIPT_USER" = "root" ]; then
 	# See if we have a shadow entry - skip user in that case
-	grep -q "^${PAM_USER}:" "/etc/shadow" && exit 1
+	grep -q -i "^${grepname}:" "/etc/shadow" && exit 1
 else
 	# Running in user context - user must be known from before
-	grep -q "^${PAM_USER}:x:.*:.*:${PAM_USER}@SLX:" "/etc/passwd" || exit 1
+	grep -q "^${grepname}:x:.*:.*:${grepname}@SLX:" "/etc/passwd" || exit 1
 fi
 
 # ppam -- pluggable pluggable authentication module
@@ -60,7 +62,13 @@ for auth_file in /opt/openslx/pam/auth-source.d/*; do
 	break
 done
 [ -z "$REAL_ACCOUNT" ] && REAL_ACCOUNT="$PAM_USER"
-readonly USER_UID REAL_ACCOUNT
+readonly USER_UID REAL_ACCOUNT USER_NAME
+
+# Confirm caps matches!
+if [ "$USER_NAME" != "$PAM_USER" ]; then
+	echo "Capitalization mismatch: '$PAM_USER' vs. '$USER_NAME'" >&2
+	exit 1
+fi
 
 # No success - access denied
 [ -z "$USER_UID" ] && exit 1
@@ -108,7 +116,7 @@ if [ -n "$GROUPENT" ]; then
 		echo "$GROUPENT" >> '/etc/group'
 	fi
 fi
-readonly USER_GID USER_GROUP USER_NAME
+readonly USER_GID USER_GROUP
 
 . /opt/openslx/pam/common/homedir-passwd
 

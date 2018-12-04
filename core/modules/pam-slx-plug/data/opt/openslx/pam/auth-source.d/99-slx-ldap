@@ -48,7 +48,7 @@ extract_field() {
 }
 
 run_auth() {
-	local BINDDN SEARCH_ANON SEARCH_USER PW RET
+	local BINDDN SEARCH_ANON SEARCH_USER PW RET uid
 	if [ -n "$LDAP_CACERT" ]; then
 		export LDAPTLS_CACERT="$LDAP_CACERT"
 	else
@@ -86,9 +86,10 @@ run_auth() {
 	# Get proper capitalization
 	RET=$(extract_field "uid" "$SEARCH_ANON")
 	[ -n "$RET" ] && USER_NAME="$RET"
+	uid=$(extract_field "uidNumber" "$SEARCH_ANON")
 	if [ "$PAM_TYPE" = "account" ]; then
 		# 'account' checks just if the user is allowed to log in, bail out
-		USER_UID=$(extract_field "uidNumber" "$SEARCH_ANON")
+		USER_UID=$uid
 		USER_GID=$(extract_field "gidNumber" "$SEARCH_ANON")
 		USER_HOME=$(extract_field "homeDirectory" "$SEARCH_ANON")
 		return 0
@@ -98,7 +99,7 @@ run_auth() {
 	if [ -z "$SCRIPT_USER" ] || [ "$SCRIPT_USER" = "root" ]; then
 		PW="/run/pw.${RANDOM}.${PAM_USER}.${RANDOM}.$$"
 	else
-		PW="/run/user/${USER_UID}/pw.${RANDOM}.${PAM_USER}.${RANDOM}.$$"
+		PW="/run/user/${uid}/pw.${RANDOM}.${PAM_USER}.${RANDOM}.$$"
 	fi
 	for retries in 0 1 1 0; do
 		if ! mkfifo -m 0600 "${PW}"; then

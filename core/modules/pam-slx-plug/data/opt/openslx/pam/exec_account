@@ -3,7 +3,7 @@
 [ "$PAM_TYPE" = "account" ] || exit 1
 
 USER_NAME="$PAM_USER"
-readonly PAM_USER USER_NAME
+readonly PAM_USER
 
 export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/openslx/sbin:/opt/openslx/bin"
 
@@ -14,11 +14,13 @@ if echo "$PAM_USER" | grep -Fq ':'; then
 fi
 
 # check if the script runs as root
-[ "x$(whoami)" = "xroot" ] || exit 1
+SCRIPT_USER=$(whoami)
+readonly SCRIPT_USER
 
 # passwd but no shadow hints at a user we added - allow
-grep -q "^${PAM_USER}:" "/etc/shadow" && exit 1
-grep -q "^${PAM_USER}:" "/etc/passwd" && exit 0
+grepname=$( echo "$PAM_USER" | sed 's/\./\\./g;s/*/\\*/g' )
+[ "x$SCRIPT_USER" = "xroot" ] && grep -q "^${grepname}:" "/etc/shadow" && exit 1
+grep -q "^${grepname}:x:.*:.*:${grepname}@SLX:" "/etc/passwd" && exit 0
 
 # Have neither, run hooks
 for auth_file in /opt/openslx/pam/auth-source.d/*; do
@@ -29,7 +31,7 @@ for auth_file in /opt/openslx/pam/auth-source.d/*; do
 	[ -n "$USER_UID" ] || continue
 	break
 done
-readonly USER_UID USER_GID
+readonly USER_UID USER_GID USER_NAME
 
 [ -n "$USER_UID" ] || exit 1
 # Got ok from hook - cache in passwd if we got a USER_GID
@@ -44,7 +46,9 @@ if [ -n "$USER_GID" ] && ! echo "$USER_GID" | grep -Exq '[0-9]+'; then
 	exit 0
 fi
 
-. /opt/openslx/pam/common/homedir-passwd
+if [ "x$SCRIPT_USER" = "xroot" ]; then
+	. /opt/openslx/pam/common/homedir-passwd
+fi
 
 exit 0
 
