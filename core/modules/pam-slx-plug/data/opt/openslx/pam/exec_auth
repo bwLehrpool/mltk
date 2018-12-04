@@ -8,7 +8,7 @@ readonly USER_PASSWORD
 [ -z "$USER_PASSWORD" ] && echo "No password given." && exit 1
 
 USER_NAME="$PAM_USER"
-readonly PAM_USER USER_NAME
+readonly PAM_USER
 
 # Needed as pam_script clears PATH
 export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/openslx/sbin:/opt/openslx/bin"
@@ -20,10 +20,17 @@ if echo "$PAM_USER" | grep -Fq ':'; then
 fi
 
 # check if the script runs as root
-[ "x$(whoami)" = "xroot" ] || exit 1
+SCRIPT_USER=$(whoami)
+readonly SCRIPT_USER
+[ "x$SCRIPT_USER" = "xroot" ] || [ "x$SCRIPT_USER" = "x$PAM_USER" ] || exit 1
 
-# See if we have a shadow entry - skip user in that case
-grep -q "^${PAM_USER}:" "/etc/shadow" && exit 1
+if [ "$PAM_USER" = "root" ]; then
+	# See if we have a shadow entry - skip user in that case
+	grep -q "^${PAM_USER}:" "/etc/shadow" && exit 1
+else
+	# Running in user context - user must be known from before
+	grep -q "^${PAM_USER}:x:.*:.*:${PAM_USER}@SLX:" "/etc/passwd" || exit 1
+fi
 
 # ppam -- pluggable pluggable authentication module
 # Source all scripts in the auth-source.d directory
@@ -101,7 +108,7 @@ if [ -n "$GROUPENT" ]; then
 		echo "$GROUPENT" >> '/etc/group'
 	fi
 fi
-readonly USER_GID USER_GROUP
+readonly USER_GID USER_GROUP USER_NAME
 
 . /opt/openslx/pam/common/homedir-passwd
 

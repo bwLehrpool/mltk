@@ -19,9 +19,10 @@ fi
 readonly USER_HOME
 
 # Add/replace passwd entry if it doesn't exist yet
-LINE_PASS="${USER_NAME}:x:${USER_UID}:${USER_GID}:${USER_NAME}:${USER_HOME}:/bin/bash"
+LINE_PASS="${USER_NAME}:x:${USER_UID}:${USER_GID}:${USER_NAME}@SLX:${USER_HOME}:/bin/bash"
 readonly LINE_PASS
 if ! grep -Fxq -- "${LINE_PASS}" /etc/passwd; then
-	sed -i "/^${USER_NAME}:/d" /etc/passwd
+	# Make sure there's no existing line with same uid or uidNumber
+	sed -i -r "/^${USER_NAME}:/d;/^[^:]*:x:${USER_UID}:/d" /etc/passwd
 	echo "${LINE_PASS}" >> /etc/passwd
 fi

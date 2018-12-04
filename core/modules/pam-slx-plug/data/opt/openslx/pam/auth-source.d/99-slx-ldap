@@ -83,6 +83,9 @@ run_auth() {
 	[ -z "$BINDDN" ] && BINDDN=$(extract_field "distinguishedName" "$SEARCH_ANON")
 	[ -z "$BINDDN" ] && return 1
 	# User exists
+	# Get proper capitalization
+	RET=$(extract_field "uid" "$SEARCH_ANON")
+	[ -n "$RET" ] && USER_NAME="$RET"
 	if [ "$PAM_TYPE" = "account" ]; then
 		# 'account' checks just if the user is allowed to log in, bail out
 		USER_UID=$(extract_field "uidNumber" "$SEARCH_ANON")
@@ -92,7 +95,11 @@ run_auth() {
 	fi
 	SEARCH_USER=$(mktemp)
 	TEMPFILES_LDAP="$TEMPFILES_LDAP $SEARCH_USER"
-	PW="/run/pw.${RANDOM}.${RANDOM}.${PAM_USER}.${RANDOM}.$$"
+	if [ -z "$SCRIPT_USER" ] || [ "$SCRIPT_USER" = "root" ]; then
+		PW="/run/pw.${RANDOM}.${PAM_USER}.${RANDOM}.$$"
+	else
+		PW="/run/user/${USER_UID}/pw.${RANDOM}.${PAM_USER}.${RANDOM}.$$"
+	fi
 	for retries in 0 1 1 0; do
 		if ! mkfifo -m 0600 "${PW}"; then
 			slxlog "pam-slxldap-fifo" "Could not create FIFO at ${PW}"
