@@ -3,7 +3,7 @@
 # Detach
 /bin/bash <<HERE
 {
-	sleep 1
+	/opt/openslx/bin/usleep 100000
 	/opt/openslx/bin/beamergui -c
 } &
 HERE
