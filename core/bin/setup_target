@@ -314,27 +314,6 @@ generate_target() {
 	pinfo "Activated modules in '${TARGET}':"
 	pinfo "\t$(echo ${MODULES})"
 
-	# we need a bit of special logic for kernel specifically
-	# to check if the built version is corresponding to the
-	# current kernel version. If not we had a kernel update
-	# and need to tell the user
-	if [[ -e "${TARGET_DIR}/kernel" ]]; then
-		# if so, check what kernels have been built
-		if [ -e "${ROOT_DIR}/tmp/work/kernel/ksrc/KVERSION" ]; then
-			local BUILT_KERNEL_VERSION=$(cat "${ROOT_DIR}/tmp/work/kernel/ksrc/KVERSION")
-			if [[ "${BUILT_KERNEL_VERSION}" != "${SYSTEM_KERNEL_LONG}" ]]; then
-				pinfo "The built kernel (${BUILT_KERNEL_VERSION}) is older than the running one (${SYSTEM_KERNEL_LONG})!"
-				# cleaning the module is enough as it forces to rebuild.
-				[[ "${AUTO_UPDATE_KERNEL}" == 1 ]] && pinfo "Auto-Udpate Kernel..." && clean_kernel_module --force
-			fi
-		elif [ -e "${ROOT_DIR}/tmp/work/kernel/ksrc" ]; then
-			# check if ksrc is there, since that would be problematic
-			pwarning "${ROOT_DIR}/tmp/work/kernel/ksrc exists, but KVERSION is not found!"
-			pwarning "Kernel was probably built with an older version of mltk."
-			pwarning "If errors arise, either write your KVERSION manually or clean the kernel."
-		fi
-	fi
-
 	# copy basic libs
 	pinfo "Copying libc and ld-linux used by ${SHELL}"
 	tarcopy "$(list_basic_libs)" "${TARGET_BUILD_DIR}"
@@ -509,13 +488,13 @@ clean_modules() {
 		if [ -e "${ROOT_DIR}/var/log/${TARGET}.size" ]; then
 			rm "${ROOT_DIR}/var/log/${TARGET}.size" || perror "Could not delete var/log/${TARGET}.size"
 		fi
-		if [ -d ${TARGET_BUILD_DIR} ]; then
+		if [ -d "${TARGET_BUILD_DIR}" ]; then
 			pinfo "Cleaning '${TARGET_BUILD_DIR}'" \
 				&& rm -rf "${TARGET_BUILD_DIR}"/* \
 				|| perror "Error deleting $TARGET_BUILD_DIR"
 		fi
 		# exclude kernel on "all"
-		set -- $(ls ${TARGET_DIR} | grep -vE "^kernel$")
+		set -- $(ls "${TARGET_DIR}" | grep -vE "^kernel$")
 	fi
 	cd "$TARGET_DIR"
 
@@ -545,47 +524,10 @@ clean_module() {
 		fi
 	fi
 
-	# if kernel is to be cleaned, do it separately and return
-	if [ "x$MODULE" == "xkernel" ]; then
-		clean_kernel_module "${TARGET}:${MODULE}"
-		return
-	fi
-
 	pinfo "Cleaning '$1'..."
-	rm -rf -- "${MODULE_WORK_DIR}/build" || perror "Could not delete build path"
-	rm -rf -- "${MODULE_WORK_DIR}/src" || perror "Could not delete src path"
-	rm -f -- "${MODULE_WORK_DIR}/list_dpkg_output" || perror "Could not delete list_dpkg_output"
-	rm -f -- "${MODULE_WORK_DIR}/list_binaries_and_files" || perror "Could not delete list_binaries_and_files"
+	rm -rf -- "${MODULE_WORK_DIR}" || perror "Could not delete work dir"
 	rm -f -- "${TARGET_BUILD_DIR}/opt/openslx/.mltk/${MODULE}."* # no space here!
-	# These are not in use anymore, but leave the cleanup here for upgraders
-	rm -f -- "${MODULE_WORK_DIR}/.built"
-	rm -f -- "${MODULE_WORK_DIR}/.fetched_source"
 	return 1
-}
-
-clean_kernel_module() {
-
-	local TARGET=${1%:*}
-	local MODULE=${1#*:}
-	local MODULE_WORK_DIR="${ROOT_DIR}/tmp/work/${MODULE}"
-
-	pinfo "Cleaning kernel module (including sources and compiled stuff)."
-	cd "${MODULE_WORK_DIR}" || perror "Could not cd to ${MODULE_WORK_DIR}"
-	if [ -e build ]; then
-		rm -rf build || pwarning "Could not delete ${MODULE_WORK_DIR}/build"
-	fi
-	# clean any git repos in nonstandard dirs
-	find . -maxdepth 1 -type d -name "linux-*" -exec rm -rf -- {} \;
-	# Clean aufs repo
-	find . -maxdepth 1 -type d -name "aufs*-*" -exec rm -rf -- {} \;
-	# clean the config generated and flag files
-	rm -f -- "openslx.config" ".fetched_source" ".built"
-	if [ -L "ksrc" ]; then
-		unlink "ksrc" || perror "Could not unlink ${MODULE_WORK_DIR}/ksrc."
-	elif [ -d "ksrc" ]; then
-		rm -rf -- "ksrc" || perror "Could not delete directory ${MODULE_WORK_DIR}/ksrc."
-	fi
-	pinfo "Done cleaning kernel."
 }
 
 # Recursively strip binaries and libraries in the given directory
