@@ -6,6 +6,7 @@
 # Legacy mode: As runvirt has been before.
 # New mode: uuid in xml _and_ vmx given via http.
 download_metadata() {
+	local TRIES EXTRA_ERROR WLOG TMPFILE RET ERRCODE
 	# Sanity checks
 	if ! check_dep wget; then
 		writelog "Could not find 'wget' in PATH: $PATH"
@@ -18,11 +19,30 @@ download_metadata() {
 	fi
 
 	writelog "Detecting current/legacy mode..."
-	declare -rg TMPCONFIG="$TMPDIR/vmconfig.tmp"
 
-	local TRIES=0
-	local EXTRA_ERROR=
-	local WLOG=
+	# Try new unified .tar.gz way
+	TMPFILE="$TMPDIR/metadata.tgz"
+	WLOG="$TMPDIR/wget-metadata.log"
+	curl -L -o "$TMPFILE" -w '\nretval:%{http_code}\n' --retry 3 --max-time 6 --retry-max-time 15 "${SLX_VMCHOOSER_BASE_URL}/lecture/${IMGUUID}/metadata" &> "$WLOG"
+	ERRCODE=$( awk -F: '{ if ($1 == "retval") print $2 }' "$WLOG" )
+	RET=$?
+	if [ "$RET" = 0 ] && [ -n "$ERRCODE" ] && [ "$ERRCODE" -ge 200 ] && [ "$ERRCODE" -lt 300 ]; then
+		# Success, see if data is usable
+		mkdir -p "$TMPDIR/metadata"
+		if tar -C "$TMPDIR/metadata" -x -f "$TMPFILE" && [ -s "$TMPDIR/metadata/vmx" ]; then
+			declare -rg TMPCONFIG="$TMPDIR/metadata/vmx"
+			declare -rg CONFDIR="$TMPDIR/metadata"
+			return 0
+		fi
+		rm -rf -- "$TMPDIR/metadata" "$TMPFILE"
+		writelog "Extracting metadata.tgz failed. Trying legacy mode."
+	elif [ -n "$ERRCODE" ] && [ "$ERRCODE" -ge 500 ]; then
+		slxlog --delete "run-virt-wget" "Downloading MetaData failed" "$WLOG"
+	fi
+
+	writelog "Metadata download failed, trying legacy approach..."
+	declare -rg TMPCONFIG="$TMPDIR/vmconfig.tmp"
+	TRIES=0
 	while [ "$TRIES" -lt 3 ]; do
 		TRIES=$(( TRIES + 1 ))
 		writelog "wget try $TRIES"

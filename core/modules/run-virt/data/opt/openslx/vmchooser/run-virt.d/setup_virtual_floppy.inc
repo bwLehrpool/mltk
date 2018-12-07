@@ -81,11 +81,14 @@ setup_virtual_floppy() {
 		done
 	fi
 
+	local NETSHARES="$CONFDIR/netshares"
+	local RUNSCRIPT="$CONFDIR/runscript"
+
 	## Network shares
 	# openslx.exe expects network shares line in the following format:
 	#		<path> <letter> <shortcut> <username> <password>
 	# which is coincidentally the one we received from dmsd :)
-	if load_dmsd_resource NETSHARES; then
+	if [ -f "$NETSHARES" ] || load_dmsd_resource NETSHARES; then
 		if [ -s "${NETSHARES}" ]; then
 			# try to detect if we are running windows and replace '/' with '\'
 			# in an attempt to fix an improperly given samba path
@@ -104,7 +107,7 @@ setup_virtual_floppy() {
 	# Check downloaded runscript and handle options like
 	# extension, visibility flag, ...
 	# options are 'key=value' pairs separated with ';'
-	if load_dmsd_resource RUNSCRIPT; then
+	if [ -f "$RUNSCRIPT" ] || load_dmsd_resource RUNSCRIPT; then
 		if [ -s "$RUNSCRIPT" ]; then
 			IFS=$'\n'
 			for OPT in $(head -n 1 "$RUNSCRIPT" | tr ";" "\n"); do
@@ -175,8 +178,8 @@ setup_virtual_floppy() {
 	fi
 	
 	# Admin supplied runscript(s)
-	if [ -d "${VMCHOOSER_DIR}/adminrun" ]; then
-		mcopy -s -i "${SLX_FLOPPY_IMG}" "${VMCHOOSER_DIR}/adminrun" "::/"
+	if [ -d "${CONFDIR}/adminrun" ]; then
+		mcopy -s -i "${SLX_FLOPPY_IMG}" "${CONFDIR}/adminrun" "::/"
 	fi
 	
 	rm -f -- "${SHARES}" "${TMPDIR}/openslx.ini" "${TMPDIR}/HOSTRES.TXT"
