@@ -17,6 +17,14 @@ else
 	/opt/openslx/cups/printergui --error "$ERRMSG" || notify-send "Fehler" "$ERRMSG"
 fi
 
+URLS_CONF="/opt/openslx/vmchooser/config/resource_urls.conf"
+if [ -s "$URLS_CONF" ]; then
+	. "$URLS_CONF"
+	[ -n "$url_list" ] && EXTRA="$EXTRA --url-list $url_list"
+	[ -n "$url_news" ] && EXTRA="$EXTRA --url-news $url_news"
+	[ -n "$url_help" ] && EXTRA="$EXTRA --url-help $url_help"
+fi
+
 [ -s "/run/hwinfo" ] && . "/run/hwinfo"
 if [ -z "$HW_MBRAM" ]; then
 	MEM=$(grep -m1 '^MemTotal:' /proc/meminfo | awk '{print $2}')
@@ -65,11 +73,10 @@ if /opt/openslx/lightdm/is-autologin-enabled && [ -s "/run/openslx/session-kille
 	fi
 fi
 
-# No quotes around $EXTRA!
-if [ -z "$SLX_LOCATIONS" ]; then
-	exec vmchooser.real "$@" --url "$URL" --fullscreen --tab "$TAB" --start-uuid "$SLX_EXAM_START" $EXTRA
+if [ -n "$SLX_LOCATIONS" ]; then
+	EXTRA="$EXTRA --locations $SLX_LOCATIONS"
 fi
 
 # No quotes around $EXTRA!
-exec vmchooser.real "$@" --url "$URL" --fullscreen --tab "$TAB" --start-uuid "$SLX_EXAM_START" --locations "$SLX_LOCATIONS" $EXTRA
+exec vmchooser.real "$@" --url "$URL" --fullscreen --tab "$TAB" --start-uuid "$SLX_EXAM_START" $EXTRA
 
