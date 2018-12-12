@@ -17,6 +17,12 @@ parse_xml() {
 		EXIT_TYPE="user" EXIT_REASON="Konnte keine ID für das ausgewählte Image ermitteln!" cleanexit 1
 	fi
 
+	# Set resource URLs for this lecture
+	[ -n "$url_lecture_config" ]    && readonly url_lecture_config="${url_lecture_config//%UUID%/${IMGUUID}}"
+	[ -n "$url_lecture_metadata" ]  && readonly url_lecture_metadata="${url_lecture_metadata//%UUID%/${IMGUUID}}"
+	[ -n "$url_lecture_netshares" ] && readonly url_lecture_netshares="${url_lecture_netshares//%UUID%/${IMGUUID}}"
+	[ -n "$url_lecture_runscript" ] && readonly url_lecture_runscript="${url_lecture_runscript//%UUID%/${IMGUUID}}"
+
 	# Relative / Absolute path to image
 	declare -rg SRC_IMG_RELATIVE=$(get_xml "image_name")
 	declare -g SRC_IMG_ABSOLUTE=$(get_xml "image_path")

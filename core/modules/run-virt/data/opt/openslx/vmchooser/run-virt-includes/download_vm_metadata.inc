@@ -13,43 +13,35 @@ download_metadata() {
 		EXIT_TYPE="internal" EXIT_REASON="Fehlendes Dienstprogramm 'wget'!" cleanexit 1
 	fi
 
-	if isempty SLX_VMCHOOSER_BASE_URL; then
-		writelog "SLX_VMCHOOSER_BASE_URL is not set! Was /opt/openslx/config sourced?"
-		EXIT_TYPE="internal" EXIT_REASON="msg.vmchooser.url-missing Keine URL zur Schnittstelle des bwLehrpool-Satelliten gefunden!" cleanexit 1
-	fi
-
 	writelog "Detecting current/legacy mode..."
+	declare -rg TMPCONFIG="$CONFDIR/vmx"
 
 	# Try new unified .tar.gz way
 	TMPFILE="$TMPDIR/metadata.tgz"
 	WLOG="$TMPDIR/wget-metadata.log"
-	curl -L -o "$TMPFILE" -w '\nretval:%{http_code}\n' --retry 3 --max-time 6 --retry-max-time 15 "${SLX_VMCHOOSER_BASE_URL}/lecture/${IMGUUID}/metadata" &> "$WLOG"
+	curl -L -o "$TMPFILE" -w '\nretval:%{http_code}\n' --retry 3 --max-time 6 --retry-max-time 15 "${url_lecture_metadata}" &> "$WLOG"
 	ERRCODE=$( awk -F: '{ if ($1 == "retval") print $2 }' "$WLOG" )
 	RET=$?
 	if [ "$RET" = 0 ] && [ -n "$ERRCODE" ] && [ "$ERRCODE" -ge 200 ] && [ "$ERRCODE" -lt 300 ]; then
 		# Success, see if data is usable
-		mkdir -p "$TMPDIR/metadata"
-		if tar -C "$TMPDIR/metadata" -x -f "$TMPFILE" && [ -s "$TMPDIR/metadata/vmx" ]; then
-			declare -rg TMPCONFIG="$TMPDIR/metadata/vmx"
-			declare -rg CONFDIR="$TMPDIR/metadata"
+		if tar -C "$CONFDIR" -x -f "$TMPFILE" && [ -s "$CONFDIR/vmx" ]; then
 			return 0
 		fi
-		rm -rf -- "$TMPDIR/metadata" "$TMPFILE"
+		rm -rf -- "$TMPFILE"
 		writelog "Extracting metadata.tgz failed. Trying legacy mode."
 	elif [ -n "$ERRCODE" ] && [ "$ERRCODE" -ge 500 ]; then
 		slxlog --delete "run-virt-wget" "Downloading MetaData failed" "$WLOG"
 	fi
 
 	writelog "Metadata download failed, trying legacy approach..."
-	declare -rg TMPCONFIG="$TMPDIR/vmconfig.tmp"
 	TRIES=0
 	while [ "$TRIES" -lt 3 ]; do
 		TRIES=$(( TRIES + 1 ))
 		writelog "wget try $TRIES"
 		WLOG="$TMPDIR/wget-${TRIES}.log"
-		if wget -T 6 -O "$TMPCONFIG" "${SLX_VMCHOOSER_BASE_URL}/lecture/${IMGUUID}" &>"$WLOG"; then
+		if wget -T 6 -O "$TMPCONFIG" "${url_lecture_config}" &>"$WLOG"; then
 			rm -f -- "$WLOG"
-			writelog "Downloaded VM description from '${SLX_VMCHOOSER_BASE_URL}/lecture/${IMGUUID}' successfully."
+			writelog "Downloaded VM description from '${url_lecture_config}' successfully."
 			if [ -s "$TMPCONFIG" ]; then
 				# Downloaded a non-zero VM description file, all good
 				return 0

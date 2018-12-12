@@ -501,3 +501,22 @@ detect_cpu_flag() {
 	done
 	grep -m1 -qE '^flags\s*:.*\b('"${flags}"')\b' /proc/cpuinfo
 }
+
+# downloads the given URL to given file
+download_file() {
+  [ $# -ne 2 ] && writelog "Usage: $0 <url> <path>." && return 1
+  local _url="$1"
+  local _path="$2"
+  echo "Downloading '$_url' to '$_path'..."
+  if ! wget -T 6 -O "$_path" "$_url" 2> /dev/null >&2; then
+    writelog "Downloading '$_url' failed."
+    return 1
+  fi
+  if [ ! -s "$_path" ]; then
+    # zero bytes, log and ignore
+    writelog "Downloaded resource from '$_url' has zero bytes."
+    return 1
+  fi
+  return 0
+}
+

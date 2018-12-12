@@ -7,6 +7,7 @@ declare -rg VMCHOOSER_DIR="/opt/openslx/vmchooser"
 declare -rg VMCHOOSER_CONF_DIR="$VMCHOOSER_DIR/config"
 declare -rg USER="$(whoami)"
 declare -rg TMPDIR="/tmp/virt/${USER}/$$"
+declare -rg CONFDIR="${TMPDIR}/metadata"
 
 # Check if the path to the logfile was given externally (by the wrapper)
 unset WRAPPED
@@ -24,10 +25,11 @@ if notempty LOGFILE; then
 	fi
 fi
 isset LOGFILE || declare -rg LOGFILE="/var/log/openslx/run-virt.${USER}.$$.log"
+ln -sf "$LOGFILE" "/var/log/openslx/run-virt.latest.log"
 
 # Create temporary directory for current invocation
-if check_dep mkdir && ! mkdir -p "$TMPDIR"; then
-	writelog "Could not create temporary directory '$TMPDIR' for session"
+if check_dep mkdir && ! mkdir -p "$TMPDIR" "$CONFDIR"; then
+	writelog "Could not create temporary directories for session"
 	EXIT_TYPE="internal" EXIT_REASON="Konnte kein Arbeitsverzeichnis für die VM-Sitzung anlegen." cleanexit 1
 fi
 

@@ -65,7 +65,12 @@ fi
 
 sort -u "${AUTORULES}" > "${RULES}"
 
-wget -T 6 -O - "${SLX_VMCHOOSER_BASE_URL}/lecture/$1/netrules" >> "${RULES}" 2> "${AUTORULES}"
+# determine the URL to download the netrules from
+. /opt/openslx/vmchooser/config/resource_urls.conf
+NETRULES_URL=
+[ -n "$url_lecture_netrules" ] && NETRULES_URL="${url_lecture_netrules//%UUID%/${1}}"
+[ -z "$NETRULES_URL" ] && NETRULES_URL="${SLX_VMCHOOSER_BASE_URL}/lecture/$1/netrules"
+wget -T 6 -O - "${NETRULES_URL}" >> "${RULES}" 2> "${AUTORULES}"
 RET=$?
 
 if [ "$RET" != "0" ]; then

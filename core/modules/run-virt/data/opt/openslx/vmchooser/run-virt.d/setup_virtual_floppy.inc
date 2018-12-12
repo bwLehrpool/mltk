@@ -2,34 +2,6 @@
 # Include: Setup virtual floppy for drive b: #
 ##############################################
 ## Functions ##
-# download the given resource for this lecture
-# and makes it accessible globally through a
-# variable of the same name. Given name will be
-# put to lower case before wget'ing so its safe
-# to use upper case variables...
-load_dmsd_resource() {
-	[ $# -eq 0 ] && writelog "Missing argument for resource." && return
-	while [ $# -gt 0 ]; do
-		local RESOURCE="$1"
-		declare -g ${RESOURCE}="${TMPDIR}/${RESOURCE}"
-		local RESOURCE_URL="${SLX_VMCHOOSER_BASE_URL}/lecture/${IMGUUID}/$(echo $1 | awk '{print tolower($0)}')"
-		shift
-		echo "DOWNLOAD to ${!RESOURCE}"
-		if ! wget -T 6 -O "${!RESOURCE}" "${RESOURCE_URL}" 2> /dev/null >&2; then
-			writelog "Downloading runscript from '${RESOURCE_URL}' failed."
-			continue
-		fi
-		if [ ! -s "${!RESOURCE}" ]; then
-			# zero bytes, log and ignore
-			writelog "Downloaded resource from '${RESOURCE_URL}' has zero bytes."
-			unset "${RESOURCE}"
-		else
-			# there is stuff in it, make it readonly
-			readonly "${RESOURCE}"
-		fi
-	done
-	return 0
-}
 setup_virtual_floppy() {
 	declare -rg SLX_FLOPPY_IMG="${TMPDIR}/floppy.img"
 	declare -rg TMPHOME="${HOME}"
@@ -88,7 +60,7 @@ setup_virtual_floppy() {
 	# openslx.exe expects network shares line in the following format:
 	#		<path> <letter> <shortcut> <username> <password>
 	# which is coincidentally the one we received from dmsd :)
-	if [ -f "$NETSHARES" ] || load_dmsd_resource NETSHARES; then
+	if [ -f "$NETSHARES" ] || download_file "$url_lecture_netshares" "$NETSHARES"; then
 		if [ -s "${NETSHARES}" ]; then
 			# try to detect if we are running windows and replace '/' with '\'
 			# in an attempt to fix an improperly given samba path
@@ -107,7 +79,7 @@ setup_virtual_floppy() {
 	# Check downloaded runscript and handle options like
 	# extension, visibility flag, ...
 	# options are 'key=value' pairs separated with ';'
-	if [ -f "$RUNSCRIPT" ] || load_dmsd_resource RUNSCRIPT; then
+	if [ -f "$RUNSCRIPT" ] || download_file "$url_lecture_runscript" "$RUNSCRIPT"; then
 		if [ -s "$RUNSCRIPT" ]; then
 			IFS=$'\n'
 			for OPT in $(head -n 1 "$RUNSCRIPT" | tr ";" "\n"); do
