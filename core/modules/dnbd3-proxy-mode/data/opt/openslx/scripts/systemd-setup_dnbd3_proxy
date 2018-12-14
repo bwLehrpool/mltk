@@ -179,7 +179,7 @@ fi
 	echo "*******************"
 	echo "*** DNBD3 Proxy ***"
 	echo "*******************"
-) | tee -a "/etc/issue" >> "/opt/openslx/etc/issue.template"
+) | tee -a "/etc/issue" | tee -a "/etc/issue.net" >> "/opt/openslx/etc/issue.template"
 
 # Create a crontab for rebooting - if everything is fine, once a weekend,
 # on failure, reboot every night, hoping things will get better (...)
