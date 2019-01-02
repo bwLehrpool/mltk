@@ -8,5 +8,5 @@ fi
 
 (
 	beamergui -b -g &
-) &
+) &> /dev/null &
 
