@@ -482,6 +482,12 @@ dir_on_tmpfs() {
 		[ "x$(cut -d' ' -f3 <<< ${mount_line})" == "xtmpfs" ]
 		return $?
 	done
+	# NG: check if / is fully backed by hard drive
+	local dmsetup_conf="/run/openslx/dmsetup.conf"
+	if [ -s "$dmsetup_conf" ]; then
+		return $( ! grep -qE '^/dev/mapper/root\s+/\s+type=1' "$dmsetup_conf" )
+	fi
+	# else assume old-gen were / was in RAM
 	return 0
 }
 

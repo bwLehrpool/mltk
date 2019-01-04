@@ -1,0 +1,10 @@
+#!/bin/ash
+
+# cause why not ...
+mkdir -p "/etc/lightdm/lightdm.conf.d/"
+cat <<-EOF > /etc/lightdm/lightdm.conf.d/20-netpoint-greeter.conf
+	[SeatDefaults]
+	greeter-session=netpoint
+EOF
+
+true

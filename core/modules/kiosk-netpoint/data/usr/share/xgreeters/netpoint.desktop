@@ -1,0 +1,5 @@
+[Desktop Entry]
+Name=Netpoint Greeter
+Comment=Netpoint Greeter
+Exec=/opt/openslx/lightdm/netpoint-greeter/netpoint.py
+Type=Application

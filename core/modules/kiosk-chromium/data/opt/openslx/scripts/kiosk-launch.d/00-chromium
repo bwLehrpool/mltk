@@ -1,0 +1,91 @@
+#!/bin/bash
+# prepares and run chromium as kiosk browser
+
+. /opt/openslx/config
+
+# swallow keyboard shortcuts of chromium
+cat <<- EOF > "$HOME/.xbindkeysrc"
+"true"
+	Control+d
+"true"
+	Control+t
+"true"
+	Control+s
+"true"
+	Control+n
+"true"
+	Control+j
+"true"
+	Control+p
+"true"
+	Control+h
+"true"
+	Control+Shift+o
+EOF
+# xbinkeys requires a daemon, run it
+xbindkeys_autostart &
+
+[ -n "$SLX_BROWSER_INSECURE" ] && SLX_BROWSER_INSECURE="--allow-running-insecure-content --ignore-certificate-errors"
+
+# clear state of previous sessions
+[ -e "$HOME/.config/chromium" ] && rm -rf -- "$HOME/.config/chromium"
+mkdir -p "$HOME/.config/chromium/Default"
+
+bookmark_template="$(mktemp)"
+cat <<-EOF > "$bookmark_template"
+{
+   "roots": {
+      "bookmark_bar": {
+         "children": [  ],
+         "id": "1",
+         "name": "Lesezeichenleiste",
+         "type": "folder"
+      },
+      "other": {
+         "children": [  ],
+         "id": "2",
+         "name": "Weitere Lesezeichen",
+         "type": "folder"
+      },
+      "synced": {
+         "children": [  ],
+         "id": "3",
+         "name": "Mobile Lesezeichen",
+         "type": "folder"
+      }
+   },
+   "version": 1
+}
+EOF
+
+# copy the Bookmark json template and fill in our bookmarks
+json_bookmarks() {
+	cur=0
+	echo -n '['
+	while [ $# -ne 0 ]; do
+		local bb="$1"
+		shift
+		awk -F, '{printf "%s","{\"id\": \"'$cur'\", \"type\": \"url\", \"name\": \""$1"\", \"url\": \""$2"\"}"}' <<< "$bb"
+		[ $# -ne 0 ] && echo -n ','
+		(( cur ++ ))
+	done 
+	echo -n ']'
+}
+
+# set the bookmarks in the user's home directory
+jq ".roots.bookmark_bar.children += $(json_bookmarks $SLX_BROWSER_BOOKMARKS)" \
+	"$bookmark_template" > "$HOME/.config/chromium/Default/Bookmarks"
+
+if [ -n "$SLX_BROWSER_INTERACTIVE" ]; then
+	SLX_KIOSK=''
+else
+	SLX_KIOSK='--kiosk'
+fi
+
+# finally start chromium
+exec chromium-browser \
+	--noerrdialogs \
+	--disable-infobars \
+	$SLX_KIOSK \
+	$SLX_BROWSER_INSECURE \
+	"$SLX_BROWSER_URL"

@@ -1,0 +1,9 @@
+#!/bin/ash
+# ^SOURCED
+
+# kiosk mode?
+if [ -n "$SLX_BROWSER_URL" ]; then 
+	exec /opt/openslx/scripts/kiosk-launch
+fi
+
+true

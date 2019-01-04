@@ -1,0 +1,26 @@
+#!/bin/bash
+# generic kiosk mode launcher
+
+. /opt/openslx/config
+
+[ -z "$SLX_BROWSER_URL" ] && exit 1
+
+# disable power management features
+xset s off
+xset -dpms
+
+# start openbox window manager
+openbox --config-file "/etc/xdg/openbox/rc.xml.kiosk" &
+
+# move the mouse away
+xdotool mousemove 20000 20000 &
+
+# run browser
+for file in "$0".d/*; do
+	. "$file" || slxlog "kiosk-launch" "Failed to source '$file'."
+done
+
+# should not come to this point as above sources should
+# exec away
+slxlog "kiosk-launch" "No kiosk browser configured!"
+exit 1

@@ -1,5 +1,16 @@
 #!/bin/ash
 # Run as root, intended to setup the guest account
-# and echo its name at the end.
-# we use the existing demo user, so not much to do
+# and echo its name, demo in our case, at the end.
+# Further we allow for hooks to execute stuff here.
+
+(
+hook_dir="$(readlink -f $0)"
+if [ -d "$hook_dir" ]; then
+	for hook in "$hook_dir"/*; do
+		[ -s "$hook" ] || continue
+		. "$hook" || slxlog "kiosk-guest-account" "Failed to source '$hook'."
+	done
+fi
+) > /dev/null 2>&1
+# finish by echoing the guest account name
 echo "demo"

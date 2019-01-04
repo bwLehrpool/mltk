@@ -1,18 +1,10 @@
 #!/bin/ash
+# ^ sourced!
 
-. /opt/openslx/config
-
-[ -z "$SLX_BROWSER_URL" ] && exit 1
-
-xset s off
-xset -dpms
-
-openbox &
+export PATH=$PATH:/opt/openslx/sbin:/opt/openslx/bin
 
 [ -n "$SLX_BROWSER_INSECURE" ] && SLX_BROWSER_INSECURE="--insecure"
 RELOAD=
 [ -n "$SLX_BROWSER_RELOAD_SECS" ] && [ "$SLX_BROWSER_RELOAD_SECS" -gt 0 ] && RELOAD="--reload-interval $SLX_BROWSER_RELOAD_SECS"
 
-xdotool mousemove 20000 20000 &
 exec slxbrowser $SLX_BROWSER_INSECURE $RELOAD --fullscreen "$SLX_BROWSER_URL"
-

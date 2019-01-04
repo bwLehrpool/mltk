@@ -1,0 +1,33 @@
+#!/bin/bash
+# ^SOURCED
+
+. /opt/openslx/config
+
+chromium_policies() {
+	# create managed policy file, those settings cannot be changed by the user
+	# (if he even gets to the settings dialog in the first place)
+	local chromium_policy_file="/etc/chromium-browser/policies/managed/kiosk-mode.json"
+	[ -e "$chromium_policy_file" ] && rm -f "$chromium_policy_file"
+
+	mkdir -p ${chromium_policy_file%/*}
+
+	if [ -n "$SLX_BROWSER_BOOKMARKS" ]; then
+		bookmarkbar=true
+	else
+		bookmarkbar=false
+	fi
+
+	cat <<- EOF > "$chromium_policy_file"
+	{
+		"BackgroundModeEnabled": false,
+		"BookmarkBarEnabled": $bookmarkbar,
+		"DefaultBrowserSettingEnabled": true,
+		"DownloadRestrictions": 3,
+		"ShowAppsShortcutInBookmarkBar": false,
+		"TranslateEnabled": false
+	}
+	EOF
+}
+
+chromium_policies
+true
