@@ -1,0 +1,33 @@
+#!/bin/bash
+fetch_source() {
+	git clone --depth 1 "$REQUIRED_GIT" "${MODULE_WORK_DIR}/src"
+}
+
+build() {
+	: # python script so nothing to build
+}
+
+post_copy() {
+	(
+	set -o errexit
+	local SRCDIR="${MODULE_WORK_DIR}/src/"
+	# figure out where to put files
+	local conf_target="$(grep -oE 'EnvironmentFile=-?\S+' ${SRCDIR}/networkd-dispatcher.service)"
+	conf_target="${conf_target#*/}"
+	conf_target="${conf_target%/*}"
+	[ -z "$conf_target" ] && exit 1
+	local bin_target="$(grep -oE 'ExecStart=(/\S+)' ${SRCDIR}/networkd-dispatcher.service)"
+	bin_target="${bin_target#*/}"
+	[ -z "$bin_target" ] && exit 1
+	# now copy everthing to target
+	mkdir -p "${TARGET_BUILD_DIR}/etc/systemd/system/systemd-networkd.service.wants" \
+		"${TARGET_BUILD_DIR}/${conf_target}"
+	cp "${SRCDIR}/networkd-dispatcher.service" "${TARGET_BUILD_DIR}/etc/systemd/system"
+	cp "${SRCDIR}/networkd-dispatcher.conf" "${TARGET_BUILD_DIR}/${conf_target}"
+	cp "${SRCDIR}/networkd-dispatcher" "${TARGET_BUILD_DIR}/${bin_target}"
+	# set pull dependency on systemd-networkd
+	ln -sf "../networkd-dispatcher.service" \
+		"${TARGET_BUILD_DIR}/etc/systemd/system/systemd-networkd.service.wants/networkd-dispatcher.service"
+	)
+	[ $? -ne 0 ] && perror "Failed to setup networkd-dispatcher"
+}
