@@ -6,6 +6,8 @@
 #
 # This scriptis triggered by inotifyd, see openslx-iptables_reloader.service
 
+export PATH:"$PATH:/opt/openslx/sbin:/opt/openslx/bin"
+
 ALL_RULES="/run/iptables-reloader.cache"
 LOCK="/run/iptables-reloader.lock"
 WAIT="/run/iptables-reloader.wait"
