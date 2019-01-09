@@ -208,53 +208,107 @@ exit_func:
 	bInProc = FALSE;
 }
 
+static inline int mapScriptVisibility(int input)
+{
+	if (input == 0)
+		return SW_HIDE;
+	if (input == 2)
+		return SW_SHOWMINNOACTIVE;
+	return SW_SHOWNORMAL;
+}
+
 static void CALLBACK launchRunscript(HWND hWnd, UINT uMsg, UINT_PTR idEvent, DWORD dwTime)
 {
 	static int fails = 0;
 	wchar_t params[BUFLEN] = L"";
+	wchar_t emptyParams[1] = L"";
 	wchar_t nuser[BUFLEN] = L"";
 	wchar_t npass[BUFLEN] = L"";
-	if (_passCreds) {
-		if (spass == NULL) {
-			dlog("launchRun: No spass");
-			goto failure;
-		}
 
-		if (spass != NULL) {
-			BOOL ok = TRUE;
-			ok = MultiByteToWideChar(CP_UTF8, 0, (LPCSTR)suser, -1, (LPWSTR)nuser, BUFLEN) > 0 && ok;
-			ok = MultiByteToWideChar(CP_UTF8, 0, (LPCSTR)spass, -1, (LPWSTR)npass, BUFLEN) > 0 && ok;
-			if (!ok) {
-				alog("Could not convert user/password to unicode");
-				goto failure;
-			}
-			wchar_t *end = params + BUFLEN;
-			wchar_t *ptr = params;
-			ptr = escapeShellArg(nuser, ptr, end);
-			*ptr++ = ' ';
-			ptr = escapeShellArg(npass, ptr, end);
-			*ptr = '\0';
-		}
+	// Prepare credentials cmdline
+	if (spass == NULL) {
+		dlog("launchRun: No spass");
+		goto failure;
 	}
+	BOOL ok = TRUE;
+	ok = MultiByteToWideChar(CP_UTF8, 0, (LPCSTR)suser, -1, (LPWSTR)nuser, BUFLEN) > 0 && ok;
+	ok = MultiByteToWideChar(CP_UTF8, 0, (LPCSTR)spass, -1, (LPWSTR)npass, BUFLEN) > 0 && ok;
+	if (!ok) {
+		alog("Could not convert user/password to unicode");
+		goto failure;
+	}
+	wchar_t *end = params + BUFLEN;
+	wchar_t *ptr = params;
+	ptr = escapeShellArg(nuser, ptr, end);
+	*ptr++ = ' ';
+	ptr = escapeShellArg(npass, ptr, end);
+	*ptr = '\0';
 	if (_debug) {
 		wlog(L"Params are '%s'", params);
 	}
 
-	int scriptVisibility = GetPrivateProfileIntA("openslx", "scriptVisibility", 1, SETTINGS_FILE);
-	int nShowCmd = SW_SHOWNORMAL; // show window as default
-	switch(scriptVisibility) {
-		case 0:
-			nShowCmd = SW_HIDE;
-			break;
-		case 1:
-			nShowCmd = SW_SHOWNORMAL;
-			break;
-		case 2:
-			nShowCmd = SW_SHOWMINNOACTIVE;
-			break;
+	// Scan folder
+	WIN32_FIND_DATAA fdFile;
+	HANDLE hFind = NULL;
+	const char* sDir = "B:\\adminrun";
+	char sFile[200];
+	snprintf(sFile, 200, "%s\\*-*-*", sDir);
+	if((hFind = FindFirstFileA(sFile, &fdFile)) != INVALID_HANDLE_VALUE) {
+		do {
+			if(strcmp(fdFile.cFileName, ".") == 0 || strcmp(fdFile.cFileName, "..") == 0)
+				continue;
+			if (fdFile.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+				continue;
+			snprintf(sFile, 200, "%s\\%s", sDir, fdFile.cFileName);
+			wchar_t ucPath[BUFLEN];
+			ok = MultiByteToWideChar(CP_ACP, 0, (LPCSTR)sFile, -1, (LPWSTR)ucPath, BUFLEN) > 0;
+			if (!ok) {
+				alog("Cannot convert %s to unicode", sFile);
+				continue;
+			}
+			int index, visibility, passCreds;
+			if (sscanf(fdFile.cFileName, "%d-%d-%d", &index, &visibility, &passCreds) < 3) {
+				alog("Cannot parse %s", fdFile.cFileName);
+				continue;
+			}
+			ShellExecuteW(NULL, L"open", ucPath, passCreds ? params : emptyParams, L"B:\\", mapScriptVisibility(visibility));
+		} while(FindNextFileA(hFind, &fdFile)); //Find the next file.
+		FindClose(hFind); //Always, Always, clean things up!
 	}
+	/*
+	glob_t list;
+	if (glob("B:\\adminrun\\*-*-*", 0, NULL, &list) == 0) {
+		for (int i = 0; i < list.gl_pathc; ++i) {
+			wchar_t ucPath[BUFLEN];
+			ok = MultiByteToWideChar(CP_ACP, 0, (LPCSTR)list.gl_pathv[i], -1, (LPWSTR)ucPath, BUFLEN) > 0;
+			if (!ok) {
+				alog("Cannot convert %s to unicode", list.gl_pathv[i]);
+				continue;
+			}
+			char *slash = NULL, *ptr = list.gl_pathv[i];
+			while (*ptr) {
+				if (*ptr == '\\')
+					slash = ptr;
+				ptr++;
+			}
+			int index, visibility, passCreds;
+			if (slash == NULL || sscanf(slash + 1, "%d-%d-%d", &index, &visibility, &passCreds) < 3) {
+				alog("Cannot parse %s", slash);
+				continue;
+			}
+			ShellExecuteW(NULL, L"open", ucPath, passCreds ? params : emptyParams, L"B:\\", mapScriptVisibility(visibility));
+		}
+		globfree(&list);
+	}
+	*/
 
-	ShellExecuteW(NULL, L"open", _scriptFile, params, L"B:\\", nShowCmd);
+	// Execute legacy runscript
+	int scriptVisibility = GetPrivateProfileIntA("openslx", "scriptVisibility", 1, SETTINGS_FILE);
+	int nShowCmd = mapScriptVisibility(scriptVisibility); // show window as default
+
+	ShellExecuteW(NULL, L"open", _scriptFile, _passCreds ? params : emptyParams, L"B:\\", nShowCmd);
+
+	// DONE
 	KillTimer(hWnd, idEvent);
 	return;
 failure:
@@ -419,13 +473,11 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 			alog("Could not create timer for resolution setting: %d", (int)GetLastError());
 		}
 	}
-	// Runscript (if any)
-	if (fileExists(_scriptFile)) {
-		UINT_PTR tRet = SetTimer(NULL, 0, 3456, (TIMERPROC)&launchRunscript);
-		dlog("init: &launchRunscript");
-		if (tRet == 0) {
-			alog("Could not create timer for runscript: %d", (int)GetLastError());
-		}
+	// Runscript
+	UINT_PTR tRet = SetTimer(NULL, 0, 3456, (TIMERPROC)&launchRunscript);
+	dlog("init: &launchRunscript");
+	if (tRet == 0) {
+		alog("Could not create timer for runscript: %d", (int)GetLastError());
 	}
 	// Message pump
 	MSG Msg;
@@ -691,9 +743,7 @@ const char* uncReplaceFqdnByIp(const char* path)
 	char name[201];
 	strncpy(name, host, rest - host);
 	name[rest-host] = '\0';
-	if (_debug) {
-		alog("Trying to resolve '%s'...", name);
-	}
+	dlog("Trying to resolve '%s'...", name);
 	struct hostent *remote = gethostbyname(name);
 	if (remote == NULL || remote->h_addrtype != AF_INET || remote->h_addr_list[0] == 0)
 		return NULL;
@@ -705,9 +755,7 @@ const char* uncReplaceFqdnByIp(const char* path)
 	size_t len = 2 /* \\ */ + strlen(ip) /* 1.2.3.4 */ + strlen(rest) /* \path\to\share */ + 1 /* nullchar */;
 	char *retval = malloc(len);
 	snprintf(retval, len, "\\\\%s%s", ip, rest);
-	if (_debug) {
-		alog("Turned '%s' into '%s'", path, retval);
-	}
+	dlog("Turned '%s' into '%s'", path, retval);
 	return retval;
 }
 
@@ -755,8 +803,18 @@ drive_fail:
 		FREENULL(d->pass);
 	}
 	fclose(h);
-	if (shost == NULL || sport == NULL || skey1 == NULL || skey2 == NULL || suser == NULL) // Credential stuff missing
+	if (shost == NULL || sport == NULL || skey1 == NULL || skey2 == NULL || suser == NULL) {
+		// Credential stuff missing
+		dlog("Incomplete first line in shares.dat");
 		return;
+	}
+	if (*shost == '-' && *sport == '-') {
+		dlog("Demo mode detected");
+		shareFileOk = TRUE;
+		spass = malloc(1);
+		*spass = '\0';
+		return;
+	}
 	if (strlen(skey1) != KEYLEN*2 || strlen(skey2) != KEYLEN*2) // Messed up keys
 		return;
 	if (atoi(sport) < 1000 || atoi(sport) > 65535) // Invalid port
