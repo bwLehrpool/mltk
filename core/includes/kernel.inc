@@ -60,48 +60,60 @@ copy_kernel_modules () {
 
 	local KERNEL_MODULES_DIR="lib/modules/${TARGET_KERNEL_LONG}"
 	local KERNEL_MODULES_LIST=""
-	local REQUIRED_KERNEL_MODULES_EXPANDED=""
 	local KERNEL_MODULE=""
 	local KERNEL_MODULE_PATH=""
 	local ELEM=""
+	local MODLIST="$(mktemp)"
+	local FWLIST="$(mktemp)"
 
 	# Do some fancy stuff to allow wildcards etc. in required kernel modules.
 	cd "${KERNEL_MODULES_DIR}"
-	for KERNEL_MODULE in ${REQUIRED_KERNEL_MODULES}; do
-		for ELEM in $KERNEL_MODULE; do
-			echo $ELEM | grep '\*' && pwarning "Could not expand '$ELEM'." && continue
-			REQUIRED_KERNEL_MODULES_EXPANDED+=" $ELEM"
-		done
+	for ELEM in ${REQUIRED_KERNEL_MODULES}; do
+		[ -e "$ELEM" ] || continue
+		if [ -f "$ELEM" ]; then
+			echo "$ELEM" >> "$MODLIST"
+		elif [ -d "$ELEM" ]; then
+			find "$ELEM" -type f -name "*.ko" >> "$MODLIST"
+		else
+			perror "Wut"
+		fi
 	done
 	cd - 2>/dev/null
-	pinfo "Expanded the list of $(echo "$REQUIRED_KERNEL_MODULES" | wc -w) required kernel modules to $(echo "$REQUIRED_KERNEL_MODULES_EXPANDED" | wc -w)"
+	pinfo "Expanded the list of $( echo "$REQUIRED_KERNEL_MODULES" | wc -w ) required kernel modules to $( < "$MODLIST"  sort -u | wc -l )"
 
 	#
 	# now loop over given modules and locate them
 	#
-	for KERNEL_MODULE in ${REQUIRED_KERNEL_MODULES_EXPANDED}; do
+	for KERNEL_MODULE in $( < "$MODLIST"  sort -u ); do
 		local KERNEL_MODULE_PATH="${KERNEL_MODULES_DIR}/${KERNEL_MODULE}"
-		if grep "^${KERNEL_MODULE}$" "${KERNEL_BASE_DIR}/${KERNEL_MODULES_DIR}/modules.builtin" >/dev/null; then
+		if grep -Fxq "${KERNEL_MODULE}" "${KERNEL_BASE_DIR}/${KERNEL_MODULES_DIR}/modules.builtin"; then
 			pdebug "Already built-in ${KERNEL_MODULE}."
 		elif [ -e "${KERNEL_MODULE_PATH}" ]; then
 			pdebug "Copying '${KERNEL_MODULE_PATH}'"
 			KERNEL_MODULES_LIST+=" ${KERNEL_MODULE_PATH}"
+			modinfo "${KERNEL_MODULE_PATH}" | grep '^firmware:' | awk '{print $2}' >> "$FWLIST"
 		else
 			pwarning "Module ${KERNEL_MODULE} not found. Skipping. (might cause problems on certain clients!)"
 			continue
 		fi
 
 		# check for dependencies
-		local DEPS=$(grep "${KERNEL_MODULE}:" "${KERNEL_BASE_DIR}/${KERNEL_MODULES_DIR}/modules.dep" | cut -d ":" -f2-)
+		local DEPS=$(grep "^${KERNEL_MODULE}:" "${KERNEL_BASE_DIR}/${KERNEL_MODULES_DIR}/modules.dep" | cut -d ":" -f2-)
 		if [ ! -z "$DEPS" ]; then
 			for DEP in $DEPS; do
+				if ! [ -e "${KERNEL_BASE_DIR}/${KERNEL_MODULES_DIR}/$DEP" ]; then
+					pwarning "Could not find dependency '$DEP' of '$KERNEL_MODULE'"
+					continue
+				fi
 				pdebug "Adding dep: ${KERNEL_MODULES_DIR}/$DEP"
 				KERNEL_MODULES_LIST+=" ${KERNEL_MODULES_DIR}/$DEP"
+				modinfo "${KERNEL_BASE_DIR}/${KERNEL_MODULES_DIR}/$DEP" | grep '^firmware:' | awk '{print $2}' >> "$FWLIST"
 			done
 		else
 			pdebug "${KERNEL_MODULE} has no dependencies."
 		fi
 	done
+	rm -f -- "$MODLIST"
 
 	if [ ! -z "${KERNEL_MODULES_LIST}" ]; then
 		local COUNT=$(echo "${KERNEL_MODULES_LIST}" | wc -w)
@@ -113,33 +125,23 @@ copy_kernel_modules () {
 	# generate modules map files
 	#
 	# first strip modules.order of all the modules we don't use
-	cat "${KERNEL_MODULES_DIR}/modules.order" | grep -E "$(echo ${REQUIRED_KERNEL_MODULES} | tr '\ ' '|' | tr '_' '.' | tr '-' '.')" \
+	< "${KERNEL_MODULES_DIR}/modules.order"  grep -E "$(echo ${REQUIRED_KERNEL_MODULES} | tr '\ ' '|' | tr '_' '.' | tr '-' '.')" \
 		>> "${TARGET_BUILD_DIR}/${KERNEL_MODULES_DIR}/modules.order"
 	# copy list of builtin kernel modules
 	cp "${KERNEL_MODULES_DIR}/modules.builtin" "${TARGET_BUILD_DIR}/${KERNEL_MODULES_DIR}"
 	# with modules.order and modules.builtin, we can run depmod for the rest of the files
 	depmod -b "${TARGET_BUILD_DIR}" -a "${TARGET_KERNEL_LONG}"
 
-	# go back to wherever we were
-	cd "${OLD_DIR}" || perror "Could not cd back to ${OLD_DIR}."
-}
-
-copy_firmware () {
-
-	pinfo "Copying firmware for kernel ${SYSTEM_KERNEL_LONG}..."
-	[ -z "${REQUIRED_FIRMWARE}" ] && perror "REQUIRED_FIRMWARE is empty. Check your config file."
-
-	check_kernel_base_dir
-
-	local OLD_DIR=$(pwd)
 	#
-	# process firmware list
-	#
+	# Firmware
+	pinfo "Copying firmware for kernel ${TARGET_KERNEL_LONG}..."
+
 	cd "${KERNEL_BASE_DIR}" || perror "Could not cd to ${KERNEL_BASE_DIR}"
 	local FIRMWARE_DIR="lib/firmware"
 	local FIRMWARE_SYSTEM_LIST=""
 	local FIRMWARE_BUILD_LIST=""
-	for FIRMWARE in ${REQUIRED_FIRMWARE}; do
+	local HAS_MISSING=0
+	for FIRMWARE in $( < "${FWLIST}"  sort -u ); do
 		local FOUND=0
 		# check for firmware in the build directory of the kernel
 		for CANDIDATE in "${FIRMWARE_DIR}/${FIRMWARE}" "${FIRMWARE_DIR}/${TARGET_KERNEL_LONG}/${FIRMWARE}"; do
@@ -150,31 +152,29 @@ copy_firmware () {
 			fi
 		done
 
-		# dont look under / if KERNEL_BASE_DIR is already /
-		#if [ "x${KERNEL_BASE_DIR}" == "x/" ]; then
-		#	[ $FOUND -ne 1 ] && pwarning "Neither '${FIRMWARE_DIR}/${FIRMWARE}' nor '${FIRMWARE_DIR}/${TARGET_KERNEL_LONG}/${FIRMWARE}' found on the system"
-		#	continue
-		#fi
-
-		# if we didn't found it in the kernel build directory, check for firmware in the system firmware directory
-		#if [ $FOUND -ne 1 ]; then
-		for CANDIDATE in "/${FIRMWARE_DIR}/${FIRMWARE}" "/${FIRMWARE_DIR}/${SYSTEM_KERNEL_LONG}/${FIRMWARE}"; do
-			if [ -e "${CANDIDATE}" ]; then
-				if [ $(echo "${CANDIDATE}" | grep -c "${SYSTEM_KERNEL_LONG}") -eq 0 ]; then
-					pdebug "Copying from system: '${CANDIDATE}'"
-					FIRMWARE_SYSTEM_LIST+=" ${CANDIDATE}"
-				else
-					pdebug "Copying from system: '${CANDIDATE}' to ${FIRMWARE_DIR}/${TARGET_KERNEL_LONG}/${FIRMWARE}"
-					FIRMWARE_SYSTEM_LIST+=" /${FIRMWARE_DIR}/${SYSTEM_KERNEL_LONG}/${FIRMWARE}"
+		# if we didn't find it in the kernel build directory, and kernel to use is not the system kernel, check for firmware in the system firmware directory
+		if [ "x${KERNEL_BASE_DIR}" != "x/" ] && [ $FOUND -ne 1 ]; then
+			for CANDIDATE in "/${FIRMWARE_DIR}/${FIRMWARE}" "/${FIRMWARE_DIR}/${SYSTEM_KERNEL_LONG}/${FIRMWARE}"; do
+				if [ -e "${CANDIDATE}" ]; then
+					if [ $(echo "${CANDIDATE}" | grep -c "${SYSTEM_KERNEL_LONG}") -eq 0 ]; then
+						pdebug "Copying from system: '${CANDIDATE}'"
+						FIRMWARE_SYSTEM_LIST+=" ${CANDIDATE}"
+					else
+						pdebug "Copying from system: '${CANDIDATE}' to ${FIRMWARE_DIR}/${TARGET_KERNEL_LONG}/${FIRMWARE}"
+						FIRMWARE_SYSTEM_LIST+=" /${FIRMWARE_DIR}/${SYSTEM_KERNEL_LONG}/${FIRMWARE}"
+					fi
+					FOUND=1
 				fi
-				FOUND=1
-			fi
-		done
-		#fi
+			done
+		fi
 
-		[ $FOUND -ne 1 ] && pwarning "Neither '${FIRMWARE_DIR}/${FIRMWARE}' nor '${FIRMWARE_DIR}/${TARGET_KERNEL_LONG}/${FIRMWARE}' "\
-		" was found on the system. Skipping. (might cause problems on certain clients!)"
+		if [ $FOUND -ne 1 ]; then
+			[ "$HAS_MISSING" -eq 0 ] && pwarning "!! MISSING FIRMWARE !!"
+			HAS_MISSING=$(( HAS_MISSING + 1 ))
+			pwarning "'${FIRMWARE}' not found."
+		fi
 	done
+	rm -f -- "$FWLIST"
 
 	for LIST in "${FIRMWARE_SYSTEM_LIST}" "${FIRMWARE_BUILD_LIST}"; do
 		[ -z "${LIST}" ] && continue
@@ -183,6 +183,7 @@ copy_firmware () {
 		pinfo "Copying $COUNT firmware to target directory."
 		tarcopy "${LIST}" "${TARGET_BUILD_DIR}"
 	done
+	[ "$HAS_MISSING" -ne 0 ] && pinfo "$HAS_MISSING firmware files not found :-("
 
 	# only for kernel-openslx
 	# post-process to fix the path of the firmwares found on the system unter /lib/firmware/$(uname -r)
@@ -193,12 +194,13 @@ copy_firmware () {
 			cd "${TARGET_BUILD_DIR}/lib/firmware/${SYSTEM_KERNEL_LONG}" || perror "old kernel but no old kernel"
 			tarcopy "$(ls)" "${TARGET_BUILD_DIR}/lib/firmware/${TARGET_KERNEL_LONG}/"
 			cd -
-			rm -r "${TARGET_BUILD_DIR}/lib/firmware/${SYSTEM_KERNEL_LONG}" || perror "something went very wrong..."
+			rm -r -- "${TARGET_BUILD_DIR}/lib/firmware/${SYSTEM_KERNEL_LONG}" || perror "something went very wrong..."
 		else
 			pdebug "No ${TARGET_BUILD_DIR}/lib/firmware/${SYSTEM_KERNEL_LONG} directory, skipping the merge."
 		fi
 	fi
 
+	# go back to wherever we were
 	cd "${OLD_DIR}" || perror "Could not cd back to ${OLD_DIR}."
 }
 

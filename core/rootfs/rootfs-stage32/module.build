@@ -126,7 +126,6 @@ post_copy() {
 
 	# copy kernel, modules and firmware
 	copy_kernel_modules
-	copy_firmware
 	copy_kernel
 
 	# Try to fetch distro logo
