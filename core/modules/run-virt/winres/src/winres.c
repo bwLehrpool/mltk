@@ -69,6 +69,8 @@ static int _folderStatus = FS_UNKNOWN; // -1 = Not handled yet, 0 = patching fai
 static int _remapMode = RM_NONE;
 static const char* _remapHomeDrive = NULL;
 static BOOL _passCreds = FALSE;
+static BOOL _deletedCredentials = FALSE;
+static BOOL _scriptDone = TRUE, _mountDone = TRUE; // Will be set to false if we actually wait for something...
 static char *shost = NULL, *sport = NULL, *suser = NULL, *spass = NULL;
 
 #define SCRIPTFILELEN (50)
@@ -195,9 +197,12 @@ static void CALLBACK setupNetworkDrives(HWND hWnd, UINT uMsg, UINT_PTR idEvent, 
 			remapViaSharedFolder();
 		}
 	}
+	_mountDone = TRUE;
 	KillTimer(hWnd, idEvent);
 	if (_remapMode != RM_NONE) {
-		if (_folderStatus == FS_ERROR) {
+		if (_folderStatus != FS_OK && shost != NULL && shost[0] == '-' && sport != NULL && sport[0] == '-') {
+			MessageBoxA(NULL, "Kein Home-Verzeichnis konfiguriert. Bitte nichts Wichtiges in der VM speichern, sondern z.B. einen USB-Stick verwenden, bzw. evtl. vorhandene Netzlaufwerke verwenden.", "Warnung", MB_ICONERROR);
+		} else if (_folderStatus == FS_ERROR) {
 			MessageBoxA(NULL, "Fehler beim Einbinden des Home-Verzeichnisses. Bitte nichts Wichtiges in der VM speichern, sondern z.B. einen USB-Stick verwenden.", "Warnung", MB_ICONERROR);
 		} else if (_folderStatus == FS_UNKNOWN) {
 			MessageBoxA(NULL, "Kein Home-Verzeichnis gefunden. Bitte nichts Wichtiges in der VM speichern, sondern z.B. einen USB-Stick verwenden.", "Warnung", MB_ICONERROR);
@@ -309,10 +314,12 @@ static void CALLBACK launchRunscript(HWND hWnd, UINT uMsg, UINT_PTR idEvent, DWO
 	ShellExecuteW(NULL, L"open", _scriptFile, _passCreds ? params : emptyParams, L"B:\\", nShowCmd);
 
 	// DONE
+	_scriptDone = TRUE;
 	KillTimer(hWnd, idEvent);
 	return;
 failure:
 	if (++fails > 12) {
+		_scriptDone = TRUE;
 		KillTimer(hWnd, idEvent);
 	}
 }
@@ -455,6 +462,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		dlog("init: &setupNetworkDrives");
 		if (tRet == 0) {
 			alog("Could not create timer for mounting network shares: %d", (int)GetLastError());
+		} else {
+			_mountDone = FALSE;
 		}
 	}
 	// Shutdown button label
@@ -478,12 +487,21 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	dlog("init: &launchRunscript");
 	if (tRet == 0) {
 		alog("Could not create timer for runscript: %d", (int)GetLastError());
+	} else {
+		_scriptDone = FALSE;
 	}
 	// Message pump
 	MSG Msg;
 	while(GetMessage(&Msg, NULL, 0, 0) > 0) {
 		TranslateMessage(&Msg);
 		DispatchMessage(&Msg);
+		if (!_deletedCredentials && _mountDone && _scriptDone) {
+			if (spass != NULL) {
+				dlog("Erasing password from memory");
+				SecureZeroMemory(spass, strlen(spass));
+				_deletedCredentials = TRUE;
+			}
+		}
 	}
 	FreeLibrary(hKernel32);
 	FreeLibrary(hShell32);
@@ -948,7 +966,7 @@ static void postSuccessfulMount(const netdrive_t *d, wchar_t *letter)
 			createFolderShortcut(wTarget, wShortcut, letter);
 		} else if (strstr(d->path, "@SSL") != NULL || strstr(d->path, "webdav") != NULL
 				|| strstr(d->path, "WebDav") != NULL || strstr(d->path, "WebDAV") != NULL
-				|| strstr(d->path, "@ssl") != NULL) {
+				|| strstr(d->path, "@ssl") != NULL || strncmp(d->path, "http", 4) == 0) {
 			createFolderShortcut(letter, wShortcut, letter);
 		} else {
 			createFolderShortcut(wTarget, wShortcut, letter);
@@ -1000,8 +1018,16 @@ static BOOL mountNetworkShare(const netdrive_t *d, BOOL useIp)
 	letter[1] = ':';
 	letter[2] = 0;
 	letter[3] = 0;
-	if (letter[0] != 0) {
+	if (letter[0] != 0 && letter[0] != '?') {
 		// Try with specific letter
+		if (letter[0] == '-') {
+			// No letter, just use as resource
+			letter[0] = 0;
+		} else if (wcscmp(L"PRINTER", letter) == 0) {
+			// Printer
+			letter[0] = 0;
+			share.dwType = RESOURCETYPE_PRINT;
+		}
 		// Connect defined share
 		retval = mount(&share, pass, user);
 		if (retval == NO_ERROR) {
@@ -1014,23 +1040,25 @@ static BOOL mountNetworkShare(const netdrive_t *d, BOOL useIp)
 			return FALSE;
 		}
 	}
-	// Try to find free drive letter
-	for (letter[0] = 'Z'; letter[0] > 'C'; --letter[0]) {
-		retval = mount(&share, pass, user);
-		if (retval == ERROR_ALREADY_ASSIGNED || retval == ERROR_DEVICE_ALREADY_REMEMBERED
-				|| retval == ERROR_CONNECTION_UNAVAIL)
-			continue;
-		if (retval == NO_ERROR) {
-			postSuccessfulMount(d, letter);
-			return TRUE;
+	if (share.dwType == RESOURCETYPE_DISK) {
+		// Try to find free drive letter
+		for (letter[0] = 'Z'; letter[0] > 'C'; --letter[0]) {
+			retval = mount(&share, pass, user);
+			if (retval == ERROR_ALREADY_ASSIGNED || retval == ERROR_DEVICE_ALREADY_REMEMBERED
+					|| retval == ERROR_CONNECTION_UNAVAIL)
+				continue;
+			if (retval == NO_ERROR) {
+				postSuccessfulMount(d, letter);
+				return TRUE;
+			}
+			alog("mountNetworkShare: without letter failed: %d", (int)retval);
+			if (retval == ERROR_INVALID_PASSWORD || retval == ERROR_LOGON_FAILURE
+					|| retval == ERROR_BAD_USERNAME || retval == ERROR_ACCESS_DENIED
+					|| retval == ERROR_SESSION_CREDENTIAL_CONFLICT) {
+				return TRUE;
+			}
+			return FALSE;
 		}
-		alog("mountNetworkShare: without letter failed: %d", (int)retval);
-		if (retval == ERROR_INVALID_PASSWORD || retval == ERROR_LOGON_FAILURE
-				|| retval == ERROR_BAD_USERNAME || retval == ERROR_ACCESS_DENIED
-				|| retval == ERROR_SESSION_CREDENTIAL_CONFLICT) {
-			return TRUE;
-		}
-		return FALSE;
 	}
 	return FALSE;
 }
@@ -1057,10 +1085,6 @@ static BOOL mountNetworkShares()
 	}
 	if (failCount > 0)
 		return FALSE;
-	if (!_passCreds) {
-		dlog("Erasing password from memory");
-		SecureZeroMemory(spass, strlen(spass));
-	}
 	return TRUE;
 }
 
