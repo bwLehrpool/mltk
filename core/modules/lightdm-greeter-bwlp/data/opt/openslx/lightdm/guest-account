@@ -4,7 +4,7 @@
 # Further we allow for hooks to execute stuff here.
 
 (
-hook_dir="$(readlink -f $0)"
+hook_dir="$(readlink -f $0).d"
 if [ -d "$hook_dir" ]; then
 	for hook in "$hook_dir"/*; do
 		[ -s "$hook" ] || continue
