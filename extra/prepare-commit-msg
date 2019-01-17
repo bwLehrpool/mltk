@@ -1,0 +1,34 @@
+#!/bin/bash
+
+[ -n "$2" ] && exit 0
+[ -e "$1" ] || exit 1
+
+# -F 'to be commited' -F 'vorgemerkte Änderungen'
+inblock=false
+declare -A stuff
+re='core/(modules|rootfs)/([^/]+)/'
+while IFS='' read -r line || [[ -n "$line" ]]; do
+	if $inblock; then
+		[ "$line" = '#' ] && break
+		if [[ $line =~ $re ]]; then
+			if [ -z "${stuff["${BASH_REMATCH[2]}"]}" ]; then
+				stuff["${BASH_REMATCH[2]}"]=1
+			else
+				let stuff["${BASH_REMATCH[2]}"]++
+			fi
+		fi
+	elif [[ "$line" == *"vorgemerkte Änderungen"* ]] || [[ "$line" == *"to be committed"* ]]; then
+		inblock=true
+	fi
+done < "$1"
+
+[ "${#stuff[@]}" -gt 2 ] && exit 0
+[ "${#stuff[@]}" -lt 1 ] && exit 0
+
+out=""
+for key in "${!stuff[@]}"; do
+	out+="/$key"
+	#echo "$key = ${stuff["$key"]}"
+done
+sed -i "1s~^~[${out:1}] ~" "$1"
+
