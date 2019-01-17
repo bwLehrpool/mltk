@@ -8,12 +8,12 @@ for i in 1 2 3 4 5 6 7 8; do
 	echo -n "Take interface $IFACE down .. "
 
 	ip link set dev $IFACE down
-	usleep 1000
+	usleep 10000
 
 	echo "and up again.."
 	ip link set dev $IFACE up
 	ip link set dev $BRIDGE up
-	usleep 1000
+	usleep 100000
 
 	wait_for_iface "$IFACE"
 
@@ -31,4 +31,4 @@ done
 [ $RET -gt 0 ] && drop_shell "Something is really broken.. Please check your network cable and reset your computer."
 
 # create correct return value
-[ $RET -eq 0 ] 
+[ $RET -eq 0 ]
