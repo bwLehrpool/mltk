@@ -68,14 +68,21 @@ fi
 
 if [ -n "$SLX_PROXY_BLACKLIST" ]; then
 	for ADDR in $SLX_PROXY_BLACKLIST; do
-		echo "iptables -t nat -A REDSOCKS -d '$ADDR'-j RETURN"
+		echo "iptables -t nat -A REDSOCKS -d '$ADDR' -j RETURN"
 	done >> "$tfile"
 fi
 
 if [ "${SLX_PROXY_TYPE:0:5}" = "http-" ]; then
-	# transparent proxying for HTTP
-	echo "iptables -t nat -A REDSOCKS -p tcp --dport 80 -j DNAT --to-destination ${SLX_PROXY_IP}:${SLX_PROXY_PORT}" >> "$tfile"
-fi
+	# transparent proxying for HTTP -- DOES NOT WORK, might give 400 Bad Request
+	#echo "iptables -t nat -A REDSOCKS -p tcp --dport 80 -j DNAT --to-destination ${SLX_PROXY_IP}:${SLX_PROXY_PORT}" >> "$tfile"
+	mkdir -p "/etc/profile.d" &> /dev/null
+	echo "export http_proxy='http://${SLX_PROXY_IP}:${SLX_PROXY_PORT}/'"
+	echo -n "export no_proxy='${SLX_PXE_SERVER_IP}"
+	for ADDR in $SLX_PROXY_BLACKLIST; do
+		echo -n ", $ADDR"
+	done
+	echo "'"
+fi > "/etc/profile.d/99-proxy.sh"
 
 cat >> "$tfile" <<HEREDOCBROWN
 iptables -t nat -A REDSOCKS -p tcp -j REDIRECT --to-port 12345
