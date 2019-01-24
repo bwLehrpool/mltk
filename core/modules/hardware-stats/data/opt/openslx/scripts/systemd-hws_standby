@@ -14,15 +14,14 @@ fi
 
 UUID=$(cat /etc/system-uuid)
 
-for DELAY in 1 1 2 3 5 8 0; do
-	echo "Submitting to $SLX_REMOTE_LOG"
-	if curl --data-urlencode "type=~$ACTION" --data-urlencode "uuid=$UUID" "$SLX_REMOTE_LOG" | grep -q "RESULT=0"; then
-		echo "Success"
-		exit 0
-	fi
+echo "Submitting to $SLX_REMOTE_LOG"
+if curl --retry 4 --retry-connrefused --data-urlencode "type=~$ACTION" --data-urlencode "uuid=$UUID" "$SLX_REMOTE_LOG" | grep -q "RESULT=0"; then
+	echo "Success"
+	exit 0
+else
 	echo "Failed..."
-	sleep "$DELAY"
-done
+fi
+
 echo "Giving up" >&2
 exit 1
 

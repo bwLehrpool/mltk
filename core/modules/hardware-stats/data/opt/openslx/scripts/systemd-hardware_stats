@@ -330,33 +330,32 @@ buildlogfile() {
 buildlogfile &
 
 # Fire away
-for DELAY in 1 1 0; do
-	echo "Submitting to $SLX_REMOTE_LOG"
-	if curl --data-urlencode "type=~poweron" --data-urlencode "uuid=$UUID" --data-urlencode "macaddr=$MAC" \
-			--data-urlencode "uptime=$UPTIME" --data-urlencode "realcores=$CPUCORES" --data-urlencode "mbram=$RAM" \
-			--data-urlencode "kvmstate=$VT" --data-urlencode "cpumodel=$CPUMODEL" --data-urlencode "id44mb=$ID44" \
-			--data-urlencode "badsectors=$BADSECTORS" --data-urlencode "systemmodel=$MODEL" \
-			--data-urlencode "data@$DATAFILE" "$SLX_REMOTE_LOG" | grep -q "RESULT=0"; then
-		echo "Success"
-		rm -f -- "$DATAFILE"
-		START=$(( $RANDOM % 5 ))
-		DELAY=$(( $RANDOM % 15 ))
-		cat > "/etc/cron.d/usage_stats" <<-EOF
-			# Update usage statistics on server
+echo "Submitting to $SLX_REMOTE_LOG"
+if curl --retry 4 --retry-connrefused \
+		--data-urlencode "type=~poweron" --data-urlencode "uuid=$UUID" --data-urlencode "macaddr=$MAC" \
+		--data-urlencode "uptime=$UPTIME" --data-urlencode "realcores=$CPUCORES" --data-urlencode "mbram=$RAM" \
+		--data-urlencode "kvmstate=$VT" --data-urlencode "cpumodel=$CPUMODEL" --data-urlencode "id44mb=$ID44" \
+		--data-urlencode "badsectors=$BADSECTORS" --data-urlencode "systemmodel=$MODEL" \
+		--data-urlencode "data@$DATAFILE" "$SLX_REMOTE_LOG" | grep -q "RESULT=0"; then
+	echo "Success"
+	rm -f -- "$DATAFILE"
+	START=$(( $RANDOM % 5 ))
+	DELAY=$(( $RANDOM % 20 ))
+	cat > "/etc/cron.d/usage_stats" <<-EOF
+		# Update usage statistics on server
 
-			SHELL=/bin/sh
-			PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin:/opt/openslx/sbin:/opt/openslx/bin
+		SHELL=/bin/sh
+		PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin:/opt/openslx/sbin:/opt/openslx/bin
 
-			${START}-59/5 *   * * *    root    sleep ${DELAY}; /opt/openslx/scripts/cron-system_usage_update
-		EOF
-		touch "/etc/cron.d" # Sometimes, aufs doesn't update the mtime of dirs when creating files,
-		# so cron would not rescan the cron directory
-		cleanup
-		exit 0
-	fi
+		${START}-59/5 *   * * *    root    sleep ${DELAY}; /opt/openslx/scripts/cron-system_usage_update
+	EOF
+	touch "/etc/cron.d" # Sometimes, aufs doesn't update the mtime of dirs when creating files,
+	# so cron would not rescan the cron directory
+	cleanup
+	exit 0
+else
 	echo "Failed..."
-	sleep "$DELAY"
-done
+fi
 
 echo "Server doesn't seem to support hardware/usage stats - disabling logging"
 rm -f -- "/etc/cron.d/usage_stats"
