@@ -31,7 +31,10 @@ TMP_FREE=$(echo $TMP | awk '{print $4}')
 SWAP_SIZE=$( awk '{if ($1 == "SwapTotal:") { print $2; exit; }}' /proc/meminfo )
 SWAP_FREE=$( awk '{if ($1 == "SwapFree:") { print $2; exit; }}' /proc/meminfo )
 MEM_SIZE=$( awk '{if ($1 == "MemTotal:") { print $2; exit; }}' /proc/meminfo )
-MEM_FREE=$( awk 'BEGIN{n=0}{if ($1 == "MemAvailable:" || $1 == "Buffers:" || $1 == "Cached:") n += $2}END{print n}' /proc/meminfo )
+MEM_FREE=$( awk '{if ($1 == "MemAvailable:") { print $2; exit; }}' /proc/meminfo )
+if [ -n "$MEM_FREE" ]; then
+	MEM_FREE=$( awk 'BEGIN{n=0}{if ($1 == "MemFree:" || $1 == "Buffers:" || $1 == "Cached:") n += $2}END{print n}' /proc/meminfo )
+fi
 if [ -n "$SLX_EXAM" ]; then
 	# This isn't an actual runmode, but in case exam mode is active on a client you definitely want
 	# to know about it, more than other runmodes actually
