@@ -3,24 +3,17 @@
 [ -n "$2" ] && exit 0
 [ -e "$1" ] || exit 1
 
-# -F 'to be commited' -F 'vorgemerkte Änderungen'
-inblock=false
 declare -A stuff
 re='core/(modules|rootfs)/([^/]+)/'
 while IFS='' read -r line || [[ -n "$line" ]]; do
-	if $inblock; then
-		[ "$line" = '#' ] && break
-		if [[ $line =~ $re ]]; then
-			if [ -z "${stuff["${BASH_REMATCH[2]}"]}" ]; then
-				stuff["${BASH_REMATCH[2]}"]=1
-			else
-				let stuff["${BASH_REMATCH[2]}"]++
-			fi
+	if [[ $line =~ $re ]]; then
+		if [ -z "${stuff["${BASH_REMATCH[2]}"]}" ]; then
+			stuff["${BASH_REMATCH[2]}"]=1
+		else
+			let stuff["${BASH_REMATCH[2]}"]++
 		fi
-	elif [[ "$line" == *"vorgemerkte Änderungen"* ]] || [[ "$line" == *"to be committed"* ]]; then
-		inblock=true
 	fi
-done < "$1"
+done < <( git status --porcelain | grep -E '^(A|M|D)' )
 
 [ "${#stuff[@]}" -gt 2 ] && exit 0
 [ "${#stuff[@]}" -lt 1 ] && exit 0
