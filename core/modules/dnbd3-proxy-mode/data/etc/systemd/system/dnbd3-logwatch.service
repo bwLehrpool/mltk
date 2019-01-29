@@ -1,0 +1,8 @@
+[Unit]
+Description=DNBD3 monitor reporting to Satellite Server
+
+[Service]
+ExecStart=/opt/openslx/scripts/systemd-dnbd3_logwatch
+Restart=always
+RestartSec=5
+TimeoutStopSec=2

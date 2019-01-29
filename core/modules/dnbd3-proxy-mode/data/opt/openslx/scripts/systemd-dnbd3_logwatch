@@ -1,0 +1,8 @@
+#!/bin/ash
+
+journalctl -f -n 0 -u dnbd3-proxy \
+	| grep --line-buffered -F -i -e 'crc ' -e 'crc32' -e 'hash check' \
+	| while read -r line; do slxlog "dnbd3-hashfail" "$line"; done
+
+exit 0
+
