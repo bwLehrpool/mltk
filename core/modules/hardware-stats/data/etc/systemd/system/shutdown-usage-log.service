@@ -1,7 +1,8 @@
 [Unit]
-Description=Tell server we're shuttong down
+Description=Tell server we're shutting down
 DefaultDependencies=no
 Before=shutdown.target
+After=-.mount network-online.target
 RefuseManualStart=yes
 
 [Service]
