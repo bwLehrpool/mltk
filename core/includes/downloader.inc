@@ -6,28 +6,68 @@
 # 1. download "http://example.com/something.tar.gz"
 # 2. download "http://example.com/something.tar.gz" "somename.tar.gz"
 download () {
-	[ $# -lt 1 -o $# -gt 2 ] && perror "download called with $# arguments, need 1 or 2"
-	[ -z "$1" ] && perror "download: URL empty."
-	local URL="$1"
+	[ $# -lt 1 -o $# -gt 2 ] && perror "download: called with $# arguments, need 1 or 2"
+	[ -z "$1" ] && perror "download: url empty."
+	local url path filename ret tryhash tmpfile f sum origname
+	url="$1"
 	# If a sourceforge mirror is set in ./config, try to use it
-	if [ -n "$sourceforge_mirror" ] && [[ "$URL" != *use_mirror* ]] && [[ "$URL" == *sourceforge.net* || "$URL" == *.sf.net* ]]; then
-		if [[ "$URL" == *\?* ]]; then
-			URL+="&use_mirror=$sourceforge_mirror"
+	if [ -n "$sourceforge_mirror" ] && [[ "$url" != *use_mirror* ]] && [[ "$url" == *sourceforge.net* || "$url" == *.sf.net* ]]; then
+		if [[ "$url" == *\?* ]]; then
+			url+="&use_mirror=$sourceforge_mirror"
 		else
-			URL+="?use_mirror=$sourceforge_mirror"
+			url+="?use_mirror=$sourceforge_mirror"
 		fi
 	fi
+	path="${url%%'?'*}"
+	tryhash=false
+	[ "$path" = "$url" ] && tryhash=true
+	origname="${path##*/}"
 	if [ $# -eq 2 ]; then
 		[ -z "$2" ] && perror "download: target file name given but empty"
-		pinfo "Downloading $2 from '$URL'...."
-		wget -O "$2" "$URL"
-		local RET=$?
+		filename="$2"
 	else
-		pinfo "Downloading '$URL'...."
-		wget "$URL"
-		local RET=$?
+		filename="${origname}"
+		[ -z "$filename" ] && perror "download: Cannot determine filename from '$url'"
 	fi
-	[ "x$RET" != "x0" ] && perror "downloading $URL failed, wget returned exit code $RET"
+	pinfo "Downloading '$filename' from '$url'...."
+	wget -O "$filename" "$url"
+	ret=$?
+	[ "x$ret" != "x0" ] && perror "downloading $url failed, wget returned exit code $ret"
+	if $tryhash; then
+		path="${path%/*}"
+		[ "${path:0:5}" = "http:" ] && path="https:${path:5}"
+		tmpfile="$(mktemp)"
+		for f in sha256sums.asc SHA256SUMS md5sums.asc MD5SUMS metadata.xml.gz ""; do
+			[ -z "$f" ] && break
+			wget -O "$tmpfile" "$path/$f" || continue
+			if [ "$f" = "metadata.xml.gz" ]; then
+				sum=$( gzip -d < "$tmpfile" | grep '<checksum>.*</checksum>' | sed -r 's/<[^>]*>//g' )
+				[ -z "$sum" ] && perror "Did not find sha256 in $f"
+				[ "$(sha256sum "$filename" | awk '{print $1}')" = "$sum" ] && break
+				perror "download: sha256 of '$filename' was expected to be $sum"
+			elif [[ "$f" == SHA256SUM* || "$f" == sha256sum* ]]; then
+				checkhash sha256sum "$filename" "$tmpfile" "$origname" && break
+				perror "download: sha256 of '$filename' is bad"
+			elif [[ "$f" == MD5SUM* || "$f" == md5sum* ]]; then
+				checkhash md5sum "$filename" "$tmpfile" "$origname" && break
+				perror "download: md5 of '$filename' is bad"
+			fi
+		done
+		rm -f -- "$tmpfile"
+		[ -n "$f" ] && pinfo "Checksum of downloaded file is valid :-)"
+	fi
+}
+
+# [algo] [file_to_hash] [sumfile] [name_in_sumfile]
+checkhash () {
+	local algo sum fth sumfile nis mysum
+	algo="$1"
+	fth="$2"
+	sumfile="$3"
+	nis="$4"
+	mysum="$("$algo" "$fth" | awk '{print $1}')"
+	sum=$(grep -F "$nis" "$sumfile" | awk '{print $1}')
+	[ "x$sum" = "x$mysum" ]
 }
 
 # download a file and untar it. usage:
@@ -60,23 +100,11 @@ download_if_empty() {
 	[ $# -ne 2 ] && perror "download_if_empty: want 2 args, got $# ($@)"
 	local SRC="$1"
 	local DST="$2"
-	[ -s "$DST" ] && pdebug "Not downloading $DST: already there." && return 0
-	pdebug "Downloading $DST"
-	[ -e "$DST" ] && unlink "$DST"
-	local DSTDIR="$(dirname "$DST")"
-	pdebug "wgetting $SRC"
-	local TMP=$(mktemp)
-	wget -O "$TMP" "$SRC"
-	local RET=$?
-	if [ "x$RET" = "x0" -a -s "$TMP" ]; then
-		mkdir -p "$DSTDIR"
-		mv "$TMP" "$DST" || perror "Could not mv '$TMP' '$DST'"
+	if [ -s "$DST" ]; then
+		pdebug "Not downloading $DST: already there."
 		return 0
 	fi
-	pdebug "WGET failed"
-	rmdir "$DSTDIR"
-	unlink "$TMP"
-	return 1
+	download "$SRC" "$DST"
 }
 
 autoclone () {
@@ -101,7 +129,7 @@ autoclone () {
 		dst="${dst%.git}"
 		pinfo "Cloning $url to $dst"
 		if [ -n "$branch" ]; then
-			git clone -b "$branch" "$url" "$dstdir/$dst" || perror "Could not clone $url branch $branch"
+			git clone --depth 1 -b "$branch" "$url" "$dstdir/$dst" || perror "Could not clone $url branch $branch"
 		else
 			git clone "$url" "$dstdir/$dst" || perror "Could not clone $url"
 			if [ -n "$checkout" ]; then
