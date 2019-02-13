@@ -483,9 +483,11 @@ dir_on_tmpfs() {
 		return $?
 	done
 	# NG: check if / is fully backed by hard drive
-	local dmsetup_conf="/run/openslx/dmsetup.conf"
-	if [ -s "$dmsetup_conf" ]; then
-		grep -qE '^/dev/mapper/root\s+/\s+type=0' "$dmsetup_conf"
+	local dmsetup_state="/run/openslx/dmsetup.state"
+	if [ -s "$dmsetup_state" ]; then
+		local dnbd3_cow_dev="$SLX_DNBD3_DEVICE_COW"
+		[ -z "$dnbd3_cow_dev" ] && dnbd3_cow_dev="/dev/mapper/root"
+		grep -qE "^${dnbd3_cow_dev}\s+/\s+type=0" "$dmsetup_state"
 		return $?
 	fi
 	# else assume old-gen were / was in RAM
