@@ -1,9 +1,7 @@
 #!/bin/bash
-REQUIRED_INSTALLED_PACKAGES="
-				libmozjs185-1.0
-"
+REQUIRED_INSTALLED_PACKAGES=""
+#				libmozjs185-1.0
 REQUIRED_CONTENT_PACKAGES="
-				libmozjs185-1.0
 				policykit-1
 				policykit-desktop-privileges
 "
