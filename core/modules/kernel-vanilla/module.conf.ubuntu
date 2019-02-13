@@ -1,5 +1,6 @@
 REQUIRED_INSTALLED_PACKAGES="
+	bison
+	flex
 	libelf-dev
 	libssl-dev
 "
-
