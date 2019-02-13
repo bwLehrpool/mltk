@@ -5,19 +5,9 @@ fetch_source () {
 	# systemd
 	download_untar "$REQUIRED_URL" "src/"
 
-	# starting with systemd 212 a new way of setting global environment is supported
-	# meaning we don't have to apply the patch needed til that version.
-	# patch src/core/socket.c if activated in the config file
-	if [ "x$REQUIRED_XATTR_PATCH" = "xyes" ]; then
-		pinfo "Patching 'src/core/socket.c' ..."
-		# patch it
-		if [ -e "src/systemd-$REQUIRED_VERSION/src/core/socket.c" ]; then
-			sed -i 's/^#include <attr\/xattr.h>$/#include <sys\/xattr.h>\n#include <attr\/xattr.h>/g' "src/systemd-$REQUIRED_VERSION/src/core/socket.c" \
-				|| perror "Could not patch 'src/systemd-$REQUIRED_VERSION/src/core/socket.c'"
-		else
-			perror "'src/systemd-$REQUIRED_VERSION/src/core/socket.c' does not exist."
-		fi
-	fi
+	sed -i '2 a #undef HAVE_DECL_MEMFD_CREATE\n#define HAVE_DECL_MEMFD_CREATE 1\n#include <sys/mman.h>' \
+		"src/systemd-$REQUIRED_VERSION/src/basic/missing_syscall.h" || perror "Could not patch syscall memfd"
+
 	# now check if the a fix needs to be applied
 	if  [ -e "${MODULE_DIR}/systemd-openslx-${REQUIRED_VERSION#systemd-}.patch" ]; then
 		patch -p0 src/systemd-*/src/basic/path-util.h < "${MODULE_DIR}/systemd-openslx-${REQUIRED_VERSION#systemd-}.patch" || perror "Failed to apply openslx systemd patch."
