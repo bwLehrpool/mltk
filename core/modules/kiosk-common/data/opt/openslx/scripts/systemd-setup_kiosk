@@ -50,6 +50,7 @@ mkdir -p "/run/openslx"
 touch "/run/openslx/demo-no-logout-delay"
 
 for file in "$0".d/*; do
+	[ -f "$file" ] || continue
 	# hooks for browser-related stuff
 	. "$file" || slxlog "kiosk-setup" "Failed to source '$file'."
 done
