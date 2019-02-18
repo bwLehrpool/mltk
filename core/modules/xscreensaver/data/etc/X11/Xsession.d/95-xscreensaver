@@ -2,6 +2,14 @@
 
 DPMS=False
 if which xscreensaver; then
+	secsToTime() {
+		local NUM SECS MINS HRS
+		NUM="$1"
+		SECS=0$(( NUM % 60 ))
+		MINS=0$(( ( NUM / 60 ) % 60 ))
+		HRS=0$(( ( NUM / 3600 ) % 60 ))
+		echo "${HRS:$(( ${#HRS} - 2 )):2}:${MINS:$(( ${#MINS} - 2 )):2}:${SECS:$(( ${#SECS} - 2 )):2}"
+	}
 	[ -z "$UID" ] && UID=$(id -u)
 	[ -z "$HOME" ] && HOME="$(getent passwd "$UID" | head -n 1 | awk -F ':' '{print $6}')"
 	. /opt/openslx/config
@@ -29,30 +37,32 @@ if which xscreensaver; then
 	fi
 	# Create config value for standby timeout
 	[ "$SBY" -gt 0 ] && DPMS=True
-	NUM=$SBY
-	SECS=0$(( NUM % 60 ))
-	MINS=0$(( ( NUM / 60 ) % 60 ))
-	HRS=0$(( ( NUM / 3600 ) % 60 ))
-	STANDBY="${HRS:$(( ${#HRS} - 2 )):2}:${MINS:$(( ${#MINS} - 2 )):2}:${SECS:$(( ${#SECS} - 2 )):2}"
-	# Create config for screensaver activation timeout
-	if [ "$SLX_LOGOUT_TIMEOUT" -gt 0 ] && [ "$SBY" -eq 0 ]; then
-		# Standby is disabled, consider logout timeout
-		TMO=$SLX_LOGOUT_TIMEOUT
+	STANDBY="$( secsToTime "$SBY" )"
+	if [ -z "$SLX_SCREEN_SAVER_TIMEOUT" ]; then
+		# Create config for screensaver activation timeout
+		if [ "$SLX_LOGOUT_TIMEOUT" -gt 0 ] && [ "$SBY" -eq 0 ]; then
+			# Standby is disabled, consider logout timeout
+			TMO=$SLX_LOGOUT_TIMEOUT
+		else
+			# Consider standby timeout
+			TMO=$SBY
+		fi
+		# Start screen saver 3 minutes before forced logout, or screen enters standby
+		TMO=$(( TMO - 180 ))
+		if [ "$TMO" -gt 0 ]; then
+			[ "$TMO" -gt 1200 ] && TMO=$(( TMO - 300 ))
+			TIMEOUT="$( secsToTime "$TMO" )"
+		else
+			TIMEOUT="99:00:00"
+		fi
 	else
-		# Consider standby timeout
-		TMO=$SBY
+		# Explicit screen saver timeout set
+		TIMEOUT="$( secsToTime "$SLX_SCREEN_SAVER_TIMEOUT" )"
 	fi
-	# Start screen saver 3 minutes before forced logout, or screen enters standby
-	TMO=$(( TMO - 180 ))
-	if [ "$TMO" -gt 0 ]; then
-		[ "$TMO" -gt 1200 ] && TMO=$(( TMO - 300 ))
-		NUM=$TMO
-		SECS=0$(( NUM % 60 ))
-		MINS=0$(( ( NUM / 60 ) % 60 ))
-		HRS=0$(( ( NUM / 3600 ) % 60 ))
-		TIMEOUT="${HRS:$(( ${#HRS} - 2 )):2}:${MINS:$(( ${#MINS} - 2 )):2}:${SECS:$(( ${#SECS} - 2 )):2}"
+	if [ -z "$SLX_SCREEN_SAVER_GRACE_TIMEOUT" ]; then
+		GRACE="00:00:15"
 	else
-		TIMEOUT="99:00:00"
+		GRACE="$( secsToTime "$SLX_SCREEN_SAVER_GRACE_TIMEOUT" )"
 	fi
 	if ! [ -s "$HOME/.xscreensaver" ]; then
 		cat > "$HOME/.xscreensaver" <<EOF
@@ -60,7 +70,7 @@ mode:         one
 cycle:        99:00:00
 timeout:      $TIMEOUT
 lock:         True
-lockTimeout:  0:00:10
+lockTimeout:  $GRACE
 fade:         False
 unfade:       False
 dpmsEnabled:  $DPMS
