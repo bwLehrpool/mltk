@@ -1,7 +1,9 @@
 #!/bin/bash
 REQUIRED_INSTALLED_PACKAGES="
 	etherwake
+	ethtool
 "
 REQUIRED_CONTENT_PACKAGES="
 	etherwake
+	ethtool
 "

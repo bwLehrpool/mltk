@@ -8,6 +8,10 @@ build() {
 	COPYLIST="list_dpkg_output"
 	rm -f -- "$COPYLIST"
 
+	mkdir -p "${MODULE_BUILD_DIR}/etc/udev/rules.d"
+	sed "s,%ETHTOOL%,$(which ethtool)," "${MODULE_DIR}/templates/99-enable-wol.rules" > "${MODULE_BUILD_DIR}/etc/udev/rules.d/99-enable-wol.rules" \
+		|| perror "Cannot write udev rule to enable WOL"
+
 	list_packet_files >> "$COPYLIST"
 	tarcopy "$(cat "$COPYLIST" | sort -u)" "${MODULE_BUILD_DIR}"
 }
