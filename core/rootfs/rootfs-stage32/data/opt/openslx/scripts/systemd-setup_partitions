@@ -126,34 +126,45 @@ mount_temp_fallback () {
 }
 
 wait_for_udev () {
-	local upid ctr
+	local upid ctr hdd
+	hdd=
+	[ "x$1" = "x--hdd" ] && hdd=true
 	ctr=$(( "$1" * 10 ))
 	if ! [ "$ctr" -gt 0 ]; then # Negation to catch NaN
 		ctr=1
 	fi
 	udevadm trigger &
 	usleep 20000 # 20ms
-	udevadm settle & # --timeout doesn't work reliably, sometimes the process just hangs
+	udevadm settle &> /dev/null & # --timeout doesn't work reliably, sometimes the process just hangs
 	upid=$!
 	while [ "$ctr" -gt 0 ] && [ -d "/proc/$upid" ]; do
+		[ -n "$hdd" ] && has_hdd && break
 		usleep 100000 # 100ms
 		ctr=$(( ctr - 1 ))
 	done
 	if [ -d "/proc/$upid" ]; then
-		kill -9 "$upid" &
+		kill -9 "$upid" &> /dev/null &
 	fi
 }
 
-wait_for_udev 2
-/opt/openslx/sbin/fdisk -l | grep '^/dev/' > "$PARTITION_FILE"
+has_hdd () {
+	[ -n "$( ls -U -1 /dev/disk/by-path/ )" ]
+}
 
-if [ ! -s "$PARTITION_FILE" ]; then
-	udevadm trigger &
+wait_for_udev 2
+
+if ! has_hdd; then
 	sleep 1
-	wait_for_udev 3
-	/opt/openslx/sbin/fdisk -l | grep '^/dev/' > "$PARTITION_FILE"
+	wait_for_udev --hdd 4
 fi
 
+for disk in /dev/disk/by-path/!(*-part*); do
+	[ -L "$disk" ] || continue
+	fdisk -l "$( readlink -f "$disk" )"
+done > "$PARTITION_FILE"
+if ! [ -s "$PARTITION_FILE" ]; then
+	echo "none" > "$PARTITION_FILE"
+fi
 echo "Partitions:"
 cat "$PARTITION_FILE"
 

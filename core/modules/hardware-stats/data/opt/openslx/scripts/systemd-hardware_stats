@@ -159,7 +159,7 @@ echo "$VIRTTYPE is $VT"
 # 8) ID44 partition size
 ID44=0
 # Try df first, make sure device starts with /dev
-read -r df_dev df_size df_used df_avail df_usepercent df_mountpoint df_crap < <(df /tmp | grep ' /tmp$')
+read -r df_dev df_size df_used df_avail df_usepercent df_mountpoint df_crap < <(df -P /tmp | grep ' /tmp$')
 if [ -n "${df_size}" ] && [ "${df_dev:0:5}" = "/dev/" ]; then
 	# df reports kbytes, convert to MB
 	ID44=$(( df_size / 1024 ))
@@ -178,13 +178,19 @@ echo "Temp partition: $ID44 MB"
 
 # 9) check smart values
 FDISK=$(mktemp)
-slxfdisk -l > "$FDISK"
+declare -a DISKS
+for disk in /dev/disk/by-path/!(*-part*); do
+	[ -L "$disk" ] || continue
+	disk="$( readlink -f "$disk" )"
+	DISKS+=("$disk")
+	slxfdisk -l "$disk"
+done > "$FDISK"
 BADSECTORS=0
 if which smartctl; then
 	ALLSMART=$(mktemp)
 	FILE=$(mktemp)
 	[ -z "$FILE" ] && FILE="/tmp/smartctl.$$.$RANDOM.$RANDOM"
-	for dev in $(cat "$FDISK" | grep -o '^Disk /dev/\S*:' | cut -c 6-); do
+	for dev in "${DISKS[@]}"; do
 		dev=${dev:0:-1}
 		smartctl -i -H -A -f "brief" "$dev" > "$FILE"
 		# Exit code might be nonzero to indicate fail status, or because some (but not all) ATA commands
@@ -271,10 +277,8 @@ echo "Created report file"
 [ -n "$ALLSMART" ] && rm -f -- "$ALLSMART"
 
 # Put some info in local file for later use
-HDDCOUNT=0
-for size in $(cat "$FDISK" | grep -E '^Disk /dev.*[0-9]{11,} bytes' | grep -o -E '[0-9]{11,}'); do
-	[ "$size" -gt 50000000000 ] && HDDCOUNT=$(( HDDCOUNT + 1 ))
-done
+HDDCOUNT="${#DISKS[@]}"
+
 bashesc () {
 	sed s/\'/\'\"\'\"\'/g <<<$*
 }
