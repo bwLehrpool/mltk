@@ -179,12 +179,14 @@ echo "Temp partition: $ID44 MB"
 # 9) check smart values
 FDISK=$(mktemp)
 declare -a DISKS
+shopt -s extglob
 for disk in /dev/disk/by-path/!(*-part*); do
 	[ -L "$disk" ] || continue
 	disk="$( readlink -f "$disk" )"
 	DISKS+=("$disk")
 	slxfdisk -l "$disk"
 done > "$FDISK"
+shopt -u extglob
 BADSECTORS=0
 if which smartctl; then
 	ALLSMART=$(mktemp)

@@ -158,10 +158,12 @@ if ! has_hdd; then
 	wait_for_udev --hdd 4
 fi
 
+shopt -s extglob
 for disk in /dev/disk/by-path/!(*-part*); do
 	[ -L "$disk" ] || continue
 	fdisk -l "$( readlink -f "$disk" )"
 done > "$PARTITION_FILE"
+shopt -u extglob
 if ! [ -s "$PARTITION_FILE" ]; then
 	echo "none" > "$PARTITION_FILE"
 fi
