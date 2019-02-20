@@ -10,10 +10,10 @@ if [ "${#BOOTIF}" -ne "20" ]; then
 	fi
 fi
 
-UUID=$(dmidecode -q -s system-uuid | grep -v '^#' | head -n 1 | tr '[a-z]' '[A-Z]')
+UUID=$( dmidecode -q -s system-uuid | grep -v '^#' | head -n 1 | tr 'a-z' 'A-Z' )
 if [ "${#UUID}" -ne "36" ]; then
 	echo "Determined UUID (${UUID}) has not expected length of 36, falling back to MAC..."
-	UUID="000000000000001-$BOOTIF"
+	UUID=
 else
 	# Got UUID, check blacklist
 	DIR="/opt/openslx/bad-uuid.d"
@@ -22,7 +22,7 @@ else
 	for file in "$DIR"/*; do
 		[ -f "$file" ] || continue
 		# 11111111-2222-3333-4444-555555555555
-		< "$file" tr '[a-z]' '[A-Z]' | grep -Eo '[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}'
+		< "$file" tr 'a-z' 'A-Z' | grep -Eo '[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}'
 	done | tee "$TMPLIST" > "$BADLIST"
 	# Also add flipped version of bad uuids. Found some of them through googling and discovered that sometimes
 	# users report them in a different order. UUIDs use different endianness for the first three blocks than
@@ -32,9 +32,20 @@ else
 	sort -u "$TMPLIST" > "$BADLIST"
 	if grep -Fxq "$UUID" "$BADLIST"; then
 		echo "WARNING: UUID is blacklisted as potentially not being unique, using MAC fallback"
-		UUID="000000000000000-$BOOTIF"
+		UUID=
 	fi
 	rm -f -- "$TMPLIST" "$BADLIST"
 fi
+if [ -z "$UUID" ]; then
+	UUID=$( echo "$BOOTIF" | sed -r 's/[^0-9A-Fa-f]//g' )
+	[ "${#UUID}" -eq 14 ] && UUID="${UUID:2}"
+	if [ "${#UUID}" -eq 12 ]; then
+		UUID="baad1d00-9491-4716-b98b-$UUID"
+	else
+		UUID="baad1d00-9491-4716-b98b-000000000000"
+	fi
+fi
+UUID=$( echo "$UUID" | tr 'a-z' 'A-Z' )
+readonly UUID
 
 echo "$UUID" > "/run/system-uuid"
