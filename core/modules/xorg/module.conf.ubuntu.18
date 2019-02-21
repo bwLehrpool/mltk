@@ -64,6 +64,7 @@ REQUIRED_CONTENT_PACKAGES="
 			xserver-xorg-video-vesa$UBUNTU_XORG_PKG_SUFFIX
 			xserver-xorg-video-vmware$UBUNTU_XORG_PKG_SUFFIX
 			@xserver-xorg-input-mouse$UBUNTU_XORG_PKG_SUFFIX
+			@xserver-xorg-video-ati$UBUNTU_XORG_PKG_SUFFIX
 			@xserver-xorg-video-openchrome$UBUNTU_XORG_PKG_SUFFIX
 			@xserver-xorg-video-savage$UBUNTU_XORG_PKG_SUFFIX
 			@xserver-xorg-video-trident$UBUNTU_XORG_PKG_SUFFIX
