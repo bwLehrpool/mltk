@@ -8,6 +8,8 @@ REQUIRED_INSTALLED_PACKAGES="
 			libgl1-mesa-dri$UBUNTU_XORG_PKG_SUFFIX
 			libgl1-mesa-glx$UBUNTU_XORG_PKG_SUFFIX
 			libglx0
+			libegl1
+			libegl1-mesa
 			xkb-data
 			x11-xkb-utils
 			x11-xserver-utils
@@ -39,6 +41,7 @@ REQUIRED_CONTENT_PACKAGES="
 			libglx0
 			libglx-mesa0
 			libxcb-glx0
+			libegl1
 			libegl1-mesa
 			libgbm1
 			libcapnp-0.6.1
