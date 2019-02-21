@@ -66,8 +66,3 @@ REQUIRED_CONTENT_PACKAGES="
 			@xserver-xorg-video-s3$UBUNTU_XORG_PKG_SUFFIX
 			@xserver-xorg-video-tdfx$UBUNTU_XORG_PKG_SUFFIX
 "
-
-REQUIRED_DIRECTORIES+="
-			/usr/lib
-"
-REQUIRED_FILES=""

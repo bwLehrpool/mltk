@@ -7,6 +7,7 @@ REQUIRED_INSTALLED_PACKAGES="
 			xserver-xorg-core$UBUNTU_XORG_PKG_SUFFIX
 			libgl1-mesa-dri$UBUNTU_XORG_PKG_SUFFIX
 			libgl1-mesa-glx$UBUNTU_XORG_PKG_SUFFIX
+			libglx0
 			xkb-data
 			x11-xkb-utils
 			x11-xserver-utils
@@ -19,27 +20,13 @@ REQUIRED_INSTALLED_PACKAGES="
 			xserver-xorg-input-wacom$UBUNTU_XORG_PKG_SUFFIX
 			xserver-xorg-input-libinput$UBUNTU_XORG_PKG_SUFFIX
 			xserver-xorg-video-fbdev$UBUNTU_XORG_PKG_SUFFIX
+			xserver-xorg-video-amdgpu$UBUNTU_XORG_PKG_SUFFIX
+			xserver-xorg-video-radeon$UBUNTU_XORG_PKG_SUFFIX
 			xserver-xorg-video-intel$UBUNTU_XORG_PKG_SUFFIX
 			xserver-xorg-video-nouveau$UBUNTU_XORG_PKG_SUFFIX
 			xserver-xorg-video-sisusb$UBUNTU_XORG_PKG_SUFFIX
 			xserver-xorg-video-vesa$UBUNTU_XORG_PKG_SUFFIX
 			xserver-xorg-video-vmware$UBUNTU_XORG_PKG_SUFFIX
-			libdrm-dev
-			libgbm-dev
-			libgl-dev
-			libgl1-mesa-dev
-			libudev-dev
-			pkg-config
-			x11proto-core-dev
-			x11proto-dri2-dev
-			x11proto-fonts-dev
-			x11proto-randr-dev
-			x11proto-render-dev
-			x11proto-video-dev
-			x11proto-xext-dev
-			x11proto-xf86dri-dev
-			xserver-xorg-dev
-			xutils-dev
 "
 REQUIRED_CONTENT_PACKAGES="
 			fonts-dejavu-core
@@ -49,10 +36,12 @@ REQUIRED_CONTENT_PACKAGES="
 			xserver-xorg-core$UBUNTU_XORG_PKG_SUFFIX
 			libgl1-mesa-dri$UBUNTU_XORG_PKG_SUFFIX
 			libgl1-mesa-glx$UBUNTU_XORG_PKG_SUFFIX
+			libglx0
+			libglx-mesa0
+			libxcb-glx0
 			libegl1-mesa
 			libgbm1
 			libcapnp-0.6.1
-			libmirclient9
 			libwayland-client0
 			libwayland-server0
 			xkb-data
@@ -64,6 +53,8 @@ REQUIRED_CONTENT_PACKAGES="
 			xserver-xorg-input-synaptics$UBUNTU_XORG_PKG_SUFFIX
 			xserver-xorg-input-wacom$UBUNTU_XORG_PKG_SUFFIX
 			xserver-xorg-video-fbdev$UBUNTU_XORG_PKG_SUFFIX
+			xserver-xorg-video-amdgpu$UBUNTU_XORG_PKG_SUFFIX
+			xserver-xorg-video-radeon$UBUNTU_XORG_PKG_SUFFIX
 			xserver-xorg-video-intel$UBUNTU_XORG_PKG_SUFFIX
 			xserver-xorg-video-nouveau$UBUNTU_XORG_PKG_SUFFIX
 			xserver-xorg-video-sisusb$UBUNTU_XORG_PKG_SUFFIX
@@ -84,7 +75,3 @@ REQUIRED_CONTENT_PACKAGES="
 			@xserver-xorg-video-tdfx$UBUNTU_XORG_PKG_SUFFIX
 "
 
-REQUIRED_DIRECTORIES+="
-			/usr/lib
-"
-REQUIRED_FILES=""

@@ -86,10 +86,6 @@ REQUIRED_CONTENT_PACKAGES="
 			@xserver-xorg-video-s3$UBUNTU_XORG_PKG_SUFFIX
 			@xserver-xorg-video-tdfx$UBUNTU_XORG_PKG_SUFFIX
 "
-
-REQUIRED_DIRECTORIES+="
-			/usr/lib
-"
 # TODO: Required because the shipped ones crash on VT switch as of 2017-11-24
 # Remove when fixed in ubuntu repos
 REQUIRED_XORG_DRIVERS="
@@ -101,4 +97,3 @@ REQUIRED_LIBRARIES+="
 	radeon_drv
 	ati_drv
 "
-REQUIRED_FILES=""
