@@ -128,7 +128,10 @@ mount_temp_fallback () {
 wait_for_udev () {
 	local upid ctr hdd
 	hdd=
-	[ "x$1" = "x--hdd" ] && hdd=true
+	if [ "x$1" = "x--hdd" ]; then
+		hdd=true
+		shift
+	fi
 	ctr=$(( "$1" * 10 ))
 	if ! [ "$ctr" -gt 0 ]; then # Negation to catch NaN
 		ctr=1
