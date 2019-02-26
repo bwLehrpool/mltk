@@ -162,7 +162,7 @@ if ! has_hdd; then
 fi
 
 shopt -s extglob
-for disk in /dev/disk/by-path/!(*-part*); do
+for disk in /dev/disk/by-path/!(*-part*|*-usb-*); do
 	[ -L "$disk" ] || continue
 	fdisk -l "$( readlink -f "$disk" )"
 done > "$PARTITION_FILE"

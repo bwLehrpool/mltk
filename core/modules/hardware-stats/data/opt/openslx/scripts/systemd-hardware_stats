@@ -180,7 +180,7 @@ echo "Temp partition: $ID44 MB"
 FDISK=$(mktemp)
 declare -a DISKS
 shopt -s extglob
-for disk in /dev/disk/by-path/!(*-part*); do
+for disk in /dev/disk/by-path/!(*-part*|*-usb-*); do
 	[ -L "$disk" ] || continue
 	disk="$( readlink -f "$disk" )"
 	DISKS+=("$disk")
