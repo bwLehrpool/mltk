@@ -3,7 +3,7 @@
 #
 
 # Unmount dirs that vmware sometimes leaves around
-VMWARE_TMP_DIRS="$(cat /proc/mounts | grep "/tmp/vmware-" | awk -F " " '{print $1}')"
+VMWARE_TMP_DIRS="$(df -P | grep -oE '/tmp/vmware-.*$')"
 for DIR in $VMWARE_TMP_DIRS; do
 	umount "$DIR" && rmdir "$DIR"
 done
