@@ -1015,18 +1015,18 @@ static BOOL mountNetworkShare(const netdrive_t *d, BOOL useIp)
 	share.lpLocalName = letter;
 	share.lpRemoteName = path;
 	share.lpProvider = NULL;
-	letter[1] = ':';
-	letter[2] = 0;
-	letter[3] = 0;
-	if (letter[0] != 0 && letter[0] != '?') {
+	if (letter[0] != 0 && letter[0] != '?') { // ? will pick automatically
 		// Try with specific letter
-		if (letter[0] == '-') {
-			// No letter, just use as resource
-			letter[0] = 0;
-		} else if (wcscmp(L"PRINTER", letter) == 0) {
+		if (wcscmp(L"PRINTER", letter) == 0) {
 			// Printer
 			letter[0] = 0;
 			share.dwType = RESOURCETYPE_PRINT;
+		} else if (letter[0] == '-') {
+			// No letter, just use as resource
+			letter[0] = 0;
+		} else {
+			letter[1] = ':';
+			letter[2] = 0;
 		}
 		// Connect defined share
 		retval = mount(&share, pass, user);
@@ -1040,8 +1040,10 @@ static BOOL mountNetworkShare(const netdrive_t *d, BOOL useIp)
 			return FALSE;
 		}
 	}
-	if (share.dwType == RESOURCETYPE_DISK) {
+	if (share.dwType == RESOURCETYPE_DISK && letter[0] != '-') {
 		// Try to find free drive letter
+		letter[1] = ':';
+		letter[2] = 0;
 		for (letter[0] = 'Z'; letter[0] > 'C'; --letter[0]) {
 			retval = mount(&share, pass, user);
 			if (retval == ERROR_ALREADY_ASSIGNED || retval == ERROR_DEVICE_ALREADY_REMEMBERED
