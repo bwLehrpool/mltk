@@ -955,21 +955,25 @@ static DWORD mount(LPNETRESOURCEW share, LPWSTR pass, LPWSTR user)
 
 static void postSuccessfulMount(const netdrive_t *d, wchar_t *letter)
 {
+	wchar_t wShortcut[MAX_PATH] = L"", wUncPath[MAX_PATH];
+	BOOL isPrinter = d->letter != NULL && strcmp(d->letter, "PRINTER") == 0;
+	MultiByteToWideChar(CP_UTF8, 0, d->path, -1, wUncPath, MAX_PATH);
 	if (d->shortcut != NULL && strlen(d->shortcut) != 0) {
-		wchar_t tmp[MAX_PATH], wShortcut[MAX_PATH], wTarget[MAX_PATH];
-		MultiByteToWideChar(CP_UTF8, 0, d->shortcut, -1, tmp, MAX_PATH);
-		StringCchPrintfW(wShortcut, MAX_PATH, L"%s\\%s.lnk", desktopPath, tmp);
-		MultiByteToWideChar(CP_UTF8, 0, d->path, -1, tmp, MAX_PATH);
-		StringCchPrintfW(wTarget, MAX_PATH, L"\"%s\"", tmp);
-		DeleteFileW(wShortcut);
+		MultiByteToWideChar(CP_UTF8, 0, d->shortcut, -1, wShortcut, MAX_PATH);
+	}
+	if (wShortcut[0] != '\0' && !isPrinter) {
+		wchar_t wLinkName[MAX_PATH], wTarget[MAX_PATH];
+		StringCchPrintfW(wLinkName, MAX_PATH, L"%s\\%s.lnk", desktopPath, wShortcut);
+		StringCchPrintfW(wTarget, MAX_PATH, L"\"%s\"", wUncPath); // Quote
+		DeleteFileW(wLinkName);
 		if (letter == NULL || *letter == '\0') {
-			createFolderShortcut(wTarget, wShortcut, letter);
+			createFolderShortcut(wTarget, wLinkName, letter);
 		} else if (strstr(d->path, "@SSL") != NULL || strstr(d->path, "webdav") != NULL
 				|| strstr(d->path, "WebDav") != NULL || strstr(d->path, "WebDAV") != NULL
 				|| strstr(d->path, "@ssl") != NULL || strncmp(d->path, "http", 4) == 0) {
-			createFolderShortcut(letter, wShortcut, letter);
+			createFolderShortcut(letter, wLinkName, letter);
 		} else {
-			createFolderShortcut(wTarget, wShortcut, letter);
+			createFolderShortcut(wTarget, wLinkName, letter);
 		}
 		// Fix paths and kill explorer if it's the home directory
 		if (_folderStatus != FS_OK && strncmp(d->shortcut, "Home-", 5) == 0) {
@@ -980,6 +984,18 @@ static void postSuccessfulMount(const netdrive_t *d, wchar_t *letter)
 				patchUserPaths(letter);
 			}
 		}
+	}
+	if (isPrinter) {
+		wchar_t cmdline[MAX_PATH];
+		BOOL def = FALSE;
+		if (wShortcut[0] != '\0') {
+			def = d->shortcut[0] == '@';
+			//int offs = (def ? 1 : 0); TODO
+		}
+		StringCchPrintfW(cmdline, MAX_PATH, L"printui.dll PrintUIEntry /q /in /n \"%s\"", wUncPath);
+		// TODO: Make sure COM is initialized
+		ShellExecuteW(NULL, L"open", L"rundll32", cmdline, NULL, SW_HIDE);
+		// TODO: Set default; need to wait for install to finish
 	}
 }
 
@@ -1021,16 +1037,20 @@ static BOOL mountNetworkShare(const netdrive_t *d, BOOL useIp)
 			// Printer
 			letter[0] = 0;
 			share.dwType = RESOURCETYPE_PRINT;
+			dlog("Is a printer");
 		} else if (letter[0] == '-') {
 			// No letter, just use as resource
 			letter[0] = 0;
+			dlog("Is a resource");
 		} else {
 			letter[1] = ':';
 			letter[2] = 0;
+			dlog("Is a share with letter");
 		}
 		// Connect defined share
 		retval = mount(&share, pass, user);
-		if (retval == NO_ERROR) {
+		if (retval == NO_ERROR
+				|| (share.dwType == RESOURCETYPE_PRINT && retval == ERROR_SESSION_CREDENTIAL_CONFLICT)) {
 			postSuccessfulMount(d, letter);
 			return TRUE;
 		}
