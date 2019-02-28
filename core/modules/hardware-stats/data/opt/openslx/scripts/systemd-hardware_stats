@@ -361,6 +361,8 @@ if curl --retry 4 --retry-connrefused \
 	touch "/etc/cron.d" # Sometimes, aufs doesn't update the mtime of dirs when creating files,
 	# so cron would not rescan the cron directory
 	cleanup
+	# Trigger right now so resource usage gets updated
+	/opt/openslx/scripts/cron-system_usage_update
 	exit 0
 else
 	echo "Failed..."
