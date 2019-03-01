@@ -993,9 +993,22 @@ static void postSuccessfulMount(const netdrive_t *d, wchar_t *letter)
 			//int offs = (def ? 1 : 0); TODO
 		}
 		StringCchPrintfW(cmdline, MAX_PATH, L"printui.dll PrintUIEntry /q /in /n \"%s\"", wUncPath);
-		// TODO: Make sure COM is initialized
-		ShellExecuteW(NULL, L"open", L"rundll32", cmdline, NULL, SW_HIDE);
-		// TODO: Set default; need to wait for install to finish
+		SHELLEXECUTEINFOW e = {0}, f = {0};
+		e.cbSize = sizeof(e);
+		e.lpFile = L"rundll32";
+		e.lpParameters = cmdline;
+		e.nShow = SW_HIDE;
+		f = e; // Copy struct before we set the following flag for the first one
+		e.fMask = SEE_MASK_NOCLOSEPROCESS; // So we can wait for the first one
+		ShellExecuteExW(&e);
+		if (def) { // Only actually do so if we want to set it as default
+			WaitForSingleObject(e.hProcess, INFINITE);
+		}
+		CloseHandle(e.hProcess);
+		if (def) {
+			StringCchPrintfW(cmdline, MAX_PATH, L"printui.dll PrintUIEntry /q /y /n \"%s\"", wUncPath);
+			ShellExecuteExW(&f);
+		}
 	}
 }
 
