@@ -171,7 +171,7 @@ static void CALLBACK setupNetworkDrives(HWND hWnd, UINT uMsg, UINT_PTR idEvent, 
 {
 	static BOOL bInProc = FALSE;
 	static int fails = 0;
-	if (bInProc)
+	if (bInProc || _mountDone)
 		return;
 	bInProc = TRUE;
 	if (!shareFileOk) {
@@ -230,6 +230,10 @@ static void CALLBACK launchRunscript(HWND hWnd, UINT uMsg, UINT_PTR idEvent, DWO
 	wchar_t nuser[BUFLEN] = L"";
 	wchar_t npass[BUFLEN] = L"";
 
+	if (_scriptDone) {
+		KillTimer(hWnd, idEvent);
+		return;
+	}
 	// Prepare credentials cmdline
 	if (spass == NULL) {
 		dlog("launchRun: No spass");
@@ -258,7 +262,7 @@ static void CALLBACK launchRunscript(HWND hWnd, UINT uMsg, UINT_PTR idEvent, DWO
 	const char* sDir = "B:\\adminrun";
 	char sFile[200];
 	snprintf(sFile, 200, "%s\\*-*-*", sDir);
-	if((hFind = FindFirstFileA(sFile, &fdFile)) != INVALID_HANDLE_VALUE) {
+	if ((hFind = FindFirstFileA(sFile, &fdFile)) != INVALID_HANDLE_VALUE) {
 		do {
 			if(strcmp(fdFile.cFileName, ".") == 0 || strcmp(fdFile.cFileName, "..") == 0)
 				continue;
@@ -280,32 +284,6 @@ static void CALLBACK launchRunscript(HWND hWnd, UINT uMsg, UINT_PTR idEvent, DWO
 		} while(FindNextFileA(hFind, &fdFile)); //Find the next file.
 		FindClose(hFind); //Always, Always, clean things up!
 	}
-	/*
-	glob_t list;
-	if (glob("B:\\adminrun\\*-*-*", 0, NULL, &list) == 0) {
-		for (int i = 0; i < list.gl_pathc; ++i) {
-			wchar_t ucPath[BUFLEN];
-			ok = MultiByteToWideChar(CP_ACP, 0, (LPCSTR)list.gl_pathv[i], -1, (LPWSTR)ucPath, BUFLEN) > 0;
-			if (!ok) {
-				alog("Cannot convert %s to unicode", list.gl_pathv[i]);
-				continue;
-			}
-			char *slash = NULL, *ptr = list.gl_pathv[i];
-			while (*ptr) {
-				if (*ptr == '\\')
-					slash = ptr;
-				ptr++;
-			}
-			int index, visibility, passCreds;
-			if (slash == NULL || sscanf(slash + 1, "%d-%d-%d", &index, &visibility, &passCreds) < 3) {
-				alog("Cannot parse %s", slash);
-				continue;
-			}
-			ShellExecuteW(NULL, L"open", ucPath, passCreds ? params : emptyParams, L"B:\\", mapScriptVisibility(visibility));
-		}
-		globfree(&list);
-	}
-	*/
 
 	// Execute legacy runscript
 	int scriptVisibility = GetPrivateProfileIntA("openslx", "scriptVisibility", 1, SETTINGS_FILE);
@@ -315,12 +293,10 @@ static void CALLBACK launchRunscript(HWND hWnd, UINT uMsg, UINT_PTR idEvent, DWO
 
 	// DONE
 	_scriptDone = TRUE;
-	KillTimer(hWnd, idEvent);
 	return;
 failure:
 	if (++fails > 12) {
 		_scriptDone = TRUE;
-		KillTimer(hWnd, idEvent);
 	}
 }
 
