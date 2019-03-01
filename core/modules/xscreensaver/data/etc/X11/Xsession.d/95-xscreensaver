@@ -59,10 +59,10 @@ if which xscreensaver; then
 		# Explicit screen saver timeout set
 		TIMEOUT="$( secsToTime "$SLX_SCREEN_SAVER_TIMEOUT" )"
 	fi
-	if [ -z "$SLX_SCREEN_SAVER_GRACE_TIMEOUT" ]; then
+	if [ -z "$SLX_SCREEN_SAVER_GRACE_TIME" ]; then
 		GRACE="00:00:15"
 	else
-		GRACE="$( secsToTime "$SLX_SCREEN_SAVER_GRACE_TIMEOUT" )"
+		GRACE="$( secsToTime "$SLX_SCREEN_SAVER_GRACE_TIME" )"
 	fi
 	if ! [ -s "$HOME/.xscreensaver" ]; then
 		cat > "$HOME/.xscreensaver" <<EOF
