@@ -15,17 +15,18 @@ function runscript()
 			logger "openslx utility: runscript: Script extension empty or \'bat\', trying anyway."
 		if [ -f "$DISKMOUNTDIR/runscript${SCRIPTEXT}" ]; then
 			logger "openslx utility: runscript: found script $DISKMOUNTDIR/runscript${SCRIPTEXT}."
+			logger "openslx utility: runscript: script options: scriptuser: ${SCRIPTUSER}, scriptvisibility: ${SCRIPTVISIBILITY}."
 
 			case "$SCRIPTUSER" in
 				0)	USERPART=""
 					;;
 				1)	USERPART=" su -c - $LOCALUSER "
 					;;
-				*)	logger "openslx utility: runscript: Unknown script user or script user not set. Running as root."
-					USERPART=""
+				*)	logger "openslx utility: runscript: Unknown script user or script user not set. Running as user ${LOCALUSER}."
+					# USERPART=""	# old default: Running as root
+					USERPART=" su -c - $LOCALUSER "
 					;;
 			esac
-
 			case "$SCRIPTVISIBILITY" in
 				0) 	# 0=hidden
 					logger "openslx utility: runscript: Starting script hidden."
@@ -36,7 +37,11 @@ function runscript()
 					logger "openslx utility: runscript: Starting script maximised."
 					get_xauthfile
 					wait_for_wm
-					DISPLAY=:0.0 XAUTHORITY="${XAUTHORITY}" $USERPART "xterm $DISKMOUNTDIR/runscript${SCRIPTEXT}" &
+					if [ -n "$USERPART" ]; then
+						DISPLAY=:0.0 XAUTHORITY="${XAUTHORITY}" $USERPART "xterm $DISKMOUNTDIR/runscript${SCRIPTEXT}" &
+					else
+						DISPLAY=:0.0 XAUTHORITY="${XAUTHORITY}" $USERPART xterm "$DISKMOUNTDIR/runscript${SCRIPTEXT}" &
+					fi
 					;;
 				2) 	# 2=minimized (xterm -iconic)
 					logger "openslx utility: runscript: starting script minimised."
@@ -46,7 +51,11 @@ function runscript()
 					# Truly not the best way to wait until the desktop environment is ready, but there's no common way to
 					# check for DE readiness. Until then, we'll sleep.
 					sleep 20
-					DISPLAY=:0.0 XAUTHORITY="${XAUTHORITY}" $USERPART "xterm -iconic $DISKMOUNTDIR/runscript${SCRIPTEXT}" &
+					if [ -n "$USERPART" ]; then
+						DISPLAY=:0.0 XAUTHORITY="${XAUTHORITY}" $USERPART "xterm -iconic $DISKMOUNTDIR/runscript${SCRIPTEXT}" &
+					else
+						DISPLAY=:0.0 XAUTHORITY="${XAUTHORITY}" $USERPART xterm -iconic "$DISKMOUNTDIR/runscript${SCRIPTEXT}" &
+					fi
 					;;
 				*)	# *=?
 					logger "openslx utility: runscript: unkown scriptVisibility $SCRIPTVISIBILITY."
