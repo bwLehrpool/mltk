@@ -205,11 +205,11 @@ setup_graphics() {
 	if isset SLX_VMWARE_3D; then
 		writelog "FORCE3D set - overriding 3D in vmx file."
 		echo 'mks.gl.allowBlacklistedDrivers = "TRUE"'	>> "${TMPCONFIG}"
-		# We override... play safe and cap the hwVersion to 10, since some i915 chips goofed up with 12
-		# Investigate if we might have to do this in other cases where we don't override
-		if grep -qi '^mks.enable3d.*true' "${TMPCONFIG}"; then
-			vmw_cap_hw_version "10"
-		fi
+#		# We override... play safe and cap the hwVersion to 10, since some i915 chips goofed up with 12
+#		# Investigate if we might have to do this in other cases where we don't override
+#		if grep -qi '^mks.enable3d.*true' "${TMPCONFIG}"; then
+#			vmw_cap_hw_version "10"
+#		fi
 	else
 		writelog "FORCE3D not set - 3D will only work if GPU/driver is whitelisted by vmware."
 	fi

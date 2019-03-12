@@ -11,10 +11,13 @@ if lsmod | grep -q '^nvidia\s'; then
 	# nvidia kernel module was loaded in stage31 - download libs
 	echo "Proprietary nvidia kernel drivers loaded - fetch user space libs"
 	systemctl start setup-slx-addon@nvidia_libs &
-	echo -e "# Written by load-gfx-driver\nSLX_VMWARE_3D=yes" >> "/opt/openslx/config"
+	#echo -e "# Written by load-gfx-driver\nSLX_VMWARE_3D=yes" >> "/opt/openslx/config"
 elif grep -q -E ' (8086:0102|8086:0152|8086:0162|8086:0412|8086:0416|8086:041e|8086:0a16|8086:1626|8086:1912|8086:3e92|8086:5912|1002:6779|1002:68f9)( |$)' "$PCIFILE"; then
 	echo "i915 - enable 3D"
-	echo -e "# Written by load-gfx-driver\nSLX_VMWARE_3D=yes" >> "/opt/openslx/config"
+	#echo -e "# Written by load-gfx-driver\nSLX_VMWARE_3D=yes" >> "/opt/openslx/config"
 fi
+
+# Seems we can finally always do that; in fact, not doing so seems to crash VMs left and right
+echo -e "# Written by load-gfx-driver\nSLX_VMWARE_3D=yes" >> "/opt/openslx/config"
 
 exit 0
