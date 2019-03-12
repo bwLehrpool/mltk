@@ -330,6 +330,9 @@ buildlogfile() {
 		echo "ff0000" "* Der VM-Store konnte nicht eingehängt werden. VMs können nicht gestartet werden." >&4
 		echo "ff0000" "  Versuchen Sie das Problem zu lösen, indem Sie den Computer neu starten." >&4
 	fi
+	if grep -q '^nouveau ' "/proc/modules"; then
+		echo "ff5500" "* Die nVidia-Karte in diesem Rechner wird nur von den quelloffenen Treibern (nouveau) unterstützt, und daher mit verminderter Leistung laufen." >&4
+	fi
 	if [ -n "$CONTACT_RZ" ]; then
 		echo "000000" " -- " >&4
 		echo "000000" " -- Wenden Sie sich ggf. an den bwLehrpool-Support Ihres Rechenzentrums -- " >&4
