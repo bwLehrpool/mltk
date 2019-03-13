@@ -47,6 +47,10 @@ for opts in ${KCL}; do
 			GFX=amdgpu ;;
 		radeon)
 			GFX=radeon ;;
+		dhcpuuid)
+			USE_DHCP_UUID=yes
+			echo "SLX_NET_DHCP_UUID='yes'" >> "/run/config"
+			;;
 	esac
 done
 
