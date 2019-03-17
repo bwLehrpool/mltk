@@ -1,0 +1,9 @@
+[Unit]
+Description=Download roomplan pictogram to display in lightdm greeter
+Before=lightdm.service
+After=network.target
+
+[Service]
+Type=oneshot
+Exec=/opt/openslx/scripts/systemd-download_roomplan
+
