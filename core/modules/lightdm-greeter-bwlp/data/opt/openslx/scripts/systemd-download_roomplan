@@ -2,7 +2,7 @@
 
 . /opt/openslx/config
 [ -z "$SLX_PVS_CONFIG_URL" ] && exit 0
-UUID=$( cat /run/system-uuid )
+UUID=$( cat /etc/system-uuid )
 [ -z "$UUID" ] && exit 0
 
 mkdir -p /etc/branding.d
