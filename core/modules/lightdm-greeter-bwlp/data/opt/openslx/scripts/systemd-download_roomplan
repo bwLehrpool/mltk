@@ -6,4 +6,4 @@ UUID=$( cat /etc/system-uuid )
 [ -z "$UUID" ] && exit 0
 
 mkdir -p /etc/branding.d
-exec curl -m 3 -o /etc/branding.d/50-roomplan.svg "${SLX_PVS_CONFIG_URL}&show=svg&machineuuid=${UUID}"
+exec curl -m 3 -o /etc/branding.d/50-roomplan.svg "${SLX_PVS_CONFIG_URL}&show=svg&machineuuid=${UUID}&rotate=-1"
