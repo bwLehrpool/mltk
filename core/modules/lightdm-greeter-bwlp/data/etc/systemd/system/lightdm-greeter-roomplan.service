@@ -5,5 +5,5 @@ After=network.target
 
 [Service]
 Type=oneshot
-Exec=/opt/openslx/scripts/systemd-download_roomplan
+ExecStart=/opt/openslx/scripts/systemd-download_roomplan
 
