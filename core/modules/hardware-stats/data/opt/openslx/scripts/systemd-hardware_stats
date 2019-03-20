@@ -226,7 +226,7 @@ echo "SMART: $OVERALL - $REALLOC reallocated, $PENDING pending"
 dmidec() {
 	local RETVAL=$(dmidecode "$@" 2>/dev/null | grep -v '^#' | grep -v '^Invalid' | sed 's/\s\s*/ /g;s/^ //;s/ $//')
 	case "$RETVAL" in
-		""|*"Product Name"*|*"be filled"*|"unknown"|*"product name"*)
+		""|*"Product Name"*|*"be filled"*|"unknown"|*"efault string"*|*"efault String"*|*"product name"*|*"anufacturer"*|*"ystem model"*)
 			RETVAL="Unknown"
 			;;
 	esac
