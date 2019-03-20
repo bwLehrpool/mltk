@@ -343,7 +343,7 @@ buildlogfile &
 
 # Fire away
 echo "Submitting to $SLX_REMOTE_LOG"
-if curl --retry 4 --retry-connrefused \
+if curl --retry 4 --retry-connrefused --max-time 5 --retry-max-time 15 \
 		--data-urlencode "type=~poweron" --data-urlencode "uuid=$UUID" --data-urlencode "macaddr=$MAC" \
 		--data-urlencode "uptime=$UPTIME" --data-urlencode "realcores=$CPUCORES" --data-urlencode "mbram=$RAM" \
 		--data-urlencode "kvmstate=$VT" --data-urlencode "cpumodel=$CPUMODEL" --data-urlencode "id44mb=$ID44" \

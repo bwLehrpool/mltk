@@ -41,7 +41,7 @@ if [ -n "$SLX_EXAM" ]; then
 	SLX_RUNMODE_MODULE="exams"
 fi
 
-curl --retry 3 --retry-connrefused -s --data-urlencode "type=~runstate" --data-urlencode "uuid=$UUID" --data-urlencode "used=$USED" \
+curl --retry 3 --retry-connrefused -m 6 -s --data-urlencode "type=~runstate" --data-urlencode "uuid=$UUID" --data-urlencode "used=$USED" \
 	--data-urlencode "user=$Name" --data-urlencode "tmpsize=$TMP_SIZE" --data-urlencode "tmpfree=$TMP_FREE" \
 	--data-urlencode "swapsize=$SWAP_SIZE" --data-urlencode "swapfree=$SWAP_FREE" \
 	--data-urlencode "memsize=$MEM_SIZE" --data-urlencode "memfree=$MEM_FREE" \
