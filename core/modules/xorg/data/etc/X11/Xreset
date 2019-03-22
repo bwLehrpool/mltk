@@ -7,8 +7,6 @@
 
 export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/openslx/sbin:/opt/openslx/bin"
 
-set -e
-
 PROGNAME=Xreset
 SYSSESSIONDIR=/etc/X11/Xreset.d
 
