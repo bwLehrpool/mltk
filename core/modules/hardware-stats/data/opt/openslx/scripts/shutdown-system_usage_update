@@ -7,6 +7,6 @@ UUID=$(cat /etc/system-uuid)
 
 [ -z "$UUID" ] && exit 1
 
-curl --retry 3 --retry-connrefused -s --data-urlencode "type=~poweroff" --data-urlencode "uuid=$UUID" \
+curl --retry 3 --retry-connrefused --max-time 3 --max-time-retry 10 -s --data-urlencode "type=~poweroff" --data-urlencode "uuid=$UUID" \
 	"$SLX_REMOTE_LOG" > /dev/null 2>&1
 

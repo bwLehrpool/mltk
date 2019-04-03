@@ -1,11 +1,11 @@
 [Unit]
 Description=Gather statistics about this machine and send to boot server
-DefaultDependencies=no
-After=tmp.target mount-vm-store.service
+After=tmp.target mount-vm-store.service network.target
 Wants=tmp.target
 
 [Service]
 Type=oneshot
 ExecStart=/opt/openslx/scripts/systemd-hardware_stats
 RemainAfterExit=yes
+ExecStop=/opt/openslx/scripts/shutdown-system_usage_update
 
