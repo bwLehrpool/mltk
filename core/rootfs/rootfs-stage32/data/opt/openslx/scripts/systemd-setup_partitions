@@ -188,7 +188,7 @@ get_all_with_id () {
 		shift
 		[ -z "$ID" ] && continue
 		[ ${#ID} -eq 1 ] && ID="0?$ID" # passed '7' as argument -- look for 0x7 or 0x07
-		if [ ${#ID} -eq 2 ]; then
+		if [ ${#ID} -le 3 ]; then
 			exp="$exp|ID_PART_ENTRY_(NAME=OpenSLX-ID|TYPE=0x)$ID"
 		else
 			exp="$exp|ID_PART_ENTRY_TYPE=$ID"
