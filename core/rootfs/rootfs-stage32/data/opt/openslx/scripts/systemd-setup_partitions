@@ -140,8 +140,9 @@ wait_for_udev () {
 	usleep 20000 # 20ms
 	udevadm settle &> /dev/null & # --timeout doesn't work reliably, sometimes the process just hangs
 	upid=$!
-	while [ "$ctr" -gt 0 ] && [ -d "/proc/$upid" ]; do
+	while [ "$ctr" -gt 0 ]; do
 		[ -n "$hdd" ] && has_hdd && break
+		[ -z "$hdd" ] && ! [ -d "/proc/$upid" ] && break
 		usleep 100000 # 100ms
 		ctr=$(( ctr - 1 ))
 	done
@@ -157,7 +158,6 @@ has_hdd () {
 wait_for_udev 2
 
 if ! has_hdd; then
-	sleep 1
 	wait_for_udev --hdd 4
 fi
 
