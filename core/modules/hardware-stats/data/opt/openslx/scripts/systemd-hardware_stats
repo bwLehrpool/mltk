@@ -193,7 +193,6 @@ if which smartctl; then
 	FILE=$(mktemp)
 	[ -z "$FILE" ] && FILE="/tmp/smartctl.$$.$RANDOM.$RANDOM"
 	for dev in "${DISKS[@]}"; do
-		dev=${dev:0:-1}
 		smartctl -i -H -A -f "brief" "$dev" > "$FILE"
 		# Exit code might be nonzero to indicate fail status, or because some (but not all) ATA commands
 		# failed. So instead, see if we at least got basic device information and go on if so.
