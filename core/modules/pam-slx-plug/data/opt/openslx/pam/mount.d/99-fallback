@@ -88,7 +88,8 @@ if [ -n "$PIDS" ]; then
 	kill -9 $PIDS # Kill any leftovers; No quotes
 fi
 
-if ! isHomeMounted; then
+# Only if SHARE_NO_HOME_WARN is empty or 0
+if [ -z "${SHARE_NO_HOME_WARN%0}" ] && ! isHomeMounted; then
 	LOG_COMBINED=$(mktemp)
 	[ -n "$LOGFILES" ] && cat ${LOGFILES} > "$LOG_COMBINED" # No quotes
 	slxlog --delete "pam-ad-mount" "Mount of '${NETWORK_HOME}' to '${PERSISTENT_HOME_DIR}' failed." "${LOG_COMBINED}"

@@ -69,6 +69,7 @@ static int _folderStatus = FS_UNKNOWN; // -1 = Not handled yet, 0 = patching fai
 static int _remapMode = RM_NONE;
 static const char* _remapHomeDrive = NULL;
 static BOOL _passCreds = FALSE;
+static BOOL _noHomeWarn = FALSE;
 static BOOL _deletedCredentials = FALSE;
 static BOOL _scriptDone = TRUE, _mountDone = TRUE; // Will be set to false if we actually wait for something...
 static char *shost = NULL, *sport = NULL, *suser = NULL, *spass = NULL;
@@ -199,7 +200,7 @@ static void CALLBACK setupNetworkDrives(HWND hWnd, UINT uMsg, UINT_PTR idEvent, 
 	}
 	_mountDone = TRUE;
 	KillTimer(hWnd, idEvent);
-	if (_remapMode != RM_NONE) {
+	if (!_noHomeWarn) { // Warn if mapping failed and error is not muted
 		if (_folderStatus != FS_OK && shost != NULL && shost[0] == '-' && sport != NULL && sport[0] == '-') {
 			MessageBoxA(NULL, "Kein Home-Verzeichnis konfiguriert. Bitte nichts Wichtiges in der VM speichern, sondern z.B. einen USB-Stick verwenden, bzw. evtl. vorhandene Netzlaufwerke verwenden.", "Warnung", MB_ICONERROR);
 		} else if (_folderStatus == FS_ERROR) {
@@ -402,6 +403,8 @@ static void loadPaths()
 	}
 	// Pass creds to normal runscript?
 	_passCreds = GetPrivateProfileIntA("openslx", "passCreds", 0, SETTINGS_FILE) != 0;
+	// No warning if no home directory could be mounted
+	_noHomeWarn = GetPrivateProfileIntA("openslx", "noHomeWarn", 0, SETTINGS_FILE) != 0;
 }
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd)

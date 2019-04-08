@@ -107,6 +107,12 @@ setup_virtual_floppy() {
 	local UNAME=
 	[ -s "${HOME}/.openslx/account" ] && UNAME=$(cat "${HOME}/.openslx/account")
 	notempty UNAME || UNAME=$(whoami)
+
+	# Only warn for non-demo
+	if [ "$SHARE_NO_HOME_WARN" = "2" ] && [ "$UNAME" != "demo" ]; then
+		SHARE_NO_HOME_WARN=0
+	fi
+
 	cat > "${TMPDIR}/openslx.ini" <<-EOF
 	[openslx]
 	username=${UNAME}
@@ -119,6 +125,7 @@ setup_virtual_floppy() {
 	passCreds=${SHARE_CREDENTIAL_PASSTHROUGH}
 	bootIp=${SLX_PXE_CLIENT_IP}
 	muteSound=${MUTED}
+	noHomeWarn=${SHARE_NO_HOME_WARN}
 	
 	[remap]
 	documents=${SHARE_DOCUMENTS}
