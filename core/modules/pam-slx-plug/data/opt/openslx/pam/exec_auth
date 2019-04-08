@@ -88,6 +88,9 @@ if [ "$(echo "${USER_UID}${USER_GID}${USER_GROUP}${USER_HOME}" | wc -l)" != "1" 
 	exit 1
 fi
 
+# If not run as root, we're done here as the directory mount stuff etc. doesn't make any sense
+[ "$SCRIPT_USER" = "root" ] || exit 0
+
 # Make sure group exists locally
 GROUPENT=
 if [ -n "$USER_GID" ]; then
