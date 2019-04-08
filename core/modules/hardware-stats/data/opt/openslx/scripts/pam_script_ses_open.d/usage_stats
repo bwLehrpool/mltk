@@ -1,8 +1,9 @@
+#!/bin/ash - sourced
 
-(
+if [ "x$PAM_SERVICE" != "xsu" -a "x$PAM_SERVICE" != "xsudo" ]; then
 	sleep 3
 	/opt/openslx/scripts/cron-system_usage_update
-) &
+fi &
 
 true
 
