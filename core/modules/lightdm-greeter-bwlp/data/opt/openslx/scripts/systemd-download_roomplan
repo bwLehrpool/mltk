@@ -5,5 +5,17 @@
 UUID=$( cat /etc/system-uuid )
 [ -z "$UUID" ] && exit 0
 
-mkdir -p /etc/branding.d
-exec curl -m 3 -o /etc/branding.d/50-roomplan.svg "${SLX_PVS_CONFIG_URL}&show=svg&machineuuid=${UUID}&rotate=-1"
+mkdir -p /opt/openslx/lightdm
+DEST="/opt/openslx/lightdm/roomplan.svg"
+# Download
+curl -m 3 -o "${DEST}" "${SLX_PVS_CONFIG_URL}&show=svg&machineuuid=${UUID}&rotate=-1"
+[ -s "$DEST" ] || exit 0 # Do nothing if it doesn't exist
+# But create overriding config file if it does
+mkdir -p "/etc/lightdm/qt-lightdm-greeter.conf.d"
+# Make it 10- so it can be easily overridden
+cat > "/etc/lightdm/qt-lightdm-greeter.conf.d/10-roomplan.conf" <<EOF
+[General]
+loginform-mini-icon=${DEST}
+EOF
+exit 0
+
