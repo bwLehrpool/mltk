@@ -79,16 +79,11 @@ fi
 MAC=${BOOTIF:3}
 echo "Determined MAC=$MAC"
 
-# 2) Get machine UUID, with fallback to MAC address if it fails for some reason, or if the UUID is blacklisted
+# 2) Get machine UUID written in stage3.1
 UUID=$(cat /etc/system-uuid)
 if [ -z "$UUID" ] || [ "${#UUID}" -ne "36" ]; then
-	UUID=$(dmidecode -q -s system-uuid | grep -v '^#' | head -n 1 | tr '[a-z]' '[A-Z]')
-	echo "$UUID" > /etc/system-uuid
-fi
-if [ "${#UUID}" -ne "36" ]; then
-	echo "Determined UUID (${UUID}) has not expected length of 36, falling back to MAC..."
-	UUID="000000000000001-$BOOTIF"
-	echo "$UUID" > /etc/system-uuid
+	echo "No/malformed UUID, aborting" >&2
+	exit 1
 fi
 echo "UUID=$UUID"
 
