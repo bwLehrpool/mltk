@@ -50,26 +50,34 @@ fi
 tmpstatus="$(df -P | grep -m1 ' /tmp$' | awk '{printf "%.1f", $2 / 1024 / 1024}')GiB ($tmpstatus)"
 
 cat >> "$TMPFILE" <<EOF
-System model: %space% $system
-Kernel version: %space% $kernel
-Temporary directory: %space% $tmpstatus
-Boot server: %space% $SLX_PXE_SERVER_IP
-Client address: %space% $SLX_PXE_CLIENT_IP
+System model:%space% $system
+Kernel version:%space% $kernel
+Temporary directory:%space% $tmpstatus
+Boot server:%space% $SLX_PXE_SERVER_IP
+Client address:%space% $SLX_PXE_CLIENT_IP
 EOF
 if [ -n "$linkspeed" ]; then
-	echo "Link speed: %space% ${linkspeed}MBit" >> "$TMPFILE"
+	echo "Link speed:%space% ${linkspeed}MBit" >> "$TMPFILE"
 fi
 if [ -n "$SLX_SHUTDOWN_SCHEDULE" ]; then
-	echo "Scheduled shutdown: %space% $SLX_SHUTDOWN_SCHEDULE" >> "$TMPFILE"
+	echo "Scheduled shutdown:%space% $SLX_SHUTDOWN_SCHEDULE" >> "$TMPFILE"
 fi
 if [ -n "$SLX_REBOOT_SCHEDULE" ]; then
-	echo "Scheduled reboot: %space% $SLX_REBOOT_SCHEDULE" >> "$TMPFILE"
+	echo "Scheduled reboot:%space% $SLX_REBOOT_SCHEDULE" >> "$TMPFILE"
 fi
 if [ -n "$player" ]; then
-	echo "VMware version: %space% ${player//'"'/}" >> "$TMPFILE"
+	echo "VMware version:%space% ${player//'"'/}" >> "$TMPFILE"
 fi
 
 echo "" >> "$TMPFILE"
+
+# Crop to console width
+T=$( tput cols 2> /dev/console )
+if [ -z "$T" ]; then
+	T=$( stty size < /dev/console )
+	T="${T#* }"
+fi
+[ -n "$T" ] && [ "$T" -le "$MAX" ] && MAX=$(( T - 1 ))
 
 # Fix up spacing for right-aligned text
 while IFS='' read -r line || [ -n "$line" ]; do
@@ -85,9 +93,9 @@ while IFS='' read -r line || [ -n "$line" ]; do
 			space=" $space"
 		done
 	fi
-	echo "$line"
+	echo "${line:0:$MAX}"
 done < "$TMPFILE" > "$OUTFILE"
 
 rm -f -- "$TMPFILE"
-
+exit 0
 
