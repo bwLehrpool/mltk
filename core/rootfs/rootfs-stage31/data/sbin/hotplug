@@ -1,5 +1,16 @@
 #!/bin/ash
 
+if [ -n "$FIRMWARE" ] && [ "$SUBSYSTEM" = "firmware" ] && [ -n "$DEVPATH" ] && [ -e "/sys/$DEVPATH/data" ]; then
+	echo "Kernel requests firmware $FIRMWARE" > "/dev/kmsg"
+	printf "1" > "/sys/$DEVPATH/loading"
+	if cat "/lib/firmware/$FIRMWARE" > "/sys/$DEVPATH/data" \
+			|| cat "/lib/firmware/$(uname -r)/$FIRMWARE" > "/sys/$DEVPATH/data"; then
+		printf "0" > "/sys/$DEVPATH/loading"
+	else
+		printf "%s" "-1" "/sys/$DEVPATH/loading"
+	fi
+fi
+
 [ "$ACTION" != "add" ] && exit 0
 
 [ -z "$MODALIAS" ] && exit 0
