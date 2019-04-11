@@ -1,0 +1,15 @@
+#!/bin/ash
+
+[ "$ACTION" != "add" ] && exit 0
+
+[ -z "$MODALIAS" ] && exit 0
+
+[ "${MODALIAS:0:5}" != "pci:v" ] && exit 0 # Ignore everything but PCI devices
+
+ID="${MODALIAS:9:4}:${MODALIAS:18:4}"
+
+LINE="$( lspci -n | grep -oEi "[0-9]{4}: $ID" | cut -c1-2 )"
+[ "$LINE" = "03" ] && exit 0 # Skip GFX, handled by other module
+
+modprobe "$MODALIAS"
+

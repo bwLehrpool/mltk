@@ -25,8 +25,12 @@ export PATH=/bin:/sbin:/usr/bin:/usr/sbin
 # mount the important standard directories
 mkdir -p /tmp /proc /sys /dev /run
 [ ! -f /proc/cpuinfo ] && busybox mount -n -t proc proc /proc
+echo "/sbin/hotplug" > "/proc/sys/kernel/hotplug"
 bench_event "KERNEL" "Kernel initialized"
 [ ! -d /sys/class ] && busybox mount -n -t sysfs sysfs /sys
+for id in $( cat /sys/devices/pci*/*/modalias ); do
+	ACTION=add MODALIAS=$id /sbin/hotplug
+done &
 
 # NOTE: busybox mount is only available through the busybox binary,
 # the link had to be dropped, to prevent bugs in the stage32.
