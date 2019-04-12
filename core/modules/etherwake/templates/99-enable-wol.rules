@@ -1,0 +1,2 @@
+ACTION=="add", SUBSYSTEM=="net", NAME=="eth0", RUN+="%ETHTOOL% -s $name wol g"
+ACTION=="add", SUBSYSTEM=="net", NAME=="boot0", RUN+="%ETHTOOL% -s $name wol g"
