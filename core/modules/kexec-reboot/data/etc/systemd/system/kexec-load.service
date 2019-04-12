@@ -2,7 +2,7 @@
 Description=Reload the kernel/initramfs via kexec
 Documentation=man:kexec(8)
 DefaultDependencies=no
-Before=shutdown.target final.target
+Before=shutdown.target final.target kexec.target
 
 [Service]
 Type=oneshot
