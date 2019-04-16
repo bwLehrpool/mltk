@@ -1,6 +1,11 @@
 #!/bin/ash
 
-if [ -n "$FIRMWARE" ] && [ "$SUBSYSTEM" = "firmware" ] && [ -n "$DEVPATH" ] && [ -e "/sys/$DEVPATH/data" ]; then
+if [ "$1" = "--file" ]; then
+	# Read from modalias file
+	ACTION="add"
+	MODALIAS="$( cat "$2" )"
+elif [ -n "$FIRMWARE" ] && [ "$SUBSYSTEM" = "firmware" ] && [ -n "$DEVPATH" ] && [ -e "/sys/$DEVPATH/data" ]; then
+	# Firmware loader (should not be needed since direct firmware loading capability of kernel exists nowadays)
 	echo "Kernel requests firmware $FIRMWARE" > "/dev/kmsg"
 	printf "1" > "/sys/$DEVPATH/loading"
 	if cat "/lib/firmware/$FIRMWARE" > "/sys/$DEVPATH/data" \
@@ -11,11 +16,9 @@ if [ -n "$FIRMWARE" ] && [ "$SUBSYSTEM" = "firmware" ] && [ -n "$DEVPATH" ] && [
 	fi
 fi
 
-[ "$ACTION" != "add" ] && exit 0
+[ "$ACTION" = "add" ] || exit 0
 
-[ -z "$MODALIAS" ] && exit 0
-
-[ "${MODALIAS:0:5}" != "pci:v" ] && exit 0 # Ignore everything but PCI devices
+[ "${MODALIAS:0:5}" = "pci:v" ] || exit 0 # Ignore everything but PCI devices
 
 ID="${MODALIAS:9:4}:${MODALIAS:18:4}"
 
