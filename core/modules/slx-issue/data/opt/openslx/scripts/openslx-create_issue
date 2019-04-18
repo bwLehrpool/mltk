@@ -25,6 +25,11 @@ declare -rg OUTFILE=/etc/issue
 
 . /opt/openslx/config
 
+# get_dmi_info <class>
+get_dmi_info() {
+	[ -n "$1" ] || return
+	echo $(dmidecode -s $1 | grep -vP "unknown|filled|^#")
+}
 # Replace known variables and determine maximum line length
 MAX=0
 while IFS='' read -r line || [ -n "$line" ]; do
@@ -37,7 +42,13 @@ while IFS='' read -r line || [ -n "$line" ]; do
 done < "$INFILE" > "$TMPFILE"
 player=$(< /etc/vmware/config grep -m1 '^product.version' | awk -F= '{print $2}')
 kernel=$(uname -r)
-system="$(dmidecode -s system-manufacturer | grep -vP "unknown|filled|^#") $(dmidecode -s system-product-name | grep -vP "unknown|filled|^#")"
+system_manufacturer="$(get_dmi_info system-manufacturer)"
+[ -z "$system_manufacturer" ] && system_manufacturer="$(get_dmi_info baseboard-manufacturer)"
+system_product="$(get_dmi_info system-product-name)"
+[ -z "$system_product" ] && system_product="$(get_dmi_info baseboard-product-name)"
+system="$system_manufacturer $system_product"
+[ -z "${system// /}" ] && system="<unknown>"
+
 # Support the boot interface name eventually saved as SLX_PXE_NETIF
 # from the new dracut-based stage3, fallback to old eth0 if not set
 linkspeed=$(cat /sys/class/net/${SLX_PXE_NETIF:-eth0}/speed)
