@@ -1,0 +1,15 @@
+#!/bin/bash
+# libvdpau: While nvidia delivers a linvdpau within it's driver package, nvidia
+# itself recommends using a distribution package if available. So, here we go.
+
+REQUIRED_CONTENT_PACKAGES="
+	libvdpau1
+"
+
+REQUIRED_INSTALLED_PACKAGES="
+	libvdpau1
+"
+REQUIRED_SYSTEM_FILES+="
+	/sbin/ldconfig.real
+"
+

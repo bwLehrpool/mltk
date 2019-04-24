@@ -1,0 +1,112 @@
+#!/bin/bash
+fetch_source() {
+	local version
+	mkdir -p src
+	cd src || perror "Could not change into src directory."
+	for version in $NVIDIA_VERSIONS; do
+		download "${REQUIRED_URL//%VERSION%/$version}" "${version}.run"
+	done
+}
+
+build() {
+	local bundle destdir builddir version
+	pdebug "--- chroot ---------------------------------------------------------------------"
+	pdebug "-                                                                              -"
+	pdebug "-   Notice: This may take a while!                                             -"
+	pdebug "-                                                                              -"
+	pdebug "-      Please keep note the Nvidia installer _will_ complain about             -"
+	pdebug "-      several warnings and errors. It will do this in any case.               -"
+	pdebug "-                                                                              -"
+	pdebug "-      This does _not_ mean the library module compilation was unsuccessful!   -"
+	pdebug "-                                                                              -"
+	pdebug "--------------------------------------------------------------------------------"
+
+	declare -A pciids
+	local file RESULT NVIDIA_MODULES drmfile filenum
+	filenum=10
+	for version in $NVIDIA_VERSIONS; do
+		bundle="${MODULE_WORK_DIR}/src/${version}.run"
+		builddir="${MODULE_BUILD_DIR}/${version}"
+		destdir="${builddir}/NVIDIA"
+
+		pdebug "Unpacking NVidia-Installer ..."
+		[ -d "$destdir" ] && rm -rf "$destdir"
+		sh "$bundle" --extract-only --target "$destdir" ||	perror "Could not extract $bundle to $destdir."
+		download "${REQUIRED_HTML//%VERSION%/$version}" "$builddir/supportedchips.html"
+		
+		pinfo "Ready to chroot - may take some time."
+		chroot_run "${builddir}" <<-EOF
+		/NVIDIA/nvidia-installer --no-nouveau-check --no-network --no-backup --no-rpms --no-runlevel-check \
+				--no-distro-scripts --no-cc-version-check --no-x-check --no-precompiled-interface --silent \
+				--kernel-source-path "/$KERNEL_HEADERS_DIR"
+		exit 0 # Fake it since it will try to load the module and probably fail
+		EOF
+		if grep -qF '.ko failed to build' "${builddir}/var/log/nvidia-installer.log"; then
+			pwarning "Could not compile all kernel modules: $( grep -F '.ko failed to build' "${builddir}/var/log/nvidia-installer.log" )"
+			perror "Bailing out..."
+		fi
+		pinfo "chroot terminated, cleaning up"
+
+		# move whiteout list to its /opt/openslx/etc/nvidia.whiteout
+		if [ -e "${builddir}/overlay.whiteout.list" ]; then
+			mkdir -p "${builddir}/opt/openslx/etc"
+			mv "${builddir}/overlay.whiteout.list" "${builddir}/opt/openslx/etc/nvidia.whiteout"
+		fi
+
+# SNIP
+		NVIDIA_MODULES="${builddir}/lib/modules/nvidia/${version}"
+		mkdir -p "$NVIDIA_MODULES"
+		pinfo "Copying kernel modules..."
+		for file in nvidia.ko nvidia-uvm.ko nvidia-modeset.ko nvidia-drm.ko; do
+			RESULT=$(find "$builddir/NVIDIA/kernel" -name "$file" | head -n 1)
+			[ -z "$RESULT" ] && perror "Could not find built module $file in ./NVIDIA/kernel"
+			pinfo "Fetching ${file}..."
+			strip -g "$RESULT" || pwarning "Could not strip $file"
+			cp "$RESULT" "$NVIDIA_MODULES" || perror "Could not copy $file"
+		done
+
+		mkdir -p "${builddir}/drm.cfg.d"
+		drmfile="${builddir}/drm.cfg.d/$(( filenum++ ))-nvidia"
+		cat > "$drmfile" <<-BLOFF
+			@nvidia-${version}            acpi_ipmi nvidia-$version/nvidia.ko nvidia-$version/nvidia-uvm.ko nvidia-$version/nvidia-modeset.ko nvidia-$version/nvidia-drm.ko
+			@nvidia-${version}_fallback   nouveau
+		BLOFF
+		if ! [ -s "${builddir}/supportedchips.html" ]; then
+			pwarning "No supportedchips.html -- THE GOGGLES, THEY DO NOTHING!"
+		else
+			local mode line name dev version
+			pinfo "Creating drm.cfg"
+			mode=0
+			while read -r line; do
+				if [[ "$line" =~ '<a name="legacy_' ]]; then
+					break # For now, we stop here; older versions will be fetched from their own html file
+				elif [[ "$mode" = 0 ]] && [[ "$line" =~ ^'<tr' ]]; then
+					mode=1
+				elif [[ "$mode" = 1 ]] && [[ "$line" =~ ^'<td' ]]; then
+					mode=2
+					name=$(echo "$line" | sed -r 's/^.*<td[^>]*>([^<]+)<.*$/\1/')
+				elif [[ "$mode" = 2 ]] && [[ "$line" =~ ^'<td'[^'>']*'>'[0-9A-F]{4}'<' ]]; then
+					mode=0
+					dev=$(echo "$line" | sed -r 's/^.*<td[^>]*>([0-9A-Fa-f]{4})<.*$/\1/' | tr 'A-Z' 'a-z')
+					if [ -n "${pciids[$dev]}" ]; then
+						pdebug "$dev already handled"
+					else
+						echo "10de:$dev          @nvidia-$version"
+						pciids[$dev]=1
+					fi
+				else
+					mode=0
+					name=
+					dev=
+				fi
+			done < "${builddir}/supportedchips.html" >> "$drmfile"
+		fi
+		
+		rm -rf -- "$destdir"
+	done
+}
+
+post_copy() {
+	:
+}
+
