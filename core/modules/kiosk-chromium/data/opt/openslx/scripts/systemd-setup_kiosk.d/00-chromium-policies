@@ -24,7 +24,8 @@ chromium_policies() {
 		"DefaultBrowserSettingEnabled": true,
 		"DownloadRestrictions": 3,
 		"ShowAppsShortcutInBookmarkBar": false,
-		"TranslateEnabled": false
+		"TranslateEnabled": false,
+		"PasswordManagerEnabled": false
 	}
 	EOF
 }
