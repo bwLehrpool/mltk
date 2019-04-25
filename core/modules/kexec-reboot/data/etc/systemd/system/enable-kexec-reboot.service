@@ -1,0 +1,7 @@
+[Unit]
+Description=Enable kexec-reboot via ctrl-alt-del
+DefaultDependencies=no
+
+[Service]
+Type=oneshot
+ExecStart=/bin/sh -c "systemctl enable kexec.target"
