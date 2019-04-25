@@ -16,4 +16,4 @@ After=shutdown.target final.target
 
 [Service]
 Type=oneshot
-ExecStart=/bin/systemctl --force kexec
+ExecStart=/usr/bin/systemctl --force kexec
