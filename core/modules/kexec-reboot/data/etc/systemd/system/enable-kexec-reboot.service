@@ -4,4 +4,4 @@ DefaultDependencies=no
 
 [Service]
 Type=oneshot
-ExecStart=/bin/sh -c "systemctl enable kexec.target"
+ExecStart=/bin/sh -c "rm -f /etc/systemd/system/ctrl-alt-del.target; systemctl enable kexec.target; exit 0"
