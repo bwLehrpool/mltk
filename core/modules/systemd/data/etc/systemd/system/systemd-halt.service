@@ -14,5 +14,4 @@ After=shutdown.target final.target
 
 [Service]
 Type=oneshot
-ExecStartPre=-/bin/bash -c /opt/openslx/scripts/systemd-shutdown_prescript
 ExecStart=/usr/bin/systemctl --force halt
