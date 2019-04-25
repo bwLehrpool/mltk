@@ -38,27 +38,8 @@ if which xscreensaver; then
 	# Create config value for standby timeout
 	[ "$SBY" -gt 0 ] && DPMS=True
 	STANDBY="$( secsToTime "$SBY" )"
-	if [ -v SLX_SCREEN_SAVER_TIMEOUT ]; then
-		# Explicit screen saver timeout set
-		TIMEOUT="$( secsToTime "$SLX_SCREEN_SAVER_TIMEOUT" )"
-	else
-		# Create config for screensaver activation timeout
-		if [ "$SLX_LOGOUT_TIMEOUT" -gt 0 ] && [ "$SBY" -eq 0 ]; then
-			# Standby is disabled, consider logout timeout
-			TMO=$SLX_LOGOUT_TIMEOUT
-		else
-			# Consider standby timeout
-			TMO=$SBY
-		fi
-		# Start screen saver 3 minutes before forced logout, or screen enters standby
-		TMO=$(( TMO - 180 ))
-		if [ "$TMO" -gt 0 ]; then
-			[ "$TMO" -gt 1200 ] && TMO=$(( TMO - 300 ))
-			TIMEOUT="$( secsToTime "$TMO" )"
-		else
-			TIMEOUT="99:00:00"
-		fi
-	fi
+	# Explicit screen saver timeout set
+	TIMEOUT="$( secsToTime "$SLX_SCREEN_SAVER_TIMEOUT" )"
 	if [ -z "$SLX_SCREEN_SAVER_GRACE_TIME" ]; then
 		GRACE="00:00:15"
 	else
