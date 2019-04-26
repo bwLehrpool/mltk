@@ -1,0 +1,11 @@
+#!/bin/bash
+
+module_load() {
+	[ -z "$VERSION" ] && perror "Not run from an @ target"
+	local SRC
+	SRC="${ROOT_DIR}/tmp/work/nvidia-common/build/$VERSION"
+	[ -d "$SRC" ] || perror "nvidia-common did not build $VERSION"
+	# XXX Now we override the MODULE_BUILD_DIR, where mltk will then grab alle the required files from
+	MODULE_BUILD_DIR="$SRC"
+}
+

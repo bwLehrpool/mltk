@@ -39,6 +39,10 @@ build() {
 		/NVIDIA/nvidia-installer --no-nouveau-check --no-network --no-backup --no-rpms --no-runlevel-check \
 				--no-distro-scripts --no-cc-version-check --no-x-check --no-precompiled-interface --silent \
 				--kernel-source-path "/$KERNEL_HEADERS_DIR"
+		grep -qF '.ko failed to build' /var/log/nvidia-installer.log \
+			|| /NVIDIA/nvidia-installer --no-nouveau-check --no-network --no-backup --no-rpms --no-runlevel-check \
+				--no-distro-scripts --no-cc-version-check --no-x-check --no-precompiled-interface --silent \
+				--no-kernel-module
 		exit 0 # Fake it since it will try to load the module and probably fail
 		EOF
 		if grep -qF '.ko failed to build' "${builddir}/var/log/nvidia-installer.log"; then
@@ -47,14 +51,14 @@ build() {
 		fi
 		pinfo "chroot terminated, cleaning up"
 
-		# move whiteout list to its /opt/openslx/etc/nvidia.whiteout
+		# move whiteout list to its /opt/openslx/etc/nvidia.whiteout (inside $builddir, for lib target)
 		if [ -e "${builddir}/overlay.whiteout.list" ]; then
 			mkdir -p "${builddir}/opt/openslx/etc"
 			mv "${builddir}/overlay.whiteout.list" "${builddir}/opt/openslx/etc/nvidia.whiteout"
 		fi
 
-# SNIP
-		NVIDIA_MODULES="${builddir}/lib/modules/nvidia/${version}"
+		# Kernel related - outside of version subdir ($builddir)
+		NVIDIA_MODULES="${MODULE_BUILD_DIR}/lib/modules/nvidia/${version}"
 		mkdir -p "$NVIDIA_MODULES"
 		pinfo "Copying kernel modules..."
 		for file in nvidia.ko nvidia-uvm.ko nvidia-modeset.ko nvidia-drm.ko; do
@@ -65,10 +69,10 @@ build() {
 			cp "$RESULT" "$NVIDIA_MODULES" || perror "Could not copy $file"
 		done
 
-		mkdir -p "${builddir}/drm.cfg.d"
-		drmfile="${builddir}/drm.cfg.d/$(( filenum++ ))-nvidia"
+		mkdir -p "${MODULE_BUILD_DIR}/drm.cfg.d"
+		drmfile="${MODULE_BUILD_DIR}/drm.cfg.d/$(( filenum++ ))-nvidia-$version"
 		cat > "$drmfile" <<-BLOFF
-			@nvidia-${version}            acpi_ipmi nvidia-$version/nvidia.ko nvidia-$version/nvidia-uvm.ko nvidia-$version/nvidia-modeset.ko nvidia-$version/nvidia-drm.ko
+			@nvidia-${version}            acpi_ipmi nvidia/$version/nvidia.ko nvidia/$version/nvidia-uvm.ko nvidia/$version/nvidia/modeset.ko nvidia-$version/nvidia/drm.ko
 			@nvidia-${version}_fallback   nouveau
 		BLOFF
 		if ! [ -s "${builddir}/supportedchips.html" ]; then

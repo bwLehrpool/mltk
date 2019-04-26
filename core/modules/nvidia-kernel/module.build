@@ -1,0 +1,12 @@
+#!/bin/bash
+
+module_load() {
+	[ -z "$NVIDIA_VERSIONS" ] && perror "No NVIDIA_VERSIONS set in config"
+	local version
+	for version in $NVIDIA_VERSIONS; do
+		[ -d "${ROOT_DIR}/tmp/work/nvidia-common/build/${version}" ] || perror "nvidia-common did not build $version"
+	done
+	# XXX Now we change out build dir to that of nvidia-common
+	MODULE_BUILD_DIR="${ROOT_DIR}/tmp/work/nvidia-common/build"
+}
+
