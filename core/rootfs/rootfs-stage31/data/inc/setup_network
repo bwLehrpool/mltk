@@ -38,7 +38,7 @@ $IP_OUT
 ---
 
 Boot interface $MAC not found in interface list. NIC driver missing?
-Check output of dmesg for missing firmware (dmesg | less)"
+Check output of dmesg for missing firmware (dmesg | more)"
 	:
 fi
 
