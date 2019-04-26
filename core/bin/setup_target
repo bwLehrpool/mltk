@@ -55,15 +55,13 @@ CORE_DIR="${ROOT_DIR}/core"
 OVERLAY_DIR="${ROOT_DIR}/overlay"
 EXPORT_DIR="/export/build"
 [ -z "$REMOTE_EXPORT_DIR" ] || EXPORT_DIR=$REMOTE_EXPORT_DIR
-# Keep track of processed modules so we don't
-# build a module multiple times when following dependencies
-PROCESSED_MODULES=""
 
 initial_checks () {
 	get_kernel_version
 	detect_distribution
 }
 
+# WTF!?
 set_target_dir () {
 	if [ -d "${OVERLAY_DIR}/targets/${TARGET}" ]; then
 		TARGET_DIR="${OVERLAY_DIR}/targets/${TARGET}"
@@ -288,9 +286,26 @@ generate_target() {
 
 	initial_checks
 
-	TARGET=$1 && shift
+	TARGET="$1"
+	shift
 	set_target_dir
-	TARGET_BUILD_DIR="${ROOT_DIR}/var/builds/${TARGET}"
+	if [[ "$TARGET" == *@* ]]; then
+		VARNAME="${TARGET#*@}"
+		TARGET="${TARGET%@*}"
+		for VERSION in ${!VARNAME}; do
+			TARGET_BUILD_DIR="${ROOT_DIR}/var/builds/${TARGET}@${VERSION}"
+			generate_target_real "$@"
+		done
+	else
+		TARGET_BUILD_DIR="${ROOT_DIR}/var/builds/${TARGET}"
+		generate_target_real "$@"
+	fi
+}
+
+generate_target_real() {
+	# Keep track of processed modules so we don't
+	# build a module multiple times when following dependencies
+	local PROCESSED_MODULES=
 	[ -e "${ROOT_DIR}/var/log/${TARGET}.size" ] && . "${ROOT_DIR}/var/log/${TARGET}.size" || echo "declare -A BUILD_SIZE" >> "${ROOT_DIR}/var/log/${TARGET}.size"
 
 	[ -d "$TARGET_DIR" ] || perror "Given target directory does not exist: $TARGET_DIR"
@@ -304,7 +319,7 @@ generate_target() {
 
 	# if no arguments assume all.
 	if [ "x$1" = "x" -o "x$1" = "xall" ]; then
-		MODULES=$(ls ${TARGET_DIR})
+		MODULES=$( ls "${TARGET_DIR}" )
 		set -- $MODULES
 	else
 		# tools = arguments given
@@ -488,10 +503,10 @@ clean_modules() {
 		if [ -e "${ROOT_DIR}/var/log/${TARGET}.size" ]; then
 			rm "${ROOT_DIR}/var/log/${TARGET}.size" || perror "Could not delete var/log/${TARGET}.size"
 		fi
-		if [ -d "${TARGET_BUILD_DIR}" ]; then
-			pinfo "Cleaning '${TARGET_BUILD_DIR}'" \
-				&& rm -rf "${TARGET_BUILD_DIR}"/* \
-				|| perror "Error deleting $TARGET_BUILD_DIR"
+		if [[ "$TARGET" == *@* ]]; then
+			rm -rf -- "${TARGET_BUILD_DIR%@*}"@* || perror "Could not delete target build dirs for $TARGET"
+		else
+			rm -rf -- "${TARGET_BUILD_DIR}" || perror "Could not delete target build dir for $TARGET"
 		fi
 		# exclude kernel on "all"
 		set -- $(ls "${TARGET_DIR}" | grep -vE "^kernel$")
