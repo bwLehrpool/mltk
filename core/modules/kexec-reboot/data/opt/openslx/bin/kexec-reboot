@@ -1,4 +1,3 @@
 #!/bin/ash
 
-exec systemctl start kexec.target
-
+exec systemctl isolate kexec.target
