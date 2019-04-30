@@ -1,0 +1,6 @@
+#!/bin/ash sourced
+
+# Allow root to connect to the x server
+xhost +si:localuser:root &> /dev/null
+:
+
