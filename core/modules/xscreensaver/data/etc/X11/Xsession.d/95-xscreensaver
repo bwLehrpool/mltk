@@ -1,6 +1,7 @@
 #!/bin/ash
 
 DPMS=False
+AUTOLOCK=True
 if which xscreensaver; then
 	secsToTime() {
 		local NUM SECS MINS HRS
@@ -17,6 +18,8 @@ if which xscreensaver; then
 	if [ -n "${SLX_EXAM}" ]; then
 		SLX_LOGOUT_TIMEOUT=0
 		SLX_SCREEN_SAVER_TIMEOUT=0
+		SLX_SCREEN_SAVER_GRACE_TIME=
+		AUTOLOCK=False
 		SBY=0
 	elif [ -z "$SBY" ]; then
 		SBY=0
@@ -47,6 +50,7 @@ if which xscreensaver; then
 	fi
 	if [ -z "$SLX_SCREEN_SAVER_GRACE_TIME" ]; then
 		GRACE="99:00:00"
+		AUTOLOCK=False
 	else
 		GRACE="$( secsToTime "$SLX_SCREEN_SAVER_GRACE_TIME" )"
 	fi
@@ -55,7 +59,7 @@ if which xscreensaver; then
 mode:         one
 cycle:        99:00:00
 timeout:      $TIMEOUT
-lock:         True
+lock:         $AUTOLOCK
 lockTimeout:  $GRACE
 fade:         False
 unfade:       False
