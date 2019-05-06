@@ -19,13 +19,14 @@ chromium_policies() {
 
 	cat <<- EOF > "$chromium_policy_file"
 	{
+		"AutoFillEnabled": false,
 		"BackgroundModeEnabled": false,
 		"BookmarkBarEnabled": $bookmarkbar,
 		"DefaultBrowserSettingEnabled": true,
 		"DownloadRestrictions": 3,
+		"PasswordManagerEnabled": false,
 		"ShowAppsShortcutInBookmarkBar": false,
-		"TranslateEnabled": false,
-		"PasswordManagerEnabled": false
+		"TranslateEnabled": false
 	}
 	EOF
 }
