@@ -1,0 +1,7 @@
+[Unit]
+Description=OpenSLX idle-daemon
+
+[Server]
+ExecStart=/opt/openslx/scripts/idle-daemon-launcher
+Restart=on-failure
+RestartSec=1

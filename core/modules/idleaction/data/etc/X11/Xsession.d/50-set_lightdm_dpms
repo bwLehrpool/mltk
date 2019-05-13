@@ -1,0 +1,20 @@
+#!/bin/ash sourced
+
+# Set DPMS values in Xsetup. These will apply for the login screen.
+
+if [ -z "$SLX_PXE_SERVER_IP" ] && [ -z "$SLX_SCREEN_STANDBY_TIMEOUT" ]; then
+	. /opt/openslx/config # Not sourced yet
+fi
+
+(
+	sleep 1
+	xset s off
+	if [ -n "$SLX_SCREEN_STANDBY_TIMEOUT" ]; then
+		xset dpms "$SLX_SCREEN_STANDBY_TIMEOUT" "$SLX_SCREEN_STANDBY_TIMEOUT" "$SLX_SCREEN_STANDBY_TIMEOUT"  &> /dev/null
+	else
+		xset -dpms
+	fi
+) &
+
+:
+

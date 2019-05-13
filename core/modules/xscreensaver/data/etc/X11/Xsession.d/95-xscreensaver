@@ -1,8 +1,8 @@
 #!/bin/ash
 
-DPMS=False
-AUTOLOCK=True
 if which xscreensaver; then
+	DPMS=False
+	AUTOLOCK=True
 	secsToTime() {
 		local NUM SECS MINS HRS
 		NUM="$1"
@@ -14,9 +14,8 @@ if which xscreensaver; then
 	[ -z "$UID" ] && UID=$(id -u)
 	[ -z "$HOME" ] && HOME="$(getent passwd "$UID" | head -n 1 | awk -F ':' '{print $6}')"
 	. /opt/openslx/config
-	SBY=${SLX_SCREEN_STANDBY_TIMEOUT}
+	SBY="${SLX_SCREEN_STANDBY_TIMEOUT}"
 	if [ -n "${SLX_EXAM}" ]; then
-		SLX_LOGOUT_TIMEOUT=0
 		SLX_SCREEN_SAVER_TIMEOUT=0
 		SLX_SCREEN_SAVER_GRACE_TIME=
 		AUTOLOCK=False
@@ -28,23 +27,16 @@ if which xscreensaver; then
 	elif ! [ "$SBY" -ge 0 ]; then # isNumeric?
 		SBY=0
 	fi
-	# Make sure standby timeout is less than logout timeout, otherwise, disable standby
-	if [ "$SBY" -gt 0 ]; then
-		if [ "$SLX_LOGOUT_TIMEOUT" -gt 0 ]; then
-			if [ "$SBY" -lt 300 ]; then
-				SBY=300
-			fi
-			if [ "$SLX_LOGOUT_TIMEOUT" -lt "$SBY" ]; then
-				SBY=0
-			fi
-		fi
-	fi
 	# Create config value for standby timeout
-	[ "$SBY" -gt 0 ] && DPMS=True
-	STANDBY="$( secsToTime "$SBY" )"
+	if [ "$SBY" -gt 0 ]; then
+		DPMS=True
+		STANDBY="$( secsToTime "$(( SBY + 60 ))" )"
+	else
+		STANDBY="99:00:00"
+	fi
 	# Explicit screen saver timeout set
 	if [ "$SLX_SCREEN_SAVER_TIMEOUT" -gt 0 ]; then
-		TIMEOUT="$( secsToTime "$SLX_SCREEN_SAVER_TIMEOUT" )"
+		TIMEOUT="$( secsToTime "$(( SLX_SCREEN_SAVER_TIMEOUT + 30 ))" )"
 	else
 		TIMEOUT="99:00:00"
 	fi

@@ -1,0 +1,35 @@
+#!/bin/ash
+
+. /opt/openslx/config
+
+CMD=
+
+[ -n "$SLX_SHUTDOWN_TIMEOUT" ] && CMD="$CMD --poweroff-timeout $SLX_SHUTDOWN_TIMEOUT"
+
+if [ -z "${SLX_EXAM}" ]; then
+	# Exam mode inactive
+	[ -n "$SLX_LOGOUT_TIMEOUT" ] && CMD="$CMD --logout-timeout $SLX_LOGOUT_TIMEOUT"
+	[ -n "$SLX_SYSTEM_STANDBY_TIMEOUT" ] && CMD="$CMD --suspend-timeout $SLX_SYSTEM_STANDBY_TIMEOUT"
+
+	[ -n "$SLX_SCREEN_SAVER_TIMEOUT" ] && CMD="$CMD --screensaver-timeout $SLX_SCREEN_SAVER_TIMEOUT"
+	[ -n "$SLX_SCREEN_STANDBY_TIMEOUT" ] && CMD="$CMD --dpms-timeout $SLX_SCREEN_STANDBY_TIMEOUT"
+	[ -n "$SLX_SCREEN_SAVER_GRACE_TIME" ] && CMD="$CMD --grace-period $SLX_SCREEN_SAVER_GRACE_TIME"
+
+	for t in $SLX_REBOOT_SCHEDULE; do
+		CMD="$CMD --reboot $t"
+	done
+	for t in $SLX_SHUTDOWN_SCHEDULE; do
+		CMD="$CMD --poweroff $t"
+	done
+else
+	# Exam mode active
+	CMD="$CMD --min-idle 7200" # Ignore schedule if idle time is lower than 2h
+	if [ -n "$SLX_SHUTDOWN_SCHEDULE" ]; then
+		CMD="$CMD --poweroff 22:00 4:00"
+	elif [ -n "$SLX_REBOOT_SCHEDULE" ]; then
+		CMD="$CMD --reboot 22:00 4:00"
+	fi
+fi
+
+
+exec /opt/openslx/sbin/idle-daemon $CMD

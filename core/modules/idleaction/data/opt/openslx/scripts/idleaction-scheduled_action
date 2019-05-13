@@ -7,39 +7,66 @@ if ! touch "/run"; then
 	exit 1
 fi
 
-DETACH=
 if [ "$1" = "--detach" ]; then
-	DETACH=yes
-	shift
+	shift # Legacy, ignored
 fi
 
 if [ $# -lt 1 ]; then
-	echo "$0 [--detach] <reboot|poweroff|kexec-reboot> [delay_minutes]" >&2
+	echo "$0 <reboot|poweroff|kexec-reboot> [--delay minutes] [--time <now as hh:mm>] [--uuid thismachine]" >&2
 	exit 2
 fi
 
+MODE=$1
+
 DELAY=
 TS=
-MODE=$1
+WANTUUID=
 shift
 
 while [ $# -gt 0 ]; do
-	if [ "$1" == "--time" ]; then
-		TS=$2
+	if [ "$1" = "--time" ]; then
+		TS="$2"
 		shift
-	elif [ "$1" == "--delay" ]; then
-		DELAY=$2
+	elif [ "$1" = "--delay" ]; then
+		DELAY="$2"
+		shift
+	elif [ "$1" = "--uuid" ]; then
+		WANTUUID="$2"
 		shift
 	else
 		break
 	fi
 	shift
 done
-[ -n "$1" ] && [ -z "$DELAY" ] && DELAY=$1
+# Legacy cmdline format
+if [ -n "$1" ] && [ -z "$DELAY" ]; then
+	DELAY="$1"
+	shift
+fi
+if [ -n "$1" ] && [ -z "$WANTUUID" ]; then
+	WANTUUID="$1"
+	shift
+fi
+
+if [ -n "$WANTUUID" ] && [ -s "/etc/system-uuid" ]; then
+	WANTUUID="$( echo "$WANTUUID" | tr 'a-f' 'A-F' )"
+	ISUUID="$( cat /etc/system-uuid )"
+	if [ "$ISUUID" != "$WANTUUID" ]; then
+		echo "ERROR: Sanity check failed: System-UUID mismatch." >&2
+		echo "Is: '$ISUUID', want: '$WANTUUID'" >&2
+		exit 1
+	fi
+fi
+
+if [ "$MODE" != "reboot" ] && [ "$MODE" != "poweroff" ] && [ "$MODE" != "kexec-reboot" ]; then
+	slxlog --echo "idleaction-failed-call" "Invalid call to idleaction-scheduled_action. Mode '$MODE' unknown." >&2
+	exit 3
+fi
 
 if [ -n "$TS" ]; then
-	# Sanity check for trigger by cron
-	# Sleep first so the clock has time to get adjusted
+	# Sanity check: If passing time, this has to be from when the request was thought to be triggered.
+	# Mostly useful if you remotely trigger this and want to make sure your request arrives in time.
+	# Sleep first so the clock has time to get adjusted in case of bootup or wakeup
 	sleep 10
 	NOW=$(date +%s)
 	SHOULD=$(date -d "today $TS" +%s)
@@ -51,117 +78,8 @@ if [ -n "$TS" ]; then
 	fi
 fi
 
-if [ "$MODE" != "reboot" ] && [ "$MODE" != "poweroff" ] && [ "$MODE" != "kexec-reboot" ]; then
-	slxlog --echo "idleaction-failed-call" "Invalid call to idleaction-scheduled_action. Mode '$MODE' unknown." >&2
-	exit 3
-fi
-
-NUM=$(who | wc -l)
-if [ -z "$DELAY" ] && [ "$NUM" = "0" ]; then
-	# Easy way out - machine is idle and no delay
-	(
-		# Detach, close all in/out fds - needed for some ssh clients to rpevent them from hanging
-		exec < /dev/null &> /dev/null
-		sleep 1
-		$MODE
-	) &
-	disown
-	exit 0
-fi
-
-NOW=$(date +%s)
-timeout=$(( 300 + NOW )) # 5 minute delay for logged in user
-if [ -n "$DELAY" ] && [ "$DELAY" -gt 0 ]; then
-	timeout=$(( timeout + ( DELAY * 60 ) ))
-fi
-
-for f in /run/openslx/idleaction-*; do
-	[ -f "$f" ] || continue
-	grep -q '^shutdownDeadline=' "$f" || continue
-	RET=$(awk -F= '{if ($1 == "shutdownDeadline") { print $2; exit } }' "$f")
-	if [ -z "$RET" ] || [ "$RET" -eq 0 ] || ! [ "$RET" -lt "$timeout" ] || [ 333 -lt "$(( NOW - RET ))" ]; then
-		sed -i "s/^shutdownDeadline=.*$/shutdownDeadline=$timeout/" "$f"
-	fi
-done
-
-runaction () {
-	# Someone logged in or delay requested
-	[ -n "$DETACH" ] && sleep 1
-	if [ -n "$DELAY" ] && [ "$DELAY" -gt 0 ]; then
-		echo "Doing $MODE in $DELAY minutes!"
-		sleep $(( DELAY * 60 ))
-	fi
-	for MINUTES in 5 X X X X X X X 3 X X X 2 X X X 1 X X X; do
-		if [ -f "/run/openslx/demo-no-logout-delay" ]; then
-			NUM=$(who | grep -v '^demo ' | wc -l)
-		else
-			NUM=$(who | wc -l)
-		fi
-		[ "$NUM" = "0" ] && break
-		if [ "$MINUTES" != "X" ]; then
-			USERS=0
-			if [ "${MODE#*-}" = "reboot" ]; then
-				MESSAGE="Das System wird in $MINUTES Minute(n) neugestartet, bitte beenden Sie Ihre Sitzung.
-	The system will reboot in $MINUTES minute(s). Please save your work and end the session."
-			else
-				MESSAGE="Dieser Rechner wird in $MINUTES Minute(n) abgeschaltet, bitte beenden Sie Ihre Sitzung.
-	The system will power off in $MINUTES minute(s). Please save your work and end the session."
-			fi
-			for d in $(who | awk '{print $2 " " $NF}' | sort -u); do
-				if [ "${d:0:1}" = ":" ]; then
-					# X11
-					export DISPLAY=$d
-					export XAUTHORITY=$(ps a | grep " $DISPLAY " | grep -o -- '-auth.*$' | grep -m1 -v grep | awk '{print $2}')
-					# Make sure user sees warning
-					xset dpms force on
-					# TODO: Don't look... We need to pick a proper util for this
-					/opt/openslx/cups/printergui --error "$MESSAGE" &
-					unset DISPLAY XAUTHORITY
-					USERS=$(( $USERS + 1 ))
-				elif [ "${d:0:3}" = "tty" ]; then
-					# Regular tty
-					cat > "/dev/$d" <<-EOF
-					*
-					***************************
-					$MESSAGE
-					***************************
-					*
-					EOF
-					USERS=$(( $USERS + 1 ))
-				elif [ "${d:0:3}" = "pts" ]; then
-					# pts - xterm or ssh session
-					cat > "/dev/pts/${d:3}" <<-EOF
-					*
-					***************************
-					$MESSAGE
-					***************************
-					*
-					EOF
-					USERS=$(( $USERS + 1 ))
-				fi
-			done
-			FILE=$(mktemp)
-			who > "$FILE"
-			slxlog "idleaction-busy" "Postponed $MODE ($MINUTES minutes max.) - $USERS user(s) still active"
-			sleep 1
-			rm -- "$FILE"
-		fi
-		sleep 15
-	done
-
-	$MODE
-}
-
-if [ -n "$DETACH" ]; then
-	(
-		# Detach, see above
-		exec < /dev/null &> /dev/null
-		runaction
-	) &
-	disown
-	exit 0
-fi
-
-runaction
-exit 0
+# Fire away
+[ -z "$DELAY" ] && DELAY=0
+DELAY="$(( DELAY * 60 ))"
+idle-daemon --send "${MODE%-reboot} $DELAY"
 

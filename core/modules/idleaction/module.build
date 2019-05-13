@@ -1,6 +1,6 @@
 #!/bin/bash
 fetch_source() {
-	:
+	autoclone
 }
 
 build() {
@@ -11,6 +11,15 @@ build() {
 			|| perror "Compilation of xprintidle failed!"
 	gcc -std=c99 -o "$MODULE_BUILD_DIR/opt/openslx/bin/xprintlocktime" "$MODULE_DIR/xprintlocktime.c" -lX11 \
 			|| perror "Compilation of xprintlocktime failed!"
+	# idle-daemon
+	local SRCDIR="${MODULE_WORK_DIR}/src/idle-daemon"
+
+	mkdir -p "$MODULE_BUILD_DIR/opt/openslx/sbin"
+	cd "${MODULE_BUILD_DIR}/opt/openslx/sbin" || perror "Could not cd!"
+	pinfo "Running cmake"
+	cmake "$SRCDIR" || perror "'cmake $SRCDIR' failed."
+	pinfo "Running make"
+	make || perror "'make' failed."
 }
 
 post_copy() {
