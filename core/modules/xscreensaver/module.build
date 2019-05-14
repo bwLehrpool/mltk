@@ -10,8 +10,10 @@ build() {
 	mkdir -p "${MODULE_BUILD_DIR}/usr/bin"
 	cde "$SRCDIR/xscreensaver"
 	pinfo "Building xscreensaver"
+	# Disable DPMS handling since we're using idle-daemon
+	# which accounts for our beautiful vmware ungrab crap
 	./configure --enable-locking --disable-root-passwd \
-			--with-dpms-ext --with-xinput-ext --with-xf86vmode-ext \
+			--without-dpms-ext --with-xinput-ext --with-xf86vmode-ext \
 			--with-randr-ext --with-pam --with-login-manager \
 			--prefix=/usr --without-proc-interrupts $REQUIRED_CONFIGURE_OPTIONS \
 			|| perror "'./configure' failed"

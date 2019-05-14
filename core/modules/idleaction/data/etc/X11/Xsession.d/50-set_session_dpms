@@ -1,0 +1,18 @@
+#!/bin/ash sourced
+
+# Set DPMS values in Xsession. This will apply for user sessions
+
+if [ -z "$SLX_PXE_SERVER_IP" ] && [ -z "$SLX_SCREEN_STANDBY_TIMEOUT" ]; then
+	. /opt/openslx/config # Not sourced yet
+fi
+
+xset s off
+if [ -n "$SLX_SCREEN_STANDBY_TIMEOUT" ]; then
+	xset dpms 0 0 0 &> /dev/null
+	xset +dpms &> /dev/null
+else
+	xset -dpms &> /dev/null
+fi
+
+:
+
