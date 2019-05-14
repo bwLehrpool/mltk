@@ -1,0 +1,12 @@
+#!/bin/ash
+
+[ -z "$HOME" ] && HOME=$( getent passwd "$(id -u)" | awk -F: '{print $6}' )
+
+if [ "$VMCHOOSER_DISABLE_SCREENSAVER" = "TRUE" ]; then
+	touch "$HOME/.no-saver"
+else
+	rm -f -- "$HOME/.no-saver"
+fi
+
+exit 0
+
