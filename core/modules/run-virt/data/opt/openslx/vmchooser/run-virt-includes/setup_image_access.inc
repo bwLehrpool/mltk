@@ -33,7 +33,6 @@ setup_dnbd3 () {
 	# Mount path for images mounted with dnbd3-fuse
 	declare -rg DNBD3_MOUNT_POINT="${TMPDIR}/dnbd3fuse.mnt"
 	mkdir -p "${DNBD3_MOUNT_POINT}"
-	mkdir -p "${DNBD3_MOUNT_POINT}"
 	# start dnbd3-fuse in subshell
 	local DNBD3_TMPLOG="${TMPDIR}/dnbd3fuse.log"
 	local DNBD3_EXITFLAG="${TMPDIR}/dnbd3exit$RANDOM"
@@ -66,8 +65,6 @@ setup_dnbd3 () {
 	if isempty VM_DISKFILE_RO; then
 		slxlog "virt-dnbd3" "No dnbd3 server for ${SRC_IMG_RELATIVE} found, trying NFS/CIFS..." "$DNBD3_TMPLOG"
 		writelog "No working dnbd3 server found :-("
-	else
-		readonly VM_DISKFILE_RO
 	fi
 }
 
@@ -82,7 +79,6 @@ setup_fallback() {
 		# try name we got from xml in the first place
 		VM_DISKFILE_RO="${SRC_IMG_ABSOLUTE}"
 	fi
-	readonly VM_DISKFILE_RO
 }
 
 ## MAIN PART / Sanity checks ##
