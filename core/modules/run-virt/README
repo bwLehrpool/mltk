@@ -1,0 +1,59 @@
+Configuring run-virt:
+
+## /opt/openslx/vmchooser/config/resource_urls.conf
+
+url_lecture_netrules: URL to download firewall rules from
+url_lecture_metadata: URL to download lecture metadata.tgz from
+
+## /opt/openslx/vmchooser/hooks/*
+
+Several sub directories for different hooks. These can contain files named
+*.sh, which will be executed, or *.inc, which will be sourced.
+
+The following hooks exist:
+
+# download.d/
+
+Executed in order to obtain the VMX/metadata.
+In *.sh form, the first parameter ($1) will be the target directory, where the script is supposed to
+put the downloaded files. In the *.inc form, the destination directory is $CONFDIR, and also in $1.
+The files to place there have to be named as follows:
+
+"vmx":
+The machine description, a vmx file for vmware, and xml file for virtualbox, etc...
+
+"runscript":
+Optional script that will be executed by the openslx.exe
+The first line is abused to pass further information along and has the format
+key=value;key2=value2;key3=value3 ...
+Currently in use are
+ext=bat (to signify the type of script being executed, batch in this case)
+visibility=0 (whether the script is hidden while running (0 = hidden, 1 = normal, 2 = minimized)
+soundMuted=1 (whether sound is muted by default in the VM (0 = no, 1 = yes, -1 = let SLX_VM_SOUND decide)
+
+"netshares": Optional file defining the network shares to be mounted by openslx.exe
+
+Also there can be a sub-directory for additional runscripts called "adminrun" containing files in the format
+[index]-[visibility]-[passcreds].[ext]
+e.g. 001-1-1.bat
+index is just used for sorting, visibility is explained above, and passcreds decides whether the script gets
+passed the username and password via parameters.
+
+If your .sh is responsible for downloading the meta data, it should exit 0. Any other exit code tells run-virt
+that your script was only meant for some preparation work and run-virt should download the meta data on its
+own. Likewise for an .inc, it should return 0 to signify that downloading was done (or at least attempted) by
+your include, and run-virt should not try to download anything.
+
+For cleanliness you should prefer writing .sh hooks, .inc should only be used if you really need to modify the
+environment of run-virt. For *.sh hooks, the environment will provide $TMPDIR, $IMGUUID and $USER.
+
+# floppy.d/
+
+Hook to add more files to the virtual floppy. $1 is the directory you should copy your files to.
+Symlinks work too, mcopy will follow them and copy the linked file.
+Note that this is a floppy, not the cloud, so you're limited to 1.44MB of storage.
+
+# image-access.d/
+
+Hook to set up read or write access to image. Here, only *.inc type hooks make sense, since they're
+expected to set either VM_DISKFILE_RO or VM_DISKFILE_RW, depending on desired access.
