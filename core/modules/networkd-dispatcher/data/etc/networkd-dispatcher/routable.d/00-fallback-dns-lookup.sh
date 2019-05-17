@@ -7,15 +7,22 @@
 # * $ADDR  -> IP address configured on that interface
 
 check_dns() {
-	local fqdn=
-	local host_out
-	if ! host_out="$(host $ADDR)" ; then
-		echo "Failed to retrieve FQDN through reverse lookup on '$ADDR'."
-		echo "Falling back to IP-Address if needed."
-		fqdn=
-	else
-		local fqdn="$(<<< $host_out grep -E "$(awk -F. '{print $4"."$3"."$2"."$1}' <<< $ADDR )" | awk '{sub(".$",""); print $5}')"
-	fi
+	local fqdn host_out
+	for timeout in 1 1 1 2 2 3 5 5 END; do
+		if [ "$timeout" = "END" ]; then
+			echo "Falling back to IP address if needed."
+			fqdn=
+			break
+		fi
+		host_out="$(host $ADDR)"
+		if [ $? -ne 0 ]; then
+			echo "Failed to retrieve FQDN through reverse lookup on '$ADDR'."
+			sleep $timeout
+		else
+			local fqdn="$(<<< $host_out grep -E "$(awk -F. '{print $4"."$3"."$2"."$1}' <<< $ADDR )" | awk '{sub(".$",""); print $5}')"
+			break
+		fi
+	done
 
 	# check domain
 	local domain="${fqdn#*.}"
@@ -29,7 +36,7 @@ check_dns() {
 		systemctl restart systemd-resolved
 	fi
 	# Check if we received a hostname from the DHCP
-	local dhcp_hostname=
+	local dhcp_hostname
 	for lease in /run/systemd/netif/leases/*; do
 		grep -qE "^ADDRESS=$ADDR" "$lease" || continue 
 		dhcp_hostname="$(awk -F= '$1 = /HOSTNAME/ {print $2}' "$lease" )"
@@ -59,6 +66,11 @@ check_dns() {
 	return 0
 }
 
+if [ ! -e /opt/openslx/config ]; then
+	echo "No OpenSLX configuration found - aborting."
+	exit 1
+fi
+
 . /opt/openslx/config
 
 if [ "$IFACE" != "${SLX_BRIDGE:-$SLX_PXE_NETIF}" ]; then
@@ -79,5 +91,7 @@ for timeout in 1 1 1 2 2 3 5 5 END; do
 	fi
 	sleep "$timeout"
 done
+
+sleep 1
 
 check_dns
