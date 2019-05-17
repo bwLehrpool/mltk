@@ -6,15 +6,31 @@
 # Legacy mode: As runvirt has been before.
 # New mode: uuid in xml _and_ vmx given via http.
 download_metadata() {
-	local TRIES EXTRA_ERROR WLOG TMPFILE RET ERRCODE CMDLINE
+	local EXTRA_ERROR=
+	declare -rg TMPCONFIG="$CONFDIR/vmx"
+
+	# Run hooks
+	if ! run_hooks "download" "$CONFDIR"; then
+		# No hooks found
+		download_metadata_default
+	fi
+	[ -s "$TMPCONFIG" ] && return 0
+	# Seems we are in legacy mode, which is no longer supported. Warn user and exit
+	EXIT_TYPE="user" EXIT_REASON="msg.vm.no-metadata
+Die Metadaten der Lehrumgebung konnten nicht vom bwLehrpool-Satelliten
+heruntergeladen werden. Bitte versuchen Sie es in wenigen Minuten erneut
+und wenden Sie sich an den Support, wenn das Problem bestehen bleibt.
+$EXTRA_ERROR
+" cleanexit 1
+}
+
+download_metadata_default() {
+	local TRIES WLOG TMPFILE RET ERRCODE CMDLINE
 	# Sanity checks
-	if ! check_dep wget; then
+	if ! check_dep curl; then
 		writelog "Could not find 'wget' in PATH: $PATH"
 		EXIT_TYPE="internal" EXIT_REASON="Fehlendes Dienstprogramm 'wget'!" cleanexit 1
 	fi
-
-	writelog "Detecting current/legacy mode..."
-	declare -rg TMPCONFIG="$CONFDIR/vmx"
 
 	# Try new unified .tar.gz way
 	TMPFILE="$TMPDIR/metadata.tgz"
@@ -26,51 +42,14 @@ download_metadata() {
 	RET=$?
 	if [ "$RET" = 0 ] && [ -n "$ERRCODE" ] && [ "$ERRCODE" -ge 200 ] && [ "$ERRCODE" -lt 300 ]; then
 		# Success, see if data is usable
-		if tar -C "$CONFDIR" -x -f "$TMPFILE" && [ -s "$CONFDIR/vmx" ]; then
+		if tar -C "$CONFDIR" -x -f "$TMPFILE" && [ -s "$TMPCONFIG" ]; then
 			return 0
 		fi
 		rm -rf -- "$TMPFILE"
-		writelog "Extracting metadata.tgz failed. Trying legacy mode."
+		writelog "Extracting metadata.tgz failed. Cannot start VM."
 	else
-		writelog "Downloading metadata.tgz failed (HTTP $ERRCODE). Trying legacy mode."
-		#slxlog --delete "run-virt-wget" "Downloading MetaData failed" "$WLOG"
+		writelog "Downloading metadata.tgz failed (HTTP $ERRCODE). Cannot start VM." "$WLOG"
 	fi
-
-	TRIES=0
-	while [ "$TRIES" -lt 3 ]; do
-		TRIES=$(( TRIES + 1 ))
-		writelog "wget try $TRIES"
-		WLOG="$TMPDIR/wget-${TRIES}.log"
-		if wget -T 6 -O "$TMPCONFIG" "${url_lecture_config}" &>"$WLOG"; then
-			rm -f -- "$WLOG"
-			writelog "Downloaded VM description from '${url_lecture_config}' successfully."
-			if [ -s "$TMPCONFIG" ]; then
-				# Downloaded a non-zero VM description file, all good
-				return 0
-			else
-				writelog "Server sent zero byte virtual machine description file."
-				EXTRA_ERROR="(Der Server hat eine leere Antwort gesendet)"
-			fi
-		else
-			ERRCODE=$(grep -m1 -o -E '\b[0-9]{3}\b' "$WLOG")
-			if [ -n "$ERRCODE" ]; then
-				EXTRA_ERROR="(HTTP Error Code $ERRCODE)"
-			else
-				EXTRA_ERROR="(Der Server ist nicht erreichbar)"
-			fi
-			writelog "wget failed."
-		fi
-	done
-
-	slxlog --delete "run-virt-wget" "Downloading VMX/Metadata failed" "$WLOG"
-
-	# Seems we are in legacy mode, which is no longer supported. Warn user and exit
-	EXIT_TYPE="user" EXIT_REASON="msg.vm.no-metadata
-Die Metadaten der Lehrumgebung konnten nicht vom bwLehrpool-Satelliten
-heruntergeladen werden. Bitte versuchen Sie es in wenigen Minuten erneut
-und wenden Sie sich an den Support, wenn das Problem bestehen bleibt.
-$EXTRA_ERROR
-" cleanexit 1
 }
 
 ## Main ##

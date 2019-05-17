@@ -4,7 +4,7 @@
 ## Functions ##
 setup_virtual_floppy() {
 	declare -rg SLX_FLOPPY_IMG="${TMPDIR}/floppy.img"
-	declare -rg TMPHOME="${HOME}"
+	declare -r TMPHOME="${HOME}"
 
 	# create floppy disk file + filesystem
 	dd "if=/dev/zero" "of=${SLX_FLOPPY_IMG}" count=1440 bs=1024
@@ -13,9 +13,14 @@ setup_virtual_floppy() {
 	
 	if [ -s "${TMPHOME}/.openslx/shares" ]; then
 		$(safesource "${TMPHOME}/.openslx/shares")
-	else
+	elif [ -s "/opt/openslx/inc/shares" ]; then
 		$(safesource "/opt/openslx/inc/shares")
 	fi
+
+	# Directory for files that go into the virtual floppy
+	declare -r FLOPPYDIR="$TMPDIR/floppy"
+	mkdir -p "$FLOPPYDIR"
+	chmod 0700 "$FLOPPYDIR"
 
 	if notempty SHARE_REMAP_MODE; then
 		local SHARE_REMAP_MODE_INI="$SHARE_REMAP_MODE"
@@ -25,24 +30,16 @@ setup_virtual_floppy() {
 	fi
 	notempty SHARE_CREATE_MISSING_REMAP || local SHARE_CREATE_MISSING_REMAP="1"
 	
-	# Legacy: openslx.exe expects HOSTRES.TXT
-	local RESOLUTION=$(xrandr | grep -o -E 'connected\s*(primary)?\s*[0-9]+x[0-9]+\+0\+0' \
-		| grep -o -E -m1 '[0-9]+x[0-9]+')
-	# TODO fallback if this fails? this is currently never checked...
-	cat > "${TMPDIR}/HOSTRES.TXT" <<-EOF
-	${RESOLUTION}
-	EOF
-	
 	# Create file for network shares to mount
-	declare -g SHARES="${TMPDIR}/shares.dat"
+	declare -g SHARES="${FLOPPYDIR}/shares.dat"
 	touch "${SHARES}"
 	chmod 0600 "${SHARES}"
 	if ! pwdaemon --query "${TMPHOME}/.pwsocket" > "${SHARES}"; then
-		slxlog "virt-pwdaemon" "Could not start pwdaemon"
+		slxlog "run-virt-pwdaemon" "Could not query pwdaemon"
 		echo -e '-\t-\t-\t-\t-' > "${SHARES}"
 	else
 		sed -i 's/^/192.168.101.1\t/' "${SHARES}" # TODO: Depending on nettype (in case we have != nat some day)
-		if [ "${SHARE_REMAP_MODE}" = 1 -o "${SHARE_REMAP_MODE}" = 2 ] && [ -e "${TMPHOME}/.openslx/home" ]; then
+		if [ "${SHARE_REMAP_MODE}" = 1 -o "${SHARE_REMAP_MODE}" = 2 ] && [ -s "${TMPHOME}/.openslx/home" ]; then
 			NETHOME=$(cat "${TMPHOME}/.openslx/home")
 			notempty SHARE_HOME_DRIVE || local SHARE_HOME_DRIVE="H:"
 			# Tab between items, so spaces can be used!
@@ -53,25 +50,22 @@ setup_virtual_floppy() {
 		done
 	fi
 
-	local NETSHARES="$CONFDIR/netshares"
-	local RUNSCRIPT="$CONFDIR/runscript"
-
+	declare -r NETSHARES="$CONFDIR/netshares"
+	declare -r RUNSCRIPT="$CONFDIR/runscript"
 	## Network shares
 	# openslx.exe expects network shares line in the following format:
 	#		<path> <letter> <shortcut> <username> <password>
 	# which is coincidentally the one we received from dmsd :)
-	if [ -f "$NETSHARES" ] || download_file "$url_lecture_netshares" "$NETSHARES"; then
-		if [ -s "${NETSHARES}" ]; then
-			# try to detect if we are running windows and replace '/' with '\'
-			# in an attempt to fix an improperly given samba path
-			cmd=(cat)
-			if [[ "$( tr '[A-Z]' '[a-z]' <<< ${VM_OS_TYPE})" = *windows* ]]; then
-				cmd=(tr / '\\')
-			fi
-			# replace the tag for the username, if present; the variable expansion escapes all ':' in $USER
-			sed -i "s:%loginuser%:${USER//:/\\:}:g" "${NETSHARES}"
-			< "${NETSHARES}"  "${cmd[@]}" >> "${SHARES}"
+	if [ -f "$NETSHARES" ] && [ -s "${NETSHARES}" ]; then
+		# try to detect if we are running windows and replace '/' with '\'
+		# in an attempt to fix an improperly given samba path
+		cmd=(cat)
+		if [[ "$( tr 'A-Z' 'a-z' <<< ${VM_OS_TYPE})" = *windows* ]]; then
+			cmd=(tr / '\\')
 		fi
+		# replace the tag for the username, if present; the variable expansion escapes all ':' in $USER
+		sed -i "s:%loginuser%:${USER//:/\\:}:g" "${NETSHARES}"
+		< "${NETSHARES}"  "${cmd[@]}" >> "${SHARES}"
 	fi
 
 	## Runscript
@@ -79,17 +73,15 @@ setup_virtual_floppy() {
 	# Check downloaded runscript and handle options like
 	# extension, visibility flag, ...
 	# options are 'key=value' pairs separated with ';'
-	if [ -f "$RUNSCRIPT" ] || download_file "$url_lecture_runscript" "$RUNSCRIPT"; then
-		if [ -s "$RUNSCRIPT" ]; then
-			IFS=$'\n'
-			for OPT in $(head -n 1 "$RUNSCRIPT" | tr ";" "\n"); do
-				KEY=$(cut -s -d '=' -f 1 <<< "${OPT^^}")
-				[ -n "$KEY" ] && OPTIONS["$KEY"]=$(cut -s -d '=' -f 2- <<< "$OPT")
-			done
-			unset IFS
+	if [ -f "$RUNSCRIPT" ] && [ -s "$RUNSCRIPT" ]; then
+		IFS=$'\n'
+		for OPT in $( head -n 1 "$RUNSCRIPT" | tr ";" "\n" ); do
+			KEY=$( cut -s -d '=' -f 1 <<< "${OPT^^}" )
+			[ -n "$KEY" ] && OPTIONS["$KEY"]="$( cut -s -d '=' -f 2- <<< "$OPT" )"
+		done
+		unset IFS
 
-			[ ${OPTIONS[EXT]} ] && [ "x${OPTIONS[EXT]:0:1}" != "x." ] && OPTIONS[EXT]=".${OPTIONS[EXT]}"
-		fi
+		[ -n "${OPTIONS[EXT]}" ] && [ "x${OPTIONS[EXT]:0:1}" != "x." ] && OPTIONS[EXT]=".${OPTIONS[EXT]}"
 	fi
 
 	# Default to muted
@@ -113,7 +105,14 @@ setup_virtual_floppy() {
 		SHARE_NO_HOME_WARN=0
 	fi
 
-	cat > "${TMPDIR}/openslx.ini" <<-EOF
+	# Legacy: openslx.exe expects HOSTRES.TXT
+	local RESOLUTION=$(xrandr | grep -o -E 'connected\s*(primary)?\s*[0-9]+x[0-9]+\+0\+0' \
+		| grep -o -E -m1 '[0-9]+x[0-9]+')
+	cat > "${FLOPPYDIR}/HOSTRES.TXT" <<-EOF
+	${RESOLUTION}
+	EOF
+
+	cat > "${FLOPPYDIR}/openslx.ini" <<-EOF
 	[openslx]
 	username=${UNAME}
 	resolution=${RESOLUTION}
@@ -135,35 +134,43 @@ setup_virtual_floppy() {
 	other=${SHARE_OTHER}
 	EOF
 	
-	# Copy all them there filez into floppy image
-	mcopy -i "${SLX_FLOPPY_IMG}" "${TMPDIR}/openslx.ini" "${TMPDIR}/HOSTRES.TXT" "${SHARES}" "${VMCHOOSER_DIR}/data/openslx.exe" "::/"
+	ln -n -s "${VMCHOOSER_DIR}/data/openslx.exe" "${FLOPPYDIR}/openslx.exe"
 	# If we have a kerberos ticket, copy that one too (TODO: Copy keytab too?)
 	if [ -n "$KRB5CCNAME" ]; then
 		kf=${KRB5CCNAME#FILE:}
 		kf=${kf#file:}
 		if [ -n "$kf" ] && [ -f "$kf" ]; then
-			mcopy -i "${SLX_FLOPPY_IMG}" "$kf" "::/krb5user.key"
+			ln -n -s "$kf" "${FLOPPYDIR}/krb5user.key"
 		fi
 	fi
-	# Copy guest configuration (with added information) config.xml to be accessed
-	# via virtual floppy
-	mcopy -i "${SLX_FLOPPY_IMG}" "$XML_FILE" "::/config.xml"
 	
-	# Copying linux directory:
-	mcopy -s -i "${SLX_FLOPPY_IMG}" "$VMCHOOSER_DIR/data/linux" "::/"
+	# Linux directory
+	ln -n -s "$VMCHOOSER_DIR/data/linux" "${FLOPPYDIR}/linux"
 	
 	# User supplied runscript
 	if [ -n "${OPTIONS[EXT]}" ]; then
 		sed -i '1d' "${RUNSCRIPT}"
-		mcopy -i "${SLX_FLOPPY_IMG}" "${RUNSCRIPT}" "::/runscript${OPTIONS[EXT]}"
+		ln -n -s "${RUNSCRIPT}" "${FLOPPYDIR}/runscript${OPTIONS[EXT]}"
 	fi
 	
 	# Admin supplied runscript(s)
 	if [ -d "${CONFDIR}/adminrun" ]; then
-		mcopy -s -i "${SLX_FLOPPY_IMG}" "${CONFDIR}/adminrun" "::/"
+		ln -n -s "${CONFDIR}/adminrun" "${FLOPPYDIR}/adminrun"
+	fi
+
+	# Hook
+	run_hooks "floppy" "$FLOPPYDIR"
+
+	local size="$( du -s -l -L "${FLOPPYDIR}" | awk '{print $1}' )"
+	if [ -n "$size" ] && [ "$size" -ge 1400 ]; then
+		writelog "WARNING: Floppydir contains $size kb of data, will most likely not fit..."
 	fi
 	
-	rm -f -- "${SHARES}" "${TMPDIR}/openslx.ini" "${TMPDIR}/HOSTRES.TXT"
+	if ! mcopy -s -i "${SLX_FLOPPY_IMG}" "${FLOPPYDIR}"/* "::/"; then
+		writelog "Error creating floppy image from ${FLOPPYDIR}"
+	elif ! $DEBUG; then
+		rm -rf -- "${FLOPPYDIR}"
+	fi
 }
 
 ## MAIN ##

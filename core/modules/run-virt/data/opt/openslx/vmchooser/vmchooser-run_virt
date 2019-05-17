@@ -19,16 +19,39 @@
 #      tools and then include the specific plugin which configures the speci-
 #      fied virtualization tool.
 ################################################################################
-SELF=$(readlink -f "$0")
+SELF="$( readlink -f "${BASH_SOURCE[0]}" )"
+if [ -z "$SELF" ] || ! [ -f "$SELF" ]; then
+	SELF="$( readlink -f "$0" )"
+fi
+if [ -z "$SELF" ] || ! [ -f "$SELF" ]; then
+	slxlog "run-virt" "Cannot find SELF"
+	exit 1
+fi
+readonly SELF
+
+# Useless without this
+. /opt/openslx/config
+
+# Debug mode?
+if [ "x$1" = "x--debug" ]; then
+	shift
+	DEBUG=true
+elif [ "$SLX_DEBUG_MODE" = "ON" ] || grep -qE '\bdebug\b' "/proc/cmdline"; then
+	DEBUG=true
+else
+	DEBUG=false
+fi
 
 # This script expects the path to the xml file describing the VM to be started
 declare -rg XML_FILE="$1"
 
-# A path to the logfile can be given as second argument
+# A path to the logfile can be given as second argument (will be set later if empty)
 declare -g LOGFILE="$2"
 
 # Functions needed by vmchooser-run_virt (writelog(), cleanexit(), safesource())
-declare -rg RUN_VIRT_INCLUDE_DIR="$(dirname $SELF)/run-virt-includes"
+BASEDIR="$( dirname "${SELF}" )"
+RUN_VIRT_INCLUDE_DIR="${BASEDIR}/run-virt-includes"
+readonly BASEDIR RUN_VIRT_INCLUDE_DIR
 if ! source "${RUN_VIRT_INCLUDE_DIR}/vmchooser_runvirt_functions.inc"; then
 	slxlog "run-virt" "Could not source ${RUN_VIRT_INCLUDE_DIR}/vmchooser_runvirt_functions.inc"
 	exit 1

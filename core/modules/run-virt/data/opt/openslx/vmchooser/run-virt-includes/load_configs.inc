@@ -17,9 +17,6 @@ load_configs() {
 
 	# Load general virtualization information
 	$(safesource --exit "$VMCHOOSER_CONF_DIR/virtualization.conf")
-	
-	# Load general openslx config
-	$(safesource --exit "/opt/openslx/config")
 
 	# Load config for resource URLs
 	$(safesource "$VMCHOOSER_CONF_DIR/resource_urls.conf")

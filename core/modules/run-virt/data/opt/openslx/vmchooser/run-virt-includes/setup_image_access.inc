@@ -85,29 +85,25 @@ setup_fallback() {
 	readonly VM_DISKFILE_RO
 }
 
-setup_jambo() {
-	declare -r CMDLOG="$TMPDIR/sshfs.jambo"
-	declare -rg CLIENTPARTITION_ADMIN="/var/lib/vmware_admin"
-	#declare -r UPLOAD_KEYFILE="/var/lib/uploaduser"
-	#sudo -n sshfs "uploaduser@$JAMBOSERVER:/vms/bwlehrpool_store" "$CLIENTPARTITION_ADMIN" -o allow_other -o PreferredAuthentications=publickey -o IdentityFile="$UPLOAD_KEYFILE" -o IdentitiesOnly=yes &> "$CMDLOG"
-	sudo -n sshfs "uploaduser@$JAMBOSERVER:/vms/bwlehrpool_store" "$CLIENTPARTITION_ADMIN" -o allow_other -o PreferredAuthentications=publickey &> "$CMDLOG"
-	RET=$?
-	if [ "$RET" != "0" ]; then
-		writelog "SSHFS Failed
-		$(cat "$CMDLOG")"
-		EXIT_TYPE="user" EXIT_REASON="Schreibbarer VM-Speicher konnte nicht eingebunden werden. Adminmodus fehlgeschlagen." cleanexit 1
-	fi
-	declare -rg VM_DISKFILE_RW="$CLIENTPARTITION_ADMIN/$SRC_IMG_RELATIVE"
-}
-
-
 ## MAIN PART / Sanity checks ##
 setup_image_access() {
 	writelog "Setting up virtual hard disk access for virtualizer/emulator ..."
+	unset VM_DISKFILE_RO VM_DISKFILE_RW
+	declare -g VM_DISKFILE_RO VM_DISKFILE_RW
 
-	if [ "$VMCHOOSER_ADMIN_MODE" = "TRUE" ] && [ -n "$SLX_JAMBOSERVER" ]; then
-		setup_jambo
-		writelog "\tVM disk file RW:\t\t$VM_DISKFILE_RW"
+	run_hooks "image-access"
+
+	if [ -n "$VM_DISKFILE_RW" ]; then
+		writelog "A hook in setup_image_access supplied a writable diskfile. Not running default setup."
+	elif [ -n "$VM_DISKFILE_RO" ]; then
+		writelog "A hook in setup_image_access supplied a read-only diskfile. Not running default setup."
+	else
+		setup_image_access_default
+	fi
+	readonly VM_DISKFILE_RO VM_DISKFILE_RW
+
+	if [ -n "$VM_DISKFILE_RW" ]; then
+		writelog "\tVM disk file (RW):\t\t$VM_DISKFILE_RW"
 		if ! [ -s "$VM_DISKFILE_RW" ]; then
 			writelog ".... not found!"
 			EXIT_TYPE="user" EXIT_REASON="Schreibbare VM nicht gefunden. Adminmodus fehlgeschlagen." cleanexit 1
@@ -116,12 +112,22 @@ setup_image_access() {
 			writelog ".... not writable!"
 			EXIT_TYPE="user" EXIT_REASON="VM-Image auf schreibbarem VM-Speicher nicht schreibbar. Adminmodus fehlgeschlagen." cleanexit 1
 		fi
-		return 0
+	elif [ -n "$VM_DISKFILE_RO" ]; then
+		writelog "\tVM disk file (RO):\t\t$VM_DISKFILE_RO"
+		if ! [ -s "$VM_DISKFILE_RO" ]; then
+			writelog ".... not found!"
+			EXIT_TYPE="user" EXIT_REASON="VM-Image nicht gefunden." cleanexit 1
+		fi
+		if ! [ -r "$VM_DISKFILE_RO" ]; then
+			writelog ".... not readable!"
+			EXIT_TYPE="user" EXIT_REASON="VM-Image nicht lesbar." cleanexit 1
+		fi
+	else
+		EXIT_TYPE="user" EXIT_REASON="Kein VM-Image Dateiname angegeben/gefunden." cleanexit 1
 	fi
-	
-	unset VM_DISKFILE_RO
-	declare -g VM_DISKFILE_RO
-	
+}
+
+setup_image_access_default() {
 	# See if we should setup dnbd3 image access at all
 	if ! check_dep dnbd3-fuse fusermount; then
 		writelog "\tCan't use dnbd3 as dnbd3-fuse/fusermount binaries are not in PATH"
@@ -141,14 +147,6 @@ setup_image_access() {
 		writelog "Trying fallback image access via NFS/CIFS..."
 		setup_fallback
 	fi
-	
-	# Check if we finally found a valid, readable container
-	if isempty VM_DISKFILE_RO || [ ! -r "${VM_DISKFILE_RO}" ]; then
-		writelog "Virtual machine image ${VM_DISKFILE_RO} not found!"
-		EXIT_TYPE="user" EXIT_REASON="Konnte virtuelle Festplatte der gewählten VM nicht finden!" cleanexit 1
-	fi
-	
-	writelog "\tVM disk file:\t\t${VM_DISKFILE_RO}"
 }
 
 call_post_source setup_image_access

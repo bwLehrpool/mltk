@@ -220,6 +220,34 @@ translate() {
 	fi
 }
 
+##
+# run_hooks type args...
+# eg run_hooks "download" "$CONFDIR"
+# returns 100 if no hooks exist
+run_hooks() {
+	local dir file retval r
+	declare -a files
+	dir="$BASEDIR/hooks/${1}.d"
+	[ -d "$dir" ] || return 100
+	shift
+	files=( "${dir}"/* )
+	retval=100
+	for file in "${files[@]}"; do
+		[ -e "${file}" ] || continue
+		r=100
+		if [ "${file##*.}" = "sh" ] && [ -x "$file" ]; then
+			export TMPDIR IMGUUID USER
+			"$file" "$@"
+			r="$?"
+		elif [ "${file##.*}" = "inc" ]; then
+			. "$file"
+			r="$?"
+		fi
+		[ "$r" -lt "$retval" ] && retval="$r"
+	done
+	return "$retval"
+}
+
 ################# SOURCING FUNCTIONS #################
 # Wrapped 'source' that first checks for existence and
 # syntax before actually sourcing the given file.
