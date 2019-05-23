@@ -1,0 +1,20 @@
+#!/bin/bash
+fetch_source() {
+	:
+}
+
+build() {
+	local BIN_LOCATION
+	for BIN in $REQUIRED_BINARIES; do
+		BIN_LOCATION="$(which ${BIN})"
+		pinfo "$BIN_LOCATION"
+		if [ -z "$BIN_LOCATION" ]; then
+			perror "'$BIN' not found on the system. Install it."
+		fi
+		tarcopy "$(get_link_chain ${BIN_LOCATION})" "${MODULE_BUILD_DIR}"
+	done
+}
+
+post_copy() {
+	:
+}

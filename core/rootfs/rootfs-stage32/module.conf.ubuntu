@@ -18,9 +18,6 @@ REQUIRED_CONTENT_PACKAGES="
 REQUIRED_BINARIES+="
 			openssl
 "
-REQUIRED_SYSTEM_FILES+="
-			/usr/lib/x86_64-linux-gnu/xtables
-"
 REQUIRED_FILES+="
 			/etc/X11/app-defaults/Xvidtune
 			/usr/lib/ssl/openssl.cnf
