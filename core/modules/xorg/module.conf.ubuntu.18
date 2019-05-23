@@ -6,8 +6,8 @@ REQUIRED_INSTALLED_PACKAGES="
 			ttf-dejavu-core
 			xserver-xorg$UBUNTU_XORG_PKG_SUFFIX
 			xserver-xorg-core$UBUNTU_XORG_PKG_SUFFIX
-			libgl1-mesa-dri$UBUNTU_XORG_PKG_SUFFIX
-			libgl1-mesa-glx$UBUNTU_XORG_PKG_SUFFIX
+			libgl1-mesa-dri
+			libgl1-mesa-glx
 			libglx0
 			libegl1
 			libegl1-mesa
@@ -27,7 +27,6 @@ REQUIRED_INSTALLED_PACKAGES="
 			xserver-xorg-video-radeon$UBUNTU_XORG_PKG_SUFFIX
 			xserver-xorg-video-intel$UBUNTU_XORG_PKG_SUFFIX
 			xserver-xorg-video-nouveau$UBUNTU_XORG_PKG_SUFFIX
-			xserver-xorg-video-sisusb$UBUNTU_XORG_PKG_SUFFIX
 			xserver-xorg-video-vesa$UBUNTU_XORG_PKG_SUFFIX
 			xserver-xorg-video-vmware$UBUNTU_XORG_PKG_SUFFIX
 "
@@ -38,11 +37,12 @@ REQUIRED_CONTENT_PACKAGES="
 			ttf-dejavu-core
 			xserver-xorg$UBUNTU_XORG_PKG_SUFFIX
 			xserver-xorg-core$UBUNTU_XORG_PKG_SUFFIX
-			libgl1-mesa-dri$UBUNTU_XORG_PKG_SUFFIX
-			libgl1-mesa-glx$UBUNTU_XORG_PKG_SUFFIX
+			libgl1-mesa-dri
+			libgl1-mesa-glx
 			libglx0
 			libglx-mesa0
 			libxcb-glx0
+			@libgbm1
 			libegl1
 			libegl1-mesa
 			libgbm1
@@ -62,7 +62,6 @@ REQUIRED_CONTENT_PACKAGES="
 			xserver-xorg-video-radeon$UBUNTU_XORG_PKG_SUFFIX
 			xserver-xorg-video-intel$UBUNTU_XORG_PKG_SUFFIX
 			xserver-xorg-video-nouveau$UBUNTU_XORG_PKG_SUFFIX
-			xserver-xorg-video-sisusb$UBUNTU_XORG_PKG_SUFFIX
 			xserver-xorg-video-vesa$UBUNTU_XORG_PKG_SUFFIX
 			xserver-xorg-video-vmware$UBUNTU_XORG_PKG_SUFFIX
 			@xserver-xorg-input-mouse$UBUNTU_XORG_PKG_SUFFIX
