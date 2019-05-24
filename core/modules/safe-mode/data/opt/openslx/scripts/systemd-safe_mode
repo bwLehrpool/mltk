@@ -31,7 +31,8 @@ systemd_config() {
 	# No idleaction
 	rm -- "/etc/cron.d/openslx-idleaction"
 	# Ignore everything but power button, no VTs
-	cat > "${FUTURE_ROOT}/etc/systemd/logind.conf" <<EOF
+	mkdir -p "/etc/systemd/logind.conf.d"
+	cat > "/etc/systemd/logind.conf.d/99-exam.conf" <<EOF
 [Login]
 NAutoVTs=0
 ReserveVT=0
