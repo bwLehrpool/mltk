@@ -72,7 +72,7 @@ build() {
 		mkdir -p "${MODULE_BUILD_DIR}/drm.cfg.d"
 		drmfile="${MODULE_BUILD_DIR}/drm.cfg.d/$(( filenum++ ))-nvidia-$version"
 		cat > "$drmfile" <<-BLOFF
-			@nvidia-${version}            acpi_ipmi nvidia/$version/nvidia.ko nvidia/$version/nvidia-uvm.ko nvidia/$version/nvidia/modeset.ko nvidia-$version/nvidia/drm.ko
+			@nvidia-${version}            acpi_ipmi nvidia/$version/nvidia.ko nvidia/$version/nvidia-uvm.ko nvidia/$version/nvidia-modeset.ko nvidia/$version/nvidia-drm.ko
 			@nvidia-${version}_fallback   nouveau
 		BLOFF
 		if ! [ -s "${builddir}/supportedchips.html" ]; then
