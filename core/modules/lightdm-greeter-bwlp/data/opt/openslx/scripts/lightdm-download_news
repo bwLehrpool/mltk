@@ -1,0 +1,36 @@
+#!/bin/ash
+
+. /opt/openslx/config
+
+. /opt/openslx/bin/slx-tools
+
+dlfile="/tmp/news-raw.$$$RANDOM"
+newsfile="/opt/openslx/lightdm/news.html"
+
+if [ -n "$SLX_VMCHOOSER_BASE_URL" ]; then
+	URL="$SLX_VMCHOOSER_BASE_URL"
+elif [ -n "$SLX_PXE_SERVER_IP" ]; then
+	URL="http://$SLX_PXE_SERVER_IP/vmchooser/"
+else
+	exit 0
+fi
+
+download_retry -o "$dlfile" "$URL/login-news"
+
+if [ -s "$dlfile" ]; then
+	hl="$( xml_get "//news/headline" "$dlfile" | str_trim )"
+	body="$( xml_get "//news/info" "$dlfile" | str_trim )"
+	if [ "${#hl}${#body}" != "00" ]; then
+		printf "%s" "<h1>$hl</h1>$body" > "$newsfile"
+		mkdir -p "/etc/lightdm/qt-lightdm-greeter.conf.d"
+		cat > "/etc/lightdm/qt-lightdm-greeter.conf.d/10-bwlp-news.conf" <<EOF
+[General]
+news-html-file = $newsfile
+EOF
+	fi
+fi
+
+rm -f -- "$dlfile"
+
+exit 0
+
