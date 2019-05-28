@@ -1,0 +1,13 @@
+#!/bin/bash
+fetch_source() {
+	autoclone
+}
+
+build() {
+	cde "${MODULE_WORK_DIR}/src/slx-tools"
+	./make.sh "$REQUIRED_BASE_DIR" || perror "Could not generate slx-tools"
+	mkdir -p "$MODULE_BUILD_DIR/opt/openslx/"{bin,slx-tools}
+	cp slx-tools "$MODULE_BUILD_DIR/opt/openslx/bin/slx-tools" || perror "Could not copy slx-tools main script"
+	cp -r modules "$MODULE_BUILD_DIR/opt/openslx/slx-tools/modules" || perror "Could not copy slx-tools modules"
+}
+
