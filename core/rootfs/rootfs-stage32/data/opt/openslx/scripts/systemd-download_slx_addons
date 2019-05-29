@@ -30,7 +30,6 @@ if [ -z "${SLX_CONFIG_SERVERS}" ]; then
 fi
 
 # read base slx servers from cmdline
-BASE_MOUNT_POINT="/opt/openslx/mnt"
 DOWNLOAD_DEST="/run/addons"
 mkdir -p "$DOWNLOAD_DEST" || { echo "Failed to create $DOWNLOAD_DEST"; exit 1; }
 
@@ -53,7 +52,25 @@ if [ $# -eq 1 ]; then
 		echo "Already downloaded, doing nothing"
 		exit 0
 	fi
-	if ! download "${SLX_BASE_PATH}/${ADDON}.sqfs" "${ADDON_TARGET_PATH}"; then
+	# XXX HACK
+	# Select proper VMware version
+	FILE="$ADDON"
+	if [ "$ADDON" = "vmware" ]; then
+		vendor="$( awk '$1 == "vendor_id" {print $NF;exit}' /proc/cpuinfo )"
+		version=12
+		if [ "$vendor" = "GenuineIntel" ]; then
+			modprobe msr
+			flag="$( rdmsr --bitfield 5:5 0x485 )"
+			[ "$flag" = 1 ] && version=15
+		elif [ "$vendor" = "AuthenticAMD" ]; then
+			family="$( awk '$1$2 == "cpufamily" {print $NF;exit}' /proc/cpuinfo )"
+			[ "$family" -ge 21 ] && version=15
+		fi
+		FILE="vmware$version"
+		echo "Deciding to download $FILE instead of $ADDON after checking CPU"
+	fi
+	# XXX
+	if ! download "${SLX_BASE_PATH}/${FILE}.sqfs" "${ADDON_TARGET_PATH}"; then
 		slxlog --echo "addon-download" "Download of '${HTTP_BASE_PATH}/${ADDON}.sqfs' failed."
 		exit 1
 	fi
