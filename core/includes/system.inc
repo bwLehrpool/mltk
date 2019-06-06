@@ -58,7 +58,7 @@ __init () {
 		# Enable distcc?
 		testfile="/tmp/test.$$.${RANDOM}.c"
 		echo "int main() { return 0; }" > "$testfile"
-		DISTCC_FALLBACK=0 distcc "gcc-${ver}" -o "${testfile}.bin" -c "$testfile"
+		DISTCC_FALLBACK=0 distcc "gcc-${ver}" -o "${testfile}.bin" -c "$testfile" &>/dev/null
 		ret=$?
 		if [ "$ret" = 0 ] && [ -f "${testfile}.bin" ]; then
 			if [[ "$CC$CXX" == */ccache* ]]; then
@@ -77,7 +77,7 @@ __init () {
 			fi
 			export MAKEFLAGS="-j40"
 		fi
-		rm -- "$testfile" "${testfile}.bin"
+		rm -f -- "$testfile" "${testfile}.bin"
 	fi
 }
 
