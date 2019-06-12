@@ -212,9 +212,14 @@ build() {
 }
 
 post_copy() {
-	# Update Icon cache for vmplayer
-	gtk-update-icon-cache-3.0 "${TARGET_BUILD_DIR}/usr/share/icons/hicolor/" || pwarning "update-icon-cache-3.0 failed."
-
+	# Update Icon cache for vmplayer, older versions had the version in their names, newer do not...
+	for guic in gtk-update-icon-cache{,-3.0} fail; do
+		if [ "$guid" = "fail" ]; then
+			pwarning "Updating icon cache failed."
+			break
+		fi
+		"$guid" "${TARGET_BUILD_DIR}/usr/share/icons/hicolor/"
+	done
 	# fix vmware-usbarbitrator bug
 	date +'%Y.%m.%d' >"${TARGET_BUILD_DIR}/etc/arch-release"
 
