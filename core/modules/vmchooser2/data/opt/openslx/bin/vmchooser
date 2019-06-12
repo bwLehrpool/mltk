@@ -77,6 +77,10 @@ if [ -n "$SLX_LOCATIONS" ]; then
 	EXTRA="$EXTRA --locations $SLX_LOCATIONS"
 fi
 
+if [ -n "$SLX_SCREEN_SAVER_TIMEOUT" ]; then
+	EXTRA="$EXTRA --allow-screensaver-disable"
+fi
+
 # No quotes around $EXTRA!
 exec vmchooser.real "$@" --url "$URL" --fullscreen --tab "$TAB" --start-uuid "$SLX_EXAM_START" $EXTRA
 
