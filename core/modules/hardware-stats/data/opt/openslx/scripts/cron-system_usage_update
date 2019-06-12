@@ -72,33 +72,7 @@ Please save your work and reboot this machine.
 
 Sie können einen bwLehrpool-Admin bitten, eine größere ID-44-Partition einzurichten.
 You could ask a bwLehrpool administrator to create a larger ID-44 partition."
-		for d in $(who | awk '{print $2}' | sort -u); do
-			if [ "${d:0:1}" = ":" ]; then
-				# X11
-				export DISPLAY=$d
-				export XAUTHORITY=$(ps a | grep " $DISPLAY " | grep -o -- '-auth.*$' | grep -m1 -v grep | awk '{print $2}')
-				notify-send -u critical "System instabil" "$WARN"
-				unset DISPLAY XAUTHORITY
-			elif [ "${d:0:3}" = "tty" ]; then
-				# Regular tty
-				cat > "/dev/$d" <<EOF
-				*
-				***************************
-				$WARN
-				***************************
-				*
-EOF
-			elif [ "${d:0:3}" = "pts" ]; then
-				# pts - xterm or ssh session
-				cat > "/dev/pts/${d:3}" <<EOF
-				*
-				***************************
-				$WARN
-				***************************
-				*
-EOF
-			fi
-		done
+	idle-daemon --send "warn $WARN"
 fi
 
 exit 0
