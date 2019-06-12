@@ -52,7 +52,6 @@ fetch_source() {
 		git apply < "$patch" || perror "Could not apply $patch"
 		echo "$patch" >> "patches-done"
 	done
-	sed -i -r 's/^CC\s*=\s*(\S)/CC ?= \1/' Makefile || perror "Could not patch Makefile"
 	cd -
 	# remember the current kernel version
 	echo "${SYSTEM_KERNEL_LONG}" > ksrc/KVERSION
@@ -75,16 +74,15 @@ build() {
 	cd ksrc || perror "Could not cd to ksrc, was the kernel source fetched properly?"
 	pinfo "Preparing kernel for new config ('make oldconfig')."
 	if [ "x$MLTK_QUIET" = "x1" ]; then
-		yes "" | make oldconfig || perror "make oldconfig failed."
+		make olddefconfig || perror "make oldconfig failed."
 	else
 		make oldconfig || perror "make oldconfig failed."
 	fi
-	make prepare || perror "make prepare failed."
-	make scripts || perror "make scripts failed."
 
 	pinfo "Compiling kernel... (this will take some time)"
 	# explicitly state number of cores here, as MAKEFLAGS seems to be overridden
-	make $MAKEFLAGS || perror "make failed."
+	# also pass CC if set by core/includes/system.inc
+	make $MAKEFLAGS ${CC:+CC=${CC}} || perror "make failed."
 
 	# install modules to build directory
 	pinfo "Installing kernel modules..."
