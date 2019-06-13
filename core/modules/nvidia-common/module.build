@@ -33,20 +33,22 @@ build() {
 		[ -d "$destdir" ] && rm -rf "$destdir"
 		sh "$bundle" --extract-only --target "$destdir" ||	perror "Could not extract $bundle to $destdir."
 		download "${REQUIRED_HTML//%VERSION%/$version}" "$builddir/supportedchips.html"
-		
+		local KMOD_ERROR="(ERROR: The nvidia kernel module was not created.|.ko failed to build)"
+		local KMOD_LOG="/var/log/nvidia-installer.kmod.log"
 		pinfo "Ready to chroot - may take some time."
 		chroot_run "${builddir}" <<-EOF
 		/NVIDIA/nvidia-installer --no-nouveau-check --no-network --no-backup --no-rpms --no-runlevel-check \
 				--no-distro-scripts --no-cc-version-check --no-x-check --no-precompiled-interface --silent \
-				--kernel-source-path "/$KERNEL_HEADERS_DIR"
-		grep -qF '.ko failed to build' /var/log/nvidia-installer.log \
+				--log-file-name="$KMOD_LOG" --kernel-source-path "/$KERNEL_HEADERS_DIR"
+
+		grep -qE "$KMOD_ERROR" "$KMOD_LOG" \
 			|| /NVIDIA/nvidia-installer --no-nouveau-check --no-network --no-backup --no-rpms --no-runlevel-check \
 				--no-distro-scripts --no-cc-version-check --no-x-check --no-precompiled-interface --silent \
 				--no-kernel-module
 		exit 0 # Fake it since it will try to load the module and probably fail
 		EOF
-		if grep -qF '.ko failed to build' "${builddir}/var/log/nvidia-installer.log"; then
-			pwarning "Could not compile all kernel modules: $( grep -F '.ko failed to build' "${builddir}/var/log/nvidia-installer.log" )"
+		if grep -qE "$KMOD_ERROR" "${builddir}${KMOD_LOG}"; then
+			pwarning "Could not compile all kernel modules: $( grep -E "$KMOD_ERROR" "${builddir}${KMOD_LOG}" )"
 			perror "Bailing out..."
 		fi
 		pinfo "chroot terminated, cleaning up"
