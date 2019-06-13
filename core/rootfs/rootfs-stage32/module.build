@@ -88,10 +88,6 @@ post_copy() {
 	mkdir -p "$TARGET_BUILD_DIR"/{bin,dev,proc,lib,etc,mnt,run,sys,var,opt/openslx/mnt}
 	ln -s -n -f -t "$TARGET_BUILD_DIR/var" "../run/lock" "../run"
 
-	# copy devices from running system
-	cp -a /dev/{console,kmsg,mem,null,shm,tty,tty0,tty1,tty9,urandom,zero} \
-		"${TARGET_BUILD_DIR}"/dev || perror "Copying devices from running system failed."
-
 	# set /etc/environment to include /opt/openslx/bin and /opt/openslx/sbin
 	#add_env PATH "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/openslx/sbin:/opt/openslx/bin"
 	add_env PATH "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/openslx/sbin:/opt/openslx/bin"
