@@ -11,14 +11,9 @@ REQUIRED_INSTALLED_PACKAGES="
 			e2fsprogs
 			util-linux
 			kbd
+			dosfstools
+			strace
 "
 REQUIRED_CONTENT_PACKAGES="
 			openssl
-"
-REQUIRED_BINARIES+="
-			openssl
-"
-REQUIRED_FILES+="
-			/etc/X11/app-defaults/Xvidtune
-			/usr/lib/ssl/openssl.cnf
 "
