@@ -106,7 +106,7 @@ check_devtools() {
 	# Checking for needed development tools, compilers etc.
 	# Required: m4 make gcc g++ binutils
 	# no qmake here, qmake (libqt4-devel) should be installed in a module!
-	local DEV_TOOLS="gcc g++ make cmake m4 strip git depmod patch pkg-config automake autoconf aclocal lsb_release strings wget rsync" # 'strip' as marker for binutils
+	local DEV_TOOLS="gcc g++ make cmake m4 strip git depmod patch pkg-config automake autoconf aclocal lsb_release strings wget rsync lsof" # 'strip' as marker for binutils
 
 	# DEV_CHECK marks missing dev-tools
 	local DEV_TOOLS_MISSING=""
