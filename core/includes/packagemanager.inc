@@ -58,7 +58,6 @@ list_content_package(){
 	else
 		FILES="$($PACKAGECOMMAND "$PACKAGE" | grep "^/" | grep -v -E 'share/(man|doc)|/var/run|/var/log|/etc/init\.d'; echo ":###:${PIPESTATUS[0]}")"
 	fi
-# FILES="$(rpm -ql "$PACKAGE" | grep "^/" | grep -v -E 'share/(man|doc)|/var/run|/var/log'; echo ":###:${PIPESTATUS[0]}")"
 
 	# ugly hack to get our return value
 	local LPRET=$(echo "$FILES" | awk -F ':###:' '{printf $2}')
@@ -67,8 +66,8 @@ list_content_package(){
 		pdebug "FILES: '$FILES'"
 		perror "dpkg/rpm exited with code '$LPRET' for required package ${PACKAGE}."
 	fi
-	[ "x$LPRET" != "x0" ] && pwarning "dpkg/rpm exited with code '$LPRET' for optional package ${PACKAGE}." && continue
-	[ -z "$FILES" ] && pwarning "list_packet_files empty for packet ${PACKAGE}." && continue
+	[ "x$LPRET" != "x0" ] && pwarning "dpkg/rpm exited with code '$LPRET' for optional package ${PACKAGE}." && return
+	[ -z "$FILES" ] && pwarning "list_packet_files empty for packet ${PACKAGE}." && return
 	pdebug "Packet $PACKAGE has $(echo $FILES | wc -w) files..."
 	for FILE in $FILES; do
 		if [ "$OP" "$FILE" ] || [ -h "$FILE" ]; then
@@ -89,8 +88,15 @@ list_packet_files() {
 # install all dependencies of a module
 # goes through all package as given in the variable REQUIRED_INSTALLED_PACKAGES
 install_dependencies() {
-	[ -z "$REQUIRED_INSTALLED_PACKAGES" ] && return
-	install_packages "$REQUIRED_INSTALLED_PACKAGES"
+	[ -z "${REQUIRED_INSTALLED_PACKAGES}${REQUIRED_CONTENT_PACKAGES}" ] && return
+	# add all REQUIRED_CONTENT_PACKAGES that are not tagged as optional
+	local TO_INSTALL="$REQUIRED_INSTALLED_PACKAGES"
+	for pkg in $REQUIRED_CONTENT_PACKAGES ; do
+		if [ "${pkg:0:1}" != "@" ]; then
+			TO_INSTALL="$TO_INSTALL $pkg"
+		fi
+	done
+	install_packages "$TO_INSTALL"
 }
 
 #
