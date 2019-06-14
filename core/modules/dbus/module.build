@@ -12,54 +12,58 @@ build() {
 	tarcopy "$(cat "${COPYLIST}" | sort -u)" "${MODULE_BUILD_DIR}"
 
 	# Generate systemd files
-	mkdir -p "$MODULE_BUILD_DIR/etc/systemd/system"
-	# This is ugly, as the command line arguments changed over time. Try to do the right thing (whatever that is)
-	# Need to run dbus-uuidgen first?
-	local UUIDGEN="# This line intentionally left blank"
-	if files_contain "ExecStartPre.*uuidgen" "/lib/systemd/system/dbus.service" "/usr/lib/systemd/system/dbus.service"; then
-		UUIDGEN=$(find "$MODULE_BUILD_DIR" -name dbus-uuidgen -executable | head -n 1)
-		[ -z "$UUIDGEN" ] && perror "Could not determine dbus-uuidgen location"
-		UUIDGEN="ExecStartPre=/${UUIDGEN#$MODULE_BUILD_DIR} --ensure"
-	fi
-	# Figure out daemon location
-	local DAEMON=$(find "$MODULE_BUILD_DIR" -name dbus-daemon -executable | head -n 1)
-	[ -z "$DAEMON" ] && perror "Could not determine dbus-daemon location"
-	DAEMON="/${DAEMON#$MODULE_BUILD_DIR}"
-	local DAEMON_ARGS=""
-	# Daemon arguments
-	if files_contain "dbus-daemon.*nopidfile" "/lib/systemd/system/dbus.service" "/usr/lib/systemd/system/dbus.service"; then
-		DAEMON_ARGS+=" --nopidfile"
-	fi
-	if files_contain "dbus-daemon.*activation=systemd" "/lib/systemd/system/dbus.service" "/usr/lib/systemd/system/dbus.service"; then
-		DAEMON_ARGS+=" --activation=systemd"
-	fi
-	if files_contain "dbus-daemon.*systemd-activation" "/lib/systemd/system/dbus.service" "/usr/lib/systemd/system/dbus.service"; then
-		DAEMON_ARGS+=" --systemd-activation"
-	fi
-	# dbus-send location
-	local SEND=$(find "$MODULE_BUILD_DIR" -name dbus-send -executable | head -n 1)
-	[ -z "$SEND" ] && perror "Could not determine dbus-send location"
-	SEND="/${SEND#$MODULE_BUILD_DIR}"
-	sed "s,%UUIDGEN%,$UUIDGEN,g;s,%DAEMON%,$DAEMON,g;s,%SEND%,$SEND,g;s,%DAEMON_ARGS%,$DAEMON_ARGS,g" "${MODULE_DIR}/templates/dbus.service" \
-		> "$MODULE_BUILD_DIR/etc/systemd/system/dbus.service" \
-		|| perror "Could not generate $MODULE_BUILD_DIR/etc/systemd/system/dbus.service"
+	mkdir -p "$MODULE_BUILD_DIR/etc/systemd/system/dbus.service.d"
+
 	# This is REQUIRED, otherwise the session daemon won't start (can be empty, but has to exist...)
 	mkdir -p "${MODULE_BUILD_DIR}/etc/dbus-1/session.d"
+
+	# We will either find the service file or generate it,
+	# thus we can already create the drop-in for uuidgen
+	UUIDGEN=$(find "$MODULE_BUILD_DIR" -name dbus-uuidgen -executable | head -n 1)
+	[ -z "$UUIDGEN" ] && perror "Could not determine dbus-uuidgen location"
+	cat <<-EOF > "$MODULE_BUILD_DIR/etc/systemd/system/dbus.service.d/uuidgen.conf"
+		[Service]
+		ExecStartPre=/${UUIDGEN#$MODULE_BUILD_DIR} --ensure
+	EOF
+
+	# First check if there is a system dbus file and copy it if so
+	declare -A found
+	for unit_type in service socket; do
+		for candidate in {,/usr}"/lib/systemd/system/dbus.${unit_type}"; do
+			if [ -e "$candidate" ]; then
+				cp -a "$candidate" "${MODULE_BUILD_DIR}/etc/systemd/system" \
+					|| perror "Failed to copy '$found' to '$MODULE_BUILD_DIR'."
+				found["$unit_type"]=oui
+			fi
+		done
+	done
+
+	# If not found, generate service file from the template
+	if [ -z "${found["service"]}" ]; then
+		# This is ugly, as the command line arguments changed over time. Try to do the right thing (whatever that is)
+		# Find path for: dbus-daemon
+		local DAEMON=$(find "$MODULE_BUILD_DIR" -name dbus-daemon -executable | head -n 1)
+		[ -z "$DAEMON" ] && perror "Could not determine dbus-daemon location"
+		DAEMON="/${DAEMON#$MODULE_BUILD_DIR}"
+
+		# Find path for: dbus-send
+		local SEND=$(find "$MODULE_BUILD_DIR" -name dbus-send -executable | head -n 1)
+		[ -z "$SEND" ] && perror "Could not determine dbus-send location"
+		SEND="/${SEND#$MODULE_BUILD_DIR}"
+
+		# Fill in the template
+		sed "s,%DAEMON%,$DAEMON,g;s,%SEND%,$SEND,g" "${MODULE_DIR}/templates/dbus.service" \
+			> "$MODULE_BUILD_DIR/etc/systemd/system/dbus.service" \
+			|| perror "Could not generate $MODULE_BUILD_DIR/etc/systemd/system/dbus.service"
+	fi
+
+	# Same for socket file
+	if [ -z "${found["socket"]}" ]; then
+		cp "${MODULE_DIR}/templates/dbus.socket" "$MODULE_BUILD_DIR/etc/systemd/system" \
+			|| perror "Could not copy templates/dbus.socket to build dir."
+	fi
 }
 
 post_copy() {
 	:
 }
-
-files_contain () {
-	[ $# -lt 2 ] && perror "files_contain needs at least 2 arguments (pattern, file)"
-	local PATTERN="$1"
-	shift
-	local FILE
-	for FILE in $@; do
-		[ -e "$FILE" ] || continue
-		grep -q "$PATTERN" "$FILE" && return 0 # Found
-	done
-	return 1
-}
-

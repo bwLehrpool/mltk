@@ -5,9 +5,8 @@ Requires=dbus.socket
 After=syslog.target
 
 [Service]
-%UUIDGEN%
 ExecStartPre=-/opt/openslx/bin/rm -f /var/run/dbus/pid
-ExecStart=%DAEMON% --system --address=systemd: --nofork %DAEMON_ARGS%
+ExecStart=%DAEMON% --system --address=systemd: --nofork
 ExecReload=%SEND% --print-reply --system --type=method_call --dest=org.freedesktop.DBus / org.freedesktop.DBus.ReloadConfig
 OOMScoreAdjust=-900
 
