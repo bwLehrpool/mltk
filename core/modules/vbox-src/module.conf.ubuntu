@@ -1,10 +1,12 @@
 REQUIRED_INSTALLED_PACKAGES="
+	kbuild
 	iasl
 	makeself
 	mkisofs
 	libcurl4-openssl-dev
 	libcap-dev
 	libdevmapper-dev
+	libqt5opengl5-dev
 	libidl-dev
 	libsdl1.2-dev
 	libxml2-dev
