@@ -25,9 +25,9 @@ for SESSION in $(loginctl $LEGEND | awk '{print $1}'); do
 done
 
 # Also report usage of /tmp and swap
-TMP=$(df -P /tmp | grep -m1 '^/dev')
-TMP_SIZE=$(echo $TMP | awk '{print $2}')
-TMP_FREE=$(echo $TMP | awk '{print $4}')
+TMP="$( slx-tools fs_path_space /tmp )"
+TMP_FREE="${TMP% *}"
+TMP_SIZE="${TMP#* }"
 SWAP_SIZE=$( awk '{if ($1 == "SwapTotal:") { print $2; exit; }}' /proc/meminfo )
 SWAP_FREE=$( awk '{if ($1 == "SwapFree:") { print $2; exit; }}' /proc/meminfo )
 MEM_SIZE=$( awk '{if ($1 == "MemTotal:") { print $2; exit; }}' /proc/meminfo )
