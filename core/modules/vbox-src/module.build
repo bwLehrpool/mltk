@@ -51,7 +51,7 @@ build() {
 		perror "Failed to cp -r '${VBOX_RELEASE_BUILD_DIR}/bin' to '${MODULE_BUILD_DIR}/usr/lib/virtualbox'."
 
 	# set suid bits
-	for BIN in VBoxHeadless VBoxNetAdpCtl VBoxNetDHCP VBoxSDL VBoxVolInfo VirtualBox VBoxNetAdpCtl; do
+	for BIN in VBoxHeadless VBoxNetAdpCtl VBoxNetDHCP VBoxSDL VBoxVolInfo VirtualBox VBoxNetAdpCtl VirtualBoxVM; do
 		if ! [ -e "${MODULE_BUILD_DIR}/usr/lib/virtualbox/$BIN" ]; then
 			pwarning "No such file: '${MODULE_BUILD_DIR}/usr/lib/virtualbox/$BIN', cannot add suid bit."
 			continue
