@@ -8,6 +8,8 @@
 export LANG=C
 export LC_ALL=C
 
+export PATH=$PATH:/opt/openslx/sbin:/opt/openslx/bin
+
 touch "/tmp/hw-delete-list" || exit 10
 chmod 0600 "/tmp/hw-delete-list" || exit 11
 echo -n "" > "/tmp/hw-delete-list" || exit 12
@@ -153,21 +155,29 @@ echo "$VIRTTYPE is $VT"
 
 # 8) ID44 partition size
 ID44=0
-# Try df first, make sure device starts with /dev
-read -r df_dev df_size df_used df_avail df_usepercent df_mountpoint df_crap < <(df -P /tmp | grep ' /tmp$')
-if [ -n "${df_size}" ] && [ "${df_dev:0:5}" = "/dev/" ]; then
-	# df reports kbytes, convert to MB
-	ID44=$(( df_size / 1024 ))
-fi
-if [ "$ID44" = 0 ]; then
-	# slxfdisk fallback
-	for c in $(slxfdisk -l | grep -E '[0-9]+[\-\+]?\s+44\s+' | awk '{print $1}'); do
-		val=$(blockdev --getsize64 "$c")
-		[ -z "$val" ] && continue
-		[ "$val" -gt "$ID44" ] && ID44=$val
-	done
-	# blockdev reports bytes, convert to MB
-	ID44=$(( $ID44 / 1058576 )) # we'd rather underreport
+if ! slx-tools fs_path_isvolatile "/tmp" ; then
+	ID44_SPACE=($(slx-tools fs_path_space "/tmp"))
+	[ -n "${ID44_SPACE[1]}" ] && ID44="$(( ${ID44_SPACE[1]} / 1024 ))"
+
+	if [ "$ID44" -ne 0 ]; then
+		# Fallback to old way to detect it
+		# Try df first, make sure device starts with /dev
+		read -r df_dev df_size df_used df_avail df_usepercent df_mountpoint df_crap < <(df -P /tmp | grep ' /tmp$')
+		if [ -n "${df_size}" ] && [ "${df_dev:0:5}" = "/dev/" ]; then
+			# df reports kbytes, convert to MB
+			ID44=$(( df_size / 1024 ))
+		fi
+		if [ "$ID44" = 0 ]; then
+			# slxfdisk fallback
+			for c in $(slxfdisk -l | grep -E '[0-9]+[\-\+]?\s+44\s+' | awk '{print $1}'); do
+				val=$(blockdev --getsize64 "$c")
+				[ -z "$val" ] && continue
+				[ "$val" -gt "$ID44" ] && ID44=$val
+			done
+			# blockdev reports bytes, convert to MB
+			ID44=$(( $ID44 / 1058576 )) # we'd rather underreport
+		fi
+	fi
 fi
 echo "Temp partition: $ID44 MB"
 
