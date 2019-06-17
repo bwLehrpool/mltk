@@ -227,7 +227,7 @@ static void CALLBACK launchRunscript(HWND hWnd, UINT uMsg, UINT_PTR idEvent, DWO
 {
 	static int fails = 0;
 	wchar_t params[BUFLEN] = L"";
-	wchar_t emptyParams[1] = L"";
+	wchar_t emptyParams[BUFLEN] = L"";
 	wchar_t nuser[BUFLEN] = L"";
 	wchar_t npass[BUFLEN] = L"";
 
@@ -247,14 +247,20 @@ static void CALLBACK launchRunscript(HWND hWnd, UINT uMsg, UINT_PTR idEvent, DWO
 		alog("Could not convert user/password to unicode");
 		goto failure;
 	}
-	wchar_t *end = params + BUFLEN;
+	// Build command line with user password
+	wchar_t *end = params + BUFLEN - 2;
 	wchar_t *ptr = params;
 	ptr = escapeShellArg(nuser, ptr, end);
 	*ptr++ = ' ';
 	ptr = escapeShellArg(npass, ptr, end);
 	*ptr = '\0';
+	// Build command line without password, just user
+	end = emptyParams + BUFLEN - 2;
+	ptr = emptyParams;
+	escapeShellArg(nuser, ptr, end);
+	*ptr = '\0';
 	if (_debug) {
-		wlog(L"Params are '%s'", params);
+		wlog(L"Params are '%s'", emptyParams);
 	}
 
 	// Scan folder
