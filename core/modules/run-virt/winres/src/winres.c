@@ -257,7 +257,7 @@ static void CALLBACK launchRunscript(HWND hWnd, UINT uMsg, UINT_PTR idEvent, DWO
 	// Build command line without password, just user
 	end = emptyParams + BUFLEN - 2;
 	ptr = emptyParams;
-	escapeShellArg(nuser, ptr, end);
+	ptr = escapeShellArg(nuser, ptr, end);
 	*ptr = '\0';
 	if (_debug) {
 		wlog(L"Params are '%s'", emptyParams);
