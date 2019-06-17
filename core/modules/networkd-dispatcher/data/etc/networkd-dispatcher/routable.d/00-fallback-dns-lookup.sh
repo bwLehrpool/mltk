@@ -47,7 +47,7 @@ check_dns() {
 		if [ "$dhcp_hostname" != "$(hostname)" ]; then
 			echo "Current hostname differs from DHCP, forcing DHCP hostname: '$dhcp_hostname'"
 			echo "systemd-networkd should have set it but did not. Check your configuration."
-			hostnamectl set-hostname "$dhcp_hostname"
+			set_hostname "$dhcp_hostname"
 		fi
 		return 0
 	fi
@@ -57,13 +57,17 @@ check_dns() {
 	if [ -n "$dns_hostname" ]; then
 		if [ "$dns_hostname" != "$(hostname)" ]; then
 			echo "Current hostname differs from DNS, forcing DNS hostname: '$dns_hostname'"
-			hostnamectl set-hostname "$dns_hostname"
+			set_hostname "$dns_hostname"
 		fi
 	else
 		echo "Neither DHCP nor DNS provided a hostname, use IP address as fallback."
-		hostnamectl set-hostname "${ADDR//./-}"
+		set_hostname "${ADDR//./-}"
 	fi
 	return 0
+}
+set_hostname() {
+	hostnamectl set-hostname "$1"
+	systemctl try-restart lightdm
 }
 
 if [ ! -e /opt/openslx/config ]; then
