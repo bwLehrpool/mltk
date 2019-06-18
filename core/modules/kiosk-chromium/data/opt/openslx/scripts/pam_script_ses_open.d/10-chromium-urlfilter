@@ -1,0 +1,68 @@
+#!/bin/bash
+
+format_urls() {
+	local url scheme host path count chost
+	for url in $@; do
+		# first remove '*://' scheme, none means the same
+		url="${url#*\*://}"
+		# extract scheme and remove it from url if needed
+		scheme="${url%%://*}"
+		if [ "$scheme" != "$url" ]; then
+			url="${url#*://}"
+		else
+			scheme=
+		fi
+		# extract host, skip entry if empty
+		host="${url%%/*}"
+		[ -z "$host" ] && continue
+		# transform into chromium syntax
+		if [ "$host" != "${host//\*/}" ]; then
+			# host contains wildcard '*'
+			# look for the longest subdomain until the wildcard
+			chost="$(echo "$host" | grep -oE '[^*]+$')"
+			# remove dot left over
+			if [ -n "$chost" ]; then
+				chost="${chost#?}"
+			else
+				chost='*'
+			fi
+		else
+			# chromium: exact host match must be prefixed with '.'
+			chost=".${host}"
+		fi
+		path="${url#*/}"
+		[ "$path" = "${host}" ] && path=
+		cpath=
+		if [ -n "$path" ]; then
+			cpath="$(echo "$path" | grep -oE '^[^*]*')"
+		fi
+		echo -e "\t\t\"${scheme:+${scheme}://}${chost}${cpath:+/${cpath}}\","
+	done | sed '$ s/.$//'
+}
+
+main() {
+	[ -e "/opt/openslx/config" ] || exit 0
+	. /opt/openslx/config
+
+	local url_policy_file="/etc/chromium-browser/policies/managed/url-filter.json"
+	echo -e "{\n" > "$url_policy_file"
+	local ttype
+	if [ "$SLX_BROWSER_IS_WHITELIST" -eq 1 ]; then
+		ttype="White"
+		echo -e '\t"URLBlacklist": [ "*" ],' >> "$url_policy_file"
+	else
+		ttype="Black"
+	fi
+	if [ -n "$SLX_BROWSER_URLLIST" ]; then
+		echo -e '\t"URL'"$ttype"'list": [' >> "$url_policy_file"
+		format_urls $SLX_BROWSER_URLLIST >> "$url_policy_file"
+		echo -e '\t]' >> "$url_policy_file"
+	fi
+	echo -e '}' >> "$url_policy_file"
+}
+
+if [ "${PAM_SERVICE//autologin/}" != "$PAM_SERVICE" -a "$PAM_TTY" = ":0" ]; then
+	# autologin of some sort
+	main
+fi
+true

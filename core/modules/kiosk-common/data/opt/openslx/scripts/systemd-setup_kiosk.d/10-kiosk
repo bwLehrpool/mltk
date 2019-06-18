@@ -1,0 +1,9 @@
+#!/bin/ash
+
+main() {
+	local target="/etc/lightdm/qt-lightdm-greeter.conf.d"
+	mkdir -p "$target"
+	echo -e "[General]\nguest-session-enabled=true" > "${target}/enable-guest.conf"
+}
+
+main
