@@ -159,7 +159,7 @@ if ! slx-tools fs_path_isvolatile "/tmp" ; then
 	ID44_SPACE=($(slx-tools fs_path_space "/tmp"))
 	[ -n "${ID44_SPACE[1]}" ] && ID44="$(( ${ID44_SPACE[1]} / 1024 ))"
 
-	if [ "$ID44" -ne 0 ]; then
+	if [ "$ID44" -eq 0 ]; then
 		# Fallback to old way to detect it
 		# Try df first, make sure device starts with /dev
 		read -r df_dev df_size df_used df_avail df_usepercent df_mountpoint df_crap < <(df -P /tmp | grep ' /tmp$')
