@@ -133,25 +133,9 @@ setup_vcpu_ram() {
 }
 
 setup_usb() {
-	# USB fallback: Only write usb config if there's none
-	if ! grep -q -i "^usb\.present" "${TMPCONFIG}"; then
-		# Nothing found, go ahead
-		if [ -n "$SLX_EXAM" ]; then # TODO better handling of exam mode...
-			# Exam mode: Default to no USB
-			sed -i '/^usb\./Id' "${TMPCONFIG}"
-			echo 'usb.present = "FALSE"' >> "${TMPCONFIG}"
-		else
-			echo 'usb.present = "TRUE"' >> "${TMPCONFIG}"
-		fi
-	fi
+	# Force autoconnect
 	sed -i '/^usb\.generic\.autoconnect/Id' "${TMPCONFIG}"
 	echo 'usb.generic.autoconnect = "TRUE"' >> "${TMPCONFIG}"
-
-	# USB 3.0 support changes quality and has different side effects
-	# with every minor release of vmware. Always force 2.0 for now.
-	# TODO: Get it fixed by vmware?
-	sed -i '/^ehci\.present/Id;/^usb_xhci\.present/Id' "${TMPCONFIG}"
-	echo 'ehci.present = "TRUE"' >> "${TMPCONFIG}"
 
 	# See if there are any USB devices connected that we want to pass through immediately
 	get_usb_devices 'usb.autoConnect.deviceXXXXX = "0x%VENDOR%:0x%PRODUCT%"' \
