@@ -131,49 +131,47 @@ setup_cpu_ram() {
 	# set vm's memory
 	set_attr "/VirtualBox/Machine/Hardware/Memory" "RAMSize" "${VM_MEM}"
 
-	# set cpu cores and features
-	set_attr "/VirtualBox/Machine/Hardware/CPU" "count" "${CPU_CORES}"
+	# Shouldn't be needed / should be set do "Default" anyways which does
+	# the right thing depending on guest
+	#set_attr "/VirtualBox/Machine/Hardware/Paravirt" "provider" "KVM"
+	# Let vbox config decide about PAE etc.
+	# (PAE is true by default on 64 bit hosts anyways)
 
-	# check if KVM is available and activate it if so
+	# But explicitly disable acceleration if KVM is not available
+	local kvm="false"
+	local nested="false"
+	local cores="1"
+	local ioapic="false"
 	if source /run/hwinfo && [ "${HW_KVM}" = "ENABLED" ]; then
-		set_attr "/VirtualBox/Machine/Hardware/Paravirt" "provider" "KVM"
+		ioapic="true"
+		kvm="true"
+		cores="$CPU_CORES"
+		# KVM is there -- all good, but check for NPT/EPT
+		if detect_cpu_flag "npt" || detect_cpu_flag "ept"; then
+			nested="true"
+		fi
 	fi
+	set_attr "/VirtualBox/Machine/Hardware/CPU/HardwareVirtEx" "enabled" "$kvm"
+	set_attr "/VirtualBox/Machine/Hardware/CPU/HardwareVirtExNestedPaging" "enabled" "$nested"
 
-	# activate IOAPIC needed for multi core (?)
-	if [ $CPU_CORES -gt 1 ]; then
-		set_attr "/VirtualBox/Machine/Hardware/BIOS/IOAPIC" "enabled" "true"
-	fi
+	# set cpu cores and features
+	set_attr "/VirtualBox/Machine/Hardware/CPU" "count" "$cores"
 
-	# PAE support?
-	local PAE_SUPPORT="false"
-	detect_cpu_flag "pae" && PAE_SUPPORT="true"
-	set_attr "/VirtualBox/Machine/Hardware/CPU/PAE" "enabled" "${PAE_SUPPORT}"
+	# activate IOAPIC needed for SMP, but disable for no VT-x machines
+	set_attr "/VirtualBox/Machine/Hardware/BIOS/IOAPIC" "enabled" "$ioapic"
 
-	# LongMode?
-	local LM_SUPPORT="false"
-	detect_cpu_flag "lm" && LM_SUPPORT="true"
-	set_attr "/VirtualBox/Machine/Hardware/CPU/LongMode" "enabled" "${LM_SUPPORT}"
-
-	# Page size extensions?
-	local PSE_SUPPORT="false"
-	detect_cpu_flag "pse" && PSE_SUPPORT="true"
-	set_attr "/VirtualBox/Machine/Hardware/CPU/HardwareVirtExLargePages" "enabled" "${PSE_SUPPORT}"
+	# Don't enable this since it's off by default on Linux due to performance concerns
+	# See src/VBox/Main/xml/Settings.cpp Hardware::Hardware()
+	# Maybe even explicitly disable this in case the VM was created on 64Bit Windows?
+	#set_attr "/VirtualBox/Machine/Hardware/CPU/HardwareVirtExLargePages" "enabled" "${PSE_SUPPORT}"
 }
 
 setup_usb() {
 	## Currently not used
-	# EXPERIMENTAL: check for USB 3 support and activate it
-	local XHCI_OK="$(lsusb -t | grep xhci)"
-	if [ -n "$XHCI_OK" ]; then
-		# Afaik, there is no way to configure more than one USB controller
-		# through the GUI, but it is technically possible through xml editing.
-		# To avoid potential problems, we only add a xHCI controller
-		# and delete the others, just as the GUI would configure it.
-		if node_exists "/VirtualBox/Machine/Hardware/USB"; then
-			del_node "/VirtualBox/Machine/Hardware/USB"
-			add_node "/VirtualBox/Machine/Hardware/USB/Controllers" "Controller" "name=xHCI" "type=XHCI"
-		fi
-	fi
+	:
+	# In case a VBox with USB 3.0 configured doesn't have working USB on
+	# machines without a USB 3.0 controller, downgrade to 2.0, but otherwise,
+	# USB speed is now dicated via the downloaded VM config
 }
 
 setup_sound() {
