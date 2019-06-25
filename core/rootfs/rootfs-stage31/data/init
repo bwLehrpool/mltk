@@ -22,19 +22,19 @@ export PATH=/bin:/sbin:/usr/bin:/usr/sbin
 # import common functions
 . "/inc/functions"
 
+# NOTE: busybox mount is only available through the busybox binary,
+# the link had to be dropped, to prevent bugs in the stage32.
 # mount the important standard directories
 mkdir -p /tmp /proc /sys /dev /run
+busybox mount -n -t devtmpfs -o 'rw,relatime,nosuid,noexec,mode=0755' initramfsdevs /dev
 [ ! -f /proc/cpuinfo ] && busybox mount -n -t proc proc /proc
 echo "/sbin/hotplug" > "/proc/sys/kernel/hotplug"
 bench_event "KERNEL" "Kernel initialized"
 [ ! -d /sys/class ] && busybox mount -n -t sysfs sysfs /sys
 
-find /sys/devices/pci* -type f -name modalias -exec /sbin/hotplug --file {} \; &
+find /sys/devices/pci* -type f -name modalias -exec /sbin/hotplug --file {} \; &> /dev/null &
 HOTPLUG=$!
 
-# NOTE: busybox mount is only available through the busybox binary,
-# the link had to be dropped, to prevent bugs in the stage32.
-busybox mount -n -t devtmpfs -o 'rw,relatime,nosuid,noexec,mode=0755' initramfsdevs /dev
 busybox mount -n -t tmpfs -o 'mode=755,size=10m' run "/run"
 busybox mount -n -t tmpfs -o 'mode=755,size=50m' temp "/tmp"
 
