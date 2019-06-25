@@ -1,5 +1,11 @@
 ### Variablen #####################################
 
+DISKMOUNTDIR=/mnt/diskmount
+ADMINRUNDIR="$DISKMOUNTDIR"/adminrun
+SLXCONFIGFILE="$DISKMOUNTDIR"/openslx.ini
+CONFIGFILE="$DISKMOUNTDIR"/shares.dat
+LOGINUSER=$(grep '^username=' "$SLXCONFIGFILE" | cut -d '=' -f 2)
+
 ##### User related#################
 LOCALUSER=student
 USERHOME=/home/"$LOCALUSER"
@@ -10,9 +16,6 @@ USERLOGFILE="$USERDESKTOP"/openslx.log
 
 
 ##### Mounting, network, PW #######
-DISKMOUNTDIR=/mnt/diskmount
-SLXCONFIGFILE="$DISKMOUNTDIR"/openslx.ini
-CONFIGFILE="$DISKMOUNTDIR"/shares.dat
 KEYTEMP=$(mktemp -t XXXXXXXXXX.dat)
 RAWKEYTEMP=$(mktemp -t XXXXXXXXXX.dat)
 BYTES=256
@@ -41,7 +44,7 @@ GLOBALUSER=$(echo "$GLOBALDOMAINUSER" | cut -d '\' -f 2)
 REMAPMODE=$(grep '^remapMode=' "$SLXCONFIGFILE" | cut -d '=' -f 2)
 CREATEMISSING=$(grep '^createMissingRemap=' "$SLXCONFIGFILE" | cut -d '=' -f 2)
 
-##### Script (Autostart ) #########
+##### Script (Autostart & admin) #########
 SCRIPTUSER=$(grep '^scriptUser=' "$SLXCONFIGFILE" | cut -d '=' -f 2)
 SCRIPTVISIBILITY=$(grep '^scriptVisibility=' "$SLXCONFIGFILE" | cut -d '=' -f 2)
 SCRIPTEXT=$(grep scriptExt "$DISKMOUNTDIR/openslx.ini" | cut -f 2 -d "=")

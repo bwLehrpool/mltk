@@ -28,12 +28,14 @@ mutesound &
 logger "openslx utility script: spawning share mounter..."
 mnt_shares &
 MNTPID=$!
-
 logger "openslx utility script: Waiting for mounter..."
 # Best to wait until any shares are mounted (and perhaps resolution setting, too?), as perhaps 
 # an user supplied runscript needs a network share?
 wait $MNTPID	# ${RSPID[*]}
 logger "openslx utility script: mounter finished."
+
+logger "openslx adminrun: looking for adminrun scripts."
+adminrun &
 
 logger "openslx utility script: starting runscript..."
 runscript

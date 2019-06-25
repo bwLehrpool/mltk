@@ -1,8 +1,10 @@
 #!/bin/bash
 
-# Dieses Skript liest die Auflösungsdate HOSTRES.TXT aus der Diskette 2 (/dev/fd1). In dieser 
-# Datei wird die native (maximale) Auflösung des Grundsystems bereitgestellt. fd1 wird vom 
-# openslx-Grundsystem geliefert. Es loggt nach SYSLOG (syslog oder messages).
+# Achtung: Dieses Skript ist veraltet und sollte nur noch zur Anschauung bzw. zu Debugzwecken
+# genutzt werden. Stattdessen sollte das Skriptpaket openslx genutzt werden.
+# Es liest die Datei openslx.ini aus, in der die Auflösung des Grundsystems bereitgestellt 
+# wird. Die (Pseudo-)Floppy fd1 wird vom  openslx-Grundsystem geliefert. Es loggt nach SYSLOG (
+# syslog oder messages).
 # 
 # Zu erledigen: Jede Menge, zB anständiges Trapping, Fehler abfangen usw...
 # set -x

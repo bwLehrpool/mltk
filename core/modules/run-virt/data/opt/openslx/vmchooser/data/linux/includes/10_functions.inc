@@ -152,5 +152,19 @@ function mount_home()
 
 ### Funktionen Mounter Ende #######################
 
+set_userpart();
+{
+	case "$SCRIPTUSER" in
+		0)      USERPART=""
+			;;
+		1)      USERPART=" su -c - $LOCALUSER "
+			;;
+		*)      logger "openslx utility: runscript: Unknown script user or script user not set. Running as user ${LOCALUSER}."
+			# USERPART=""   # old default: Running as root
+			USERPART=" su -c - $LOCALUSER "
+			;;
+	esac
+}
+
 ### Funktionen Ende ###############################
 
