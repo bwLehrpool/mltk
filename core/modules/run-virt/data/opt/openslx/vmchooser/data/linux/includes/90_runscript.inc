@@ -2,8 +2,11 @@ function wait_for_wm()
 {
 	# This just waits until there's a window manager.
 	logger "openslx utility: wait_for_wm: Waiting for window manager."
-	while [[ "$(DISPLAY=:0.0 XAUTHORITY=${XAUTHORITY} xprop -root _NET_SUPPORTING_WM_CHECK)" =~ "no such atom" ]]; do
+	local expr="no such atom|not found"
+	local max=10
+	while [[ "$(DISPLAY=:0.0 XAUTHORITY=${XAUTHORITY} xprop -root _NET_SUPPORTING_WM_CHECK)" =~ $expr ]]; do
 		sleep 2
+		[ $(( --max )) -le 0 ] && break
 	done
 	logger "openslx utility: wait_for_wm: Window manager detected."
 }
