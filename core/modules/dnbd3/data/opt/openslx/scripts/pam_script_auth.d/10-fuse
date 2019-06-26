@@ -1,6 +1,0 @@
-
-adduser "${PAM_USER}" "fuse"
-ret=$?
-[ "$ret" -ne "0" ] && slxlog "pam-auth-fuse" "Could not add $PAM_USER to group 'fuse'"
-true
-
