@@ -152,7 +152,7 @@ function mount_home()
 
 ### Funktionen Mounter Ende #######################
 
-set_userpart();
+set_userpart()
 {
 	case "$SCRIPTUSER" in
 		0)      USERPART=""
