@@ -1,4 +1,6 @@
+#!/bin/ash
+
 getent group vboxusers || addgroup -S vboxusers
 adduser "${PAM_USER}" "vboxusers"
-true
 
+exit 0

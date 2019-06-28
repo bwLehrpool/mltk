@@ -1,3 +1,6 @@
+#!/bin/ash
+
 adduser "${PAM_USER}" "fuse"
-true
+
+exit 0
 

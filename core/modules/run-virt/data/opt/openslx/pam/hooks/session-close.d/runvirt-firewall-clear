@@ -1,6 +1,6 @@
 #!/bin/ash
 
-# Sourced by pam_script_ses_close
+# Sourced as session-close hook
 
 runvirt_fw_clear () {
 	iptables -w -F runvirt-INPUT

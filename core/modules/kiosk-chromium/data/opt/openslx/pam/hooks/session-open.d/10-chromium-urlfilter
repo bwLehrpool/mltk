@@ -1,4 +1,5 @@
 #!/bin/bash
+#^ SOURCED, actually running in ash
 
 format_urls() {
 	local url scheme host path count chost
