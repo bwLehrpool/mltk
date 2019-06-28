@@ -10,7 +10,7 @@ readonly USER_PASSWORD
 USER_NAME="$PAM_USER"
 readonly PAM_USER
 
-# Needed as pam_script clears PATH
+# Needed as pam_script/pam_exec clears PATH
 export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/openslx/sbin:/opt/openslx/bin"
 
 # check for invalid char ':'
@@ -61,6 +61,12 @@ for auth_file in /opt/openslx/pam/auth-source.d/*; do
 	[ -n "${USER_GID}${USER_GROUP}" ] || continue
 	break
 done
+
+# No success - access denied
+[ -z "$USER_UID" ] && exit 1
+# No root
+[ "$USER_UID" = "0" ] && exit 1
+
 [ -z "$REAL_ACCOUNT" ] && REAL_ACCOUNT="$PAM_USER"
 readonly USER_UID REAL_ACCOUNT USER_NAME
 
@@ -69,10 +75,6 @@ if [ "$USER_NAME" != "$PAM_USER" ]; then
 	echo "Capitalization mismatch: '$PAM_USER' vs. '$USER_NAME'" >&2
 	exit 1
 fi
-
-# No success - access denied
-[ -z "$USER_UID" ] && exit 1
-[ "x$USER_UID" = "x0" ] && exit 1
 
 # Validate
 if ! echo "$USER_UID" | grep -Exq '[0-9]+'; then
@@ -180,15 +182,9 @@ if ! isHomeMounted; then
 			fi
 		done
 	fi
-fi
-
-# Remember for hooks in pam_script_auth.d
-if [ "${NETWORK_HOME:0:2}" = '//' ]; then
-	PERSISTENT_NETPATH=$(echo "$NETWORK_HOME" | tr '/' '\')
 else
-	PERSISTENT_NETPATH="$NETWORK_HOME"
+	PERSISTENT_OK="yes"
 fi
-export PERSISTENT_NETPATH
 
 # Just try to delete the persistent dir. If the mount was successful, it will not work
 # If it was not successful, it will be removed so the user doesn't think he can store
@@ -217,12 +213,20 @@ EOF
 fi
 chown "${USER_UID}" "${TEMP_HOME_DIR}/WARNING.txt"
 
+# Remember for hooks in auth-slx-source.d
+if [ "${NETWORK_HOME:0:2}" = '//' ]; then
+	PERSISTENT_NETPATH=$(echo "$NETWORK_HOME" | tr '/' '\')
+else
+	PERSISTENT_NETPATH="$NETWORK_HOME"
+fi
+export PERSISTENT_NETPATH
+
 #
-# execute the stuff in pam_script_auth.d, if it exists
+# source the stuff in auth-slx-source.d, if it exists
 #
 PAM_AUTHTOK="${USER_PASSWORD}"
 readonly PAM_AUTHTOK
-for file in /opt/openslx/scripts/pam_script_auth.d/*; do
+for file in /opt/openslx/pam/hooks/auth-slx-source.d/*; do
 	[ -f "$file" ] || continue
 	( . "$file" ) || slxlog "pam-source-hooks" "Could not source '$file'."
 done
