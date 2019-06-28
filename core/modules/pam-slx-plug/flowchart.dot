@@ -1,0 +1,205 @@
+digraph {
+	ratio = 1.4137931034482; // For printing on A paper size
+	edge [labeldistance=2.5];
+	subgraph cluster_pam {
+		label = "pam_auth (common-auth)";
+
+		has_pam_exec_bwidm [label="has pam_exec_bwidm?", shape="diamond"];
+		has_krb5 [label="has /etc/krb5.conf?", shape="diamond"];
+		has_sssd [label="has sssd + config?", shape="diamond"];
+
+		pam_deny [style=filled, fillcolor="#ff7777"];
+		pam_cap [style=filled, fillcolor="#77ff77"];
+
+		pam_unix -> pam_exec_final [color="green"];
+		pam_unix -> has_pam_exec_bwidm [color=red];
+		has_pam_exec_bwidm -> pam_exec_bwidm [taillabel="yes"];
+		has_pam_exec_bwidm -> has_krb5 [taillabel="no"];
+
+		pam_exec_bwidm -> pam_exec_final [color="green"];
+		pam_exec_bwidm -> has_krb5 [color=red];
+
+		has_krb5 -> pam_krb5 [taillabel="yes"];
+		has_krb5 -> pam_exec_slx [taillabel="no"];
+
+		pam_krb5 -> pam_exec_slx;
+
+		pam_exec_slx -> pam_exec_final [color="green"];
+		pam_exec_slx -> has_sssd [color=red];
+
+		has_sssd -> pam_sss [taillabel="yes"];
+		has_sssd -> pam_faildelay [taillabel="no"];
+
+		pam_sss -> pam_exec_final [color="green"];
+		pam_sss -> pam_faildelay [color=red];
+
+		pam_faildelay -> pam_deny;
+
+		pam_exec_final -> pam_permit;
+
+		pam_permit -> pam_cap;
+	}
+
+	subgraph cluster_pam_exec_slx {
+		label = "/opt/openslx/pam/exec_auth";
+		exec_slx_start [label="start"];
+		exec_slx_end [label="end"];
+
+		exec_slx_stdinpw [label="Read pasword from stdin"];
+		exec_slx_colon [label="':' in Username?"];
+		exec_slx_check_user [label="Running as which user?"];
+		exec_slx_shadow [label="User in /etc/shadow?"];
+		exec_slx_etc_passwd [label="Does special /etc/passwd line exist?"];
+		exec_slx_source_auth [label="Source next file in /opt/openslx/pam/auth-source.d"];
+		exec_slx_check_auth_vars [label="Is USER_UID and USER_GID/USER_GROUP set?\n(Should be set by sourced file on success)"];
+		exec_slx_check_uid [label="Is USER_UID == 0, or not numeric?\nIs USER_GID numeric if not empty?"];
+		exec_slx_check_caps [label="Is $USER_NAME == $PAM_USER?\nDoes any variable contain newlines?"];
+		exec_slx_group [label="Resolve USER_GID or USER_GROUP, or create if necessary"];
+		exec_slx_tmphome [label="Set TEMP_HOME_DIR = $USER_HOME\nPERSISTENT_HOME_DIR = $TEMP_HOME_DIR/PERSISTENT"];
+		exec_slx_tmphome2 [label="Mount tmpfs to $TEMP_HOME_DIR (if\nnot already there), owned by user"];
+		exec_slx_tmphome3 [label="Mount tmpfs to $TEMP_HOME_DIR/.openslx, owned by root"];
+		exec_slx_tmphome4 [label="Write $REAL_ACCOUNT to .openslx/account"];
+		exec_slx_tmphome5 [label="Move $USER_INFO_FILE to .openslx/ldap"];
+		exec_slx_nethome_ok [label="Anything mounted at $PERSISTENT_HOME_DIR?"];
+		exec_slx_nethome [label="Source next file in /opt/openslx/pam/mount.d"];
+		exec_slx_note_persistent [label="Write WARNING.txt hinting at PERSISTENT subdir"];
+		exec_slx_note_usb [label="Write WARNING.txt hinting at no persistent storage"];
+		exec_slx_set_netpath [label="Set PERSISTENT_NETPATH to NETWORK_HOME,\nwith '/' replaced by '\\'"];
+		exec_slx_source_hook [label="Set PAM_AUTHTOK to user password and source\n/opt/openslx/pam/hooks/auth-slx-source.d/*"];
+
+		subgraph cluster_homedir {
+			label = "/opt/openslx/pam/common/homedir-passwd";
+			exec_slx_home [label="Sanitize USER_HOME or use default pattern"];
+			exec_slx_prune_passwd [label="Delete any user with same name or uid from /etc/passwd"];
+			exec_slx_write_passwd [label="Write user to /etc/passwd, with special marker"];
+
+			exec_slx_home -> exec_slx_prune_passwd -> exec_slx_write_passwd;
+		}
+
+		exec_slx_start -> exec_slx_stdinpw;
+
+		exec_slx_stdinpw -> exec_slx_colon [taillabel="ok"];
+		exec_slx_stdinpw -> exec_slx_end [taillabel="empty",color=red];
+
+		exec_slx_colon -> exec_slx_check_user [taillabel="no"];
+		exec_slx_colon -> exec_slx_end [taillabel="yes",color=red];
+
+		exec_slx_check_user -> exec_slx_etc_passwd [taillabel="$PAM_USER"];
+		exec_slx_check_user -> exec_slx_shadow [taillabel="root"];
+		exec_slx_check_user -> exec_slx_end [taillabel="other",color=red];
+
+		exec_slx_etc_passwd -> exec_slx_source_auth [taillabel="yes"];
+		exec_slx_etc_passwd -> exec_slx_end [taillabel="no",color=red];
+
+		exec_slx_shadow -> exec_slx_source_auth [taillabel="no"];
+		exec_slx_shadow -> exec_slx_end [taillabel="yes",color=red];
+
+		exec_slx_source_auth -> exec_slx_check_auth_vars;
+		exec_slx_source_auth -> exec_slx_check_uid [taillabel="no more files"];
+
+		exec_slx_check_auth_vars -> exec_slx_source_auth [taillabel="no"];
+		exec_slx_check_auth_vars -> exec_slx_check_uid [taillabel="yes"];
+
+		exec_slx_check_uid -> exec_slx_check_caps [taillabel="no"];
+		exec_slx_check_uid -> exec_slx_end [taillabel="yes",color=red];
+
+		exec_slx_check_caps -> exec_slx_group [taillabel="yes"];
+		exec_slx_check_caps -> exec_slx_end [taillabel="no",color=red];
+
+		exec_slx_group -> exec_slx_home;
+		exec_slx_write_passwd -> exec_slx_tmphome -> exec_slx_tmphome2 -> exec_slx_tmphome3 -> exec_slx_tmphome4 -> exec_slx_tmphome5;
+		exec_slx_tmphome5 -> exec_slx_nethome_ok;
+
+		exec_slx_nethome_ok -> exec_slx_note_persistent [taillabel="yes"];
+		exec_slx_nethome_ok -> exec_slx_nethome [taillabel="no"];
+
+		exec_slx_nethome -> exec_slx_nethome_ok;
+		exec_slx_nethome -> exec_slx_note_usb [taillabel="no more files"];
+
+		exec_slx_note_usb -> exec_slx_set_netpath;
+		exec_slx_note_persistent -> exec_slx_set_netpath;
+
+		exec_slx_set_netpath -> exec_slx_source_hook;
+
+		exec_slx_source_hook -> exec_slx_end;
+	}
+
+	subgraph cluster_pam_exec_final {
+		label = "/opt/openslx/pam/exec_auth_final";
+		exec_final_start [label="start"];
+		exec_final_end [label="end"];
+		exec_final_user [label="Running in root context?"];
+		exec_final_d [label="Execute all scripts in /opt/openslx/pam/hooks/auth-final-exec.d"];
+		exec_final_start -> exec_final_user;
+		exec_final_user -> exec_final_d [taillabel="yes"];
+		exec_final_user -> exec_final_end [taillabel="no"];
+		exec_final_d -> exec_final_end;
+	}
+
+	subgraph cluster_pam_exec_bwidm {
+		label = "/opt/openslx/scripts/pam_bwidm";
+		bwidm_start [label="start"];
+		bwidm_end [label="end"];
+		bwidm_stdinpw [label="Read password from stdin"];
+		bwidm_precon [label="Check for curl and mktemp"];
+		bwidm_tmpdir [label="Find usable tmpdir"];
+		bwidm_allowed [label="Check if enabled and org allowed"];
+		bwidm_check_cache [label="Does IdP cache exist?"];
+		bwidm_cache_writable [label="Is cache dir writable?"];
+		bwidm_download_list [label="Download IdP list"];
+		bwidm_lookup_idp [label="Lookup IdP URL"];
+		bwidm_addgroup [label="Make sure group bwidm exists"];
+		bwidm_pam_type [label="Which pam type?"];
+		bwidm_req_401 [label="Request with wrong password"];
+		bwidm_req_200 [label="Request with provided password"];
+		bwidm_etc_passwd [label="Make sure /etc/passwd exists"];
+
+		bwidm_start -> bwidm_stdinpw;
+		bwidm_stdinpw -> bwidm_precon [taillabel="ok"];
+		bwidm_stdinpw -> bwidm_end [taillabel="fail",color=red];
+
+		bwidm_precon -> bwidm_tmpdir;
+		bwidm_precon -> bwidm_end [taillabel="missing",color=red];
+
+		bwidm_tmpdir -> bwidm_allowed;
+
+		bwidm_allowed -> bwidm_check_cache [taillabel="yes"];
+		bwidm_allowed -> bwidm_end [taillabel="no",color=red];
+
+		bwidm_check_cache -> bwidm_lookup_idp [taillabel="yes"];
+		bwidm_check_cache -> bwidm_cache_writable [taillabel="no"];
+
+		bwidm_cache_writable -> bwidm_download_list [taillabel="yes"];
+		bwidm_cache_writable -> bwidm_end [taillabel="no",color=red];
+
+		bwidm_download_list -> bwidm_lookup_idp [taillabel="HTTP 2xx"];
+		bwidm_download_list -> bwidm_end [taillabel="<other>",color=red];
+
+		bwidm_lookup_idp -> bwidm_addgroup [taillabel="found"];
+		bwidm_lookup_idp -> bwidm_end [taillabel="not found",color=red];
+
+		bwidm_addgroup -> bwidm_pam_type [taillabel="ok"];
+		bwidm_addgroup -> bwidm_end [taillabel="fail",color="red"];
+
+		bwidm_pam_type -> bwidm_req_401 [taillabel="auth"];
+		bwidm_pam_type -> bwidm_end [taillabel="account",color=green];
+		bwidm_pam_type -> bwidm_end [label="<other>",color=red];
+
+		bwidm_req_401 -> bwidm_req_200 [taillabel="HTTP 401"];
+		bwidm_req_401 -> bwidm_end [taillabel="<other>",color=red];
+
+		bwidm_req_200 -> bwidm_etc_passwd [taillabel="HTTP 2xx"];
+		bwidm_req_200 -> bwidm_end [label="<other>",color=red];
+
+		bwidm_etc_passwd -> bwidm_end [taillabel="ok",color=green];
+		bwidm_etc_passwd -> bwidm_end [taillabel="fail",color=red];
+	}
+
+	exec_final_start -> pam_exec_final [arrowhead=none,penwidth=3];
+	exec_slx_start -> pam_exec_slx [arrowhead=none,penwidth=3];
+	bwidm_start -> pam_exec_bwidm [arrowhead=none,penwidth=3];
+
+	start [shape=none];
+	start -> pam_unix;
+
+}
