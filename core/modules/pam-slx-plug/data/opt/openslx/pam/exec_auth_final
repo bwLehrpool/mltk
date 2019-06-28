@@ -1,0 +1,39 @@
+#!/bin/ash
+
+# This is executed in the pam_auth phase, after any real
+# authentication module succeeded. It will execute all scripts in
+# /opt/openslx/pam/hooks/auth-final-exec.d
+# This is in contrast to /opt/openslx/pam/hooks/auth-slx-success.d
+# which only executes if one of the pam-slx-plugins succeeded authing,
+# but then offers further variables detailing the auth environment.
+
+export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/openslx/sbin:/opt/openslx/bin"
+
+# Remove password from stdin
+cat &> /dev/null &
+waitpid=$!
+
+# Only as root
+[ "$(whoami)" != "root" ] && exit 0
+
+source_dir=/opt/openslx/pam/hooks/auth-final-exec.d
+readonly source_dir
+
+[ -d "$source_dir" ] || exit 0
+
+for file in $source_dir/*; do
+	[ -e "$file" ] || continue # Dir empty, will be the unglobbed string
+	if ! [ -f "$file" ]; then
+		slxlog "pam-auth-final" "$file is not a file, ignoring"
+		continue
+	fi
+	if ! [ -x "$file" ]; then
+		slxlog "pam-auth-final" "$file is not executable!"
+		continue
+	fi
+	"$file" || slxlog "pam-auth-final" "$file didn't exit with code 0"
+done
+
+kill "$waitpid"
+
+exit 0

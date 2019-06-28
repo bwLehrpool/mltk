@@ -135,6 +135,7 @@ if grep -q '<slx-autogen>' "/etc/pam.d/common-auth"; then
 	cat >> "$tmpfile" <<-HERE
 		auth  optional   pam_faildelay.so delay=2123123
 		auth  requisite  pam_deny.so
+		auth  optional   pam_exec.so quiet /opt/openslx/pam/exec_auth_final
 		auth  required   pam_permit.so
 		auth  optional   pam_cap.so
 	HERE
