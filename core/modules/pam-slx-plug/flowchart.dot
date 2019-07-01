@@ -152,7 +152,7 @@ digraph {
 		bwidm_pam_type [label="Which pam type?"];
 		bwidm_req_401 [label="Request with wrong password"];
 		bwidm_req_200 [label="Request with provided password"];
-		bwidm_etc_passwd [label="Make sure /etc/passwd exists"];
+		bwidm_etc_passwd [label="Make sure /etc/passwd entry exists"];
 
 		bwidm_start -> bwidm_stdinpw;
 		bwidm_stdinpw -> bwidm_precon [taillabel="ok"];
