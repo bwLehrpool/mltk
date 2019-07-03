@@ -35,6 +35,17 @@ declare -rg VM_HOME="${HOME}/.vmware"
 # mltk generates a vmware config file with several version infos for vmware/player, read it
 $(safesource "${VMWARE_PLUGIN_DIR}/vmware.conf")
 
+# Determine maximum hw version
+# Try to tell from the xml files in this dir, and hope nobody added any
+gmax="$( find /etc/vmware/hostd/env/ -name "ws-*.xml" | grep -o '[0-9]*' | sort -nr | head -n 1 )"
+if [ -z "$gmax" ]; then
+	# Failed, guess major version number == max hw version, which unfortunately VMware decided to fuck up with
+	# VMware 15.1.0, which supports hw version 16
+	gmax="$( grep -m 1 -F '.product.version' /etc/vmware/config | grep -o '[0-9]*' | head -n 1 )"
+fi
+
+[ -n "$gmax" ] && maxhardwareversion="$gmax"
+
 # VMware start options
 # "-X": start in fullscreen
 declare -rg VM_START_OPTIONS="-X"
