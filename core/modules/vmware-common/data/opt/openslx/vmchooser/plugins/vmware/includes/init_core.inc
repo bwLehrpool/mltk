@@ -19,22 +19,22 @@ vmw_cap_hw_version() {
 
 # Temporary disk space for logs, etc...
 declare -rg VM_REDO_DIR="/tmp/virt/vmware/${USER}.$$"
-	
+
 # Dir for configs and vmem file
 declare -rg VM_CONF_DIR="/tmp/virt/vmware/${USER}.$$"
-	
+
 # The VMX file of the starting VM
 declare -rg VM_RUN_FILE="${VM_CONF_DIR}/run-vmware.conf"
-	
+
 # Users vmware config folder
 [ -z "$UID" ] && UID=$(id -u)
 [ -z "${HOME}" ] && declare -rg HOME=$(getent passwd "$UID" | awk -F ':' '{print $6}')
 [ -z "${HOME}" ] && slxlog "run-virt-vmware-home" "Could not get home directory of user $(whoami) ($UID)"
 declare -rg VM_HOME="${HOME}/.vmware"
-	
+
 # mltk generates a vmware config file with several version infos for vmware/player, read it
 $(safesource "${VMWARE_PLUGIN_DIR}/vmware.conf")
-	
+
 # VMware start options
 # "-X": start in fullscreen
 declare -rg VM_START_OPTIONS="-X"
