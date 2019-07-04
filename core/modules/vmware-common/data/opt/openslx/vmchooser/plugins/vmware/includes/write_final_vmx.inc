@@ -136,6 +136,7 @@ setup_usb() {
 	# Force autoconnect
 	sed -i '/^usb\.generic\.autoconnect/Id' "${TMPCONFIG}"
 	echo 'usb.generic.autoconnect = "TRUE"' >> "${TMPCONFIG}"
+	echo 'usb.mangleUsb3Speed = "TRUE"' >> "${TMPCONFIG}"
 
 	# See if there are any USB devices connected that we want to pass through immediately
 	get_usb_devices 'usb.autoConnect.deviceXXXXX = "0x%VENDOR%:0x%PRODUCT%"' \
