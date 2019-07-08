@@ -65,9 +65,9 @@ check_dns() {
 	fi
 	return 0
 }
+
 set_hostname() {
 	hostnamectl set-hostname "$1"
-	systemctl try-restart lightdm
 }
 
 if [ ! -e /opt/openslx/config ]; then
