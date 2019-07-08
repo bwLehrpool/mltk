@@ -2,12 +2,6 @@
 ################################################
 # Include: Sets core variables and directories #
 ################################################
-# Global variables needed for the core functionality
-declare -rg VMCHOOSER_DIR="/opt/openslx/vmchooser"
-declare -rg VMCHOOSER_CONF_DIR="$VMCHOOSER_DIR/config"
-declare -rg USER="$(whoami)"
-declare -rg TMPDIR="/tmp/virt/${USER}/$$"
-declare -rg CONFDIR="${TMPDIR}/metadata"
 
 # Check if the path to the logfile was given externally (by the wrapper)
 unset WRAPPED

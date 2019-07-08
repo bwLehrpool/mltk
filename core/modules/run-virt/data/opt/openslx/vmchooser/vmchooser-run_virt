@@ -32,6 +32,13 @@ readonly SELF
 # Useless without this
 . /opt/openslx/config
 
+# Global variables needed for the core functionality
+declare -rg VMCHOOSER_DIR="/opt/openslx/vmchooser"
+declare -rg VMCHOOSER_CONF_DIR="$VMCHOOSER_DIR/config"
+declare -rg USER="$(whoami)"
+declare -rg TMPDIR="/tmp/virt/${USER}/$$"
+declare -rg CONFDIR="${TMPDIR}/metadata"
+
 # Debug mode?
 if [ "x$1" = "x--debug" ]; then
 	shift
@@ -40,6 +47,23 @@ elif [ "$SLX_DEBUG_MODE" = "ON" ] || grep -qE '\bdebug\b' "/proc/cmdline"; then
 	DEBUG=true
 else
 	DEBUG=false
+fi
+
+# Check for existence of plugin
+if [ "x$1" = "x--query" ]; then
+	PLUGIN_ID="${2//[^a-z_\-]/}"
+	if [ -z "$PLUGIN_ID" ]; then
+		echo "Error: No plugin name given" >&2
+		exit 1
+	fi
+	if ! [ -f "$VMCHOOSER_DIR/plugins/$PLUGIN_ID/run-virt.include" ]; then
+		echo "Plugin '$PLUGIN_ID' does not exist." >&2
+		exit 1
+	fi
+	# Maybe in the future we want to output information about the plugin here
+	# to stdout in a simple to parse format like key=value....
+	echo "Plugin '$PLUGIN_ID' found" >&2
+	exit 0
 fi
 
 # This script expects the path to the xml file describing the VM to be started
