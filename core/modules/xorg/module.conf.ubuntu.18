@@ -48,7 +48,6 @@ REQUIRED_CONTENT_PACKAGES="
 			libegl1-mesa
 			libegl-mesa0
 			libgbm1
-			libcapnp-0.6.1
 			libwayland-client0
 			libwayland-server0
 			xkb-data
