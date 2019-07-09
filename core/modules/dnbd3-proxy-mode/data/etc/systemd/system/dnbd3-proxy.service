@@ -1,5 +1,6 @@
 [Unit]
 Description=DNBD3 proxy server
+Requires=setup-dnbd3-proxy.service
 After=setup-dnbd3-proxy.service
 
 [Service]

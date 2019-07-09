@@ -1,0 +1,9 @@
+[Unit]
+Description=Tweak network stack of %i for maximum throughput
+Wants=dhcpc@%i.service
+After=dhcpc@%i.service network-interface@%i.service
+
+[Service]
+Type=oneshot
+ExecStart=/opt/openslx/scripts/systemd-tweak_network %I
+

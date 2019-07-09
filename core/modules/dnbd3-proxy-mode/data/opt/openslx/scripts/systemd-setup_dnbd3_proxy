@@ -6,17 +6,50 @@ ERRLOG="/run/dnbd3-proxy.err"
 
 [ -s "$ERRLOG" ] && exit 0 # already ran and failed, don't do it again
 
+. /opt/openslx/bin/slx-tools
+. /opt/openslx/config
+
+# Normally, exit unclean to signal to systemd
+islocal=
+mingb=10
+if [ "$SLX_RUNMODE_MODULE" != "dnbd3" ]; then
+	# But if its local proxy mode, always exit 0 since we don't consider this an error
+	islocal=true
+	# Not a dnbd3 proxy, see if we have a large partition to try local caching
+	if [ "$SLX_DNBD3_SERVERS" = "127.0.0.1" ]; then
+		# Already been here, do nothing
+		exit 0
+	fi
+	[ "x$SLX_VM_DNBD3" != "xyes" ] && exit 0 # Do not want
+	[ -z "$SLX_DNBD3_SERVERS" ] && exit 0 # No servers!?
+	[ -z "$SLX_DNBD3_MIN_GB" ] && exit 0 # Disabled
+	[ "$SLX_DNBD3_MIN_GB" -ge "$mingb" ] || exit 0 # Disabled
+	mingb="$SLX_DNBD3_MIN_GB"
+fi
+
 # Log error to server and local file in /run.
 # The main startup script will check whether this file is > 0 bytes
 # and start in errormsg-mode.
 errormsg () {
 	echo "$@" >> "$ERRLOG"
-	slxlog -s -e "dnbd3-setup" "$@"
+	if [ -z "$islocal" ]; then
+		slxlog -s -e "dnbd3-setup" "$@"
+		exit 1
+	fi
+	exit 0
 }
 
-# Get size of disk/device at given path, in MB
+# Get size of disk/device at given path, in GB
 disksize () {
-	df -k "$1" | tail -n 1 | awk '{ print substr($2, 0, length($2)-3) }'
+	local val len
+	val="$( fs_path_space "$1" )"
+	val="${val#* }"
+	len="${#val}"
+	if [ "$len" -lt 7 ]; then
+		echo 0
+	else
+		echo "${val:0:$(( len - 6 ))}"
+	fi
 }
 
 # Creates the DNBD3 server configuration under DNBD3_CONF_DIR
@@ -25,29 +58,25 @@ if ! mkdir -p "${DNBD3_CONF_DIR}"; then
 	errormsg "Failed to create '${DNBD3_CONF_DIR}'."
 fi
 
-# Checks if the persistent partition (MBR-ID 45 / GPT-LABEL OpenSLX-ID45)
-# is present, fallback to /tmp
-DNBD3_BASE_DIR="/opt/openslx/persistent"
-if grep -q "^/dev/.* ${DNBD3_BASE_DIR} .*rw" /proc/mounts \
-		&& [ -k "${DNBD3_BASE_DIR}/data" ] \
-		&& [ "$(disksize "${DNBD3_BASE_DIR}/data")" -gt 12000 ]; then
-	# setup_partitions creates a data folder in ID45
-	# TODO: Partition might be filled with garbage belonging to other users, so
-	# the usable space for dnbd3 might be much lower.
-	# avail = "disk size" - "du -s $DNBD3_BASE_DIR"
-	DNBD3_BASE_DIR="${DNBD3_BASE_DIR}/data"
+# We prefer ID45 for storage (if >= 10GB), otherwise
+# fallback to /tmp if it's persistent and >= 10GB.
+# For local caching, /tmp is never used.
+d="/opt/openslx/persistent"
+dsd="$(disksize "$d")"
+e="/tmp"
+dse="$(disksize "$e")"
+if fs_path_ismountpoint "$d" && [ -k "$d/data" ] && [ "$dsd" -ge "$mingb" ]; then
+	DNBD3_BASE_DIR="$d/data"
+	disksize="$dsd"
+elif [ -z "$islocal" ] && ! fs_path_isvolatile "$e" && [ "$dse" -ge "$mingb" ]; then
+	DNBD3_BASE_DIR="$e"
+	disksize="$dse"
+	# We're using /tmp, don't warn about low space
+	touch "/run/openslx/no-ram-warning"
 else
-	# try /tmp fallback
-	DNBD3_BASE_DIR="/tmp"
-	if ! grep -q '^/dev/.* '"${DNBD3_BASE_DIR}"' .*rw' /proc/mounts \
-		|| ! [ "$(disksize "${DNBD3_BASE_DIR}")" -gt 12000 ]; then
-		# no sane fallback possible
-		errormsg "Neither a persistent part (ID45) nor /tmp (ID44) are available, or they are < 12GB"
-	else
-		# We're using /tmp, don't warn about low space
-		touch "/run/openslx/no-ram-warning"
-	fi
+	errormsg "Neither a persistent part (ID45) nor /tmp (ID44) are available, or they are < ${mingb}GB"
 fi
+
 # now try to create the actual folder used by the server
 DNBD3_DATA_DIR="${DNBD3_BASE_DIR}/dnbd3"
 if ! mkdir -p "${DNBD3_DATA_DIR}"; then
@@ -60,7 +89,7 @@ if ! mkdir -p "${DNBD3_DATA_DIR}"; then
 fi
 
 if [ ! -d "${DNBD3_DATA_DIR}" ]; then
-	errormsg "Failed to create '${DNBD3_BASE_DIR}(.[0-$i])'"
+	errormsg "Failed to create '${DNBD3_BASE_DIR}/dnbd3' or any of the fallback variants"
 fi
 if ! chown -R dnbd3:dnbd3 "${DNBD3_DATA_DIR}"; then
 	errormsg "Failed to chown '${DNBD3_DATA_DIR}' to dnbd3."
@@ -71,37 +100,124 @@ fi
 
 # Done with sanity checks, now create configs: server.conf & alt-servers
 # Using the information given by the server in /opt/openslx/config
-. /opt/openslx/config
 
-DNBD3_SPARSE="false"
-DNBD3_BGR="false"
-DNBD3_LOOKUP="false"
-DNBD3_SERVER_PENALTY=2000 # no BGR = don't like other servers connecting so much
-if [ -n "${SLX_DNBD3_BGR}" ]; then
-	DNBD3_BGR="true"
-	DNBD3_SERVER_PENALTY=500 # much better
-	# Only do chained lookup of image if we're a global proxy with BGR
-	[ -z "${SLX_DNBD3_WHITELIST}" ] && DNBD3_LOOKUP="true"
-fi
-if [ -n "${SLX_DNBD3_SPARSE}" ]; then
+# helper to echo given list of IPs to ${DNBD3_CONF_DIR}/alt-servers
+# optionally takes a single char prefix as first param and
+# adds it to the IP (for private dnbd3 servers)
+# Also sets FOUND_SAT if satellite IP was seen
+MY_IPS=$(ip a | grep '^\s*inet\s' | awk '{print $2}')
+FOUND_SAT=
+add_alt_server() {
+	local PRE=
+	if [ "${#1}" = "1" ]; then
+		PRE="$1"
+		shift
+	fi
+	for ALT in "$@"; do
+		for ip in $MY_IPS; do
+			[ "x$ALT" = "x${ip%/*}" ] && return 0 # Ignore self
+		done
+		echo "${PRE}${ALT}" >> "${DNBD3_CONF_DIR}/alt-servers"
+		[ "x${ALT}" = "x${SLX_PXE_SERVER_IP}" ] && FOUND_SAT="oui"
+	done
+	return 0
+}
+
+rm -f -- "${DNBD3_CONF_DIR}/alt-servers"
+
+# Local caching mode?
+if [ -n "$islocal" ]; then
+
+	# Local caching mode.
 	DNBD3_SPARSE="true"
-fi
-# Determine if we need sparse mode, or override BGR
-cache_size=$(disksize "$DNBD3_DATA_DIR") # MB
-if ! [ "$cache_size" -gt 120000 ]; then
-	# less than 120GiB or NaN, force
-	[ "$DNBD3_BGR" = "true" ] && slxlog -s -e "dnbd3-setup-small" "Cache partition < 120GiB, forcing background replication OFF and sparse mode ON"
-	DNBD3_SPARSE="true"
-	DNBD3_BGR="false"
-	DNBD3_SERVER_PENALTY=5000
+	if [ -n "$SLX_DNBD3_MIN_GB_HASH" ] && [ "$SLX_DNBD3_MIN_GB_HASH" -gt 0 ] && [ "$disksize" -ge "$SLX_DNBD3_MIN_GB_HASH" ]; then
+		DNBD3_BGR="hashblock"
+	else
+		DNBD3_BGR="false"
+	fi
 	DNBD3_LOOKUP="false"
-elif [ "$cache_size" -gt 2000000 ]; then
-	# force non-sparse on > 2TiB
-	DNBD3_SPARSE="false"
-fi
+	DNBD3_SERVER_PENALTY="500000"
+	MAX_REPLICATION_SIZE=500
 
-MAX_REPLICATION_SIZE=$(( cache_size / 6 ))
-[ "$MAX_REPLICATION_SIZE" -lt 100000 ] && MAX_REPLICATION_SIZE=100000
+	# Use DNBD3 servers from openslx config and then patch it to say localhost
+	add_alt_server '-' ${SLX_DNBD3_SERVERS}
+	sed -i "s/^SLX_DNBD3_SERVERS=.*$/SLX_DNBD3_SERVERS='127.0.0.1'/" '/opt/openslx/config'
+
+else
+
+	# Proxy mode
+	DNBD3_SPARSE="false"
+	DNBD3_BGR="false"
+	DNBD3_LOOKUP="false"
+	DNBD3_SERVER_PENALTY=2000 # no BGR = don't like other servers connecting so much
+	if [ -n "${SLX_DNBD3_BGR}" ]; then
+		DNBD3_BGR="true"
+		DNBD3_SERVER_PENALTY=500 # much better
+		# Only do chained lookup of image if we're a global proxy with BGR
+		[ -z "${SLX_DNBD3_WHITELIST}" ] && DNBD3_LOOKUP="true"
+	fi
+	if [ -n "${SLX_DNBD3_SPARSE}" ]; then
+		DNBD3_SPARSE="true"
+	fi
+	# Determine if we need sparse mode, or override BGR
+	if ! [ "$disksize" -gt 120 ]; then
+		# less than 120GiB or NaN, force
+		[ "$DNBD3_BGR" = "true" ] && slxlog -s -e "dnbd3-setup-small" "Cache partition < 120GiB, forcing background replication OFF and sparse mode ON"
+		DNBD3_SPARSE="true"
+		DNBD3_BGR="false"
+		DNBD3_SERVER_PENALTY=5000
+		DNBD3_LOOKUP="false"
+	elif [ "$disksize" -gt 2000 ]; then
+		# force non-sparse on > 2TiB
+		DNBD3_SPARSE="false"
+	fi
+
+	MAX_REPLICATION_SIZE=$(( disksize / 6 ))
+	[ "$MAX_REPLICATION_SIZE" -lt 100 ] && MAX_REPLICATION_SIZE=100
+
+	add_alt_server ${SLX_DNBD3_PUBLIC}
+	add_alt_server '-' ${SLX_DNBD3_PRIVATE}
+
+	rm -f "/opt/openslx/iptables/rules.d/99-dnbd3"
+	# now create iptables helper rules
+	if [ -n "${SLX_DNBD3_WHITELIST}" ] && [ "${SLX_DNBD3_WHITELIST%/*}" != "${SLX_DNBD3_WHITELIST}" ]; then
+		# XXX: Remove the second check above after ~ 2018-10-01 -- it's a workaround for broken slx-admin
+		# that won't properly calculate CIDR notion resulting in a severely locked down proxy :(
+		DNBD3_IPTABLES_CONF="$(mktemp)"
+		echo '#!/bin/ash' > "${DNBD3_IPTABLES_CONF}"
+		for CIDR in ${SLX_DNBD3_WHITELIST} ${SLX_KCL_SERVERS}; do
+			echo "iptables -I ipt-helper-INPUT 1 -p tcp -s ${CIDR} --dport ${DNBD3_PORT} -j ACCEPT"
+		done >> "${DNBD3_IPTABLES_CONF}"
+		echo "iptables -A ipt-helper-INPUT -p tcp --dport ${DNBD3_PORT} -j REJECT" >> "${DNBD3_IPTABLES_CONF}"
+		chmod +x "${DNBD3_IPTABLES_CONF}"
+		mv -f "$DNBD3_IPTABLES_CONF" "/opt/openslx/iptables/rules.d/99-dnbd3"
+	fi
+
+	(
+		echo "*******************"
+		echo "*** DNBD3 Proxy ***"
+		echo "*******************"
+	) | tee -a "/etc/issue" -a "/etc/issue.net" >> "/opt/openslx/etc/issue.template"
+
+	# Create a crontab for rebooting - if everything is fine, once a weekend,
+	# on failure, reboot every night, hoping things will get better (...)
+	M=$(( RANDOM % 60 ))
+	H=$(( RANDOM % 5 ))
+	if [ -s "$ERRLOG" ]; then
+		W="*"
+	else
+		W="0"
+	fi
+	cat > "/etc/cron.d/dnbd3-reboot" <<EOF
+# OpenSLX: Reboot proxy at night
+SHELL=/bin/ash
+PATH=/usr/sbin:/usr/bin:/sbin:/bin:/opt/openslx/sbin:/opt/openslx/bin
+
+$M $H	* * $W	root	reboot
+EOF
+	#
+
+fi
 
 DNBD3_PORT=5003
 rm -f "${DNBD3_CONF_DIR}/server.conf"
@@ -121,35 +237,12 @@ uplinkTimeout=5000
 clientTimeout=15000
 
 [limits]
-maxReplicationSize=${MAX_REPLICATION_SIZE}M
+maxReplicationSize=${MAX_REPLICATION_SIZE}G
 
 [logging]
 consoleMask=ERROR WARNING MINOR INFO
 EOF
 
-MY_IPS=$(ip a | grep '^\s*inet\s' | awk '{print $2}')
-
-# helper to echo given list of IPs to ${DNBD3_CONF_DIR}/alt-servers
-# optionally takes a single char prefix as first param and
-# adds it to the IP (for private dnbd3 servers)
-# Also sets FOUND_SAT if satellite IP was seen
-add_alt_server() {
-	local PRE=
-	[ "x$1" = "x-" ] && PRE='-' && shift
-	for ALT in "$@"; do
-		for ip in $MY_IPS; do
-			[ "x$ALT" = "x${ip%/*}" ] && return 0 # Ignore self
-		done
-		echo "${PRE}${ALT}" >> "${DNBD3_CONF_DIR}/alt-servers"
-		[ "x${ALT}" = "x${SLX_PXE_SERVER_IP}" ] && FOUND_SAT="oui"
-	done
-	return 0
-}
-
-rm -f "${DNBD3_CONF_DIR}/alt-servers"
-FOUND_SAT=
-add_alt_server ${SLX_DNBD3_PUBLIC}
-add_alt_server '-' ${SLX_DNBD3_PRIVATE}
 # To this day, only the sat IP is in SLX_KCL_SERVERS afaik
 [ -z "${FOUND_SAT}" ] && add_alt_server ${SLX_KCL_SERVERS}
 chmod -R a+Xr "${DNBD3_CONF_DIR}"
@@ -160,43 +253,10 @@ for SRV in ${SLX_KCL_SERVERS}; do
 	echo "$SRV ALL" >> "${DNBD3_CONF_DIR}/rpc.acl"
 done
 
-rm -f "/opt/openslx/iptables/rules.d/99-dnbd3"
-# now create iptables helper rules
-if [ -n "${SLX_DNBD3_WHITELIST}" ] && [ "${SLX_DNBD3_WHITELIST%/*}" != "${SLX_DNBD3_WHITELIST}" ]; then
-	# XXX: Remove the second check above after ~ 2018-10-01 -- it's a workaround for broken slx-admin
-	# that won't properly calculate CIDR notion resulting in a severely locked down proxy :(
-	DNBD3_IPTABLES_CONF="$(mktemp)"
-	echo '#!/bin/ash' > "${DNBD3_IPTABLES_CONF}"
-	for CIDR in ${SLX_DNBD3_WHITELIST} ${SLX_KCL_SERVERS}; do
-		echo "iptables -I ipt-helper-INPUT 1 -p tcp -s ${CIDR} --dport ${DNBD3_PORT} -j ACCEPT"
-	done >> "${DNBD3_IPTABLES_CONF}"
-	echo "iptables -A ipt-helper-INPUT -p tcp --dport ${DNBD3_PORT} -j REJECT" >> "${DNBD3_IPTABLES_CONF}"
-	chmod +x "${DNBD3_IPTABLES_CONF}"
-	mv -f "$DNBD3_IPTABLES_CONF" "/opt/openslx/iptables/rules.d/99-dnbd3"
+if [ -n "$islocal" ]; then
+	# Start service, is not symlinked when not in proxy mode
+	systemctl --no-block start dnbd3-proxy.service
 fi
-
-(
-	echo "*******************"
-	echo "*** DNBD3 Proxy ***"
-	echo "*******************"
-) | tee -a "/etc/issue" | tee -a "/etc/issue.net" >> "/opt/openslx/etc/issue.template"
-
-# Create a crontab for rebooting - if everything is fine, once a weekend,
-# on failure, reboot every night, hoping things will get better (...)
-M=$(( RANDOM % 60 ))
-H=$(( RANDOM % 5 ))
-if [ -s "$ERRLOG" ]; then
-	W="*"
-else
-	W="0"
-fi
-cat > "/etc/cron.d/dnbd3-reboot" <<EOF
-# OpenSLX: Reboot proxy at night
-SHELL=/bin/ash
-PATH=/usr/sbin:/usr/bin:/sbin:/bin:/opt/openslx/sbin:/opt/openslx/bin
-
-$M $H	* * $W	root	reboot
-EOF
 
 exit 0
 
