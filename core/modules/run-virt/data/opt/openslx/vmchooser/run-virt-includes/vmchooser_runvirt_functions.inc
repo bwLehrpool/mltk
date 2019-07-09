@@ -176,8 +176,9 @@ cleanexit() {
 
 	# first send the logfile (in case the user does not close the error before using magic keys e.g.)
 	# for any other error types besides 'user'. Do no slxlog if we run wrapped (from /opt/openslx/scripts/vmchooser-run_virt)
-	[ "x${EXIT_TYPE}" != "xuser" ] && ! isset WRAPPED && \
-		slxlog "runvirt-exit-${EXIT_TYPE}" "Critical error happened in '${BASH_SOURCE[1]}:${FUNCNAME[1]}', see logs." "${LOGFILE}"
+	if [ "x${EXIT_TYPE}" != "xuser" ]; then
+		writelog "Critical error happened in '${BASH_SOURCE[1]}:${FUNCNAME[1]}'"
+	fi
 
 	# finally display the error
 	error_user "${ERR_TITLE}" "
