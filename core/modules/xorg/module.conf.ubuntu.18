@@ -11,6 +11,7 @@ REQUIRED_INSTALLED_PACKAGES="
 			libglx0
 			libegl1
 			libegl1-mesa
+			libegl-mesa0
 			xkb-data
 			x11-xkb-utils
 			x11-xserver-utils
@@ -45,6 +46,7 @@ REQUIRED_CONTENT_PACKAGES="
 			@libgbm1
 			libegl1
 			libegl1-mesa
+			libegl-mesa0
 			libgbm1
 			libcapnp-0.6.1
 			libwayland-client0
