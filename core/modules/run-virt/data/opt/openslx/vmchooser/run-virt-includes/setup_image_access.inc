@@ -13,7 +13,6 @@
 # indicate to the virt plugin that it doesn't need to
 # handle creating a temporary CoW layer itself.
 
-
 # Helper to cleanup the image mounted with dnbd3-fuse
 cleanup_dnbd3() {
 	if ! isset DNBD3_MOUNT_POINT; then
@@ -21,7 +20,8 @@ cleanup_dnbd3() {
 		return 1
 	fi
 	# try to umount it now
-	for timeout in 1 1 1 FAIL; do
+	for timeout in 1 1 1 2 2 3 FAIL; do
+		fs_path_ismountpoint "${DNBD3_MOUNT_POINT}" || break
 		fusermount -u "${DNBD3_MOUNT_POINT}" && break
 		writelog "dnbd3 still busy...."
 		[ "$timeout" = "FAIL" ] && break
@@ -86,7 +86,6 @@ setup_image_access() {
 	writelog "Setting up virtual hard disk access for virtualizer/emulator ..."
 	unset VM_DISKFILE_RO VM_DISKFILE_RW
 	declare -g VM_DISKFILE_RO VM_DISKFILE_RW
-
 	run_hooks "image-access"
 
 	if [ -n "$VM_DISKFILE_RW" ]; then

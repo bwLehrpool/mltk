@@ -120,6 +120,7 @@ add_cleanup() {
 # EXIT_REASON should contain a user-friendly message to print to the user.
 # it can be prefixed with err.\S+, which will serve as a translation identifier
 cleanexit() {
+	trap "" SIGHUP SIGINT SIGTERM EXIT
 	writelog "Cleanexit '$1' triggered by '${BASH_SOURCE[1]}:${FUNCNAME[1]}'"
 	sleep 1
 	while isset CLEANUP_TASKS; do
@@ -133,6 +134,9 @@ cleanexit() {
 			writelog "Failed to run cleanup function '$TASK'! Exit code: $RET"
 		fi
 	done
+
+	# kill potential remaining background jobs
+	kill $(jobs -p)
 
 	# If we're not in debug mode, remove all temporary files
 	if notempty SLX_DEBUG && isset TMPDIR; then
@@ -172,12 +176,6 @@ cleanexit() {
 		# this should never happen if EXIT_REASON is properly
 		# used when calling cleanexit !
 		ERR_TEXT="Unbekannter Fehler"
-	fi
-
-	# first send the logfile (in case the user does not close the error before using magic keys e.g.)
-	# for any other error types besides 'user'. Do no slxlog if we run wrapped (from /opt/openslx/scripts/vmchooser-run_virt)
-	if [ "x${EXIT_TYPE}" != "xuser" ]; then
-		writelog "Critical error happened in '${BASH_SOURCE[1]}:${FUNCNAME[1]}'"
 	fi
 
 	# finally display the error

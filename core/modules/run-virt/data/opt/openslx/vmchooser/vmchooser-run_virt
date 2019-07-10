@@ -31,6 +31,7 @@ readonly SELF
 
 # Useless without this
 . /opt/openslx/config
+. /opt/openslx/bin/slx-tools
 
 # Global variables needed for the core functionality
 declare -rg VMCHOOSER_DIR="/opt/openslx/vmchooser"
@@ -86,7 +87,10 @@ main() {
 		exit 1
 	fi
 
-	trap 'trap "" SIGINT SIGTERM; cleanexit' SIGINT SIGTERM
+	trap 'cleanexit $?' EXIT
+	trap 'cleanexit 129' SIGHUP
+	trap 'cleanexit 130' SIGINT
+	trap 'cleanexit 143' SIGTERM
 
 	# Starting sourcing the includes files. Note that the critical ones should use
 	# the '--exit' option of safesource to trigger cleanexit in case of a corrupted/bad
@@ -173,7 +177,6 @@ main() {
 
 	cleanexit 0
 }
-
 # Detach
 main &
 RUNVIRT_PID="$!"
