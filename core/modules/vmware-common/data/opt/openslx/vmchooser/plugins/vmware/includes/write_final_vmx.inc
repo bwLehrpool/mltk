@@ -139,8 +139,8 @@ setup_usb() {
 	echo 'usb.mangleUsb3Speed = "TRUE"' >> "${TMPCONFIG}"
 
 	# Workaround for old VMs
-	if grep -q -i '^ehci\.present.*TRUE' \
-		&& ! grep -q -i '^usb\.present'; then
+	if grep -q -i '^ehci\.present.*TRUE' "${TMPCONFIG}" \
+		&& ! grep -q -i '^usb\.present' "${TMPCONFIG}"; then
 		echo 'usb.present = "TRUE"' >> "${TMPCONFIG}"
 	fi
 
