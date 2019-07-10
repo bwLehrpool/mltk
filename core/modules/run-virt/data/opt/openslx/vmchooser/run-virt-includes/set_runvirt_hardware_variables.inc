@@ -31,24 +31,28 @@ set_virt_memory() {
 		EXIT_TYPE="internal" EXIT_REASON="Konnte die Größe des Arbeitsspeichers nicht ermitteln!" cleanexit 1
 	fi
 
-	# Amount of memory for the VM. Be generous if diff is written to HDD
+	# Calculare amount of memory for the VM. Be generous if diff is written to HDD.
+	# First, determine how much should be left to the host system. Minimum is 1GB.
 	local min=1024
 	local reserve max
-	if notempty TMPDIR_NOT_RAM; then
+	if $TMPDIR_IN_RAM; then
+		# tmp in RAM, so reserve a lot for the system since that is where the HDD diff goes.
+		reserve=65
+		max=8192 # But max. 8GB
+	else
+		# We have a backing store for the HDD diff, be generous
 		if lsmod | grep -q '^nvidia'; then
+			# With nvidia cards, the host needs a bit more RAM.
 			max=2800
 			reserve=28
 		else
 			max=1800
 			reserve=21
 		fi
-	else
-		reserve=65
-		max=8192
 	fi
 
 	# Calculate absulute amount of RAM that should stay available to the host
-	local reserve="$(( ( HOST_MEM_TOTAL * reserve ) / 100 ))"
+	reserve="$(( ( HOST_MEM_TOTAL * reserve ) / 100 ))"
 	# Respect some upper and lower bounds for the host amount
 	[ "$reserve" -lt "$min" ] && reserve="$min"
 	[ "$reserve" -gt "$max" ] && reserve="$max"

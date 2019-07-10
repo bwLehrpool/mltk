@@ -11,14 +11,15 @@ fi
 
 # Check that /tmp/virt is not in RAM.
 # Either mounted directly (e.g. NFS) or backed by hdd mounted /tmp.
-# This variable is empty (but set!) if /tmp/virt isn't backed at all
-# else it will be non-empty (check with helper function 'notempty').
-declare -g TMPDIR_NOT_RAM=
-if ! dir_on_tmpfs /tmp/virt ; then
+# This variable will be true or false
+declare -g TMPDIR_IN_RAM=false
+if fs_path_isvolatile /tmp/virt ; then
+	TMPDIR_IN_RAM=true
+	writelog "/tmp/virt is in RAM, will allocate little RAM to VMs."
+else
 	writelog "/tmp/virt is not in RAM, will allocate more RAM to VMs."
-	TMPDIR_NOT_RAM=1
-	readonly TMPDIR_NOT_RAM
 fi
+readonly TMPDIR_IN_RAM
 
 # Get a unique VM_ID for the current invocation
 get_vm_id

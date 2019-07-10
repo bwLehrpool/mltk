@@ -499,33 +499,6 @@ clean_string() {
 	fi
 }
 
-# Helper to check whether given directory resides in RAM, either
-# by being mounted as tmpfs or not mounted at all in which case
-# we assume the same. Returns 0 if so, 1 otherwise.
-dir_on_tmpfs() {
-	local current_dir="$1"
-	while [ -n "$current_dir" ]; do
-		local mount_line="$(awk -v dir="$current_dir" '$2 == dir' /proc/mounts)"
-		if [ -z "$mount_line" ]; then
-			# check its parent directory
-			current_dir="${current_dir%/*}"
-			continue
-		fi
-		[ "x$(cut -d' ' -f3 <<< ${mount_line})" == "xtmpfs" ]
-		return $?
-	done
-	# NG: check if / is fully backed by hard drive
-	local dmsetup_state="/run/openslx/dmsetup.state"
-	if [ -s "$dmsetup_state" ]; then
-		local dnbd3_cow_dev="$SLX_DNBD3_DEVICE_COW"
-		[ -z "$dnbd3_cow_dev" ] && dnbd3_cow_dev="/dev/mapper/root"
-		grep -qE "^${dnbd3_cow_dev}\s+/\s+type=0" "$dmsetup_state"
-		return $?
-	fi
-	# else assume old-gen were / was in RAM
-	return 0
-}
-
 # Helper to detect given cpu flags.
 # If more than one flag is given, assume that matching
 # any of them is sufficient.
