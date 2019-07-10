@@ -18,67 +18,62 @@ set_vm_hw_limits() {
 	# FIXME depending on the guest OS for now
 	# (sadly does not support all the exotic OSs the
 	# the world has even seen like vmware plugin :<)
-	declare -g VIRTCMD=
+	local bits=64
 	case "${VM_OS_TYPE}" in
 		beos*)
-			VIRTCMD="qemu-system-i386"
-			VIRTCMDOPTS="${VIRTCMDOPTS} -machine accel=tcg"
+			bits=32
 			SOUND_DEV="sb16"
 			;;
 		win3*|win*3*|Win*3*)
-			VIRTCMD="qemu-system-i386"
-			VIRTCMDOPTS="${VIRTCMDOPTS} -machine accel=tcg"
+			bits=32
 			SOUND_DEV="sb16"
 			MAXMEM=32
 			;;
 		win95*|Win*95)
-			VIRTCMD="qemu-system-i386"
-			VIRTCMDOPTS="${VIRTCMDOPTS} -machine accel=tcg"
+			bits=32
 			MAXMEM=96
 			;;
 		win98)
-			VIRTCMD="qemu-system-i386"
-			VIRTCMDOPTS="${VIRTCMDOPTS} -machine accel=tcg"
+			bits=32
 			MAXMEM=256
 			;;
 		winme*|windowsme*)
-			VIRTCMD="qemu-system-i386"
-			VIRTCMDOPTS="${VIRTCMDOPTS} -machine accel=tcg"
+			bits=32
 			SOUND_DEV="ac97"
 			MAXMEM=384
 			;;
 		winxp*64|windowsxp*64)
-			VIRTCMD="qemu-system-x86_64"
-			VIRTCMDOPTS="${VIRTCMDOPTS} -machine accel=kvm"
 			SOUND_DEV="ac97"
 			;;
 		windows7|windows8|windows9)
-			VIRTCMD="qemu-system-x86_64"
-			VIRTCMDOPTS="${VIRTCMDOPTS} -machine accel=kvm"
 			SOUND_DEV="ac97"
 			MAXMEM="8000"
 			MAXCORES="4"
 			;;
 		windows7-64|windows8-64|windows9-64)
-			VIRTCMD="qemu-system-x86_64"
-			VIRTCMDOPTS="${VIRTCMDOPTS} -machine accel=kvm"
 			SOUND_DEV="ac97"
 			MAXMEM="32000"
 			MAXCORES="8"
 			;;
 		*64)
-			VIRTCMD="qemu-system-x86_64"
-			VIRTCMDOPTS="${VIRTCMDOPTS} -machine accel=kvm"
 			MAXMEM="16000"
 			MAXCORES="4"
 			;;
 		*)
-			VIRTCMD="qemu-system-i386"
-			VIRTCMDOPTS="${VIRTCMDOPTS} -machine accel=kvm"
+			bits=32
 			MAXMEM="8000"
 			MAXCORES="1"
 			;;
 	esac
+	declare -g VIRTCMD
+	if [ "$bits" = 32 ]; then
+		declare -rg VIRTCMD="qemu-system-i386"
+		VIRTCMDOPTS+=( "-machine" "accel=tcg" ) # TODO: 32bit VMs can't use kvm!?
+	else # 64 bit
+		declare -rg VIRTCMD="qemu-system-x86_64"
+		VIRTCMDOPTS+=( "-machine" "accel=kvm" )
+	fi
+
 
 	# check for allocated cores
 	declare -rg HOST_CORE_COUNT="${CPU_CORES}"

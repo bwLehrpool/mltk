@@ -13,7 +13,7 @@ setup_network() {
 	declare -rg NIC_MODEL="e1000"
 
 	# add MAC address and network card model
-	VIRTCMDOPTS="${VIRTCMDOPTS} -device ${NIC_MODEL},mac=${VM_MAC_ADDR},netdev=guestnet0"
+	VIRTCMDOPTS+=( "-device" "${NIC_MODEL},mac=${VM_MAC_ADDR},netdev=guestnet0" )
 
 	# TODO support different network kinds for lectures in bwlehrpool-suite, just NAT for now
 	declare -g NETWORK_MODE="nat"
@@ -37,18 +37,18 @@ setup_network() {
 	fi
 
 	case "${NETWORK_MODE}" in
-	  nat*)
-	    VIRTCMDOPTS="${VIRTCMDOPTS} -netdev bridge,br=nat1,id=guestnet0,helper=${QEMU_BRIDGE_HELPER}"
-	  ;;
-	  bridge*)
-	    VIRTCMDOPTS="${VIRTCMDOPTS} -netdev bridge,br=br0,id=guestnet0,helper=${QEMU_BRIDGE_HELPER}"
-	  ;;
-	  host*)
-	    VIRTCMDOPTS="${VIRTCMDOPTS} -netdev bridge,br=vsw2,id=guestnet0,helper=${QEMU_BRIDGE_HELPER}"
-	  ;;
-	  user*|*)
-	    VIRTCMDOPTS="${VIRTCMDOPTS} -netdev user,id=guestnet0"
-	  ;;
+	nat*)
+		VIRTCMDOPTS+=( "-netdev" "bridge,br=nat1,id=guestnet0,helper=${QEMU_BRIDGE_HELPER}" )
+		;;
+	bridge*)
+		VIRTCMDOPTS+=( "-netdev" "bridge,br=br0,id=guestnet0,helper=${QEMU_BRIDGE_HELPER}" )
+		;;
+	host*)
+		VIRTCMDOPTS+=( "-netdev" "bridge,br=vsw2,id=guestnet0,helper=${QEMU_BRIDGE_HELPER}" )
+		;;
+	user*|*)
+		VIRTCMDOPTS+=( "-netdev" "user,id=guestnet0" )
+		;;
 	esac
 }
 

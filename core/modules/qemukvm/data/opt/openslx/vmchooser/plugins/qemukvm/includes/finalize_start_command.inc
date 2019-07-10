@@ -21,27 +21,27 @@
 finalize_start_command() {
 
 	# set cpu type
-	VIRTCMDOPTS="${VIRTCMDOPTS} -cpu host"
+	VIRTCMDOPTS+=( "-cpu" "host" )
 	# set cpu cores
-	VIRTCMDOPTS="${VIRTCMDOPTS} -smp ${CPU_CORES}"
+	VIRTCMDOPTS+=( "-smp" "${CPU_CORES}" )
 
 	# set RAM
-	VIRTCMDOPTS="${VIRTCMDOPTS} -m ${VM_MEM}"
-	
+	VIRTCMDOPTS+=( "-m" "${VM_MEM}" )
+
 	# special feature for real and virtual floppy disks
-	isset FLOPPY_0 && VIRTCMDOPTS="${VIRTCMDOPTS} -fda ${FLOPPY_0}"
-	isset SLX_FLOPPY_IMG && VIRTCMDOPTS="${VIRTCMDOPTS} -fdb ${SLX_FLOPPY_IMG}"
-	
+	isset FLOPPY_0 && VIRTCMDOPTS+=( "-fda" "${FLOPPY_0}" )
+	isset SLX_FLOPPY_IMG && VIRTCMDOPTS+=( "-fdb" "${SLX_FLOPPY_IMG}" )
+
 	# add optical drive if available
-	isset CDROM_0 && VIRTCMDOPTS="${VIRTCMDOPTS} -cdrom ${CDROM_0}"
-	
+	isset CDROM_0 && VIRTCMDOPTS+=( "-cdrom" "${CDROM_0}" )
+
 	# audio
-	isset SOUND_DEV && VIRTCMDOPTS="${VIRTCMDOPTS} -soundhw ${SOUND_DEV}"
-	
+	isset SOUND_DEV && VIRTCMDOPTS+=( "-soundhw" "${SOUND_DEV}" )
+
 	# serial devices TODO test
 	if isset SERIAL_PORTS; then
 		for DEV in $SERIAL_PORTS; do
-			: # buggeh: VIRTCMDOPTS="${VIRTCMDOPTS} -serial ${DEV}"
+			: # buggeh: VIRTCMDOPTS+=( "-serial" "${DEV}" )
 		done
 	fi
 }

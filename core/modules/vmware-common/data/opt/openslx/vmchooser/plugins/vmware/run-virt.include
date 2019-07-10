@@ -58,5 +58,6 @@ run_plugin() {
 	
 	# HACK: using the modified version of the wrapper script
 	declare -rg VIRTCMD="/opt/openslx/bin/vmplayer"
-	declare -rg VIRTCMDOPTS="${VM_START_OPTIONS} ${VM_RUN_FILE}"
+	# -X for fullscreen, plus VMX file
+	VIRTCMDOPTS+=( "-X" "${VM_RUN_FILE}" )
 }

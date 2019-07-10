@@ -160,6 +160,9 @@ main() {
 			notify_user "Feature '$FEAT' nicht unterstützt"
 		fi
 	done
+	# Prepare array for the command line options
+	unset VIRTCMDOPTS
+	declare -a VIRTCMDOPTS
 	# The features should now be initialized, call the main 'run_plugin' function of the hypervisor
 	writelog "#################### Plugin run: $PLUGIN_ID ####################"
 	writelog "Calling 'run_plugin' of '$PLUGIN_ID'..."
@@ -174,9 +177,9 @@ main() {
 		cleanexit 1
 	fi
 
-	writelog "VM command: ${VIRTCMD} ${VIRTCMDOPTS}"
+	writelog "VM command: ${VIRTCMD} ${VIRTCMDOPTS[*]}"
 	# This will start the VM (no eval needed!)
-	${VIRTCMD} ${VIRTCMDOPTS}
+	"${VIRTCMD}" "${VIRTCMDOPTS[@]}"
 
 	writelog "Virtualizer exited with '$?'. Bye."
 

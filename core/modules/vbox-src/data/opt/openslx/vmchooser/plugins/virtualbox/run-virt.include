@@ -42,11 +42,11 @@ run_plugin() {
 
 	# set the variables appropriately (several interfaces with different names)
 	declare -rg VIRTCMD="${VBOX_BASE_DIR}/VirtualBoxVM"
-	declare -rg VIRTCMDOPTS="--startvm ${MACHINE_UUID} --start-running --fullscreen"
+	VIRTCMDOPTS+=( "--startvm" "${MACHINE_UUID}" "--start-running" "--fullscreen" )
 
-	# set headless mode (-v off to disable vrdp)
-	declare -rg VIRTCMDHL="${VBOX_BASE_DIR}/VBoxHeadless"
-	declare -rg VIRTCMDOPTSHL="-s ${MACHINE_UUID}"
+	# set headless mode (-v off to disable vrdp) XXX currently not supported/used
+	#declare -rg VIRTCMDHL="${VBOX_BASE_DIR}/VBoxHeadless"
+	#declare -rg VIRTCMDOPTSHL="-s ${MACHINE_UUID}"
 
 	# for debugging purposes
 	cp "$VBOX_MACHINE_CONFIG" "/tmp/vbox-last-config.$USER"

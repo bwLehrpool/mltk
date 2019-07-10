@@ -46,10 +46,6 @@ fi
 
 [ -n "$gmax" ] && maxhardwareversion="$gmax"
 
-# VMware start options
-# "-X": start in fullscreen
-declare -rg VM_START_OPTIONS="-X"
-
 # create vmware directories
 mkdir -p "$VM_REDO_DIR" >/dev/null 2>&1
 mkdir -p "$VM_CONF_DIR" >/dev/null 2>&1
