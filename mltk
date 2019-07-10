@@ -165,7 +165,7 @@ read_params() {
 	# for a GUI, you could add:
 	#	- xorg
 	#	- kdm
-	# 	- plymouth
+	#	- plymouth
 	TARGET=""
 	if [[ "$1" != -* ]]; then
 		TARGET="$1"
