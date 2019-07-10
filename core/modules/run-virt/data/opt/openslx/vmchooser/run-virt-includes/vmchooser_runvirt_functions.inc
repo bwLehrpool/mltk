@@ -29,15 +29,19 @@ get_vm_id() {
 ################# LOGGING FUNCTIONS ##################
 # Helper function to write to stdout and logfile
 writelog() {
-	local DATE=$(date +%Y-%m-%d-%H-%M-%S)
+	local DATE="$(date +%Y-%m-%d-%H-%M-%S)"
 	# write to stdout?
 	if [ "x$1" = "x--quiet" ]; then
 		shift
 	else
-		echo -e "$DATE: $@"
+		echo -e "$DATE: $*"
 	fi
 	# log into file
-	echo -e "$DATE: ${SLX_DEBUG:+(${FUNCNAME[1]}) }$@" >> "${LOGFILE}"
+	if $DEBUG; then
+		echo -e "$DATE: (${FUNCNAME[1]}) $*" >> "${LOGFILE}"
+	else
+		echo -e "$DATE: $*" >> "${LOGFILE}"
+	fi
 }
 
 # Helper function to notify the user.
@@ -122,7 +126,7 @@ add_cleanup() {
 cleanexit() {
 	trap "" SIGHUP SIGINT SIGTERM EXIT
 	writelog "Cleanexit '$1' triggered by '${BASH_SOURCE[1]}:${FUNCNAME[1]}'"
-	sleep 1
+	usleep 250000
 	while isset CLEANUP_TASKS; do
 		local TASK=${CLEANUP_TASKS[-1]}
 		unset -v CLEANUP_TASKS[-1]
@@ -134,12 +138,13 @@ cleanexit() {
 			writelog "Failed to run cleanup function '$TASK'! Exit code: $RET"
 		fi
 	done
+	usleep 250000
 
 	# kill potential remaining background jobs
 	kill $(jobs -p)
 
 	# If we're not in debug mode, remove all temporary files
-	if notempty SLX_DEBUG && isset TMPDIR; then
+	if ! $DEBUG && notempty TMPDIR; then
 		rm -rf -- "${TMPDIR}"
 	fi
 
@@ -226,7 +231,7 @@ translate() {
 run_hooks() {
 	local dir file retval r
 	declare -a files
-	dir="$BASEDIR/hooks/${1}.d"
+	dir="$VMCHOOSER_DIR/hooks/${1}.d"
 	[ -d "$dir" ] || return 100
 	shift
 	files=( "${dir}"/* )

@@ -29,16 +29,21 @@ if [ -z "$SELF" ] || ! [ -f "$SELF" ]; then
 fi
 readonly SELF
 
-# Useless without this
-. /opt/openslx/config
-. /opt/openslx/bin/slx-tools
-
 # Global variables needed for the core functionality
-declare -rg VMCHOOSER_DIR="/opt/openslx/vmchooser"
+declare -rg VMCHOOSER_DIR="$( dirname "$SELF" )"
 declare -rg VMCHOOSER_CONF_DIR="$VMCHOOSER_DIR/config"
 declare -rg USER="$(whoami)"
 declare -rg TMPDIR="/tmp/virt/${USER}/$$"
 declare -rg CONFDIR="${TMPDIR}/metadata"
+
+if ! [ -d "$VMCHOOSER_DIR" ]; then
+	slxlog "run-virt" "$SELF is not in a directory!?"
+	exit 1
+fi
+
+# Useless without this
+. /opt/openslx/config
+. /opt/openslx/bin/slx-tools
 
 # Debug mode?
 if [ "x$1" = "x--debug" ]; then
@@ -49,6 +54,7 @@ elif [ "$SLX_DEBUG_MODE" = "ON" ] || grep -qE '\bdebug\b' "/proc/cmdline"; then
 else
 	DEBUG=false
 fi
+readonly DEBUG
 
 # Check for existence of plugin
 if [ "x$1" = "x--query" ]; then
@@ -73,15 +79,14 @@ declare -rg XML_FILE="$1"
 # A path to the logfile can be given as second argument
 declare -g LOGFILE="$2"
 if [ -z "$LOGFILE" ] || ! touch "$LOGFILE" || ! [ -f "$LOGFILE" ]; then
-	LOGFILE="/var/log/openslx/run-virt.$(whoami).$$.log"
+	LOGFILE="/var/log/openslx/run-virt.${USER}.$$.log"
 	touch "$LOGFILE" || LOGFILE="$(mktemp)"
 fi
+readonly LOGFILE
 
 main() {
 	# Functions needed by vmchooser-run_virt (writelog(), cleanexit(), safesource())
-	BASEDIR="$( dirname "${SELF}" )"
-	RUN_VIRT_INCLUDE_DIR="${BASEDIR}/run-virt-includes"
-	readonly BASEDIR RUN_VIRT_INCLUDE_DIR
+	declare -rg RUN_VIRT_INCLUDE_DIR="${VMCHOOSER_DIR}/run-virt-includes"
 	if ! source "${RUN_VIRT_INCLUDE_DIR}/vmchooser_runvirt_functions.inc"; then
 		slxlog "run-virt" "Could not source ${RUN_VIRT_INCLUDE_DIR}/vmchooser_runvirt_functions.inc"
 		exit 1

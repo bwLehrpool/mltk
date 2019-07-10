@@ -37,7 +37,9 @@ parse_xml() {
 		EXIT_TYPE="user" EXIT_REASON="Ungültiger asboluter Pfad zur virtuellen Maschine!" cleanexit 1
 	fi
 
-	notempty SRC_IMG_ABSOLUTE || SRC_IMG_ABSOLUTE="${VMSTORE_PATH}/${SRC_IMG_RELATIVE}"
+	if isempty SRC_IMG_ABSOLUTE && notempty VMSTORE_PATH; then
+		SRC_IMG_ABSOLUTE="${VMSTORE_PATH}/${SRC_IMG_RELATIVE}"
+	fi
 	readonly SRC_IMG_ABSOLUTE
 
 	declare -rg IMG_BASENAME=$(basename "$SRC_IMG_ABSOLUTE")

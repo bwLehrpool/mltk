@@ -1,4 +1,86 @@
-Configuring run-virt:
+Attempt at documenting run-virt.
+
+Note that lecture and VM are often used interchangeably here and in the
+actual run-virt scripts.
+
+--------------------
+### Global constants
+--------------------
+
+These constants are globally defined in the run-virt environment and are read-only.
+
+# $CONFDIR
+This is where the downloaded metadata for the VM to be run is located.
+Contains the VM hw description (virtualizer specific), network shares to
+mount, startup scripts, ...
+
+# $DEBUG
+Set to either "true" or "false" so it can simply be used like this:
+if $DEBUG; then ....
+
+# $IMGUUID
+The UUID of this VM/lecture, extracted from the passed $XMLFILE.
+Used to fetch meta data for the VM, like vmx, netrules, netshares, etc.
+
+# $LOGFILE
+Log file for run-virt. You shouldn't need to access this file directly but
+rather use the "writelog" function.
+
+# $PLUGIN_ID
+Name of the virtualizer plugin required to run the current VM, e.g.
+vmware or virtualbox. This is used to source the according scripts
+from $VMCHOOSER_DIR/plugins/$PLUGIN_ID/*
+
+# $SELF
+Absolute path to the main run-virt script. Should usually be
+/opt/openslx/vmchooser/vmchooser-run_virt
+
+# $SRC_IMG_ABSOLUTE
+Absolute path to the VMs HDD image. When using DNBD3, which requires
+$SRC_IMG_RELATIVE to be set, this file might not actually exist.
+This can be empty if $SRC_IMAGE_RELATIVE is given.
+
+# $SRC_IMG_RELATIVE
+Relative path to the VMs HDD image. Used for DNBD3, or for constructing
+the absolute path in case it's not supplied via the $XMLFILE, but
+$VMSTORE_PATH is known.
+This can be empty if $SRC_IMG_ABSOLUTE is given.
+
+# $TMPDIR
+Temporary directory to work in. Create single files, or if you feel like you
+need a bunch of them, group within a subdirectory. This will be wiped on exit.
+
+# $USER
+Name of the currently logged in user. This doesn't necessarily match the
+name on the auth server (LDAP/AD) but rather what the running Linux system sees.
+
+# $VMCHOOSER_CONF_DIR
+Config dir of run-virt, where several (sourcable) files are located.
+
+# $VMCHOOSER_DIR
+Base directory of run-virt/vmchooser, usually /opt/openslx/vmchooser
+
+# $VMSTORE_PATH
+Currently hard-coded to /mnt/vmstore via run-virt-includes/get_xml_file_variables.inc.
+In case VMs are read via CIFS/NFS, this is where it should be mounted.
+
+# $VM_CLEANNAME
+"Clean" version of $VM_DISPLAYNAME, no spaces or special chars except
+'_', '-' and '.', 32 chars max.
+
+# $VM_DISPLAYNAME
+Name of the VM as shown to the user, and displayed in vmchooser.
+
+# $VM_OS_TYPE
+Name of the VMs operating system as known to the virtualizer in use.
+This should not exist but does for complicated reasons.
+
+# $XMLFILE
+XML description file of VM session to be run. Passed via command line.
+
+------------------------
+### Configuring run-virt
+------------------------
 
 ## /opt/openslx/vmchooser/config/resource_urls.conf
 
