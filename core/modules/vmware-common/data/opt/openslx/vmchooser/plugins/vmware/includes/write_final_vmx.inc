@@ -138,6 +138,12 @@ setup_usb() {
 	echo 'usb.generic.autoconnect = "TRUE"' >> "${TMPCONFIG}"
 	echo 'usb.mangleUsb3Speed = "TRUE"' >> "${TMPCONFIG}"
 
+	# Workaround for old VMs
+	if grep -q -i '^ehci\.present.*TRUE' \
+		&& ! grep -q -i '^usb\.present'; then
+		echo 'usb.present = "TRUE"' >> "${TMPCONFIG}"
+	fi
+
 	# See if there are any USB devices connected that we want to pass through immediately
 	get_usb_devices 'usb.autoConnect.deviceXXXXX = "0x%VENDOR%:0x%PRODUCT%"' \
 		| sed -r 's/0x0+/0x/g' \
