@@ -93,6 +93,8 @@ bench_event() {
 tarcopy() {
 	[ -d "$1" -a -d "$2" ] || return 1
 	cd "$1"
-	tar -cp * | tar -xp -C "$2"
+	find . \! -type d > /tmp/tctmp
+	tar -c -p -T /tmp/tctmp | tar -xp -C "$2"
+	rm -f -- /tmp/tctmp
 	cd - &>/dev/null
 }
