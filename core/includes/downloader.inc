@@ -40,6 +40,9 @@ download () {
 		for f in sha256sums.asc SHA256SUMS md5sums.asc MD5SUMS metadata.xml.gz ""; do
 			[ -z "$f" ] && break
 			wget -O "$tmpfile" "$path/$f" || continue
+			# Some ret^W less smart companies decide to just 302 requests for non-existing files/pages
+			[ "$( stat -c %s "$tmpfile" )" -lt 100000 ] || continue
+			[ "$( grep -c '<' "$tmpfile" )" -lt 10 ] || continue
 			if [ "$f" = "metadata.xml.gz" ]; then
 				sum=$( gzip -d < "$tmpfile" | grep '<checksum>.*</checksum>' | sed -r 's/<[^>]*>//g' )
 				[ -z "$sum" ] && perror "Did not find sha256 in $f"
