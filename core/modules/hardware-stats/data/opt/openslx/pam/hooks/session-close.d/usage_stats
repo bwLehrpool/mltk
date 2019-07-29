@@ -1,1 +1,1 @@
-../pam_script_ses_open.d/usage_stats
+/opt/openslx/pam/hooks/session-open.d/usage_stats
