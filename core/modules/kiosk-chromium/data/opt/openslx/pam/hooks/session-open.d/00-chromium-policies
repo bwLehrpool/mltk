@@ -3,28 +3,27 @@
 
 . /opt/openslx/config
 
-chromium_policies() {
-	# create managed policy file, those settings cannot be changed by the user
-	# (if he even gets to the settings dialog in the first place)
-	local chromium_policy_file="/etc/chromium-browser/policies/managed/kiosk-mode.json"
-	[ -e "$chromium_policy_file" ] && rm -f "$chromium_policy_file"
-
-	mkdir -p ${chromium_policy_file%/*}
-
+# creates managed policy file, those settings cannot be changed by the user
+# (if he even gets to the settings dialog in the first place)
+create_chromium_policies() {
 	if [ -n "$SLX_BROWSER_BOOKMARKS" ]; then
 		bookmarkbar=true
 	else
 		bookmarkbar=false
 	fi
 
-	cat <<- EOF > "$chromium_policy_file"
+	cat <<- EOF > "/etc/chromium-browser/policies/managed/kiosk-mode.json"
 	{
 		"AutoFillEnabled": false,
 		"BackgroundModeEnabled": false,
 		"BookmarkBarEnabled": $bookmarkbar,
 		"DefaultBrowserSettingEnabled": true,
 		"DownloadRestrictions": 3,
+		"HomepageLocation": "$SLX_BROWSER_URL",
+		"NewTabPageLocation": "$SLX_BROWSER_URL",
 		"PasswordManagerEnabled": false,
+		"RestoreOnStartup": 4,
+		"RestoreOnStartupURLs": "$SLX_BROWSER_URL",
 		"ShowAppsShortcutInBookmarkBar": false,
 		"TranslateEnabled": false
 	}
@@ -32,6 +31,6 @@ chromium_policies() {
 }
 
 if [ "${PAM_SERVICE//autologin/}" != "$PAM_SERVICE" -a "$PAM_TTY" = ":0" ]; then
-	chromium_policies
+	create_chromium_policies
 fi
 true

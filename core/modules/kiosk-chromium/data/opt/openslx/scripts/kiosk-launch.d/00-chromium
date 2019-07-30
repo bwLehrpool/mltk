@@ -3,62 +3,12 @@
 
 . /opt/openslx/config
 
-# swallow keyboard shortcuts of chromium
-cat <<- EOF > "$HOME/.xbindkeysrc"
-"true"
-	Control+d
-"true"
-	Control+t
-"true"
-	Control+s
-"true"
-	Control+n
-"true"
-	Control+j
-"true"
-	Control+p
-"true"
-	Control+h
-"true"
-	Control+Shift+o
-EOF
-# xbinkeys requires a daemon, run it
-xbindkeys_autostart &
-
-[ -n "$SLX_BROWSER_INSECURE" ] && SLX_BROWSER_INSECURE="--allow-running-insecure-content --ignore-certificate-errors"
-
 # clear state of previous sessions
 [ -e "$HOME/.config/chromium" ] && rm -rf -- "$HOME/.config/chromium"
 mkdir -p "$HOME/.config/chromium/Default"
 
-bookmark_template="$(mktemp)"
-cat <<-EOF > "$bookmark_template"
-{
-   "roots": {
-      "bookmark_bar": {
-         "children": [  ],
-         "id": "1",
-         "name": "Lesezeichenleiste",
-         "type": "folder"
-      },
-      "other": {
-         "children": [  ],
-         "id": "2",
-         "name": "Weitere Lesezeichen",
-         "type": "folder"
-      },
-      "synced": {
-         "children": [  ],
-         "id": "3",
-         "name": "Mobile Lesezeichen",
-         "type": "folder"
-      }
-   },
-   "version": 1
-}
-EOF
-
-# copy the Bookmark json template and fill in our bookmarks
+# Helper to json'ize bookmarks given as arguments in the form:
+#    <name>,<url>  ->  e.g. Google,https://www.google.com
 json_bookmarks() {
 	cur=0
 	echo -n '['
@@ -72,20 +22,75 @@ json_bookmarks() {
 	echo -n ']'
 }
 
-# set the bookmarks in the user's home directory
 jq ".roots.bookmark_bar.children += $(json_bookmarks $SLX_BROWSER_BOOKMARKS)" \
-	"$bookmark_template" > "$HOME/.config/chromium/Default/Bookmarks"
+	<(cat <<-EOF
+		{
+			"roots": {
+				"bookmark_bar": {
+				"children": [  ],
+					"id": "1",
+					"name": "Lesezeichenleiste",
+					"type": "folder"
+				},
+				"other": {
+					"children": [  ],
+					"id": "2",
+					"name": "Weitere Lesezeichen",
+					"type": "folder"
+				},
+				"synced": {
+					"children": [  ],
+					"id": "3",
+					"name": "Mobile Lesezeichen",
+					"type": "folder"
+				}
+			},
+			"version": 1
+		}
+	EOF
+	) > "$HOME/.config/chromium/Default/Bookmarks"
 
-if [ -n "$SLX_BROWSER_INTERACTIVE" ]; then
-	SLX_KIOSK=''
-else
-	SLX_KIOSK='--kiosk'
+# default chromium arguments
+chromium_args=("--noerrdialogs" "--disable-new-avatar-menu" "--disable-infobars")
+
+if [ -z "$SLX_BROWSER_INTERACTIVE" ]; then
+	# non-interactive, set to kiosk mode
+	chromium_args+=("--kiosk")
+
+	# swallow keyboard shortcuts of chromium
+	cat <<- EOF > "$HOME/.xbindkeysrc"
+	"true"
+		Control+d
+	"true"
+		Control+t
+	"true"
+		Control+s
+	"true"
+		Control+n
+	"true"
+		Control+j
+	"true"
+		Control+p
+	"true"
+		Control+h
+	"true"
+		Control+Shift+o
+	EOF
+	# xbinkeys requires a daemon, run it
+	xbindkeys_autostart &
+
+	if [ -n "$SLX_BROWSER_RELOAD_SECS" ]; then
+		while true; do
+			xdotool windowactivate "$(xdotool search --onlyvisible --class browser)"
+			xdotool key Alt+Home
+			sleep "$SLX_BROWSER_RELOAD_SECS"
+		done &
+	fi
 fi
 
-# finally start chromium
-exec chromium-browser \
-	--noerrdialogs \
-	--disable-infobars \
-	$SLX_KIOSK \
-	$SLX_BROWSER_INSECURE \
-	"$SLX_BROWSER_URL"
+if [ -n "$SLX_BROWSER_INSECURE" ]; then
+	chromium_args+=("--allow-running-insecure-content" "--ignore-certificate-errors")
+fi
+
+# finally exec to chromium
+exec chromium-browser "${chromium_args[@]}"
