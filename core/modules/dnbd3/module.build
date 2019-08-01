@@ -25,12 +25,18 @@ HEREEND
 }
 
 build() {
-	cd "$MODULE_WORK_DIR/src/kmod" || perror "Could not CD to standalone dnbd3 kmod dir"
-	make MODULE_NAME=dnbd3 KDIR="$KERNEL_HEADERS_DIR" || perror "Could not compile kernel module"
-	mkdir -p "$MODULE_BUILD_DIR/lib/modules/dnbd3" || perror "Could not create lib/modules/dnbd3"
-	mkdir -p "$MODULE_BUILD_DIR/opt/openslx/bin" || perror "Could not create opt/openslx/bin"
-	cp "$MODULE_WORK_DIR/src/kmod/dnbd3.ko" "$MODULE_BUILD_DIR/lib/modules/dnbd3/" || perror "Could not copy dnbd3.ko"
-	cd "$MODULE_BUILD_DIR/opt/openslx/bin" || perror "Could not cd to build dir for client binary"
+	cd "${MODULE_WORK_DIR}/src/kmod" \
+		|| perror "Could not CD to standalone dnbd3 kmod dir"
+	make MODULE_NAME=dnbd3 KDIR="$KERNEL_HEADERS_DIR" \
+		|| perror "Could not compile kernel module"
+	mkdir -p "${MODULE_BUILD_DIR}/lib/modules/${TARGET_KERNEL_LONG}/kernel/drivers/block" \
+		|| perror "Could not create lib/modules/${TARGET_KERNEL_LONG}/kernel/drivers/block"
+	mkdir -p "${MODULE_BUILD_DIR}/opt/openslx/bin" \
+		|| perror "Could not create opt/openslx/bin"
+	cp "${MODULE_WORK_DIR}/src/kmod/dnbd3.ko" "${MODULE_BUILD_DIR}/lib/modules/${TARGET_KERNEL_LONG}/kernel/drivers/block/" \
+		|| perror "Could not copy dnbd3.ko"
+	cd "${MODULE_BUILD_DIR}/opt/openslx/bin" \
+		|| perror "Could not cd to build dir for client binary"
 	cmake \
 		-DBUILD_FUSE_CLIENT=ON \
 		-DBUILD_KERNEL_MODULE=ON \
