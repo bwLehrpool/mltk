@@ -487,6 +487,9 @@ post_process_target() {
 	pinfo "Running ldconfig"
 	cp -r -L /etc/ld.so.conf* "${TARGET_BUILD_DIR}/etc/"
 	ldconfig -v -r "${TARGET_BUILD_DIR}"
+
+	# run depmod to generate the final modules.* files
+	depmod -b "${TARGET_BUILD_DIR}" -a "${TARGET_KERNEL_LONG}"
 }
 
 clean_modules() {

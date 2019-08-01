@@ -129,8 +129,9 @@ copy_kernel_modules () {
 		>> "${TARGET_BUILD_DIR}/${KERNEL_MODULES_DIR}/modules.order"
 	# copy list of builtin kernel modules
 	cp "${KERNEL_MODULES_DIR}/modules.builtin" "${TARGET_BUILD_DIR}/${KERNEL_MODULES_DIR}"
-	# with modules.order and modules.builtin, we can run depmod for the rest of the files
-	depmod -b "${TARGET_BUILD_DIR}" -a "${TARGET_KERNEL_LONG}"
+	# generating modules.order here is needed since REQUIRED_KERNEL_MODULES will not
+	# be set outside of this module's scope, depmod will be executed in post_process_target
+	# to allow other modules (like dnbd3) to install additional kernel modules
 
 	#
 	# Firmware
