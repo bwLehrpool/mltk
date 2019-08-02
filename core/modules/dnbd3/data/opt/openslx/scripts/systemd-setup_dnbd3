@@ -2,7 +2,7 @@
 
 export PATH=$PATH:/opt/openslx/sbin:/opt/openslx/bin
 
-if ! ( lsmod | grep -q dnbd3 ||  modprobe dnbd3.ko ); then
+if ! ( lsmod | grep -q dnbd3 ||  modprobe dnbd3 ); then
 	slxlog "dnbd3-kernel" "Error loading dnbd3 client kernel module"
 	exit 1
 fi
