@@ -15,9 +15,6 @@ build() {
 	local FILELIST="list_binaries_and_files"
 	[ -e "${FILELIST}" ] && rm "${FILELIST}"
 
-	# Compile rdns
-	mkdir -p "$MODULE_BUILD_DIR/opt/openslx/bin"
-	gcc -o "$MODULE_BUILD_DIR/opt/openslx/bin/rdns" "$MODULE_DIR/rdns.c" || perror "Compiling rdns failed."
 	# Get ldconfig
 	mkdir -p "$MODULE_BUILD_DIR/sbin"
 	local LOC=$(which ldconfig.real)

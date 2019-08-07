@@ -1,0 +1,15 @@
+#!/bin/bash
+
+fetch_source() {
+	:
+}
+
+build() {
+	mkdir -p "$MODULE_BUILD_DIR/opt/openslx/bin"
+	gcc -o "$MODULE_BUILD_DIR/opt/openslx/bin/rdns" "$MODULE_DIR/rdns.c" || perror "Compiling rdns failed."
+}
+
+post_copy() {
+	:
+}
+
