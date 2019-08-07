@@ -18,6 +18,8 @@
 #
 # -----------------------------------------------------------------------------
 
+export PATH=$PATH:/opt/openslx/sbin:/opt/openslx/bin
+
 . /opt/openslx/config
 
 primary="br0"
@@ -82,7 +84,7 @@ case "$1" in
 		fi
 		
 		# get domain, hostname and thus fqdn from DNS
-		dns_fqdn=$(/opt/openslx/bin/busybox timeout -t 3 rdns "$ip")
+		dns_fqdn=$(busybox timeout -t 3 rdns "$ip")
 		dns_short="${dns_fqdn%%.*}"
 		# check if it is fqdn
 		if [ "$dns_fqdn" == "$dns_short" ]; then
