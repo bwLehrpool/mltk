@@ -68,6 +68,8 @@ if [ ! -d /run ]; then
 	echo "" >&2
 fi
 
+mkdir -p "/run/network"
+
 case "$1" in
 	bound|renew)
 		check_env "$1"
