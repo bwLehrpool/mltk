@@ -80,7 +80,7 @@ case "$1" in
 		ip addr add "$ip/$(ipcalc -s -p "$ip" "$subnet" | sed s/.*=//)" dev "$interface"
 		# Set default route, if given
 		if [ -n "$router" ]; then
-			ip route add default via "$router"
+			ip route replace default via "$router"
 		fi
 		
 		# get domain, hostname and thus fqdn from DNS
