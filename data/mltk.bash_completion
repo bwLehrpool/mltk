@@ -1,0 +1,34 @@
+pls() {
+	ls --color=never "$1"
+}
+_mltk_module() {
+	local path="$(readlink -f ${COMP_WORDS[0]})"
+	local cur="${COMP_WORDS[COMP_CWORD]}"
+	local prev="${COMP_WORDS[COMP_CWORD-1]}"
+
+	# if '-n' present, stop here
+	if grep -qE '\s+-n\s?' <<< "$COMP_LINE" ; then
+		return
+	fi
+
+	# if 2 words, needs to be a target
+	if [ "${#COMP_WORDS[@]}" -eq 2 ]; then
+		COMPREPLY=($(compgen -W "$(pls $(dirname $path)/core/targets) -n" -- "$cur"))
+		return
+	fi
+
+	# actions now:
+	local defaults="-b -c"
+	# only add '-d' if not present already
+	if ! grep -qE '\s+-d\s+' <<< "$COMP_LINE" ; then
+		defaults="$defaults -d"
+	fi
+	COMPREPLY=($(compgen -W "$defaults" -- "$cur"))
+
+	# now it can be either actions or modules for the targets
+	COMPREPLY+=($(compgen -W "$(pls $(dirname $path)/core/targets/${COMP_WORDS[1]})" -- "$cur"))
+	return
+}
+
+complete -F _mltk_module ./mltk
+
