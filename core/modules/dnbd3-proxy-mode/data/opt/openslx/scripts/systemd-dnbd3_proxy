@@ -1,5 +1,7 @@
 #!/bin/ash
 
+export PATH="$PATH:/opt/openslx/sbin:/opt/openslx/bin"
+
 ERRLOG="/run/dnbd3-proxy.err"
 
 if [ -s "$ERRLOG" ]; then
