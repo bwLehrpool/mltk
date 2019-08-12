@@ -1,0 +1,22 @@
+#!/bin/ash
+# This script checks whether given VMware version supports the CPU:
+# * Intel: check for "VMX Unrestricted Guest" CPU flag
+# * AMD:   check if CPU family is Bulldozer or newer
+
+export PATH=$PATH:/opt/openslx/sbin:/opt/openslx/bin
+
+get_supported_version() {
+	local vendor="$( awk '$1 == "vendor_id" {print $NF;exit}' /proc/cpuinfo )"
+	local version=12
+	if [ "$vendor" = "GenuineIntel" ]; then
+		modprobe msr
+		flag="$( rdmsr --bitfield 5:5 0x485 )"
+		[ "$flag" = 1 ] && version=15
+	elif [ "$vendor" = "AuthenticAMD" ]; then
+		family="$( awk '$1$2 == "cpufamily" {print $NF;exit}' /proc/cpuinfo )"
+		[ "$family" -ge 21 ] && version=15
+	fi
+	echo "$version"
+}
+
+get_supported_version
