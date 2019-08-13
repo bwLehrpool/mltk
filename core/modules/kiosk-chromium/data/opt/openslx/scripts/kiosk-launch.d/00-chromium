@@ -51,7 +51,7 @@ jq ".roots.bookmark_bar.children += $(json_bookmarks $SLX_BROWSER_BOOKMARKS)" \
 	) > "$HOME/.config/chromium/Default/Bookmarks"
 
 # default chromium arguments
-chromium_args=("--noerrdialogs" "--disable-new-avatar-menu" "--disable-infobars")
+chromium_args=("--noerrdialogs" "--disable-new-avatar-menu" "--disable-infobars" "--test-type")
 
 if [ -z "$SLX_BROWSER_INTERACTIVE" ]; then
 	# non-interactive, set to kiosk mode
