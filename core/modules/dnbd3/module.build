@@ -1,13 +1,7 @@
 #!/bin/bash
 fetch_source() {
 	mkdir -p "src/kmod"
-	if [ ! -d "src/dnbd3" ]; then
-		git clone "$REQUIRED_GIT" "src/dnbd3" || perror "Could not clone dnbd3 git repo"
-	fi
-	cd src/dnbd3
-	#git checkout "$REQUIRED_BRANCH" || perror "Could not checkout requested branch $REQUIRED_BRANCH"
-	git checkout "$REQUIRED_COMMIT" || perror "Could not checkout requested commit $REQUIRED_COMMIT"
-	cd -
+	autoclone
 	cp src/dnbd3/Kbuild.in src/dnbd3/src/*.{c,h} src/dnbd3/src/kernel/*.{c,h} src/kmod/ || perror "Could not copy kernel module source files"
 	cat > "src/kmod/Makefile" <<HEREEND
 include \$(PWD)/Kbuild.in
