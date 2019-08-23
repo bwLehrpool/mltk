@@ -26,10 +26,10 @@ function runscript_visibility()
 		get_xauthfile
 		wait_for_wm
 		if [ -n "$USERPART" ]; then
-			logger "openslx utility: runscript_visibility: Starting script $SCRIPT maximised(${VISIBILITY}), no USERPART."
+			logger "openslx utility: runscript_visibility: Starting script $SCRIPT maximised(${VISIBILITY}) with: $USERPART."
 			DISPLAY=:0.0 XAUTHORITY="${XAUTHORITY}" $USERPART "xterm $SCRIPT"
 		else
-			logger "openslx utility: runscript_visibility: Starting script $SCRIPT maximised(${VISIBILITY}), $USERPART."
+			logger "openslx utility: runscript_visibility: Starting script $SCRIPT maximised(${VISIBILITY}) without any USERPART."
 			DISPLAY=:0.0 XAUTHORITY="${XAUTHORITY}" $USERPART xterm "$SCRIPT"
 		fi
 		;;
@@ -42,10 +42,10 @@ function runscript_visibility()
 		# check for DE readiness. Until then, we'll sleep.
 		# sleep 20
 		if [ -n "$USERPART" ]; then
-			logger "openslx utility: runscript_visibility: Starting script $SCRIPT minimised(${VISIBILITY}), no USERPART."
+			logger "openslx utility: runscript_visibility: Starting script $SCRIPT minimised(${VISIBILITY}) with: $USERPART."
 			DISPLAY=:0.0 XAUTHORITY="${XAUTHORITY}" $USERPART "xterm -iconic $SCRIPT"
 		else
-			logger "openslx utility: runscript_visibility: Starting script $SCRIPT minimised(${VISIBILITY}), $USERPART."
+			logger "openslx utility: runscript_visibility: Starting script $SCRIPT minimised(${VISIBILITY}) without any USERPART."
 			DISPLAY=:0.0 XAUTHORITY="${XAUTHORITY}" $USERPART xterm -iconic "$SCRIPT"
 		fi
 		;;
