@@ -1,15 +1,24 @@
+#!/bin/ash
+
 wait_for_iface() {
 	local DEVICE=$1
-	local TIMEOUT=20
+	local TIMEOUT="$(( "$2" * 2 ))"
+	local state laststate
 	echo -n "Waiting for interface $DEVICE: "
 	# Some systems don't have operstate. Seems to be hardware dependent
-	[ ! -e "/sys/class/net/${DEVICE}/operstate" ] && usleep 10000
+	[ -e "/sys/class/net/${DEVICE}/operstate" ] || sleep 1
 	if [ -e "/sys/class/net/${DEVICE}/operstate" ]; then
 		while true; do
 			# check linkstate
-			[ "x$(cat "/sys/class/net/${DEVICE}/operstate")" == "xup" ] && break
+			state="$(cat "/sys/class/net/${DEVICE}/operstate")"
+			[ "$state" != "$laststate" ] && echo -n "[$state]"
+			laststate="$state"
+			[ "$state" = "up" ] && break
 			TIMEOUT=$(( TIMEOUT - 1 )) # don't wait forever, the pcnet iface of vmware will never be "up" although it's working
-			[ "$TIMEOUT" -le 0 ] && break
+			if [ "$TIMEOUT" -le 0 ];then
+				echo -n "TIMEOUT"
+				break
+			fi
 			# else
 			echo -n "."
 			usleep 500000
@@ -17,7 +26,8 @@ wait_for_iface() {
 	else
 		# we really don't have a operstate .. then just wait a sec and hope for the best.
 		sleep 1
+		echo -n "... no operstate, let's hope for the best..."
 	fi
-	echo ".$(cat "/sys/class/net/${DEVICE}/operstate" 2>/dev/null)"
+	echo
 }
 true

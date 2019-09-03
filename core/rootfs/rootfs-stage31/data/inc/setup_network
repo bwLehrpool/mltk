@@ -22,15 +22,14 @@ BRIDGE="br0"
 
 mkdir -p "${FUTURE_ROOT}/etc/udev/rules.d"
 
-for i in 1 1 1 END; do
-	IP_OUT=$(ip a | grep -B 1 "/ether" | sed -r '/^--$/d;$!N;s#^[0-9]+: ([a-z0-9\.:]+): .*?/ether ([0-9a-fA-Z:]+) .*$#\1==\2#')
-	[ "x$i" == "xEND" ] && break
-	if ! echo "$IP_OUT" | grep -q -- "$MAC"; then
-		sleep "$i"
-	fi
+for i in 1 1 END; do
+	IP_OUT="$( ip a | grep -B 1 "/ether" | sed -r '/^--$/d;$!N;s#^[0-9]+: ([a-z0-9\.:]+): .*?/ether ([0-9a-fA-Z:]+) .*$#\1==\2#' )"
+	echo "$IP_OUT" | grep -q -F -- "$MAC" && break
+	[ "x$i" = "xEND" ] && break
+	sleep "$i"
 done
 
-if ! echo "$IP_OUT" | grep -q -- "$MAC"; then
+if ! echo "$IP_OUT" | grep -q -F -- "$MAC"; then
 	drop_shell "---
 $(ip a)
 ---
@@ -44,8 +43,8 @@ fi
 
 ADD_NIC=1
 for LINE in $IP_OUT; do
-	IFACE=$(echo "$LINE" | awk -F '==' '{printf $1}')
-	IFMAC=$(echo "$LINE" | awk -F '==' '{printf $2}' | tr '[A-Z]' '[a-z]') # udev requires mac addesses to be lowercase (a-f), see http://www.debianhelp.co.uk/udev.htm
+	IFACE="${LINE%==*}"
+	IFMAC="$( echo "${LINE#*==}" | tr 'A-Z' 'a-z' )" # udev requires mac addesses to be lowercase (a-f), see http://www.debianhelp.co.uk/udev.htm
 	echo "${IFACE} = ${IFMAC}"
 
 	if [ "x$IFMAC" == "x$MAC" ]; then
@@ -54,7 +53,7 @@ for LINE in $IP_OUT; do
 		brctl setfd "$BRIDGE" 0.000000000001
 		ip link set addr "$IFMAC" "$BRIDGE" || drop_shell "Could not set mac of $BRIDGE"
 		ip link set dev "$IFACE" up
-		wait_for_iface "$IFACE"
+		wait_for_iface "$IFACE" 8
 		brctl addif "$BRIDGE" "$IFACE" || drop_shell "Could not add $IFACE to $BRIDGE"
 
 		# save our variables for retry on fail
@@ -69,7 +68,6 @@ for LINE in $IP_OUT; do
 			[ -n "$GATEWAY" ] && ip route add default via "$GATEWAY" dev "$BRIDGE"
 		else
 			ip link set dev "$BRIDGE" up
-			NOIPYET="yes"
 		fi
 		# Ignore this device later on when systemd handles network interfaces (see hacked 99-systemd.rules in systemd data dir)
 		echo "SUBSYSTEM==\"net\", ACTION==\"add\", KERNEL==\"eth*\", ATTR{address}==\"$IFMAC\", TAG+=\"openslxignore\"" >> "${FUTURE_ROOT}/etc/udev/rules.d/01-ignore-boot-interface.rules"
@@ -90,7 +88,7 @@ for LINE in $IP_OUT; do
 	IFACE=""
 done
 
-wait_for_iface "$BRIDGE"
+wait_for_iface "$BRIDGE" 5
 
 # udhcpc
 PARAM=
@@ -116,9 +114,10 @@ echo "GATEWAY=$GATEWAY" >> /run/network.conf
 echo "BRIDGE=$BRIDGE" >> /run/network.conf
 echo "UID=$UID" >> /run/network.conf
 
-udhcpc $PARAM -O ntpsrv -O domain -O wpad -O search -t 4 -T 3 -s "/inc/udhcpc-trigger" -f -n -q -i "$BRIDGE"
+udhcpc $PARAM -O ntpsrv -O domain -O search -t 5 -T 3 -A 4 -s "/inc/udhcpc-trigger" -f -n -q -i "$BRIDGE"
 URET=$?
-# udhcpc return value will be return value of this script
+# if these were empty before, udhcpc might have filled them in
 [ -z "$CLIENTIP" ] && CLIENTIP=$(cat /run/firstip)
 [ -z "$GATEWAY" ] && GATEWAY=$(cat /run/firstgw)
+# udhcpc return value will be return value of this script
 return $URET
