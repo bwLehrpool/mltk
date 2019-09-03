@@ -2,9 +2,11 @@
 
 wait_for_iface() {
 	local DEVICE=$1
-	local TIMEOUT="$(( "$2" * 2 ))"
+	local TIMEOUT=10
 	local state laststate
-	echo -n "Waiting for interface $DEVICE: "
+	[ -n "$2" ] && TIMEOUT="$2"
+	echo -n "Waiting ${TIMEOUT}s for interface $DEVICE: "
+	TIMEOUT="$(( TIMEOUT * 2 ))"
 	# Some systems don't have operstate. Seems to be hardware dependent
 	[ -e "/sys/class/net/${DEVICE}/operstate" ] || sleep 1
 	if [ -e "/sys/class/net/${DEVICE}/operstate" ]; then
