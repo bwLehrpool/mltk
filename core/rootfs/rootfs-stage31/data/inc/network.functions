@@ -3,21 +3,32 @@
 wait_for_iface() {
 	local DEVICE=$1
 	local TIMEOUT=10
-	local state laststate
+	local state laststate current relax
+	local want=
 	[ -n "$2" ] && TIMEOUT="$2"
 	echo -n "Waiting ${TIMEOUT}s for interface $DEVICE: "
 	TIMEOUT="$(( TIMEOUT * 2 ))"
 	# Some systems don't have operstate. Seems to be hardware dependent
 	[ -e "/sys/class/net/${DEVICE}/operstate" ] || sleep 1
-	if [ -e "/sys/class/net/${DEVICE}/operstate" ]; then
+	[ -e "/sys/class/net/${DEVICE}/operstate" ] && want="up"
+	[ -e "/sys/class/net/${DEVICE}/carrier" ] && want="${want}1"
+	if [ -n "$want" ]; then
+		relax=$(( TIMEOUT / 3 ))
+		[ "$relax" -lt 8 ] && relax=8
+		current=0
 		while true; do
 			# check linkstate
-			state="$(cat "/sys/class/net/${DEVICE}/operstate")"
+			state="$( cat "/sys/class/net/${DEVICE}/operstate" 2> /dev/null )"
+			state="${state}$( cat "/sys/class/net/${DEVICE}/carrier" 2> /dev/null )"
 			[ "$state" != "$laststate" ] && echo -n "[$state]"
 			laststate="$state"
-			[ "$state" = "up" ] && break
-			TIMEOUT=$(( TIMEOUT - 1 )) # don't wait forever, the pcnet iface of vmware will never be "up" although it's working
-			if [ "$TIMEOUT" -le 0 ];then
+			[ "$state" = "$want" ] && break
+			if [ "$current" -gt "$relax" ] && [ "$state" = "unknown1" ]; then
+				echo -n "better than nothing"
+				break
+			fi
+			current=$(( current + 1 )) # don't wait forever, the pcnet iface of vmware will never be "up" although it's working
+			if [ "$current" -ge "$TIMEOUT" ];then
 				echo -n "TIMEOUT"
 				break
 			fi
@@ -28,7 +39,7 @@ wait_for_iface() {
 	else
 		# we really don't have a operstate .. then just wait a sec and hope for the best.
 		sleep 1
-		echo -n "... no operstate, let's hope for the best..."
+		echo -n "... no operstate or carrier, let's hope for the best..."
 	fi
 	echo
 }
