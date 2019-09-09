@@ -130,6 +130,8 @@ if [ -n "$islocal" ]; then
 
 	# Local caching mode.
 	DNBD3_SPARSE="true"
+	DNBD3_PRETEND_CLIENT="true"
+	DNBD3_AUTOFREE=0 # Immediately start freeing images when running out of space in local caching mode
 	if [ -n "$SLX_DNBD3_MIN_GB_HASH" ] && [ "$SLX_DNBD3_MIN_GB_HASH" -gt 0 ] && [ "$disksize" -ge "$SLX_DNBD3_MIN_GB_HASH" ]; then
 		DNBD3_BGR="hashblock"
 	else
@@ -147,8 +149,10 @@ else
 
 	# Proxy mode
 	DNBD3_SPARSE="false"
+	DNBD3_PRETEND_CLIENT="false"
 	DNBD3_BGR="false"
 	DNBD3_LOOKUP="false"
+	DNBD3_AUTOFREE="18h"
 	DNBD3_SERVER_PENALTY=2000 # no BGR = don't like other servers connecting so much
 	if [ -n "${SLX_DNBD3_BGR}" ]; then
 		DNBD3_BGR="true"
@@ -235,6 +239,8 @@ sparseFiles=${DNBD3_SPARSE}
 removeMissingImages=false
 uplinkTimeout=5000
 clientTimeout=15000
+pretendClient=${DNBD3_PRETEND_CLIENT}
+autoFreeDiskSpaceDelay=${DNBD3_AUTOFREE}
 
 [limits]
 maxReplicationSize=${MAX_REPLICATION_SIZE}G
