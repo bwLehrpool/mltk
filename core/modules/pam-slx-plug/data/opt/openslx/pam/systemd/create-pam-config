@@ -69,13 +69,13 @@ write_sssd_config() {
 	return 0 # OK
 }
 
-# Our plugin, but account ONLY since it's fast
-account+=("[success=%NUM% new_authtok_reqd=done default=ignore] pam_exec.so quiet /opt/openslx/pam/exec_account")
-
 # unix
 auth+=("[success=%NUM% default=ignore] pam_unix.so nodelay")
 account+=("[success=%NUM% new_authtok_reqd=done default=ignore] pam_unix.so")
 nss+=("files" "cache")
+
+# Our plugin, but account ONLY since it's fast (it's not if not executed in root context so move after unix)
+account+=("[success=%NUM% new_authtok_reqd=done default=ignore] pam_exec.so quiet /opt/openslx/pam/exec_account")
 
 # check for bwIDM
 if [ -x "/opt/openslx/scripts/pam_bwidm" ]; then
