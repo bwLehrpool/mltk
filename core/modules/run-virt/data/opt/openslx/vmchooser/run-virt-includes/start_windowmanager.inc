@@ -23,7 +23,7 @@ start_wm() {
 
 	# start RUNVIRT_DM determined above
 	writelog "Starting ${RUNVIRT_DM}."
-	declare -a OPTS=
+	declare -a OPTS=()
 	case "$RUNVIRT_DM" in
 	openbox|kwin|xfwm4|metacity)
 		OPTS+=( "--replace" )

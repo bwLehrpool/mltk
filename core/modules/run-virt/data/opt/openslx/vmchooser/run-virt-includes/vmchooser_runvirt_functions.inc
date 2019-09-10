@@ -91,7 +91,7 @@ $BODY"
 # Only accepts functions that were not previously registered.
 # This kinda detects when a cleanup function was overriden,
 # or at least that something is fishy.
-declare -ag CLEANUP_TASKS
+declare -ag CLEANUP_TASKS=()
 add_cleanup() {
 	[ $# -lt 1 ] && writelog "'${FUNCNAME[0]}' needs at least one argument! $# given." && return
 	# check if the given function name is already used
@@ -128,7 +128,7 @@ cleanexit() {
 	usleep 250000
 	local TASK
 	if [ "${#CLEANUP_TASKS[@]}" -gt 0 ]; then
-		declare -a cleanups=
+		declare -a cleanups=()
 		declare -a copy=( "${CLEANUP_TASKS[@]}" )
 		unset CLEANUP_TASKS
 		for TASK in "${copy[@]}"; do
@@ -235,7 +235,7 @@ translate() {
 # returns 100 if no hooks exist
 run_hooks() {
 	local dir file retval r
-	declare -a files
+	declare -a files=()
 	dir="$VMCHOOSER_DIR/hooks/${1}.d"
 	[ -d "$dir" ] || return 100
 	shift
