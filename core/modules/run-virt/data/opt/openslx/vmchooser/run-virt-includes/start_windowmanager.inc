@@ -23,20 +23,45 @@ start_wm() {
 
 	# start RUNVIRT_DM determined above
 	writelog "Starting ${RUNVIRT_DM}."
-	if [ "${RUNVIRT_DM}" = "fvwm2" ]; then
+	declare -a OPTS=
+	case "$RUNVIRT_DM" in
+	openbox|kwin|xfwm4|metacity)
+		OPTS+=( "--replace" )
+		;;
+	fvwm2)
 		# fvwm2 is not even in the minilinux, so this might be obsolete...
-		echo "EdgeScroll 0 0" > ${TMPDIR}/fvwm
-		fvwm2 -f ${TMPDIR}/fvwm >/dev/null 2>&1 &
-	else
-		${RUNVIRT_DM} >/dev/null 2>&1 &
-	fi
-	local RUNVIRT_DM_PID="$$"
-	if ! kill -0 ${RUNVIRT_DM_PID} ; then
-		# not fatal, just warn user
-		notify_user "$RUNVIRT_VM stoppte unerwartet."
-		return 1
-	fi
+		echo "EdgeScroll 0 0" > "${TMPDIR}/fvwm"
+		OPTS+=( "-replace" "-f" "${TMPDIR}/fvwm" )
+		;;
+	esac
+	{
+		dc=0
+		while true; do
+			s="$( date +%s )"
+			"${RUNVIRT_DM}" "${OPTS[@]}" &> /dev/null
+			ret="$?"
+			e="$( date +%s )"
+			duration="$(( e - s ))"
+			case "$ret" in
+			0|129|130|143) exit 0 ;;
+			esac
+			if [ "$duration" -ge 3 ]; then
+				dc=0
+			elif [ "$(( dc++ ))" -gt 5 ]; then
+				notify_user "$RUNVIRT_DM crasht immer wieder."
+				exit 1
+			fi
+		done
+	} &
+	declare -rg RUNVIRT_DM_PID="$!"
+	add_cleanup stop_wm
 	return 0
+}
+
+stop_wm() {
+	kill "$RUNVIRT_DM_PID"
+	usleep 500000
+	kill -9 "$RUNVIRT_DM_PID"
 }
 
 ## MAIN ##
