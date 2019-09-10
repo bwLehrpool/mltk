@@ -148,8 +148,8 @@ cleanexit() {
 	# kill potential remaining background jobs
 	kill $(jobs -p)
 
-	# If we're not in debug mode, remove all temporary files
-	if ! "$DEBUG" && notempty TMPDIR; then
+	# If we're not in debug mode AND got a clean exit code, remove all temporary files
+	if ! "$DEBUG" && notempty TMPDIR && [ "$1" = "0" ]; then
 		rm -rf -- "${TMPDIR}"
 	fi
 
