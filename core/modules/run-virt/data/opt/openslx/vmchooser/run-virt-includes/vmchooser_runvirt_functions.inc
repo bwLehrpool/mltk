@@ -127,18 +127,24 @@ cleanexit() {
 	trap "" SIGHUP SIGINT SIGTERM EXIT
 	writelog "Cleanexit '$1' triggered by '${BASH_SOURCE[1]}:${FUNCNAME[1]}'"
 	usleep 250000
-	while isset CLEANUP_TASKS; do
-		local TASK=${CLEANUP_TASKS[-1]}
-		unset -v CLEANUP_TASKS[-1]
-		if ! is_function $TASK; then
-			writelog "Registered cleanup function '$TASK' is not a function. This should not be..."
-			continue
-		fi
-		if ! ${TASK}; then
-			writelog "Failed to run cleanup function '$TASK'! Exit code: $RET"
-		fi
-	done
-	usleep 250000
+	local TASK
+	if [ "${#CLEANUP_TASKS[@]}" -gt 0 ]; then
+		declare -a cleanups=
+		declare -a copy=( "${CLEANUP_TASKS[@]}" )
+		unset CLEANUP_TASKS
+		for TASK in "${copy[@]}"; do
+			if ! is_function "$TASK"; then
+				writelog "Registered cleanup function '$TASK' is not a function. This should not be..."
+				continue
+			fi
+			"${TASK}" &
+			cleanups+=( "$!" )
+		done
+		for i in 1 1 2 2 3 3 4 4; do
+			usleep 500000
+			kill -0 "${cleanups[@]}" &> /dev/null || break
+		done
+	fi
 
 	# kill potential remaining background jobs
 	kill $(jobs -p)
