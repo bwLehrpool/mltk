@@ -17,13 +17,13 @@ for i in 1 2 3 4 5 6 7 8; do
 	wait_for_iface "$IFACE" "$(( 15 + i * 2 ))"
 	retval=$?
 	ip link set dev "$BRIDGE" up
-	if [ "$retval" -eq 0 ] && [ "$i" -gt 4 ] && [ -n "$CLIENTIP" ] && [ -n "$GATEWAY" ]; then
+	if [ "$retval" -eq 0 ] && [ "$i" -ge 4 ] && [ -n "$CLIENTIP" ] && [ -n "$GATEWAY" ]; then
 		echo "....."
 		usleep 100000
 		echo "Checking if static IP config works...."
 		if ping -c1 -w2 "$GATEWAY" &> /dev/null || ping -c1 -w2 "$SERVERIP" &> /dev/null; then
 			echo "apparently so."
-			echo "Trying to boot without DHCP config, YMMV!"
+			echo "Trying to boot without DHCP config (DNS, Hostname, ...), YMMV!"
 			sleep 3
 			RET=0
 			break
