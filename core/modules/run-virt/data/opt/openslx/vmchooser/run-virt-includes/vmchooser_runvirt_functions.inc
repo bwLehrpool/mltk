@@ -21,8 +21,7 @@ get_vm_id() {
 		fi
 	fi
 	# fallback: take last two digits of current pid...
-	VM_ID=$(expr substr $$ $(expr ${#$} - 1) 2)
-	[ "${#VM_ID}" -eq 1 ] && VM_ID="0${VM_ID}"
+	VM_ID="${$: -2}"
 	readonly VM_ID
 }
 
@@ -37,7 +36,7 @@ writelog() {
 		echo -e "$DATE: $*"
 	fi
 	# log into file
-	if $DEBUG; then
+	if "$DEBUG"; then
 		echo -e "$DATE: (${FUNCNAME[1]}) $*" >> "${LOGFILE}"
 	else
 		echo -e "$DATE: $*" >> "${LOGFILE}"
@@ -75,7 +74,7 @@ $BODY"
 	# which cannot be seen without a window manager
 	zenity --error --title "$TITLE" --text "$BODY"
 	local RET=$?
-	[ $RET -le 1 ] && return
+	[ "$RET" -le 1 ] && return
 	# no zenity...
 	# QnD abuse printergui for error message as it's blocking
 	/opt/openslx/cups/printergui --error "$MSG" && return
@@ -150,7 +149,7 @@ cleanexit() {
 	kill $(jobs -p)
 
 	# If we're not in debug mode, remove all temporary files
-	if ! $DEBUG && notempty TMPDIR; then
+	if ! "$DEBUG" && notempty TMPDIR; then
 		rm -rf -- "${TMPDIR}"
 	fi
 
@@ -279,15 +278,15 @@ safesource() {
 		shift
 		bash -n "${FILE}"
 		local -i RET=$?
-		if [ $RET -ne 0 ]; then
-			case $RET in
+		if [ "$RET" -ne 0 ]; then
+			case "$RET" in
 				1) writelog --quiet "Bad file to source: ${FILE}" ;;
 				2) writelog --quiet "Bad syntax: ${FILE}" ;;
 				126) writelog --quiet "Could not access: ${FILE}" ;;
 				127) writelog --quiet "File not found: ${FILE}" ;;
 				*) writelog --quiet "Syntax check (bash -n) returned unknown error code '${RET}' for: ${FILE}" ;;
 			esac
-			if [ $EXIT_ON_FAILURE -eq 1 ]; then
+			if [ "$EXIT_ON_FAILURE" -eq 1 ]; then
 				echo "eval EXIT_REASON=\"Could not safesource '${FILE}'\" cleanexit 1 ;"
 			else
 				echo "eval writelog \"Could not safesource '${FILE}'.\" ;"
@@ -325,17 +324,17 @@ run_post_source() {
 	[ $# -ne 1 ] && writelog "'${FUNCNAME[0]}' expects one argument only! $# given." && return 1
 	for TASK in ${RUN_POST_SOURCE["${1}"]}; do
 		# sanity checks
-		if ! is_function $TASK; then
+		if ! is_function "$TASK"; then
 			writelog "\tRegistered function '$TASK' is not a function!"
 			return 1 # TODO maybe even cleanexit here as this seems very bad...
 		fi
 		# remove from stack before running it
 		RUN_POST_SOURCE["${1}"]="${RUN_POST_SOURCE[${1//${TASK}\ /\ }]}"
-		${TASK}
+		"${TASK}"
 		local -i RET=$?
-		if [ $RET -ne 0 ]; then
+		if [ "$RET" -ne 0 ]; then
 			writelog "\tFailed to run post source '${TASK}' (Exit code: $RET)"
-			return $RET
+			return "$RET"
 		fi
 	done
 	return 0
@@ -356,7 +355,7 @@ reg_feature_handler() {
 	fi
 	if ! is_function "$2"; then
 		writelog "'${BASH_SOURCE[1]}' tried to register a non-function as feat handler!"
-		writelog "\t'$2' is a '$(type -t $2 2>&1)'."
+		writelog "\t'$2' is a '$(type -t "$2" 2>&1)'."
 		return 1
 	fi
 	# all good, save it
@@ -401,7 +400,7 @@ notempty() {
 
 # Convenience function
 isempty() {
-	! notempty $@
+	! notempty "$@"
 }
 
 # Helper to test if given arguments are declared as functions
@@ -421,7 +420,7 @@ is_function() {
 is_array() {
 	# -ne 1 ] && writelog "is_array: Expects 1 argument! $# given." && return 1
 	while [ $# -gt 0 ]; do
-		local ARRAY_DEF="$(declare -p ${1} 2>/dev/null)"
+		local ARRAY_DEF="$(declare -p "${1}" 2>/dev/null)"
 		if [[ ! "${ARRAY_DEF}" =~ "declare -a" ]] && [[ ! "${ARRAY_DEF}" =~ "declare -A" ]]; then
 			return 1
 		fi
@@ -439,7 +438,7 @@ array_contains() {
 		return 1
 	fi
 	# is $1 even defined?
-	local ARRAY_DEF="$(declare -p $1 2>/dev/null)"
+	local ARRAY_DEF="$(declare -p "${1}" 2>/dev/null)"
 	if isempty ARRAY_DEF; then
 		#writelog "${FUNCNAME[0]}: '$1' not defined!"
 		return 1
@@ -499,9 +498,9 @@ check_dep() {
 # from the given parameters.
 clean_string() {
 	if [ "$#" -ge 1 ]; then
-		echo "$@" | tr '[A-Z]' '[a-z]' | tr -d -c '[a-z0-9\-]'
+		echo "$@" | tr 'A-Z' 'a-z' | tr -d -c 'a-z0-9\-'
 	else
-		tr '[A-Z]' '[a-z]' | tr -d -c '[a-z0-9\-]'
+		tr 'A-Z' 'a-z' | tr -d -c 'a-z0-9\-'
 	fi
 }
 
