@@ -5,6 +5,7 @@ wait_for_iface() {
 	local TIMEOUT=10
 	local state laststate current relax
 	local want=
+	local ret=1 # error
 	[ -n "$2" ] && TIMEOUT="$2"
 	echo -n "Waiting ${TIMEOUT}s for interface $DEVICE: "
 	TIMEOUT="$(( TIMEOUT * 2 ))"
@@ -22,9 +23,13 @@ wait_for_iface() {
 			state="${state}$( cat "/sys/class/net/${DEVICE}/carrier" 2> /dev/null )"
 			[ "$state" != "$laststate" ] && echo -n "[$state]"
 			laststate="$state"
-			[ "$state" = "$want" ] && break
+			if [ "$state" = "$want" ]; then
+				ret=0
+				break
+			fi
 			if [ "$current" -gt "$relax" ] && [ "$state" = "unknown1" ]; then
 				echo -n "better than nothing"
+				ret=0
 				break
 			fi
 			current=$(( current + 1 )) # don't wait forever, the pcnet iface of vmware will never be "up" although it's working
@@ -42,5 +47,6 @@ wait_for_iface() {
 		echo -n "... no operstate or carrier, let's hope for the best..."
 	fi
 	echo
+	return "$ret"
 }
 true

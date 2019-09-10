@@ -6,28 +6,46 @@ for i in 1 2 3 4 5 6 7 8; do
 	echo "<$i> Try to fix broken network"
 	echo -n "Take interface $IFACE down .. "
 
+	ip link set dev "$BRIDGE" down
 	ip link set dev "$IFACE" down
-	usleep 10000
+	usleep 100000
 
 	echo "and up again.."
 	ip link set dev "$IFACE" up
-	ip link set dev "$BRIDGE" up
 	usleep 100000
 
-	wait_for_iface "$IFACE" 20
+	wait_for_iface "$IFACE" "$(( 15 + i * 2 ))"
+	retval=$?
+	ip link set dev "$BRIDGE" up
+	if [ "$retval" -eq 0 ] && [ "$i" -gt 4 ] && [ -n "$CLIENTIP" ] && [ -n "$GATEWAY" ]; then
+		echo "....."
+		usleep 100000
+		echo "Checking if static IP config works...."
+		if ping -c1 -w2 "$GATEWAY" &> /dev/null || ping -c1 -w2 "$SERVERIP" &> /dev/null; then
+			echo "apparently so."
+			echo "Trying to boot without DHCP config, YMMV!"
+			sleep 3
+			RET=0
+			break
+		fi
+		echo "...nope..."
+	fi
+	wait_for_iface "$BRIDGE" 10
+	usleep 100000
 
-	udhcpc $PARAM -O ntpsrv -O domain -O search -t 6 -T 4 -A 5 -s "/inc/udhcpc-trigger" -f -n -q -i "$BRIDGE"
+	udhcpc $PARAM -O ntpsrv -O domain -O search -t "$(( 2 + i / 2 ))" -T "$(( 4 + i ))" -s "/inc/udhcpc-trigger" -f -n -q -i "$BRIDGE" \
+		|| udhcpc $PARAM -O ntpsrv -O domain -O search -t "$(( 2 + i / 2 ))" -T "$(( 4 + i ))" -s "/inc/udhcpc-trigger" -f -n -q -i "$BRIDGE"
+	RET="$?"
 
-	if [ $? -eq 0 ]; then
+	if [ "$RET" -eq 0 ]; then
 		echo "Finally fixed IP config. Continue boot."
-		RET=0
 		break
-	else
-		RET=1
 	fi
 done
 
-[ $RET -gt 0 ] && drop_shell "Something is really broken.. Please check your network cable and reset your computer."
+[ $RET -gt 0 ] && drop_shell "Something is really broken.. Please check your network cable and reset your computer.
+$(ip a)
+$(ip r s)"
 
 # create correct return value
 [ $RET -eq 0 ]
