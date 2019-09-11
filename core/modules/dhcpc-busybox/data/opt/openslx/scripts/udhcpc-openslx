@@ -77,12 +77,16 @@ case "$1" in
 		check_env "$1"
 		mkdir -p "/run/dhcpc"
 		# Set address on interface
-		ip addr add "$ip/$(ipcalc -s -p "$ip" "$subnet" | sed s/.*=//)" dev "$interface"
+		ip addr add "$ip/$( ipcalc -s -p "$ip" "$subnet" | sed 's/.*=//' )" dev "$interface"
 		# Set default route, if given
 		if [ -n "$router" ]; then
-			ip route replace default via "$router"
+			# Only replace route if it's the same interface as the current default route, or we don't have any
+			current="$( ip route show | awk '{ if ($1 == "default") {print $5; exit 0}}' )"
+			if [ -z "$current" ] || [ "$interface" = "$current" ]; then
+				ip route replace default via "$router"
+			fi
 		fi
-		
+
 		# get domain, hostname and thus fqdn from DNS
 		dns_fqdn=$(busybox timeout -t 3 rdns "$ip")
 		dns_short="${dns_fqdn%%.*}"
@@ -98,7 +102,7 @@ case "$1" in
 			:
 		elif [ -n "$dns_fqdn" ]; then
 			domain="${dns_fqdn#*.}"
-			
+
 		elif [ -n "$SLX_NET_DOMAIN" ]; then
 			domain="$SLX_NET_DOMAIN"
 		fi
