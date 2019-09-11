@@ -248,7 +248,7 @@ run_hooks() {
 			export TMPDIR IMGUUID USER
 			"$file" "$@"
 			r="$?"
-		elif [ "${file##.*}" = "inc" ]; then
+		elif [ "${file##*.}" = "inc" ]; then
 			. "$file"
 			r="$?"
 		fi
