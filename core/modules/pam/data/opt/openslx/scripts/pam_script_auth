@@ -152,7 +152,7 @@ rmdir "${COMMON_SHARE_MOUNT_POINT}" 2> /dev/null
 if [ -d "/opt/openslx/scripts/pam_script_auth.d" ]; then
 	for HOOK in $(ls "/opt/openslx/scripts/pam_script_auth.d"); do
 		# source it, in case of failure do nothing since these scripts are non-critical
-		. "/opt/openslx/scripts/pam_script_auth.d/$HOOK" || slxlog "pam-source-hooks" "Could not source '$HOOK'."
+		( . "/opt/openslx/scripts/pam_script_auth.d/$HOOK" ) || slxlog "pam-source-hooks" "Could not source '$HOOK'."
 	done
 fi
 
