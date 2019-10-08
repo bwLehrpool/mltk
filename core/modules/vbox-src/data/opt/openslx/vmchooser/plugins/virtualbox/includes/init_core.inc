@@ -228,7 +228,6 @@ Ihren Satelliten scheint VirtualBox nicht zu unterstützen." cleanexit 1
 		writelog "Failed to create '${VBOX_HDD_DIR}'."
 		cleanexit 1
 	fi
-	declare -rg VBOX_HDD_LINK="${VM_DISKFILE_RO}"
 	# Virtualbox configuration dir instead of $HOME/.VirtualBox
 	export VBOX_USER_HOME="${VBOX_ROOT}"
 

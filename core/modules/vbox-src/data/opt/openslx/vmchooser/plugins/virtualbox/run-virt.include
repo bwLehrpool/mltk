@@ -28,11 +28,11 @@ run_plugin() {
 	# determine hardware limits based on guest OD
 	$(safesource "${VBOX_INCLUDE_DIR}/guest_hardware_limits.inc")
 
-	# prepare volatile rw layer for the disk image using a snapshot
-	$(safesource "${VBOX_INCLUDE_DIR}/prepare_snapshot.inc")
-
 	# create main virtualbox configuration
 	$(safesource "${VBOX_INCLUDE_DIR}/create_vbox_config.inc")
+
+	# prepare volatile rw layer for the disk image using a snapshot
+	$(safesource "${VBOX_INCLUDE_DIR}/prepare_snapshot.inc")
 
 	# finalize machine configuration
 	$(safesource "${VBOX_INCLUDE_DIR}/finalize_machine_config.inc")
