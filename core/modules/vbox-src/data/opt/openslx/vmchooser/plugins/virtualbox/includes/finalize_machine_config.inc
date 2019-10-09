@@ -3,7 +3,7 @@
 ################################################################################
 
 setup_disk_image() {
-	# set read-only image path and uuid
+	# set disk image path and uuid
 	set_attr \
 		"/VirtualBox/Machine/MediaRegistry/HardDisks/HardDisk" \
 		"location" "${VBOX_HDD_LINK}"
@@ -11,25 +11,24 @@ setup_disk_image() {
 		"/VirtualBox/Machine/MediaRegistry/HardDisks/HardDisk" \
 		"uuid" "{${HDD_UUID}}"
 	
+	if isset SNAPSHOT_UUID; then
+		# read-only mode, add snapshot to main disk
+		add_node \
+			"/VirtualBox/Machine/MediaRegistry/HardDisks/HardDisk" "HardDisk" \
+			"uuid={${SNAPSHOT_UUID}}" \
+			"location=$VBOX_SNAPSHOT_DIR/{${SNAPSHOT_UUID}}.vdi" \
+			"format=VDI" \
+			"type=Normal"
 
-	# add a HardDisk node for the snapshot
-	add_node \
-		"/VirtualBox/Machine/MediaRegistry/HardDisks/HardDisk" "HardDisk" \
-		"uuid={${SNAPSHOT_UUID}}" \
-		"location=$VBOX_SNAPSHOT_DIR/{${SNAPSHOT_UUID}}.vdi" \
-		"format=VDI" \
-		"type=Normal"
+		# set snapshot dir
+		set_attr "/VirtualBox/Machine" "snapshotFolder" "${VBOX_SNAPSHOT_DIR}"
 
-	# set snapshot dir
-	set_attr "/VirtualBox/Machine" "snapshotFolder" "${VBOX_SNAPSHOT_DIR}"
-
-	# set snapshot uuid
-	# there should only be exactly one <AttachedDevice> node from the xml
-	# retrieved from the server
-
-	set_attr \
-		"/VirtualBox/Machine/StorageControllers/StorageController/AttachedDevice/Image" \
-		"uuid" "{${SNAPSHOT_UUID}}"
+		# there should only be exactly one <AttachedDevice> node from the xml
+		# retrieved from the server
+		set_attr \
+			"/VirtualBox/Machine/StorageControllers/StorageController/AttachedDevice/Image" \
+			"uuid" "{${SNAPSHOT_UUID}}"
+	fi
 }
 
 setup_floppies() {
