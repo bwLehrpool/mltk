@@ -22,13 +22,13 @@ setup_disk_image() {
 
 		# set snapshot dir
 		set_attr "/VirtualBox/Machine" "snapshotFolder" "${VBOX_SNAPSHOT_DIR}"
-
-		# there should only be exactly one <AttachedDevice> node from the xml
-		# retrieved from the server
-		set_attr \
-			"/VirtualBox/Machine/StorageControllers/StorageController/AttachedDevice/Image" \
-			"uuid" "{${SNAPSHOT_UUID}}"
 	fi
+
+	# "attach" VBOX_HDD_UUID (either the snapshot's or the disk's)
+	# NOTE: exactly one <AttachedDevice> node should be present in the downloaded xml
+	set_attr \
+		"/VirtualBox/Machine/StorageControllers/StorageController/AttachedDevice/Image" \
+		"uuid" "{${VBOX_HDD_UUID}}"
 }
 
 setup_floppies() {
