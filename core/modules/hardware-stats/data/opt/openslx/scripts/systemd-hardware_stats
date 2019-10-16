@@ -155,14 +155,14 @@ echo "$VIRTTYPE is $VT"
 
 # 8) ID44 partition size
 ID44=0
-if ! slx-tools fs_path_isvolatile "/tmp" ; then
-	ID44_SPACE=($(slx-tools fs_path_space "/tmp"))
+if ! slx-tools fs_path_isvolatile "/tmp/virt" ; then
+	ID44_SPACE=($(slx-tools fs_path_space "/tmp/virt"))
 	[ -n "${ID44_SPACE[1]}" ] && ID44="$(( ${ID44_SPACE[1]} / 1024 ))"
 
 	if [ "$ID44" -eq 0 ]; then
 		# Fallback to old way to detect it
 		# Try df first, make sure device starts with /dev
-		read -r df_dev df_size df_used df_avail df_usepercent df_mountpoint df_crap < <(df -P /tmp | grep ' /tmp$')
+		read -r df_dev df_size df_used df_avail df_usepercent df_mountpoint df_crap < <(df -P /tmp/virt | grep ' /tmp/virt$')
 		if [ -n "${df_size}" ] && [ "${df_dev:0:5}" = "/dev/" ]; then
 			# df reports kbytes, convert to MB
 			ID44=$(( df_size / 1024 ))
@@ -179,7 +179,7 @@ if ! slx-tools fs_path_isvolatile "/tmp" ; then
 		fi
 	fi
 fi
-echo "Temp partition: $ID44 MB"
+echo "Scratch space: $ID44 MB"
 
 # 9) check smart values
 FDISK=$(mktemp)
