@@ -1,13 +1,4 @@
 #!/bin/bash
-REQUIRED_INSTALLED_PACKAGES="
-		cups
-		cups-daemon
-		cups-filters
-		cups-core-drivers
-		cups-filters-core-drivers
-		ghostscript
-		libgs9-common
-"
 REQUIRED_CONTENT_PACKAGES="
 		cups
 		cups-daemon
@@ -15,6 +6,7 @@ REQUIRED_CONTENT_PACKAGES="
 		cups-core-drivers
 		cups-filters-core-drivers
 		ghostscript
+		hplip
 		libgs9-common
 "
 REQUIRED_DIRECTORIES+="
