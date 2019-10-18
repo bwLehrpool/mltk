@@ -1,5 +1,11 @@
 #!/bin/ash
 
+# Give it some time, in case starting the session fails.
+# In that case, vmchooser will send us a SIGTERM, which will
+# hopefully happen within one second, so we wont't execute
+# all the sessionstart hooks.
+sleep 1
+
 SOURCEPATH="/opt/openslx/vmchooser/sessionstart.d"
 
 if [ -d "$SOURCEPATH" ]; then
