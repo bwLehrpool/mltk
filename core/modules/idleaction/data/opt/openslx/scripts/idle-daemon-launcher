@@ -32,5 +32,8 @@ for t in $SLX_SHUTDOWN_SCHEDULE; do
 	CMD="$CMD --poweroff $t"
 done
 
+if [ "$SLX_ALLOW_USER_BGTASK" != "yes" ]; then
+	CMD="$CMD --kill-user-processes"
+fi
 
 exec /opt/openslx/sbin/idle-daemon $CMD
