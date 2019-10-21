@@ -3,7 +3,6 @@
 #
 auth       required     pam_permit.so
 account    include      common-account
-session    include      common-session
 session    required     pam_limits.so
 session    required     pam_env.so readenv=1
 session    required     pam_env.so readenv=1 envfile=/etc/default/locale
