@@ -137,6 +137,8 @@ setup_usb() {
 	sed -i '/^usb\.generic\.autoconnect/Id' "${TMPCONFIG}"
 	echo 'usb.generic.autoconnect = "TRUE"' >> "${TMPCONFIG}"
 	echo 'usb.mangleUsb3Speed = "TRUE"' >> "${TMPCONFIG}"
+	# Remove stray autoconnect entries
+	sed -i '/^usb\.autoConnect\.device/Id' "${TMPCONFIG}"
 
 	# Workaround for old VMs
 	if grep -q -i '^ehci\.present.*TRUE' "${TMPCONFIG}" \
