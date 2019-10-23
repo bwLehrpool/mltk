@@ -139,7 +139,15 @@ build() {
 		installerDefaults.autoSoftwareUpdateEnabled = "no"
 		installerDefaults.componentDownloadEnabled = "no"
 		installerDefaults.dataCollectionEnabled = "no"
+		acceptEULA = "yes"
+		acceptOVFEULA = "yes"
 	HEREDOC
+	# XXX: If the previous lines are missing, i.e. if vmware wants you to accept the EULAs first, it
+	# will try to read these files:
+	# /usr/share/doc/vmware-player/EULA
+	# /usr/lib/vmware-ovftool/vmware.eula
+	# If it cannot open these files (as we deleted them) it will crash with a SIGABRT (signal 6)
+	# coming from an uncaught exeception in libglibmm's file_get_contents
 }
 
 post_copy() {
