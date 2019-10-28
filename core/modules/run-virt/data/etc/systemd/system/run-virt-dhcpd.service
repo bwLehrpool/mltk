@@ -1,0 +1,9 @@
+[Unit]
+Description=DHCP server for VM NAT network
+Wants=run-virt-env.service
+After=run-virt-env.service
+
+[Service]
+ExecStart=/opt/openslx/sbin/udhcpd -f /opt/openslx/vmchooser/config/udhcpd-nat1.conf
+Restart=on-failure
+RestartSec=3
