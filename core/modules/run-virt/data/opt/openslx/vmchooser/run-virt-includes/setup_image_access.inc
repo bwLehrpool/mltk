@@ -39,8 +39,11 @@ setup_dnbd3 () {
 	local TIMEOUT VM_DISKFILE_REVISION
 	rm -f -- "${DNBD3_EXITFLAG}"
 	(
-		dnbd3-fuse -f -o allow_other,max_readahead=262144 -h "${SLX_DNBD3_SERVERS}" -i "${SRC_IMG_RELATIVE}" "${DNBD3_MOUNT_POINT}" > "${DNBD3_TMPLOG}" 2>&1
-		RET=$?
+		startup="$( date +%s )"
+		while [ "$( date +%s )" -lt "$(( startup + 4 ))" ]; do
+			dnbd3-fuse -f -o allow_other,max_readahead=262144 -h "${SLX_DNBD3_SERVERS}" -i "${SRC_IMG_RELATIVE}" "${DNBD3_MOUNT_POINT}" > "${DNBD3_TMPLOG}" 2>&1
+			RET=$?
+		done
 		touch "${DNBD3_EXITFLAG}"
 		if [ "$RET" != "0" ]; then
 			writelog "dnbd3-fuse stopped working (Exit code $RET)"
@@ -58,7 +61,7 @@ setup_dnbd3 () {
 			add_cleanup "cleanup_dnbd3"
 			break
 		fi
-		[ "$TIMEOUT" = "OUT" -o -e "$DNBD3_EXITFLAG" ] && break
+		[ "$TIMEOUT" = "OUT" ] || [ -e "$DNBD3_EXITFLAG" ] && break
 		sleep "$TIMEOUT"
 	done
 
