@@ -35,6 +35,8 @@ VMCHOOSER_VIRT_CONF="${VMCHOOSER_CONF_DIR}/virtualization.conf"
 # Same as in service file for udhcpd
 DHCP_NAT_CONF="${VMCHOOSER_CONF_DIR}/udhcpd-nat1.conf"
 
+echo "# Generated $(date)" > "$VMCHOOSER_VIRT_CONF"
+
 # setup more scratch space for virtual machines, if configured
 for DIR in /tmp/virt /var/log/samba /run/samba; do
 	if ! mkdir -p "$DIR"; then
@@ -50,9 +52,9 @@ if [ -n "${SLX_VM_TMP_SOURCE}" ]; then
 	for TRY in 1 2 3 STOP; do
 		[ "x$TRY" = "xSTOP" ] && break
 		if [ -n "${SLX_VM_TMP_TYPE}" ] && [ -n "${SLX_VM_TMP_OPTS}" ]; then
-			mount -t ${SLX_VM_TMP_TYPE} -o "${SLX_VM_TMP_OPTS}" "${SLX_VM_TMP_SOURCE}" /tmp/virt
+			mount -t "${SLX_VM_TMP_TYPE}" -o "${SLX_VM_TMP_OPTS}" "${SLX_VM_TMP_SOURCE}" /tmp/virt
 		elif [ -n "${SLX_VM_TMP_TYPE}" ]; then
-			mount -t ${SLX_VM_TMP_TYPE} "${SLX_VM_TMP_SOURCE}" /tmp/virt
+			mount -t "${SLX_VM_TMP_TYPE}" "${SLX_VM_TMP_SOURCE}" /tmp/virt
 		elif [ -n "${SLX_VM_TMP_OPTS}" ]; then
 			mount -o "${SLX_VM_TMP_OPTS}" "${SLX_VM_TMP_SOURCE}" /tmp/virt
 		else
@@ -95,16 +97,6 @@ chmod a+rwxt /tmp/virt
 echo "Determine host's hardware configuration"
 ################################################################################
 
-# estimate free mem
-MEM_FREE=$(grep -i "^memfree:" /proc/meminfo | awk '{print $2}')
-MEM_CACHED=$(grep -i "^cached:" /proc/meminfo | awk '{print $2}')
-MEM_SWAPCACHED=$(grep -i "^swapcached:" /proc/meminfo | awk '{print $2}')
-[ -z "$MEM_FREE" ] && MEM_FREE="2048000"
-[ -z "$MEM_CACHED" ] && MEM_CACHED="0"
-[ -z "$MEM_SWAPCACHED" ] && MEM_SWAPCACHED="0"
-MEM_TOTAL="$(expr $(expr $MEM_FREE + $MEM_CACHED + $MEM_SWAPCACHED) / 1024)"
-echo "HOST_MEM_TOTAL=${MEM_TOTAL}" > "${VMCHOOSER_VIRT_CONF}"
-
 # general machine architecture (32/64bit)
 echo "HOST_ARCH=$(uname -m)" >> "${VMCHOOSER_VIRT_CONF}"
 
@@ -134,30 +126,34 @@ done
 [ -n "${MACADDRPREFIX}" ] || MACADDRPREFIX='00:FF:00'
 # grab the last 2 bytes of the host's mac and prepend our VMID
 # placeholder (later replaced used by run-virt).
-MACADDRSUFFIX="$(echo "$HOSTMACADDR" | awk -F ":" '{print "%VMID%:" $(NF-1) ":" $NF}' | tr '[a-z]' '[A-Z]')"
-echo "MACADDRPREFIX='$MACADDRPREFIX'" >> "${VMCHOOSER_VIRT_CONF}"
-echo "MACADDRSUFFIX='$MACADDRSUFFIX'" >> "${VMCHOOSER_VIRT_CONF}"
+MACADDRSUFFIX="$( printf "%s" "$HOSTMACADDR" | awk -F ":" '{print "%VMID%:" $(NF-1) ":" $NF}' | tr 'a-z' 'A-Z' )"
+{ # ### stdout redirect start
 
-# read in ip address
-echo "HOSTIP=${SLX_PXE_CLIENT_IP}" >> "${VMCHOOSER_VIRT_CONF}"
-# hostname
-echo "HOSTNAME=\"$(hostname -s)\"" >> "${VMCHOOSER_VIRT_CONF}"
+	echo "MACADDRPREFIX='$MACADDRPREFIX'"
+	echo "MACADDRSUFFIX='$MACADDRSUFFIX'"
 
-# get further hw information and check for traces of available optical and floppy drives
-j=0
-for CDROM in $(dmesg|grep -i "Attached scsi CD-ROM sr" | sed "s,.*Attached scsi CD-ROM ,,"); do
-    echo "CDROM_$j=/dev/${CDROM}" >> "${VMCHOOSER_VIRT_CONF}"
-    j=$(expr $j + 1)
-done
+	# read in ip address
+	echo "HOSTIP=${SLX_PXE_CLIENT_IP}"
+	# hostname
+	echo "HOSTNAME='$( hostname -s )'"
 
-j=0
-for FLOPPY in $(dmesg|grep -i "Floppy drive"|sed "s,.*(s): ,,;s, is .*,,"); do
-    echo "FLOPPY_$j=/dev/${FLOPPY}" >> "${VMCHOOSER_VIRT_CONF}"
-    j=$(expr $j + 1)
-done
+	# get further hw information and check for traces of available optical and floppy drives
+	j=0
+	for CDROM in $(dmesg|grep -i "Attached scsi CD-ROM sr" | sed "s,.*Attached scsi CD-ROM ,,"); do
+		echo "CDROM_${j}=/dev/${CDROM}"
+		j="$( j + 1 )"
+	done
 
-# Serial ports
-echo "SERIAL_PORTS='$(dmesg | grep -Eo 'ttyS[0-9]+' | sed 's,^,/dev/,' | tr '\n' ' ')'" >> "${VMCHOOSER_VIRT_CONF}"
+	j=0
+	for FLOPPY in $(dmesg|grep -i "Floppy drive"|sed "s,.*(s): ,,;s, is .*,,"); do
+		echo "FLOPPY_${j}=/dev/${FLOPPY}"
+		j="$( j + 1 )"
+	done
+
+	# Serial ports
+	echo "SERIAL_PORTS='$(dmesg | grep -Eo 'ttyS[0-9]+' | sed 's,^,/dev/,' | tr '\n' ' ')'"
+
+} >> "${VMCHOOSER_VIRT_CONF}" # ### redirect end
 
 # Parallel ports
 modprobe parport_pc
@@ -234,6 +230,13 @@ mkdir -p /var/lib/udhcpd
 brctl addbr vsw2
 ip link set dev vsw2 up
 echo "1" >/proc/sys/net/ipv4/conf/vsw2/forwarding
+
+# estimate free mem during clean boot
+# TODO: Does that even make sense? We determine available memory during bootup and then blindly use
+# this value to configure the VM's memory size later on. Shouldn't we query this right before starting the VM?
+MEM_TOTAL="$( awk '{if ($1 == "MemAvailable:") { print $2; exit; }}' /proc/meminfo )"
+[ -z "$MEM_TOTAL" ] && MEM_TOTAL=2048000
+echo "HOST_MEM_TOTAL=$(( MEM_TOTAL / 1024 ))" >> "${VMCHOOSER_VIRT_CONF}"
 
 exit 0
 
