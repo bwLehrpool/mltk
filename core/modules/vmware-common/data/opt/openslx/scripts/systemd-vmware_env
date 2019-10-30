@@ -95,8 +95,9 @@ vmnetif () {
 }
 
 vmblock () {
-	if ! /usr/bin/vmware-usbarbitrator; then
-		slxlog "vmware-usbarb" "Launching /usr/bin/vmware-usbarbitrator failed."
+	# It's got to be *somewhere* right?
+	if ! /usr/lib/vmware/bin/vmware-usbarbitrator && ! /usr/bin/vmware-usbarbitrator; then
+		slxlog "vmware-usbarb" "Launching vmware-usbarbitrator failed."
 	fi
 }
 
