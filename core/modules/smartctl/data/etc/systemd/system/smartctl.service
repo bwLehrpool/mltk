@@ -1,8 +1,0 @@
-[Unit]
-Description=Check HDD health status
-
-[Service]
-Type=oneshot
-RemainAfterExit=yes
-ExecStart=/opt/openslx/scripts/systemd-smartctl
-
