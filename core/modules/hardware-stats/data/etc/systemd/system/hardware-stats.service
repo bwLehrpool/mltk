@@ -1,7 +1,8 @@
 [Unit]
 Description=Gather statistics about this machine and send to boot server
 After=tmp.target mount-vm-store.service network.target
-Wants=tmp.target
+Wants=tmp.target system-check.service
+Before=system-check.service
 
 [Service]
 Type=oneshot

@@ -1,0 +1,1 @@
+* 64Bit-Gast-Support (VT-x oder AMD-V) ist im BIOS deaktiviert. 64Bit VMs können nicht gestartet werden.

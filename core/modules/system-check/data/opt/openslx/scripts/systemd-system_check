@@ -1,0 +1,95 @@
+#!/bin/bash
+#
+# Kind of a generic message generation script. Scripts stored in
+# /opt/openslx/messages.d will be given the lightdm warnings file as first
+# param. They can choose to write to it or ignore it (when just curl'ing e.g.)
+
+. /opt/openslx/bin/slx-tools
+
+declare -rg root_dir="/opt/openslx/system-check"
+generate_messages() {
+	local hook_dir="${root_dir}/hooks.d"
+	local lang=en
+	# determine lang
+	if [ -z "$LANG" ] && [ -s "/etc/default/locale" ]; then
+		. /etc/default/locale
+	fi
+	[ -n "$LANG" ] && lang="${LANG:0:2}"
+
+	local dm_warning_file="$( \
+		awk -F'=' '$1 == "greeter-message-file" {print $2}' \
+		/etc/lightdm/qt-lightdm-greeter.conf)"
+	[ -z "$dm_warning_file" ] && dm_warning_file="/run/hw-warnings.log"
+	local dm_warning_tmp="$(mktemp)"
+
+	if [ ! -d "$hook_dir" ]; then
+		echo "Missing '$hook_dir' - dev failure?"
+		return 1
+	fi 
+	for file in "$hook_dir"/*; do
+		[ -x "$file" ] || continue
+		(
+			"$file" "$dm_warning_tmp"
+		) &
+	done
+	wait
+	# post-process, dm_warning_file contains just tags now
+	# check in /opt/openslx/messages/{lang,tags}
+	local blacklist="${root_dir}/blacklist"
+	local color do_contact
+	while read -r tag rest; do
+		IFS='|' tag_with_params=($tag)
+		# blacklisted?
+		grep -q "${tag_with_params[0]}" "$blacklist" && continue
+		# "meta" info?
+		[ -s "${root_dir}/tags/${tag_with_params[0]}" ] && \
+			. "${root_dir}/tags/${tag_with_params[0]}"
+		print_tag "${color:-000000}" "${tag_with_params[@]}" \
+			>> "$dm_warning_file"
+		# contact?
+		[ -n "$contact" ] && do_contact="yes"
+	done < "$dm_warning_tmp"
+
+	# add contact footer if needed
+	local support_tag="slx-contact-support"
+	if [ -n "$do_contact" ]; then
+		[ -s "${root_dir}/tags/${support_tag}" ] && \
+			. "${root_dir}/tags/${support_tag}"
+		print_tag "${color:-000000}" "${support_tag}" \
+			>> "$dm_warning_file"
+	fi
+}
+
+# print_tag <prefix> <file> <vars...>
+print_tag() {
+	[ "$#" -ge 2 ] || return 1
+	regex_imatch "$1" '^[0-9a-f]{6}$' || return 1
+	local prefix="$1"
+	shift
+	# since we fully pass the parsed tag as array, the first param
+	# is the tag name, the rest are the variables to substitute %i% with.
+	local tag="$1"
+	shift
+	# get localized message for this tag
+	local file="${root_dir}/lang/${lang}/${tag}"
+	if [ ! -f "$file" ]; then
+		# fallback
+		echo "000000" "Missing translation for '$tag'."
+		return 1
+	fi
+	while read -r line; do
+		line_cur="$line"
+		# go over vars and replace %i% with them
+		local count=1
+		while [ "$#" -ne 0 ]; do
+			line_cur="${line_cur//%${count}%/${1}}"
+			shift
+			(( count++ ))
+		done
+		echo "$prefix" "$line_cur"
+	done < "$file"
+}
+
+generate_messages
+exit 0
+

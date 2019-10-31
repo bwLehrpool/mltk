@@ -1,0 +1,14 @@
+#!/bin/ash
+# This file is executed in /opt/openslx/scripts/systemd-generate_warnings
+# If a first parameter is given, we write to that file instead of stdout.
+
+. /opt/openslx/config
+. /run/hwinfo
+
+if [ -n "$1" ]; then
+	exec >> "$1"
+fi
+
+if grep -q '^nouveau ' "/proc/modules"; then
+	echo 'slx-gfx-nouveau'
+fi

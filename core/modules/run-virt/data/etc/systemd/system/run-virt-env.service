@@ -1,7 +1,7 @@
 [Unit]
 Description=Sets up the virtualization environment
-Before=graphical.target
-Wants=network-dns.target
+Before=graphical.target system-check.service
+Wants=network-dns.target system-check.service
 After=network-dns.target
 
 [Service]

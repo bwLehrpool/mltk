@@ -63,36 +63,33 @@ slxfdisk() {
 	return 127
 }
 
-if [ -z "$SLX_REMOTE_LOG" ]; then
-	echo "No remote log url given, will not report"
-	exit 1
-fi
-
+################################################################################
 # 1) Get MAC Address used for booting
-eval $(grep -Eo BOOTIF=\\S+ /proc/cmdline)
-if [ "${#BOOTIF}" -ne "20" ]; then
-	echo "Getting MAC from /proc/cmdline failed, using 'ip a'..."
-	BOOTIF=01-$(ip a | grep -A 1 ': br0' | grep -o 'ether ..:..:..:..:..:..' | cut -d' ' -f2 | sed s/:/-/g)
-	if [ "${#BOOTIF}" -ne "20" ]; then
-		echo "FAIL FAIL FAIL"
-		BOOTIF="99-88-77-66-55-44-33"
-	fi
+#
+MAC="${SLX_PXE_MAC}"
+if [ -z "$MAC" ]; then
+	# get MAC from sysfs
+	MAC="$(cat /sys/class/net/${SLX_PXE_NETIF:-br0}/address)"
 fi
-MAC=${BOOTIF:3}
+if [ -z "$MAC" ]; then
+	BOOTIF="$(grep -Po '(?<=BOOTIF=)[0-9a-f\-:]+' /proc/cmdline)"
+	[ "${#BOOTIF}" -eq "20" ] && MAC="${BOOTIF:3}"
+fi
+if [ -z "$MAC" ]; then
+	echo "Getting MAC from /proc/cmdline failed, using 'ip a'..."
+	_mac="$(ip a | grep -A 1 ': br0' | grep -o 'ether ..:..:..:..:..:..' | cut -d' ' -f2)"
+	[ "$_mac" -eq 17 ] && MAC="$_mac"
+fi
+if [ -z "$MAC" ]; then
+	MAC="88-77-66-55-44-33"
+fi
+# always uppercase and dash-separated
+MAC="${MAC^^}"
+MAC="${MAC//:/-}"
 echo "Determined MAC=$MAC"
 
-# 2) Get machine UUID written in stage3.1
-UUID=$(cat /etc/system-uuid)
-if [ -z "$UUID" ] || [ "${#UUID}" -ne "36" ]; then
-	echo "No/malformed UUID, aborting" >&2
-	exit 1
-fi
-echo "UUID=$UUID"
-
-# 3) Uptime in seconds
-UPTIME=$(grep -o -E '^[0-9]+' /proc/uptime)
-
-# 4) Number of real and virtual CPU cores
+################################################################################
+# 2) Number of real and virtual CPU cores
 # Virtual, cheap way
 VCORES=$(grep '^processor\s' /proc/cpuinfo | sort -u | wc -l)
 # Real cores
@@ -109,11 +106,15 @@ if [ -z "$CPUCORES" ] || [ "$CPUCORES" = "0" ]; then
 fi
 echo "$CPUCORES real cores, $VCORES with HT"
 
-# 5) CPU model name
+################################################################################
+# 3) CPU model name
+#
 CPUMODEL=$(grep -m1 '^model name\s*:' /proc/cpuinfo | sed 's/^model name\s*:\s*//;s/\s\s*/ /g;s/^ //;s/ $//')
 echo "$CPUMODEL"
 
-# 6) RAM
+################################################################################
+# 4) RAM
+#
 RAM=$(grep -m1 '^MemTotal:' /proc/meminfo | awk '{print $2}')
 RAM=$(( $RAM / 1024 ))
 if [ -z "$RAM" ] || [ "$RAM" -lt 500 ]; then
@@ -125,7 +126,9 @@ if [ -z "$RAM" ] || [ "$RAM" -lt 500 ]; then
 fi
 echo "$RAM MB RAM"
 
-# 7) 64bit virtualization support
+################################################################################
+# 5) 64bit virtualization support
+#
 VT="UNSUPPORTED"
 VIRTTYPE=$(grep -m1 '^flags\s*:' /proc/cpuinfo | grep -wo -e svm -e vmx)
 [ -n "$VIRTTYPE" ] && modprobe msr
@@ -153,7 +156,9 @@ elif [ "$VIRTTYPE" = "svm" ]; then  # amd
 fi
 echo "$VIRTTYPE is $VT"
 
-# 8) ID44 partition size
+################################################################################
+# 6) ID44 partition size
+#
 ID44=0
 if ! slx-tools fs_path_isvolatile "/tmp/virt" ; then
 	ID44_SPACE=($(slx-tools fs_path_space "/tmp/virt"))
@@ -181,7 +186,9 @@ if ! slx-tools fs_path_isvolatile "/tmp/virt" ; then
 fi
 echo "Scratch space: $ID44 MB"
 
-# 9) check smart values
+################################################################################
+# 7) check smart values
+#
 FDISK=$(mktemp)
 declare -a DISKS
 shopt -s extglob
@@ -192,6 +199,7 @@ for disk in /dev/disk/by-path/!(*-part*|*-usb-*); do
 	slxfdisk -l "$disk"
 done > "$FDISK"
 shopt -u extglob
+[ -z "$SLX_SMARTCTL_MIN_REALLOC" ] && SLX_SMARTCTL_MIN_REALLOC=0
 BADSECTORS=0
 if which smartctl; then
 	ALLSMART=$(mktemp)
@@ -226,7 +234,9 @@ if which smartctl; then
 fi
 echo "SMART: $OVERALL - $REALLOC reallocated, $PENDING pending"
 
-# A) Read system model and manufacturer
+################################################################################
+# 8) Read system model and manufacturer
+#
 dmidec() {
 	local RETVAL=$(dmidecode "$@" 2>/dev/null | grep -v '^#' | grep -v '^Invalid' | sed 's/\s\s*/ /g;s/^ //;s/ $//')
 	case "$RETVAL" in
@@ -237,6 +247,10 @@ dmidec() {
 	echo "$RETVAL"
 }
 
+bashesc () {
+	sed s/\'/\'\"\'\"\'/g <<< $*
+}
+
 HW_MODEL=$(dmidec -q -s system-product-name)
 HW_MANUF=$(dmidec -q -s system-manufacturer)
 # Try fallback to baseboard
@@ -245,138 +259,59 @@ if [ "$HW_MODEL" = "Unknown" ]; then
 	HW_MANUF=$(dmidec -q -s baseboard-manufacturer)
 fi
 
-MODEL="$HW_MODEL"
-if [ "$HW_MANUF" != "Unknown" ]; then
-	MODEL="$MODEL ($HW_MANUF)"
-fi
-echo "System model: $MODEL"
+HW_MANUF=$(bashesc "$HW_MANUF")
+HW_MODEL=$(bashesc "$HW_MODEL")
 
-# n) Dump raw data to a file
-DATAFILE=$(mktemp)
-cat > "$DATAFILE" <<-EOF
+################################################################################
+# Save raw data to report file
+#
+REPORTFILE="/run/hwreport"
+cat > "$REPORTFILE" <<-EOF
 ############################### CPU #####################################
 Sockets:       $(grep '^physical id' /proc/cpuinfo | sort -u | wc -l)
 Real cores:    $CPUCORES
 Virtual cores: $VCORES
 ######################## Partition tables ###############################
 EOF
-cat "$FDISK" >> "$DATAFILE"
-cat >> "$DATAFILE" <<-EOF
+cat "$FDISK" >> "$REPORTFILE"
+cat >> "$REPORTFILE" <<-EOF
 ############################ PCI ID #####################################
 EOF
-lspci -n -m >> "$DATAFILE"
-cat >> "$DATAFILE" <<-EOF
+lspci -n -m >> "$REPORTFILE"
+cat >> "$REPORTFILE" <<-EOF
 ########################## dmidecode ####################################
 EOF
-dmidecode >> "$DATAFILE"
+dmidecode >> "$REPORTFILE"
 if [ -n "$ALLSMART" ] && [ -s "$ALLSMART" ]; then
-	cat >> "$DATAFILE" <<-EOF
+	cat >> "$REPORTFILE" <<-EOF
 	########################### smartctl ####################################
 	EOF
-	cat "$ALLSMART" >> "$DATAFILE"
+	cat "$ALLSMART" >> "$REPORTFILE"
 fi
-cat >> "$DATAFILE" <<-EOF
+cat >> "$REPORTFILE" <<-EOF
 #########################
 EOF
 echo "Created report file"
 
 [ -n "$ALLSMART" ] && rm -f -- "$ALLSMART"
 
-# Put some info in local file for later use
-HDDCOUNT="${#DISKS[@]}"
-
-bashesc () {
-	sed s/\'/\'\"\'\"\'/g <<<$*
-}
-HW_MANUF=$(bashesc "$HW_MANUF")
-HW_MODEL=$(bashesc "$HW_MODEL")
+################################################################################
+# Save information to local file for later use
+#
 cat > "/run/hwinfo" <<HORST
 HW_KVM='${VT}'
 HW_ID44='${ID44}'
+HW_MAC='${MAC}'
 HW_MBRAM='${RAM}'
-HW_HDDCOUNT='${HDDCOUNT}'
+HW_HDDCOUNT='${#DISKS[@]}'
+HW_BADSECTORS='${BADSECTORS}'
 HW_MANUF='${HW_MANUF}'
 HW_MODEL='${HW_MODEL}'
+HW_CPUMODEL='${CPUMODEL}'
 HW_CORES='${CPUCORES}'
 HW_THREADS='${VCORES}'
 HORST
 
-# Build warning logfile (for lightdm)
-buildlogfile() {
-	. /run/hwinfo
-	exec 4> /run/hw-warnings.log
-	CONTACT_RZ=
-	if [ "$HW_KVM" = "DISABLED" ]; then
-		echo "ff0000" "* 64Bit-Gast-Support (VT-x oder AMD-V) ist im BIOS deaktiviert. 64Bit VMs können nicht gestartet werden." >&4
-		CONTACT_RZ=jau
-	elif [ "$HW_KVM" = "UNSUPPORTED" ]; then
-		echo "000000" "* CPU hat keinen 64Bit-Gast-Support (VT-x oder AMD-V). 64Bit VMs können nicht gestartet werden." >&4
-	fi
-	if [ -n "$HW_MBRAM" ] && [ "$HW_MBRAM" -lt 3400 ]; then
-		local GB=$(( ( HW_MBRAM + 300 ) / 1024 ))
-		echo "000000" "* Dieser PC hat wenig RAM (${GB}GB). Die Leistung von VM-Sitzungen wird nicht optimal sein." >&4
-	fi
-	if [ "$HW_ID44" = "0" ]; then
-		echo "000000" "* Keine ID44-Partition gefunden. VMs bekommen wenig RAM zugewiesen." >&4
-		if [ "$HW_HDDCOUNT" = "0" ]; then
-			echo "000000" "  Keine Festplatte erkannt; eine Festplatte wird empfohlen, wenn Sie VMs nutzen wollen." >&4
-		elif [ -n "$HW_HDDCOUNT" ]; then
-			CONTACT_RZ=klar
-		fi
-		if [ -n "$HW_MBRAM" ] && [ "$HW_MBRAM" -lt 4500 ]; then
-			echo "ff0000" "  Da der PC wenig RAM hat, ist die Einrichtung einer ID44-Partition dringend zu empfehlen." >&4
-		fi
-	elif [ -n "$HW_ID44" ] && [ "$HW_ID44" -lt 10000 ]; then
-		echo "000000" "* Die ID44-Partition ist sehr klein. VM-Sitzungen könnten nach einiger Zeit aus Speichermangel abstürzen." >&4
-		CONTACT_RZ=fjeden
-	fi
-	if [ -n "$SLX_VM_NFS" ] && ! systemctl status mount-vm-store >/dev/null; then
-		echo "ff0000" "* Der VM-Store konnte nicht eingehängt werden. VMs können nicht gestartet werden." >&4
-		echo "ff0000" "  Versuchen Sie das Problem zu lösen, indem Sie den Computer neu starten." >&4
-	fi
-	if grep -q '^nouveau ' "/proc/modules"; then
-		echo "ff5500" "* Die nVidia-Karte in diesem Rechner wird nur von den quelloffenen Treibern (nouveau) unterstützt, und daher mit verminderter Leistung laufen." >&4
-	fi
-	if [ -n "$CONTACT_RZ" ]; then
-		echo "000000" " -- " >&4
-		echo "000000" " -- Wenden Sie sich ggf. an den bwLehrpool-Support Ihres Rechenzentrums -- " >&4
-	fi
-}
-
-buildlogfile &
-
-# Fire away
-echo "Submitting to $SLX_REMOTE_LOG"
-if curl --retry 4 --retry-connrefused --max-time 5 --retry-max-time 15 \
-		--data-urlencode "type=~poweron" --data-urlencode "uuid=$UUID" --data-urlencode "macaddr=$MAC" \
-		--data-urlencode "uptime=$UPTIME" --data-urlencode "realcores=$CPUCORES" --data-urlencode "mbram=$RAM" \
-		--data-urlencode "kvmstate=$VT" --data-urlencode "cpumodel=$CPUMODEL" --data-urlencode "id44mb=$ID44" \
-		--data-urlencode "badsectors=$BADSECTORS" --data-urlencode "systemmodel=$MODEL" \
-		--data-urlencode "data@$DATAFILE" "$SLX_REMOTE_LOG" | grep -q "RESULT=0"; then
-	echo "Success"
-	rm -f -- "$DATAFILE"
-	START=$(( $RANDOM % 5 ))
-	DELAY=$(( $RANDOM % 20 ))
-	cat > "/etc/cron.d/usage_stats" <<-EOF
-		# Update usage statistics on server
-
-		SHELL=/bin/sh
-		PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin:/opt/openslx/sbin:/opt/openslx/bin
-
-		${START}-59/5 *   * * *    root    sleep ${DELAY}; /opt/openslx/scripts/cron-system_usage_update
-	EOF
-	touch "/etc/cron.d" # Sometimes, aufs doesn't update the mtime of dirs when creating files,
-	# so cron would not rescan the cron directory
-	cleanup
-	# Trigger right now so resource usage gets updated
-	/opt/openslx/scripts/cron-system_usage_update
-	exit 0
-else
-	echo "Failed..."
-fi
-
-echo "Server doesn't seem to support hardware/usage stats - disabling logging"
-rm -f -- "/etc/cron.d/usage_stats"
 cleanup
-exit 1
+exit 0
 
