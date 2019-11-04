@@ -2,9 +2,9 @@
 
 # Give it some time, in case starting the session fails.
 # In that case, vmchooser will send us a SIGTERM, which will
-# hopefully happen within one second, so we wont't execute
+# hopefully happen within two seconds, so we won't execute
 # all the sessionstart hooks.
-sleep 1
+sleep 2
 
 SOURCEPATH="/opt/openslx/vmchooser/sessionstart.d"
 
