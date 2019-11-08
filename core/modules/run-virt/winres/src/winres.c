@@ -1204,8 +1204,13 @@ static HRESULT createFolderShortcut(wchar_t* targetDir, wchar_t* linkFile, wchar
 			if (comment != NULL) {
 				hRes = pShellLink->lpVtbl->SetDescription(pShellLink, comment);
 			}
-			StringCchPrintfW(explorer, MAX_PATH, L"%s\\system32\\imageres.dll", windowsPath);
-			hRes = pShellLink->lpVtbl->SetIconLocation(pShellLink, explorer, 137);
+			if (winVer.dwMajorVersion >= 6) { // Vista+
+				StringCchPrintfW(explorer, MAX_PATH, L"%s\\system32\\imageres.dll", windowsPath);
+				hRes = pShellLink->lpVtbl->SetIconLocation(pShellLink, explorer, 137);
+			} else {
+				StringCchPrintfW(explorer, MAX_PATH, L"%s\\system32\\shell32.dll", windowsPath);
+				hRes = pShellLink->lpVtbl->SetIconLocation(pShellLink, explorer, 85);
+			}
 
 			/* Use the IPersistFile object to save the shell link */
 			hRes = pShellLink->lpVtbl->QueryInterface(
