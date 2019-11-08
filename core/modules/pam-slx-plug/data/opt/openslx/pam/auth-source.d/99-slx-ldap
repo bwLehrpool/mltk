@@ -19,6 +19,11 @@ unset_ldap_vars() {
 	unset USER_DN USER_UID USER_GID USER_GROUP REAL_ACCOUNT NETWORK_HOME HOME_MOUNT_OPTS
 }
 
+logwait() {
+	slxlog "$@"
+	WAIT=1
+}
+
 # ldapsearch can return fields either as
 # field: value
 # or
@@ -72,8 +77,7 @@ run_auth() {
 				< "$SEARCH_ANON"  grep -q '^ldap_bind:.*(-1)$' || break # If == -1, continue
 				;;
 			*)
-				slxlog "pam-slxldap-ldapsearch" "Initial ldapsearch for $PAM_USER returned $RET" "$SEARCH_ANON"
-				WAIT=1
+				logwait "pam-slxldap-ldapsearch" "Initial ldapsearch for $PAM_USER returned $RET" "$SEARCH_ANON"
 				break
 				;;
 		esac
@@ -103,7 +107,7 @@ run_auth() {
 	fi
 	for retries in 0 1 1 0; do
 		if ! mkfifo -m 0600 "${PW}"; then
-			slxlog "pam-slxldap-fifo" "Could not create FIFO at ${PW}"
+			logwait "pam-slxldap-fifo" "Could not create FIFO at ${PW}"
 			return 1
 		fi
 		( # Blocking write to FIFO, fork into bg. Make sure to use a shell that understands echo -n (busybox ash does)
@@ -125,8 +129,7 @@ run_auth() {
 				< "$SEARCH_USER"  grep -q '^ldap_bind:.*(-1)$' || break # If == -1, continue
 				;;
 			*)
-				slxlog "pam-slxldap-ldapsearch" "User-bind for $PAM_USER returned $RET" "$SEARCH_USER"
-				WAIT=1
+				logwait "pam-slxldap-ldapsearch" "User-bind for $PAM_USER returned $RET" "$SEARCH_USER"
 				break
 				;;
 		esac
@@ -135,12 +138,12 @@ run_auth() {
 	[ "$RET" = 0 ] || return 1
 	USER_UID=$(extract_field "uidNumber" "$SEARCH_USER" "$SEARCH_ANON")
 	if [ -z "$USER_UID" ]; then
-		slxlog --echo "pam-slxldap-nouid" "User $PAM_USER found in ldap, but has no uidNumber"
+		logwait --echo "pam-slxldap-nouid" "User $PAM_USER found in ldap, but has no uidNumber" "$SEARCH_USER"
 		return 1
 	fi
 	USER_GID=$(extract_field "gidNumber" "$SEARCH_USER" "$SEARCH_ANON")
 	if [ -z "$USER_GID" ]; then
-		slxlog --echo "pam-slxldap-nogid" "User $PAM_USER / $USER_UID found in ldap, but has no gidNumber"
+		logwait --echo "pam-slxldap-nogid" "User $PAM_USER / $USER_UID found in ldap, but has no gidNumber" "$SEARCH_USER"
 		unset USER_UID
 		return 1
 	fi
@@ -176,7 +179,7 @@ for s_file in /opt/openslx/pam/slx-ldap.d/*; do
 	[ -f "$s_file" ] || continue
 	. "$s_file"
 	if [ -z "$LDAP_URI" ] || [ -z "$LDAP_BASE" ]; then
-		slxlog --echo "pam-slxldap-empty" "LDAP config '$s_file' is missing URI or BASE"
+		logwait --echo "pam-slxldap-empty" "LDAP config '$s_file' is missing URI or BASE"
 		continue
 	fi
 	if run_auth; then
@@ -189,11 +192,11 @@ if [ -z "$USER_UID" ]; then
 	unset_ldap_vars
 fi
 
-if [ -n "$TEMPFILES_LDAP" ]; then
-	rm -f -- $TEMPFILES_LDAP
-fi
-
 [ -n "$WAIT" ] && sleep 1
+
+if [ -n "$TEMPFILES_LDAP" ]; then
+	rm -f -- $TEMPFILES_LDAP # No quotes -- is a list
+fi
 
 true
 
