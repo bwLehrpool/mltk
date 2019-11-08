@@ -134,7 +134,13 @@ build() {
 	EOF
 
 	# Patch system-wide vmware config
-	sed -i '/^installerDefaults.autoSoftwareUpdateEnabled/d;/^installerDefaults.componentDownloadEnabled/d;/^installerDefaults.dataCollectionEnabled/d' "${MODULE_BUILD_DIR}/etc/vmware/config"
+	sed -i '/^installerDefaults.autoSoftwareUpdateEnabled/d;
+		/^installerDefaults.componentDownloadEnabled/d;
+		/^installerDefaults.dataCollectionEnabled/d;
+		/^acceptEULA/d;
+		/^acceptOVFEULA/d
+		' "${MODULE_BUILD_DIR}/etc/vmware/config"
+
 	cat >> "${MODULE_BUILD_DIR}/etc/vmware/config" <<-HEREDOC
 		installerDefaults.autoSoftwareUpdateEnabled = "no"
 		installerDefaults.componentDownloadEnabled = "no"
