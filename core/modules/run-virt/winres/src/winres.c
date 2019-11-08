@@ -1054,7 +1054,7 @@ static BOOL mountNetworkShare(const netdrive_t *d, BOOL useIp)
 		}
 		if (retval != ERROR_ALREADY_ASSIGNED && retval != ERROR_DEVICE_ALREADY_REMEMBERED
 				&& retval != ERROR_CONNECTION_UNAVAIL) {
-			alog("mountNetworkShare: with letter failed: %d", (int)retval);
+			alog("mountNetworkShare: '%s' with letter failed: %d", uncPath, (int)retval);
 			return FALSE;
 		}
 	}
@@ -1071,7 +1071,7 @@ static BOOL mountNetworkShare(const netdrive_t *d, BOOL useIp)
 				postSuccessfulMount(d, letter);
 				return TRUE;
 			}
-			alog("mountNetworkShare: without letter failed: %d", (int)retval);
+			alog("mountNetworkShare: '%s' without letter failed: %d", uncPath, (int)retval);
 			if (retval == ERROR_INVALID_PASSWORD || retval == ERROR_LOGON_FAILURE
 					|| retval == ERROR_BAD_USERNAME || retval == ERROR_ACCESS_DENIED
 					|| retval == ERROR_SESSION_CREDENTIAL_CONFLICT) {
