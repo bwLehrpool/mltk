@@ -58,7 +58,7 @@ run_auth() {
 	SEARCH_ANON=$(mktemp)
 	TEMPFILES_LDAP="$TEMPFILES_LDAP $SEARCH_ANON"
 	for retries in 0 1 1 2 3 END; do
-		ldapsearch -x -LLL -l 3 -o nettimeout=3 -o ldif-wrap=no \
+		ldapsearch -x -l 3 -o nettimeout=3 -o ldif-wrap=no \
 				-H "$LDAP_URI" -b "$LDAP_BASE" uid="${PAM_USER}" \
 				dn distinguishedName homeMount homeDirectory realAccount uid uidNumber gidNumber ${LDAP_ATTR_MOUNT_OPTS} &> "${SEARCH_ANON}"
 		RET=$?
@@ -111,7 +111,7 @@ run_auth() {
 		) &
 		# unquoted LDAP_ATTR_*
 		# Use "-s base" and BINDDN as search base so Active Directory will return transitive group memberships
-		ldapsearch -s base -x -LLL -l 5 -o nettimeout=5 -o ldif-wrap=no \
+		ldapsearch -s base -x -l 5 -o nettimeout=5 -o ldif-wrap=no \
 				-H "$LDAP_URI" -b "$BINDDN" -y "${PW}" -D "$BINDDN" uid="${PAM_USER}" msds-memberOfTransitive "*" &> "${SEARCH_USER}"
 		RET=$?
 		rm -f -- "${PW}"
