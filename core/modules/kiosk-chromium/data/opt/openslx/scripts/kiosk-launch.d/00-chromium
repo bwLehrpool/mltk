@@ -4,51 +4,49 @@
 command -v chromium-browser || return 0
 
 # clear state of previous sessions
-[ -e "$HOME/.config/chromium" ] && rm -rf -- "$HOME/.config/chromium"
-mkdir -p "$HOME/.config/chromium/Default"
+if [ "$(whoami)" = "demo" ]; then
+	rm -rf -- "$HOME/.config/chromium"
+	mkdir -p "$HOME/.config/chromium/Default"
+fi
 
 # Helper to json'ize bookmarks given as arguments in the form:
 #    <name>,<url>  ->  e.g. Google,https://www.google.com
 json_bookmarks() {
-	cur=0
-	echo -n '['
+	local cur=0
 	while [ $# -ne 0 ]; do
-		local bb="$1"
+		jq --null-input --join-output --compact-output --arg id "$(( cur++ ))" --arg name "${1%%,*}" --arg url "${1#*,}" \
+			'{"id": $id, "type": "url", "name": $name, "url": $url}'
 		shift
-		awk -F, '{printf "%s","{\"id\": \"'$cur'\", \"type\": \"url\", \"name\": \""$1"\", \"url\": \""$2"\"}"}' <<< "$bb"
-		[ $# -ne 0 ] && echo -n ','
-		(( cur ++ ))
-	done 
-	echo -n ']'
+		[ $# -ne 0 ] && printf ","
+	done
 }
 
-jq ".roots.bookmark_bar.children += $(json_bookmarks $SLX_BROWSER_BOOKMARKS)" \
-	<(cat <<-EOF
-		{
-			"roots": {
-				"bookmark_bar": {
-				"children": [  ],
-					"id": "1",
-					"name": "Lesezeichenleiste",
-					"type": "folder"
-				},
-				"other": {
-					"children": [  ],
-					"id": "2",
-					"name": "Weitere Lesezeichen",
-					"type": "folder"
-				},
-				"synced": {
-					"children": [  ],
-					"id": "3",
-					"name": "Mobile Lesezeichen",
-					"type": "folder"
-				}
-			},
-			"version": 1
+# Pass SLX_BROWSER_BOOKMARKS without quotes for splitting into arguments
+cat > "$HOME/.config/chromium/Default/Bookmarks" <<EOF
+{
+	"roots": {
+		"bookmark_bar": {
+		"children": [ $(json_bookmarks $SLX_BROWSER_BOOKMARKS) ],
+			"id": "1",
+			"name": "Lesezeichenleiste",
+			"type": "folder"
+		},
+		"other": {
+			"children": [  ],
+			"id": "2",
+			"name": "Weitere Lesezeichen",
+			"type": "folder"
+		},
+		"synced": {
+			"children": [  ],
+			"id": "3",
+			"name": "Mobile Lesezeichen",
+			"type": "folder"
 		}
-	EOF
-	) > "$HOME/.config/chromium/Default/Bookmarks"
+	},
+	"version": 1
+}
+EOF
 
 # default chromium arguments
 chromium_args=("--noerrdialogs" "--disable-new-avatar-menu" "--disable-infobars" "--test-type")
