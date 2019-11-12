@@ -1,7 +1,7 @@
-#!/bin/bash
+#!/bin/bash -- sourced
 # prepares and run chromium as kiosk browser
 
-. /opt/openslx/config
+command -v chromium-browser || return 0
 
 # clear state of previous sessions
 [ -e "$HOME/.config/chromium" ] && rm -rf -- "$HOME/.config/chromium"

@@ -13,14 +13,42 @@ xset -dpms
 openbox --config-file "/etc/xdg/openbox/rc.xml.kiosk" &
 
 # move the mouse away
-xdotool mousemove 20000 20000 &
+xdotool mousemove 20000 20000
 
-# run browser
+# Remember list of jobs running the background, so we can clean up
+# any mess left around by failed attempts below
+#
+#### Don't fork anything into background after this point
+#
+declare -rg BASE_JOBS="$(jobs -p)"
+
+kill_jobs() {
+	local j
+	for j in $(jobs -p); do
+		# Was already running before? Skip
+		[ " $BASE_JOBS " =~ " $j " ] && continue
+		kill "$j"
+	done
+}
+
+# try specific browser first, if any
+for browser in $SLX_BROWSER; do
+	[[ "$browser" =~ ^[a-zA-Z0-9_.\-]+$ ]] || continue
+	for file in "$0".d/*"$browser"*; do
+		[ -f "$file" ] || continue
+		. "$file" || slxlog "kiosk-launch" "Failed to source '$file'."
+		kill_jobs
+	done
+done
+# still here...
+# try anything
 for file in "$0".d/*; do
+	[ -f "$file" ] || continue
 	. "$file" || slxlog "kiosk-launch" "Failed to source '$file'."
+	kill_jobs
 done
 
 # should not come to this point as above sources should
 # exec away
-slxlog "kiosk-launch" "No kiosk browser configured!"
+slxlog --sync "kiosk-launch" "No kiosk browser configured/available!"
 exit 1
