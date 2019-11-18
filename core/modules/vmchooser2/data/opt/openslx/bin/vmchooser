@@ -54,6 +54,10 @@ fi
 if [ -z "$SLX_NO_PVS" ]; then
 	EXTRA="$EXTRA --pvs"
 	if [ "x$SLX_PVS_DEFAULT" = "xON" ] || [ "x$SLX_PVS_HYBRID" = "xyes" ]; then
+		# Config option says checked by default, or this is hybrid manager
+		EXTRA="$EXTRA --pvs-checked"
+	elif grep -q -F -x -e "tutorIP=$SLX_PXE_CLIENT_IP" -e "tutorIP=$SLX_DHCP_CLIENT_IP" "/opt/openslx/pvs2/pvs2.ini"; then
+		# This IP is a tutor, also autoconnect
 		EXTRA="$EXTRA --pvs-checked"
 	fi
 fi
