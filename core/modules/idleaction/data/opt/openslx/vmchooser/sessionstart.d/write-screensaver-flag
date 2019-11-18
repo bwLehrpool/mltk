@@ -4,6 +4,7 @@
 
 if [ "$VMCHOOSER_DISABLE_SCREENSAVER" = "TRUE" ]; then
 	touch "$HOME/.no-saver"
+	sed -i 's/^dpmsEnabled:.*$/dpmsEnabled: False/;s/^timeout:.*$/timeout: 99:00:00/' "$HOME/.xscreensaver"
 else
 	rm -f -- "$HOME/.no-saver"
 fi

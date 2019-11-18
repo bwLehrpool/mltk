@@ -16,7 +16,7 @@ if which xscreensaver; then
 	. /opt/openslx/config
 	SBY="${SLX_SCREEN_STANDBY_TIMEOUT}"
 	SVR="${SLX_SCREEN_SAVER_TIMEOUT}"
-	if [ -n "${SLX_EXAM}" ] || [ -e "$HOME/.no-saver" ]; then
+	if [ -n "${SLX_EXAM}" ]; then
 		SLX_SCREEN_SAVER_GRACE_TIME=
 		AUTOLOCK=False
 		SBY=0
@@ -50,7 +50,7 @@ if which xscreensaver; then
 	else
 		GRACE="$( secsToTime "$SLX_SCREEN_SAVER_GRACE_TIME" )"
 	fi
-	# Always overwrite this file -- better for exam mode, or if .no-saver changed
+	# Always overwrite this file -- better for exam mode
 	cat > "$HOME/.xscreensaver" <<EOF
 # Automatically generated on $(date) -- modifications might get lost
 mode:         one
