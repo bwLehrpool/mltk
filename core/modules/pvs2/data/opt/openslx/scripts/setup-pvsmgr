@@ -10,13 +10,6 @@ if [ -n "$SLX_PVS_CONFIG_URL" ]; then
 	[ -s "${DST}" ] && CONF="--config=${DST}"
 fi
 
-# In case nobody else manages this
-xset +dpms
-xset dpms 120 120 120
-# In case idle-daemon manages saver/dpms
-[ -z "$HOME" ] && HOME="$( getent passwd "$(id -u)" | awk -F: '{print $6}' )"
-touch "$HOME/.no-saver"
-
 openbox &
 
 timediff=5
