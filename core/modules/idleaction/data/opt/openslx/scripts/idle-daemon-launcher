@@ -11,9 +11,10 @@ if [ -z "${SLX_EXAM}" ]; then
 	[ -n "$SLX_LOGOUT_TIMEOUT" ] && CMD="$CMD --logout-timeout $SLX_LOGOUT_TIMEOUT"
 	[ -n "$SLX_SYSTEM_STANDBY_TIMEOUT" ] && CMD="$CMD --suspend-timeout $SLX_SYSTEM_STANDBY_TIMEOUT"
 
-	[ -n "$SLX_SCREEN_SAVER_TIMEOUT" ] && CMD="$CMD --screensaver-timeout $SLX_SCREEN_SAVER_TIMEOUT"
-	[ -n "$SLX_SCREEN_STANDBY_TIMEOUT" ] && CMD="$CMD --dpms-timeout $SLX_SCREEN_STANDBY_TIMEOUT"
-	[ -n "$SLX_SCREEN_SAVER_GRACE_TIME" ] && CMD="$CMD --grace-period $SLX_SCREEN_SAVER_GRACE_TIME"
+	# Taken care of by xscreensaver again, as it can now account for ungrab hook messups.
+	#[ -n "$SLX_SCREEN_SAVER_TIMEOUT" ] && CMD="$CMD --screensaver-timeout $SLX_SCREEN_SAVER_TIMEOUT"
+	#[ -n "$SLX_SCREEN_STANDBY_TIMEOUT" ] && CMD="$CMD --dpms-timeout $SLX_SCREEN_STANDBY_TIMEOUT"
+	#[ -n "$SLX_SCREEN_SAVER_GRACE_TIME" ] && CMD="$CMD --grace-period $SLX_SCREEN_SAVER_GRACE_TIME"
 else
 	# Exam mode active
 	CMD="$CMD --min-idle 7200" # Ignore schedule if idle time is lower than 2h
