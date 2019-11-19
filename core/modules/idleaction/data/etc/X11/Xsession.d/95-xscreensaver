@@ -6,9 +6,9 @@ if which xscreensaver; then
 	secsToTime() {
 		local NUM SECS MINS HRS
 		NUM="$1"
-		SECS=0$(( NUM % 60 ))
-		MINS=0$(( ( NUM / 60 ) % 60 ))
-		HRS=0$(( ( NUM / 3600 ) % 60 ))
+		SECS=$(( NUM % 60 ))
+		MINS=$(( ( NUM / 60 ) % 60 ))
+		HRS=$(( ( NUM / 3600 ) % 60 ))
 		printf "%02d:%02d:%02d" "$HRS" "$MINS" "$SECS"
 	}
 	[ -z "$UID" ] && UID=$(id -u)
@@ -35,7 +35,8 @@ if which xscreensaver; then
 	else
 		STANDBY="99:00:00"
 	fi
-	# Explicit screen saver timeout set
+	# Explicit screen saver timeout set. Handle 0 as disabled.
+	# Fix values below one minute:
 	if [ "$SVR" -gt 0 ] && [ "$SVR" -lt 60 ]; then
 		SVR=60
 	fi
