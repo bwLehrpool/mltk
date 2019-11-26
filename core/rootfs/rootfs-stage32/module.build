@@ -102,8 +102,8 @@ post_copy() {
 
 	# quick fix for missing group in /etc/group
 	add_group "lock"
-	add_group "nogroup"
-	add_user "nobody"
+	add_group "nogroup" 65534
+	USERID=65534 GROUPID=65534 add_user "nobody"
 
 	# setup root account
 	PASSWORD= USER=root add_user
