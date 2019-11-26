@@ -45,13 +45,15 @@ report_hardware_info() {
 	if [ "$HW_MANUF" != "Unknown" ]; then
 	model="$model ($HW_MANUF)"
 	fi
+	# Get IP/subnet size
+	local subnet="$( ip -o -f inet addr show br0 | awk '/scope global/ {print $4}' )"
 	# just assume the uuid/mac dumped are valid here (its checked often enough :))
 	echo -n "Submitting to '$SLX_REMOTE_LOG' ... "
 	curl --retry 4 --retry-connrefused --max-time 5 --retry-max-time 15 \
 		--data-urlencode "type=~poweron" --data-urlencode "uuid=$uuid" --data-urlencode "macaddr=$HW_MAC" \
 		--data-urlencode "uptime=$uptime" --data-urlencode "realcores=$HW_CORES" --data-urlencode "mbram=$HW_MBRAM" \
 		--data-urlencode "kvmstate=$HW_KVM" --data-urlencode "cpumodel=$HW_CPUMODEL" --data-urlencode "id44mb=$HW_ID44" \
-		--data-urlencode "badsectors=$HW_BADSECTORS" --data-urlencode "systemmodel=$model" \
+		--data-urlencode "badsectors=$HW_BADSECTORS" --data-urlencode "systemmodel=$model" --data-urlencode "subnet=$subnet" \
 		--data-urlencode "data@$hwreport" "$SLX_REMOTE_LOG" | grep -q "RESULT=0"
 	local ret=$?
 	if [ "$ret" -ne 0 ]; then
