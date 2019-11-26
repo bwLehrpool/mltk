@@ -43,10 +43,11 @@ done
 getent group vboxusers || addgroup -S vboxusers
 
 # set their permissions
-chown root:vboxusers /dev/vboxdrv
-chmod 666 /dev/vboxdrv
-chown root:vboxusers /dev/vboxdrvu
-chmod 666 /dev/vboxdrvu
+chmod 0600 /dev/vboxdrv /dev/vboxnetctl
+chmod 0666 /dev/vboxdrvu
+mkdir -p /dev/vboxusb
+chmod 0750 /dev/vboxusb
+chown root:vboxusers /dev/vboxusb
 
 # create required standard directories
 mkdir -p "/tmp/virt/virtualbox" -m 1777
