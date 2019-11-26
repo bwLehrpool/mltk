@@ -27,7 +27,7 @@ fetch_source() {
 	pdebug "getting kernel sources via git ...."
 	if grep -q -- "${REQUIRED_GIT}" "./ksrc/.git/config" && grep -q -- "v${REQUIRED_KERNEL}" "./ksrc/.git/config"; then
 		pinfo "Trying to update existing clone"
-		cd ksrc || perror "Could not cd to ksrc"
+		cde ksrc
 		git pull || perror "Could not pull already checked out repo"
 		cd ..
 	else
@@ -44,7 +44,7 @@ fetch_source() {
 	fi
 	# Other patches
 	local patch
-	cd "$MODULE_WORK_DIR/ksrc" || perror "Could not CD to kernel-source dir ksrc"
+	cde "$MODULE_WORK_DIR/ksrc"
 	for patch in "${MODULE_DIR}/patches/"*; do
 		[ -f "$patch" ] || continue
 		grep -q -F "$patch" "patches-done" && continue
@@ -71,7 +71,7 @@ build() {
 	update_config
 	cp "${TARGET_CONFIG_FILE}" "ksrc/.config"
 	# make kernel with the new config
-	cd ksrc || perror "Could not cd to ksrc, was the kernel source fetched properly?"
+	cde ksrc
 	pinfo "Preparing kernel for new config ('make oldconfig')."
 	if [ "x$MLTK_QUIET" = "x1" ]; then
 		make olddefconfig || perror "make oldconfig failed."
@@ -159,7 +159,7 @@ patch_aufs() {
 		git clone "git://github.com/sfjro/${AUFS}-standalone.git" || perror "Cloning ${AUFS} failed."
 	fi
 	# get the needed version
-	cd "${MODULE_WORK_DIR}/${AUFS}-standalone" || perror "Could not CD to ${AUFS}-standalone"
+	cde "${MODULE_WORK_DIR}/${AUFS}-standalone"
 	local branches=( $( git branch -r | grep -oE 'aufs[0-9\.\+]+$' ) )
 	local major minor patch
 	IFS=. read major minor patch _ <<<"$REQUIRED_KERNEL"
@@ -186,7 +186,7 @@ patch_aufs() {
 	[ -e "include/linux/aufs_type.h" ] && cp "include/linux/aufs_type.h" "$MODULE_WORK_DIR/ksrc/include/linux/"
 	[ -e "include/uapi/linux/aufs_type.h" ] && cp "include/uapi/linux/aufs_type.h" "$MODULE_WORK_DIR/ksrc/include/uapi/linux/"
 
-	cd "$MODULE_WORK_DIR/ksrc" || perror "Could not CD to kernel-source dir ksrc"
+	cde "$MODULE_WORK_DIR/ksrc"
 
 	local PATCH
 	# Mandatory
@@ -201,6 +201,6 @@ patch_aufs() {
 		pinfo "Applied '$MODULE_WORK_DIR/${AUFS}-standalone/${PATCH}.patch'"
 	done
 	pinfo "Patched kernel source with ${NEEDED_BRANCH}"
-	cd "$MODULE_WORK_DIR" || perror "Where is WORK_DIR?"
+	cde "$MODULE_WORK_DIR"
 }
 

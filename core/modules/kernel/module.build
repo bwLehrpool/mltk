@@ -46,7 +46,7 @@ build() {
 	update_config
 	cp "${TARGET_CONFIG_FILE}" "ksrc/.config"
 	# make kernel with the new config
-	cd ksrc || perror "Could not cd to ksrc, was the kernel source fetched properly?"
+	cde ksrc
 	pinfo "Preparing kernel for new config ('make oldconfig')."
 	if [ "x$MLTK_QUIET" = "x1" ]; then
 		make olddefconfig || perror "make olddefconfig failed."
@@ -123,7 +123,7 @@ patch_aufs() {
 	[ ! -z ${SYSTEM_KERNEL_LONG} ] && local NEEDED_BRANCH=$(echo $SYSTEM_KERNEL_LONG | awk -F "." '{print $1"."$2}') \
 				|| perror "SYSTEM_KERNEL_LONG not set, this should not happen!"
 	pinfo "Getting branch origin/$NEEDED_BRANCH"
-	cd "$MODULE_WORK_DIR/aufs3-standalone" || perror "Could not CD to aufs3-standalone"
+	cde "$MODULE_WORK_DIR/aufs3-standalone"
 	git checkout "origin/aufs$NEEDED_BRANCH" || perror "Could not checkout needed branch."
 	pinfo "Starting to patch... $NEEDED_BRANCH"
 	tarcopy "Documentation fs" "$MODULE_WORK_DIR/ksrc"
@@ -132,7 +132,7 @@ patch_aufs() {
 	[ -e "include/linux/aufs_type.h" ] && cp "include/linux/aufs_type.h" "$MODULE_WORK_DIR/ksrc/include/linux/"
 	[ -e "include/uapi/linux/aufs_type.h" ] && cp "include/uapi/linux/aufs_type.h" "$MODULE_WORK_DIR/ksrc/include/uapi/linux/"
 
-	cd "$MODULE_WORK_DIR/ksrc" || perror "Could not CD to kernel-source dir ksrc"
+	cde "$MODULE_WORK_DIR/ksrc"
 
 	patch -p1 < "$MODULE_WORK_DIR/aufs3-standalone/aufs3-kbuild.patch" || perror "aufs3-standalone/aufs3-kbuild.patch failed!"
 	patch -p1 < "$MODULE_WORK_DIR/aufs3-standalone/aufs3-base.patch" || perror "aufs3-standalone/aufs3-base.patch failed!"

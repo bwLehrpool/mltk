@@ -4,7 +4,7 @@ fetch_source() {
 	if [ -n "$REQUIRED_XORG_DRIVERS" ]; then
 		local drv
 		mkdir -p src
-		cd src || perror "No cd to xorg src dir"
+		cde src
 		for drv in $REQUIRED_XORG_DRIVERS; do
 			drv=${drv%//*}
 			[ -d "${drv}/.git" ] && continue
@@ -43,7 +43,7 @@ build() {
 			repo=${drv%//*}
 			vers=${drv#*//}
 			pinfo "Compiling $drv"
-			cd "${MODULE_WORK_DIR}/src/${repo}" || perror "No src dir for xorg driver $repo"
+			cde "${MODULE_WORK_DIR}/src/${repo}"
 			if [ "$drv" != "$vers" ]; then
 				git checkout "$vers" || pwarn "Could not checkout $vers for $repo"
 			fi

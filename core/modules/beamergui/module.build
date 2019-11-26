@@ -8,7 +8,7 @@ build() {
 	local SRCDIR="${MODULE_WORK_DIR}/src/beamergui"
 
 	mkdir -p "$MODULE_BUILD_DIR/opt/openslx/bin"
-	cd "${MODULE_BUILD_DIR}/opt/openslx/bin" || perror "Could not cd!"
+	cde "${MODULE_BUILD_DIR}/opt/openslx/bin"
 	pinfo "Running cmake"
 	cmake "$SRCDIR" || perror "'cmake $SRCDIR' failed."
 	pinfo "Running make"

@@ -11,7 +11,7 @@ build() {
 
 	mkdir -p "${DESTDIR}" || perror "Could not mkdir ${DESTDIR}!"
 	mkdir -p "${BUILDDIR}" || perror "Could not mkdir ${BUILDDIR}!"
-	cd "${BUILDDIR}" || perror "Could not cd to ${BUILDDIR}!"
+	cde "${BUILDDIR}"
 
 	pinfo "Running cmake"
 	cmake .. || perror "'cmake ..' failed."

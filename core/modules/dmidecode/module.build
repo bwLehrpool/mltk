@@ -9,7 +9,7 @@ fetch_source() {
 build() {
 
 	# compilation
-	cd "${MODULE_WORK_DIR}/src" || perror "Could not cd to '${MODULE_WORK_DIR}/src'. Did fetch_source work?"
+	cde "${MODULE_WORK_DIR}/src"
 
 	make || perror "Could not compile dmidecode using 'make'."
 

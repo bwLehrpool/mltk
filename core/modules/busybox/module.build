@@ -4,7 +4,7 @@ fetch_source() {
 	if ! [ -d "src/.git" ]; then
 		git clone --depth 1 "${REQUIRED_GIT}" --branch "$REQUIRED_BRANCH" src || perror "Could not clone busybox git"
 	fi
-	cd src || perror "Could not cd to src"
+	cde src
 	# Patch image centering and background filling if not patched yet
 	if ! grep -q "bcenter_image" "miscutils/fbsplash.c"; then
 		git apply "${MODULE_DIR}/fbsplash-center.patch" || perror "Could not apply busybox patch for fbsplash image centering"
@@ -19,19 +19,17 @@ fetch_source() {
 	if [ -n "$CC" ]; then
 		sed -i -r 's/^CC\s*=\s*(\S)/CC ?= \1/' Makefile || perror "Could not patch Makefile"
 	fi
-	cd .. || perror "cd .. failed"
 }
 
 build() {
 	cp "${MODULE_DIR}/openslx-busybox-config" "src/.config"
-	cd src || perror "Could not cd to src"
+	cde src
 	yes '' | make oldconfig
 	pinfo "Running make (if this hangs, check for unset options, ie. when you increased the REQUIRED_BRANCH)"
 	make || perror "failed."
 	pinfo "Running make install"
 	make CONFIG_PREFIX="$MODULE_BUILD_DIR" install || perror "failed"
 	rm -f "$MODULE_BUILD_DIR/bin/mount" "$MODULE_BUILD_DIR/bin/umount" "$MODULE_BUILD_DIR/bin/bash"
-	cd - &> /dev/null
 }
 
 post_copy() {

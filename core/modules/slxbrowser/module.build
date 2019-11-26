@@ -8,7 +8,7 @@ build() {
 	local SRCDIR="${MODULE_WORK_DIR}/src/"
 
 	mkdir -p "${MODULE_BUILD_DIR}/${REQUIRED_PREFIX}"
-	cd "${MODULE_BUILD_DIR}/${REQUIRED_PREFIX}" || perror "No dir"
+	cde "${MODULE_BUILD_DIR}/${REQUIRED_PREFIX}"
 
 	pinfo "Running cmake"
 

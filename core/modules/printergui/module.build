@@ -15,7 +15,7 @@ build() {
 	activate_qt 4
 
 	mkdir -p "$DESTDIR"
-	cd "$DESTDIR" || perror "Could not cd to $DESTDIR!"
+	cde "$DESTDIR"
 	pinfo "Running cmake"
 	cmake "$SRCDIR/" || perror "'cmake' failed (e.g. not installed)."
 	pinfo "Running make"

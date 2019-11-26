@@ -4,16 +4,16 @@
 
 fetch_source () {
 	mkdir -p src
-	cd src || perror "Could not cd to src"
+	cde src
 	if [ ! -d "redsocks" ]; then
 		git clone "$REQUIRED_GIT" "redsocks" || perror "Could not clone redoscks from github"
 	fi
-	cd redsocks || perror "Could not cd to src/redsocks"
+	cde redsocks
 	git checkout "$REQUIRED_REVISION" || perror "Could not checkout revision $REQUIRED_REVISION"
 }	
 
 build () {
-	cd "$MODULE_WORK_DIR/src/redsocks" || perror "src/redsocks not found"
+	cde "$MODULE_WORK_DIR/src/redsocks"
 	make || perror "make failed."
 	mkdir -p "$MODULE_BUILD_DIR/sbin"
 	cp "redsocks" "$MODULE_BUILD_DIR/sbin/" || perror "Could not copy redsocks binary to build dir"

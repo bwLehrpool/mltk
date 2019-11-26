@@ -2,7 +2,7 @@
 fetch_source() {
 	local version
 	mkdir -p src
-	cd src || perror "Could not change into src directory."
+	cde src
 	for version in $NVIDIA_VERSIONS; do
 		download "${REQUIRED_URL//%VERSION%/$version}" "${version}.run"
 	done

@@ -3,7 +3,7 @@ fetch_source() {
 	[ -d "${MODULE_WORK_DIR}/src" ] && \
 		{ rm -r "${MODULE_WORK_DIR}/src"	|| perror "Could not delete old src dir."; }
 	mkdir -p "${MODULE_WORK_DIR}/src"	|| perror "Could not mkdir src"
-	cd "${MODULE_WORK_DIR}/src"			|| perror "cd to '${MODULE_WORK_DIR}/src' failed."
+	cde "${MODULE_WORK_DIR}/src"
 
 	local BASE_URL LIST_URL BUILD_NO
 	#BASE_URL="http://softwareupdate.vmware.com/cds/vmw-desktop/ws/12.5.2/4638234/linux/core/"
@@ -140,7 +140,7 @@ build() {
 			[ -s "\$KMOD" ] || perror "Kmod \$KMOD does not exist"
 			[ ! -d "\${SHORT}-only" ] && tar xf "\$KMOD"
 			[ ! -d "\${SHORT}-only" ] && perror "untar of \$KMOD failed."
-			cd "\${SHORT}-only" || perror "Where is \${SHORT}-only?"
+			cde "\${SHORT}-only"
 			if ! patch -p1 < "\$file"; then
 				cd ..
 				rm -rf -- "\${SHORT}-only"

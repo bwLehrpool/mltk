@@ -15,7 +15,7 @@ build() {
 	local SRCDIR="${MODULE_WORK_DIR}/src/idle-daemon"
 
 	mkdir -p "$MODULE_BUILD_DIR/opt/openslx/sbin"
-	cd "${MODULE_BUILD_DIR}/opt/openslx/sbin" || perror "Could not cd!"
+	cde "${MODULE_BUILD_DIR}/opt/openslx/sbin"
 	pinfo "Running cmake"
 	cmake "$SRCDIR" || perror "'cmake $SRCDIR' failed."
 	pinfo "Running make"
