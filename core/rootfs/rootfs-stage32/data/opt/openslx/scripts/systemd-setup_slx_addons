@@ -48,8 +48,8 @@ fi
 # do we have hdd tmp?
 if grep -q -E '^/dev/\S+\s/tmp' '/proc/mounts'; then
 	# it's there, so move it to /tmp to save some ram
-	if mv -f "${ADDON_PATH}" "${FINAL_DEST}/$(basename $ADDON.sqfs)"; then
-		ADDON_PATH="${FINAL_DEST}/$(basename $ADDON.sqfs)"
+	if mv -f "${ADDON_PATH}" "${FINAL_DEST}/$(basename "$ADDON.sqfs")"; then
+		ADDON_PATH="${FINAL_DEST}/$(basename "$ADDON.sqfs")"
 	else
 		slxlog --echo "addon-setup-mv" "Failed to move '$ADDON' from $DOWNLOAD_DEST to $FINAL_DEST. Keeping it in RAM"
 	fi
