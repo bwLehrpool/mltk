@@ -61,6 +61,16 @@ mkdir -p "$ADDON_MOUNT_POINT"
 mount -t squashfs -o ro "$ADDON_PATH" "$ADDON_MOUNT_POINT" || \
 	{ slxlog --echo "addon-setup-mount" "Failed to mount $ADDON_PATH."; exit 1; }
 
+# Merge any passwd/group/... files
+merguez() {
+	local tmp=$(mktemp)
+	cat "$@" | awk -F: '!n[$1]++' > "$tmp"
+	mv -f -- "$tmp" "$1"
+}
+for i in group shadow passwd; do
+	[ -s "${ADDON_MOUNT_POINT}/etc/$i" ] && merguez "/etc/$i" "${ADDON_MOUNT_POINT}/etc/$i"
+done
+
 # now append it to /
 echo "Appending ${ADDON_MOUNT_POINT} to /"
 if ! mount -o "remount,ins:1:${ADDON_MOUNT_POINT}=rr" / ; then # ins:1 makes sure the addon is before stage32, after rw layer
