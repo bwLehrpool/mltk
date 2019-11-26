@@ -114,7 +114,7 @@ echo "GATEWAY=$GATEWAY" >> /run/network.conf
 echo "BRIDGE=$BRIDGE" >> /run/network.conf
 echo "UID=$UID" >> /run/network.conf
 
-udhcpc $PARAM -O ntpsrv -O domain -O search -t 5 -T 3 -A 4 -s "/inc/udhcpc-trigger" -f -n -q -i "$BRIDGE"
+udhcpc $PARAM -O hostname -O ntpsrv -O domain -O search -t 5 -T 3 -A 4 -s "/inc/udhcpc-trigger" -f -n -q -i "$BRIDGE"
 URET=$?
 # if these were empty before, udhcpc might have filled them in
 [ -z "$CLIENTIP" ] && CLIENTIP=$(cat /run/firstip)
