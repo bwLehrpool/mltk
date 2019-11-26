@@ -64,6 +64,7 @@ mount -t squashfs -o ro "$ADDON_PATH" "$ADDON_MOUNT_POINT" || \
 # Merge any passwd/group/... files
 merguez() {
 	local tmp=$(mktemp)
+	cp -f -a -- "$1" "$tmp" # So we get the original perms/owner
 	cat "$@" | awk -F: '!n[$1]++' > "$tmp"
 	mv -f -- "$tmp" "$1"
 }
