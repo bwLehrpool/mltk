@@ -43,7 +43,7 @@ report_hardware_info() {
 	# Combine manufacturer and model name (for displaying purposes)
 	local model="$HW_MODEL"
 	if [ "$HW_MANUF" != "Unknown" ]; then
-  	model="$model ($HW_MANUF)"
+	model="$model ($HW_MANUF)"
 	fi
 	# just assume the uuid/mac dumped are valid here (its checked often enough :))
 	echo -n "Submitting to '$SLX_REMOTE_LOG' ... "
