@@ -84,8 +84,6 @@ build() {
 	chown -R root:root "${VBOX_EXTPACK_DIR}" || \
 		perror "Failed to chown '${VBOX_EXTPACK_DIR}' to root:root."
 
-	add_group "vboxusers"
-
 	# od binary
 	local OD_BIN="$(which od 2>/dev/null)"
 	if [ -n "$OD_BIN" -a -e "$OD_BIN" ]; then
@@ -94,5 +92,5 @@ build() {
 }
 
 post_copy() {
-	:
+	add_group "vboxusers"
 }
