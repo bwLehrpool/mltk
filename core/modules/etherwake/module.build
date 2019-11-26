@@ -1,19 +1,27 @@
 #!/bin/bash
 
 fetch_source() {
-	:
+	autoclone
 }
 
 build() {
-	COPYLIST="list_dpkg_output"
-	rm -f -- "$COPYLIST"
+	local SRCDIR="${MODULE_WORK_DIR}/src/jawol"
+	pinfo "Building jawol"
+	cde "$SRCDIR"
+	make || perror "make failed"
+	mkdir -p "$MODULE_BUILD_DIR/opt/openslx/sbin"
+	cp jawol "$MODULE_BUILD_DIR/opt/openslx/sbin" || perror "cp failed"
+
+	cde "$MODULE_BUILD_DIR"
 
 	mkdir -p "${MODULE_BUILD_DIR}/etc/udev/rules.d"
 	sed "s,%ETHTOOL%,$(which ethtool)," "${MODULE_DIR}/templates/99-enable-wol.rules" > "${MODULE_BUILD_DIR}/etc/udev/rules.d/99-enable-wol.rules" \
 		|| perror "Cannot write udev rule to enable WOL"
 
+	local COPYLIST="list_dpkg_output"
+	rm -f -- "$COPYLIST"
 	list_packet_files >> "$COPYLIST"
-	tarcopy "$(cat "$COPYLIST" | sort -u)" "${MODULE_BUILD_DIR}"
+	tarcopy "$( < "$COPYLIST"  sort -u )" "${MODULE_BUILD_DIR}"
 }
 
 post_copy() {
