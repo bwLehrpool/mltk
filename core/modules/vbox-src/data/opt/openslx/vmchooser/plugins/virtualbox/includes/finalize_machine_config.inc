@@ -166,11 +166,19 @@ setup_cpu_ram() {
 }
 
 setup_usb() {
-	## Currently not used
-	:
 	# In case a VBox with USB 3.0 configured doesn't have working USB on
 	# machines without a USB 3.0 controller, downgrade to 2.0, but otherwise,
 	# USB speed is now dicated via the downloaded VM config
+	add_node "/VirtualBox/Machine/Hardware/USB" "DevicesFilters"
+	local count=1
+	while read -r vendor product stuff; do
+		add_node "/VirtualBox/Machine/Hardware/USB/DeviceFilters" "DeviceFilter" \
+			"name=filter$count" \
+			"active=true" \
+			"vendorId=$vendor" \
+			"productId=$product"
+		(( count++ ))
+	done < <(get_usb_devices '%VENDOR% %PRODUCT%')
 }
 
 setup_sound() {
@@ -182,7 +190,7 @@ finalize_machine_config() {
 
 	# set the generated machine uuid
 	set_attr "/VirtualBox/Machine" "uuid" "{${MACHINE_UUID}}"
-
+	setup_usb
 	setup_disk_image
 	setup_floppies
 	setup_optical_drives
