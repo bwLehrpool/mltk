@@ -18,13 +18,13 @@ fi
 export VBOX_IPC_SOCKETID="$user"
 
 # find UUID of running VM
-vmuuid="$("$_vboxmanage" list runningvms | awk '{print $NF}' | tr -d '{}')"
+declare -r vmuuid="$("$_vboxmanage" list runningvms | awk '{print $NF}' | tr -d '{}')"
 if [ -z "$vmuuid" ]; then
 	logger "Failed to find running VirtualBox instance of '$user'."
 	exit 1
 fi
 
-devname="/dev/vboxusb/$BUSNUM/$DEVNUM"
+declare -r devname="/dev/vboxusb/$BUSNUM/$DEVNUM"
 for tts in 1 1 1 1 1 2 3 5 STOP; do
 	if [ "x$tts" = "xSTOP" ]; then
 		logger "$0: Could not find '$devname' as expected..."
@@ -35,9 +35,8 @@ for tts in 1 1 1 1 1 2 3 5 STOP; do
 	sleep $tts
 done
 
-usbaddress="$("$_vboxmanage" list usbhost | grep "$DEVPATH" | awk '$1 = /Address:/ {print $2}')"
-
-logger "Trying to attach '$usbaddress' to '$vmuuid'..."
+declare -r usbaddress="$("$_vboxmanage" list usbhost | grep "$DEVPATH" | awk '$1 = /Address:/ {print $2}')"
+logger "Attaching '$usbaddress' to '$vmuuid'..."
 for tries in 1 2 3 STOP; do
 	if [ "$tries" = "STOP" ]; then
 		logger "$0: Failed after 3 tries!"
