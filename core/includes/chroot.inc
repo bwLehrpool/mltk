@@ -75,16 +75,16 @@ chroot_prepare_dirs() {
 		fi
 	fi
 
-	mkdir -p "${CHROOT_TEMPDIR}"	|| perror "Could not create base directory for mount directories $CHROOT_TEMPDIR."
+	mkdir -p "${CHROOT_TEMPDIR}" | perror "Could not create base directory for mount directories $CHROOT_TEMPDIR."
 	for DIR in "${CHROOT_BINDDIR}" "${CHROOT_MOUNTDIR}"; do
-		mkdir -p "${DIR}"			|| perror "Could not create directory for mount directory $DIR."
+		mkdir -p "${DIR}" || perror "Could not create directory for mount directory $DIR."
 	done
 }
 
 # Helper to mount the overlay structure:
-#	- bind mount system / to CHROOT_BINDDIR and make it read-only
-#	- make an overlay from CHROOT_LOWERDIR CHROOT_UPPERDIR
-#	- bind mount additional pseudo-fs (as given in CHROOT_BINDMOUNTS)
+# - bind mount system / to CHROOT_BINDDIR and make it read-only
+# - make an overlay from CHROOT_LOWERDIR CHROOT_UPPERDIR
+# - bind mount additional pseudo-fs (as given in CHROOT_BINDMOUNTS)
 chroot_prepare_mounts() {
 
 	# first mount / on CHROOT_BINDDIR and remount read-only
@@ -139,16 +139,16 @@ chroot_gen_autoexec() {
 	cat >"${CHROOT_MOUNTDIR}/autoexec.bat"<<-EOF
 		#!/bin/bash
 		#######################################################
-		#						      #
-		#		    Warning!			      #
-		#						      #
-		#  This	file is only meant to be executed within      #
-		#  the specially chrooted mltk building environment.  # 
-		#						      #
+		#                                                     #
+		#                     Warning!                        #
+		#                                                     #
+		#  This file is only meant to be executed within      #
+		#  the specially chrooted mltk building environment.  #
+		#                                                     #
 		#  Do NOT execute it if you are not sure what you do, #
 		#  it may be very harmful if being run in a normal    #
-		#  system environment!				      #
-		#						      #
+		#  system environment!                                #
+		#                                                     #
 		#######################################################
 		echo "chroot started successfully."
 	EOF
