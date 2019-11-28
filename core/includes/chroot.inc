@@ -75,7 +75,7 @@ chroot_prepare_dirs() {
 		fi
 	fi
 
-	mkdir -p "${CHROOT_TEMPDIR}" | perror "Could not create base directory for mount directories $CHROOT_TEMPDIR."
+	mkdir -p "${CHROOT_TEMPDIR}" || perror "Could not create base directory for mount directories $CHROOT_TEMPDIR."
 	for DIR in "${CHROOT_BINDDIR}" "${CHROOT_MOUNTDIR}"; do
 		mkdir -p "${DIR}" || perror "Could not create directory for mount directory $DIR."
 	done
