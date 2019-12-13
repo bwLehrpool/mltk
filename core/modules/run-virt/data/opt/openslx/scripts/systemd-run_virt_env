@@ -193,7 +193,7 @@ getips () {
 	[ -z "$1" ] && return
 	[ "$1" = "$FALLBACK_DOMAIN" ] && return
 	# Output in one line by using echo without quotes
-	echo $(timeout -t 2 nslookup "$1" 2>/dev/null | grep -A 4 '^Name:' | grep -E '^Address\s*[0-9]*: ' | awk -F': ' '{print $2}' | grep -oE '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' | awk '{print $1}')
+	echo $(busybox timeout -t 2 nslookup "$1" 2>/dev/null | grep -A 4 '^Name:' | grep -E '^Address\s*[0-9]*: ' | awk -F': ' '{print $2}' | grep -oE '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' | awk '{print $1}')
 }
 
 # read the DNS configuration and configure the udhcpd
