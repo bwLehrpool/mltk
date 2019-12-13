@@ -17,6 +17,8 @@
 # First script for initial ramfs for OpenSLX linux stateless clients
 #############################################################################
 
+export PATH=$PATH:/opt/openslx/bin:/opt/openslx/sbin
+
 # Set greeting and add information about the booted system
 
 declare -rg INFILE=/opt/openslx/etc/issue.template
@@ -52,13 +54,14 @@ system="$system_manufacturer $system_product"
 # Support the boot interface name eventually saved as SLX_PXE_NETIF
 # from the new dracut-based stage3, fallback to old eth0 if not set
 linkspeed=$(cat /sys/class/net/${SLX_PXE_NETIF:-eth0}/speed)
-tmpstatus=$(grep -m1 ' /tmp ' /proc/mounts | awk '{print $3}')
-if [ -z "$tmpstatus" ] || [ "$tmpstatus" = "tmpfs" ]; then
+
+# Detect if the system is backed by a disk
+if slx-tools fs_path_isvolatile /tmp; then
 	tmpstatus="RAMDISK"
 else
 	tmpstatus="HDD"
 fi
-tmpstatus="$(df -P | grep -m1 ' /tmp$' | awk '{printf "%.1f", $2 / 1024 / 1024}')GiB ($tmpstatus)"
+tmpstatus="$(slx-tools fs_path_space /tmp | awk '{printf "%.1f", $2 / 1024 / 1024}')GiB ($tmpstatus)"
 
 cat >> "$TMPFILE" <<EOF
 System model:%space% $system
