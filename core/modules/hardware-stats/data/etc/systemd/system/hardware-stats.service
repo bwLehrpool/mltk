@@ -1,6 +1,6 @@
 [Unit]
 Description=Gather statistics about this machine and send to boot server
-After=tmp.target mount-vm-store.service network.target
+After=tmp.target mount-vm-store.service network.target run-virt-env.service
 Wants=tmp.target system-check.service
 Before=system-check.service
 
