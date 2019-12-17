@@ -92,5 +92,5 @@ build() {
 }
 
 post_copy() {
-	add_group "vboxusers"
+	:
 }

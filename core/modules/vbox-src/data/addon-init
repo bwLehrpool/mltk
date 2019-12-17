@@ -1,5 +1,7 @@
 #!/bin/ash
 
+addgroup --system vboxusers
+
 systemctl daemon-reload
 systemctl start vbox
 exit 0
