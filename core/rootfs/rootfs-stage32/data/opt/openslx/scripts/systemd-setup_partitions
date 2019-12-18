@@ -191,7 +191,7 @@ get_all_with_id () {
 		if [ ${#ID} -le 3 ]; then
 			exp="$exp|ID_PART_ENTRY_(NAME=OpenSLX-ID|TYPE=0x)$ID"
 		else
-			exp="$exp|ID_PART_ENTRY_(TYPE|UUID)=$ID"
+			exp="$exp|ID_PART_ENTRY_TYPE=$ID"
 		fi
 	done
 	exp=${exp:1}
