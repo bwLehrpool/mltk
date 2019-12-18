@@ -8,16 +8,12 @@
 get_vm_id() {
 	local script=${BASH_SOURCE[-1]}
 	[ -z "$script" ] && script="$0"
-	if [ -n "$script" ]; then
-		script=$(readlink -f "$script")
-		if [ -n "$script" ] && [ -s "$script" ]; then
-			#bingo
-			declare -g VM_ID=$(ps ax | grep -F "$script" | grep -v 'grep' | grep -o -- "${script}.*\$" | sort -u | wc -l)
-			if [ "$VM_ID" -gt 0 ]; then
-				[ "${#VM_ID}" -eq 1 ] && VM_ID="0${VM_ID}"
-				[ "${#VM_ID}" -gt 2 ] && VM_ID="${VM_ID:0:2}"
-				[ "${#VM_ID}" -eq 2 ] && readonly VM_ID && return
-			fi
+	if [ -n "$script" ] && [ -s "$script" ]; then
+		declare -g VM_ID=$(ps ax | grep -F "$script" | grep -v 'grep' | grep -o -- "${script}.*\$" | sort -u | wc -l)
+		if [ "$VM_ID" -gt 0 ]; then
+			[ "${#VM_ID}" -eq 1 ] && VM_ID="0${VM_ID}"
+			[ "${#VM_ID}" -gt 2 ] && VM_ID="${VM_ID:0:2}"
+			[ "${#VM_ID}" -eq 2 ] && readonly VM_ID && return
 		fi
 	fi
 	# fallback: take last two digits of current pid...
