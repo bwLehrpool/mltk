@@ -191,7 +191,7 @@ get_all_with_id () {
 		if [ ${#ID} -le 3 ]; then
 			exp="$exp|ID_PART_ENTRY_(NAME=OpenSLX-ID|TYPE=0x)$ID"
 		else
-			exp="$exp|ID_PART_ENTRY_TYPE=$ID"
+			exp="$exp|ID_PART_ENTRY_(TYPE|UUID)=$ID"
 		fi
 	done
 	exp=${exp:1}
@@ -214,7 +214,7 @@ done
 # space, thus no normal filesystem will be incidentally deleted or
 # corrupted
 HAVE_TEMP=no
-for PART_DEV in $(get_all_with_id "44"); do
+for PART_DEV in $(get_all_with_id "44" "87f86132-ff94-4987-b250-444444444444"); do
 	# check for supported filesystem and formatter
 	if format_disk "$PART_DEV"; then
 		mount_temp "${MOUNT_OPTIONS_SET_BY_FORMAT_DISK[@]}" "$PART_DEV" || continue
@@ -236,7 +236,7 @@ done
 HAVE_PARTITION_45=no
 get_mount_options "ext4" mopts
 # try all the ID45 partitions until one succeeds, from large to small
-for PART_DEV in $(get_all_with_id "45"); do
+for PART_DEV in $(get_all_with_id "45" "87f86132-ff94-4987-b250-454545454545"); do
 	mkdir -p "$MOUNT_POINT_45"
 	# Let's see if this is an ext4 partition and if so, whether it has the proper size
 	# Any fixing should happen first
