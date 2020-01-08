@@ -17,6 +17,13 @@ fi
 
 export VBOX_IPC_SOCKETID="$user"
 
+# set default locale to make sure the vboxmanage output is not broken on UTF-8 chars
+[ -s "/etc/default/locale" ] && . /etc/default/locale
+[ -z "LANG" ] && LANG="de_DE.UTF-8"
+export LANG
+# make sure LC_ALL does not fiddle with this
+unset LC_ALL
+
 # find UUID of running VM
 declare -r vmuuid="$("$_vboxmanage" list runningvms | awk '{print $NF}' | tr -d '{}')"
 if [ -z "$vmuuid" ]; then
