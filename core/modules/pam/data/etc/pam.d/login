@@ -12,6 +12,7 @@ auth       optional   pam_faildelay.so  delay=3000000
 # ISSUE_FILE option from login.defs). Uncomment for use
 # auth       required   pam_issue.so issue=/etc/issue
 
+## OpenSLX: disabled in our context, messes up with pam_bwidm login
 # Disallows root logins except on tty's listed in /etc/securetty
 # (Replaces the `CONSOLE' setting from login.defs)
 #
@@ -29,7 +30,7 @@ auth       optional   pam_faildelay.so  delay=3000000
 # guess valid user names of your system (invalid user names are considered
 # as possibly being root on insecure lines), but root passwords may be
 # communicated over insecure lines.
-auth [success=ok new_authtok_reqd=ok ignore=ignore user_unknown=bad default=die] pam_securetty.so
+#auth [success=ok new_authtok_reqd=ok ignore=ignore user_unknown=bad default=die] pam_securetty.so
 
 # Disallows other than root logins when /etc/nologin exists
 # (Replaces the `NOLOGINS_FILE' option from login.defs)

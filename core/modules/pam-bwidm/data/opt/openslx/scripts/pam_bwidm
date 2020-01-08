@@ -143,38 +143,105 @@ readonly USER_GID="$BWIDM_GID"
 readonly SOAP_ENVELOPE="/opt/openslx/bwidm_soap.xml"
 [ ! -f "${SOAP_ENVELOPE}" ] && echo "Failed to find the SOAP envelope at '${SOAP_ENVELOPE}'. Aborting." && exit 1
 
-# now the pam-type specific part starts
-if [ "x$PAM_TYPE" == "xauth" ]; then
-	CT='Content-Type: text/xml; charset=utf-8'
+auth_user() {
+	if [ "$1" = "--ignore-errors" ]; then
+		ignore_errors=1
+		shift
+	fi
+	if [ "$#" -ne 2 ]; then
+		echo "auth_user() requires 2 arguments, $# given: $@"
+		exit 7
+	fi
+	# generate soap envelope
 	NOW=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
-	HOST=$(echo "${USER_ECP_URL}" | awk -F '/' '{print $3}')
 	RID="_c${RANDOM}a${RANDOM}f${RANDOM}f${RANDOM}e${RANDOM}e${RANDOM}"
 	RID="${RID:0:32}"
-	REQUEST=$(sed "s/%TIMESTAMP%/${NOW}/g;s/%REQUESTID%/${RID}/g" "${SOAP_ENVELOPE}")
+	REQUEST="$(sed "s/%TIMESTAMP%/${NOW}/g;s/%REQUESTID%/${RID}/g" "${SOAP_ENVELOPE}")"
+	# set credentials in netrc file
+	echo "machine ${HOST} login $1 password $2" > "${NETRC}"
+	local ret="$(mktemp)"
+	# do auth
+	local cret="$(curl \
+		--silent \
+		--connect-timeout 5 \
+		--max-time 15 \
+		--output "$ret" \
+		--data "$REQUEST" \
+		--header "$CT" \
+		--netrc \
+		--netrc-file "$NETRC" \
+		--write-out "%{http_code}" \
+		"$USER_ECP_URL"
+	)"
+	echo "machine $HOST login $1 password *******************************" > "$NETRC"
+
+	# check for valid http return code
+	if ! [ "${#cret}" -ne 3 -o "${cret:0:1}" != "2" ]; then
+		# auth ok?
+		local saml_ns_prefix="urn:oasis:names:tc:SAML:2.0:status"
+		sed -ri 's,(</?)\w+:,\1,g' "$ret"
+		# see http://docs.oasis-open.org/security/saml/v2.0/saml-core-2.0-os.pdf
+		local auth_status_xpath="/Envelope/Body/Response/Status/StatusCode"
+		local auth_status_code="$(xmlstarlet sel -t -v "${auth_status_xpath}/@Value" "$ret")"
+		if [ "$auth_status_code" = "${saml_ns_prefix}:Success" ]; then
+			rm -f -- "$ret"
+			return 0
+		fi
+		if [ "$auth_status_code" = "${saml_ns_prefix}:Requester" ]; then
+			# error on our side, possibly wrong password
+			local requester_status_code="$( \
+				xmlstarlet sel -t -v \
+				"${auth_status_xpath}[@Value=\"${saml_ns_prefix}:Requester\"]/StatusCode/@Value" \
+				"$ret"
+			)"
+			if [ "$requester_status_code" = "${saml_ns_prefix}:AuthnFailed" ]; then
+				# just wrong password, make PAM fail
+				rm -f -- "$ret"
+				return 1
+			fi
+		fi
+	fi
+	if [ -n "$ignore_errors" ]; then
+		echo "Ignoring..."
+		return 1
+	fi
+	# otherwise some internal error occured, append it to logfile
+	(
+	echo '########## IdP Response ##########'
+	if xmlstarlet -q validate "$ret"; then
+		# pretty print xml docs
+		xmlstarlet format "$ret"
+	else
+		# dump as is
+		cat "$ret"
+	fi
+	echo '########## END Response ##########'
+	) >> "$LOGFILE"
+	rm -f -- "$ret"
+	exit 7
+}
+
+# now the pam-type specific part starts
+if [ "x$PAM_TYPE" == "xauth" ]; then
+	# set invariant parts of the requests
+	readonly HOST=$(echo "${USER_ECP_URL}" | awk -F '/' '{print $3}')
+	readonly CT='Content-Type: text/xml; charset=utf-8'
 	NETRC=$(mktemp -p "$TMPDIR")
 	[ -z "$NETRC" ] && NETRC="$TMPDIR/netrc_$$_${USER}_${RANDOM}.tmp"
 	touch "$NETRC"
 	chmod 0600 "$NETRC"
-	# now we are ready to actually send the credentials to the IdP
-	# to be sure everything is working as expected
-	# we will first send a wrong password and expect a 401
-	echo "machine ${HOST} login ${USER_USERNAME} password ___invalid-INVALID++~" > "${NETRC}"
-	ret=$(curl --connect-timeout 5 --max-time 15 -o /dev/null -w "%{http_code}" -d "${REQUEST}" -H "$CT" --basic --netrc-file "$NETRC" "$USER_ECP_URL")
 
-	if [ "x$ret" != "x401" ]; then
-		# this means something else is bad, just exit
-		echo "False authentication attempt did not return 401 as expected but: $ret"
-		rm -f -- "${NETRC}"
+	# Now we are ready to actually send the credentials to the IdP.
+	# To be sure that everything is working as expected, we will first auth
+	# with a wrong password and expect a failure. Note that we don't car
+	if auth_user --ignore-errors "$USER_USERNAME" "___invalid-INVALID++~"; then
+		echo "Purposely wrong authentication succeeded, that should not happen."
 		exit 7
 	fi
-	# the fake auth call behaved as expected, do the actual login
-	echo "machine ${HOST} login ${USER_USERNAME} password ${USER_PASSWORD}" > "${NETRC}"
-	ret=$(curl --connect-timeout 5 --max-time 15 -o /dev/null -w "%{http_code}" -d "${REQUEST}" -H "$CT" --basic --netrc-file "$NETRC" "$USER_ECP_URL")
-	echo "machine ${HOST} login ${USER_USERNAME} password ********************" > "${NETRC}" # It should be a tmpfs but you never know
-	rm -f -- "${NETRC}"
-	
-	if [ "${#ret}" = 3 ] && [ "x${ret:0:1}" == "x2" ]; then
-		# 2xx code, auth succeeded, lets create a local user representing the bwIDM user
+
+	# auth failed as expected, proceed to auth user with the proper credentials
+	if auth_user "$USER_USERNAME" "$USER_PASSWORD"; then
+		# auth succeeded, create and map a local user to this bwIDM user
 		echo "Login for '$USER_USERNAME' on '$USER_ORGANISATION' succeeded."
 		gexp="$( printf "%s" "${PAM_USER}" | sed 's/[][$^\.*]/\\&/g' )" # Basic regexp
 		if ! grep -q "^${gexp}:" /etc/passwd; then
@@ -196,10 +263,6 @@ if [ "x$PAM_TYPE" == "xauth" ]; then
 			echo "${PAM_USER}:x:${USER_UID}:${USER_GID}:${PAM_USER}:/home/${PAM_USER}:/bin/bash" >> /etc/passwd
 		fi
 		exit 0
-	elif [ "x$ret" != "x401" ]; then
-		# not 200, not 401, some other kind of error occured, inform slx-admin
-		echo "Unexpected http response code for the login attempt: $ret"
-		exit 7
 	fi
 	exit 1
 fi
