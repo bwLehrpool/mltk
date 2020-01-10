@@ -3,23 +3,32 @@
 # This is executed in the pam_auth phase, after any real
 # authentication module succeeded. It will execute all scripts in
 # /opt/openslx/pam/hooks/auth-final-exec.d
-# This is in contrast to /opt/openslx/pam/hooks/auth-slx-success.d
+# This is in contrast to /opt/openslx/pam/hooks/auth-slx-source.d
 # which only executes if one of the pam-slx-plugins succeeded authing,
 # but then offers further variables detailing the auth environment.
 
 export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/openslx/sbin:/opt/openslx/bin"
 
-# Remove password from stdin
-cat &> /dev/null &
-waitpid=$!
+source_dir=/opt/openslx/pam/hooks/auth-final-exec.d
+readonly source_dir
+[ -d "$source_dir" ] || exit 0
+
+# grab the password from stdin asap
+[ "$PAM_TYPE" = "auth" ] || exit 1
+unset USER_PASSWORD
+read -r USER_PASSWORD > /dev/null 2>&1
+readonly USER_PASSWORD
+[ -z "$USER_PASSWORD" ] && echo "No password given." && exit 1
 
 # Only as root
 [ "$(whoami)" != "root" ] && exit 0
 
-source_dir=/opt/openslx/pam/hooks/auth-final-exec.d
-readonly source_dir
+# Set other vars
+getent="$( getent passwd "$PAM_USER" )"
+USER_UID="$( printf "%s" "$getent" | awk -F: '{print $3; exit}' )"
+TEMP_HOME_DIR="$( printf "%s" "$getent" | awk -F: '{print $6; exit}' )"
 
-[ -d "$source_dir" ] || exit 0
+export USER_PASSWORD USER_UID TEMP_HOME_DIR
 
 for file in $source_dir/*; do
 	[ -e "$file" ] || continue # Dir empty, will be the unglobbed string
@@ -33,7 +42,5 @@ for file in $source_dir/*; do
 	fi
 	"$file" || slxlog "pam-auth-final" "$file didn't exit with code 0"
 done
-
-kill "$waitpid"
 
 exit 0

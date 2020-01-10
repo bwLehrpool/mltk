@@ -52,17 +52,16 @@ int main(int argc, char **argv)
 	return 1;
 }
 
-static int mode_query(const char *socketPath)
+static int connect_local(const char *socketPath, int quiet)
 {
-	int fd;
 	struct sockaddr_un remote;
 	struct timeval tv;
-	char buffer[200];
-	ssize_t ret;
-	fd = socket(AF_UNIX, SOCK_STREAM, 0);
+	int fd = socket(AF_UNIX, SOCK_STREAM, 0);
 	if (fd == -1) {
-		perror("Cannot create unix socket for connecting");
-		return 1;
+		if (!quiet) {
+			perror("Cannot create unix socket for connecting");
+		}
+		return -1;
 	}
 	memset(&remote, 0, sizeof(remote));
 	remote.sun_family = AF_UNIX;
@@ -72,9 +71,23 @@ static int mode_query(const char *socketPath)
 	setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
 	setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
 	if (connect(fd, (struct sockaddr*)&remote, sizeof(remote)) == -1) {
-		perror("Cannot connect to pw daemon");
-		return 1;
+		if (!quiet) {
+			perror("Cannot connect to pw daemon");
+		}
+		close(fd);
+		return -1;
 	}
+	return fd;
+}
+
+static int mode_query(const char *socketPath)
+{
+	int fd;
+	char buffer[200];
+	ssize_t ret;
+	fd = connect_local(socketPath, 0);
+	if (fd == -1)
+		return 1;
 	if (write(fd, "GET", 3) == -1) {
 		perror("Writing to pw daemon failed");
 		return 1;
@@ -99,7 +112,7 @@ static int mode_query(const char *socketPath)
 
 static int mode_daemon(const uid_t uidNumber)
 {
-	int listenFd, udpPort = -1;
+	int listenFd, udpPort = -1, testFd;
 	struct sockaddr_un addr;
 	struct sigaction sig;
 	const char *envuser = getenv("USERNAME");
@@ -120,6 +133,14 @@ static int mode_daemon(const uid_t uidNumber)
 		fprintf(stderr, "PWSOCKET not set\n");
 		return 1;
 	}
+	// See if already running
+	testFd = connect_local(pwsocket, 1);
+	if (testFd != -1) {
+		close(testFd);
+		// Already running
+		return 0;
+	}
+	// Prepeare vars
 	if (setup_vars(envuser, envpass) == -1) {
 		fprintf(stderr, "Error setting up variables\n");
 		return 1;
