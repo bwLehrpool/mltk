@@ -1,0 +1,5 @@
+#!/bin/ash
+#
+# This just makes sure that nothing else wraps the greeter startup...
+
+exec "$@"
