@@ -9,12 +9,21 @@ if [ "$(whoami)" = "demo" ]; then
 	mkdir -p "$HOME/.config/chromium/Default"
 fi
 
+# Helper to decode URL-encoded strings
+# e.g. urldecode http%3A%2F%2Ffoobar.com -> http://foobar.com
+urldecode() {
+	: "${*//+/ }"; echo -e "${_//%/\\x}"
+}
+
 # Helper to json'ize bookmarks given as arguments in the form:
 #    <name>,<url>  ->  e.g. Google,https://www.google.com
 json_bookmarks() {
 	local cur=0
+	local name url
 	while [ $# -ne 0 ]; do
-		jq --null-input --join-output --compact-output --arg id "$(( cur++ ))" --arg name "${1%%,*}" --arg url "${1#*,}" \
+		name="${1%%,*}"
+		url="$(urldecode ${1#*,})"
+		jq --null-input --join-output --compact-output --arg id "$(( cur++ ))" --arg name "$name" --arg url "$url" \
 			'{"id": $id, "type": "url", "name": $name, "url": $url}'
 		shift
 		[ $# -ne 0 ] && printf ","
