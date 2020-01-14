@@ -1,0 +1,13 @@
+#!/bin/ash
+#
+# Simple "preload" by just reading the directory /usr/lib/chromium-browser 
+
+preload() {
+	find /usr/lib/chromium-browser -type f -exec dd if={} of=/dev/null \; &
+}
+
+. /opt/openslx/config
+
+if [ "${SLX_BROWSER//chromium/}" != "$SLX_BROWSER" ]; then
+	preload &
+fi
