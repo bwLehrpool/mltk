@@ -186,8 +186,18 @@ setup_sound() {
 	set_attr "/VirtualBox/Machine/Hardware/AudioAdapter" "driver" "ALSA"
 }
 
-finalize_machine_config() {
+setup_displays() {
+	# even though it's more than enough RAM for screens, just
+	# use 128MB for one or 256MB for more screens.
+	local vram_size="128"
+	if [ "$DISPLAY_COUNT" -ge 2 ]; then
+		vram_size="256"
+	fi
+	set_attr "/VirtualBox/Machine/Hardware/Display" "monitorCount" "${DISPLAY_COUNT}"
+	set_attr "/VirtualBox/Machine/Hardware/Display" "VRAMSize" "$vram_size"
+}
 
+finalize_machine_config() {
 	# set the generated machine uuid
 	set_attr "/VirtualBox/Machine" "uuid" "{${MACHINE_UUID}}"
 	setup_usb

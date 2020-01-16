@@ -112,10 +112,17 @@ setup_virtual_floppy() {
 	${RESOLUTION}
 	EOF
 
-	cat > "${FLOPPYDIR}/openslx.ini" <<-EOF
-	[openslx]
+	(
+	echo '[openslx]'
+	# Ugly hack for multi-monitor support with virtualbox.
+	# The guest additions properly set up the resolutions of multiple
+	# monitor, thus we need to disable the resolution feature of
+	# the openslx.exe as it would break what virtualbox did.
+	if [ "$PLUGIN_ID" = "vmware" ] || [ "$PLUGIN_ID" = "virtualbox" -a "$DISPLAY_COUNT" -eq 1 ]; then
+		echo "resolution=$RESOLUTION"
+	fi
+	cat <<-EOF
 	username=${UNAME}
-	resolution=${RESOLUTION}
 	createMissingRemap=${SHARE_CREATE_MISSING_REMAP}
 	remapMode=${SHARE_REMAP_MODE_INI}
 	homeDrive=${SHARE_HOME_DRIVE}
@@ -133,7 +140,7 @@ setup_virtual_floppy() {
 	media=${SHARE_MEDIA}
 	other=${SHARE_OTHER}
 	EOF
-	
+	) > "${FLOPPYDIR}/openslx.ini"
 	ln -n -s "${VMCHOOSER_DIR}/data/openslx.exe" "${FLOPPYDIR}/openslx.exe"
 	# If we have a kerberos ticket, copy that one too (TODO: Copy keytab too?)
 	if [ -n "$KRB5CCNAME" ]; then

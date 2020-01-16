@@ -151,6 +151,15 @@ set_serial_ports() {
 	readonly SERIAL0 PARALLEL0
 }
 
+get_display_count() {
+	declare -g DISPLAY_COUNT="$(xrandr | grep -c -w 'connected')"
+	if ! [[ "$DISPLAY_COUNT" =~ ^[1-9]$ ]]; then
+		writelog "Weird monitor count detected ($DISPLAY_COUNT). Falling back to 1."
+		DISPLAY_COUNT=1
+	fi
+	readonly DISPLAY_COUNT
+}
+
 ## MAIN ##
 call_post_source \
 	import_hwinfo \
@@ -158,5 +167,6 @@ call_post_source \
 	set_virt_mac \
 	set_virt_hostname \
 	set_serial_ports \
-	check_optical_drives
+	check_optical_drives \
+	get_display_count
 
