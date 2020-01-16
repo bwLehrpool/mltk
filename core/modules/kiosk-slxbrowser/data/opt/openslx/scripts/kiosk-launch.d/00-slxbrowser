@@ -5,12 +5,12 @@ command -v slxbrowser || return 0
 
 export PATH=$PATH:/opt/openslx/sbin:/opt/openslx/bin
 
-OPTS=
+OPTS=()
 
 # Ignore SSL errors
-[ -n "$SLX_BROWSER_INSECURE" ] && [ "$SLX_BROWSER_INSECURE" -gt 0 ] && OPTS="$OPTS --insecure"
+[ -n "$SLX_BROWSER_INSECURE" ] && [ "$SLX_BROWSER_INSECURE" -gt 0 ] && OPTS+=("--insecure")
 # On inactivity, reload every X seconds
-[ -n "$SLX_BROWSER_RELOAD_SECS" ] && [ "$SLX_BROWSER_RELOAD_SECS" -gt 0 ] && OPTS="$OPTS --reload-interval $SLX_BROWSER_RELOAD_SECS"
+[ -n "$SLX_BROWSER_RELOAD_SECS" ] && [ "$SLX_BROWSER_RELOAD_SECS" -gt 0 ] && OPTS+=("--reload-interval" "$SLX_BROWSER_RELOAD_SECS")
 # If set, is a space separated list of URLs or hosts
 if [ -n "$SLX_BROWSER_URLLIST" ]; then
 	# Turn into file with one entry per line
@@ -18,12 +18,18 @@ if [ -n "$SLX_BROWSER_URLLIST" ]; then
 	echo "$SLX_BROWSER_URLLIST" | sed -r 's/\s+/\n/g' > "$LIST"
 	# Is it a whitelist or blacklist
 	if [ -n "$SLX_BROWSER_IS_WHITELIST" ] && [ "$SLX_BROWSER_IS_WHITELIST" -gt 0 ]; then
-		OPTS="$OPTS --whitelist $LIST"
+		OPTS+=("--whitelist" "$LIST")
 	else
-		OPTS="$OPTS --blacklist $LIST"
+		OPTS+=("--blacklist" "$LIST")
 	fi
 	# Async, clean up file after slxbrowser read it
 	( sleep 5; rm -f -- "$LIST" ) &
 fi
 
-exec slxbrowser $OPTS --fullscreen "$SLX_BROWSER_URL"
+if [ -n "$SLX_BROWSER_INTERACTIVE" ]; then
+	OPTS+=("--maximized")
+else
+	OPTS+=("--fullscreen")
+fi
+
+exec slxbrowser "${OPTS[@]}" "$SLX_BROWSER_URL"
