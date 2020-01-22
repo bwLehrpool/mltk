@@ -79,18 +79,27 @@ setup_floppies() {
 	else
 		SLX_FLOPPY="FALSE"
 	fi
-
+	(
 	# Floppies:
-	cat >> "${TMPCONFIG}" <<-HEREEND
-	floppy0.present = "TRUE"
-	floppy0.startConnected = "$FLOPPY0"
-	floppy0.autodetect = "TRUE"
-	floppy0.fileName = "auto detect"
-	floppy1.present = "$SLX_FLOPPY"
-	floppy1.startConnected = "TRUE"
-	floppy1.fileType = "file"
-	floppy1.fileName = "$SLX_FLOPPY_IMG"
+	cat <<-HEREEND
+		floppy0.present = "TRUE"
+		floppy0.startConnected = "$FLOPPY0"
+		floppy0.fileType = "device"
 	HEREEND
+	if [ -b "$FLOPPY_0" ]; then
+		floppy0.autodetect = "FALSE"
+		floppy0.fileName = "$FLOPPY_0"
+	else
+		floppy0.autodetect = "TRUE"
+		floppy0.fileName = "auto detect"
+	fi
+	cat <<-HEREEND
+		floppy1.present = "$SLX_FLOPPY"
+		floppy1.startConnected = "TRUE"
+		floppy1.fileType = "file"
+		floppy1.fileName = "$SLX_FLOPPY_IMG"
+	HEREEND
+	) >> "$TMPCONFIG"
 }
 
 setup_serial() {
