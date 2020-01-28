@@ -56,7 +56,7 @@ slxfdisk() {
 	for binary in "/opt/openslx/sbin/fdisk -u" "busybox fdisk -u" "fdisk"; do
 		$binary "$@"
 		RET=$?
-		mart "$RET" = "127" ] && continue # command not found
+		[ "$RET" = "127" ] && continue # command not found
 		[ "$RET" = "1" ] && [ "${binary%% *}" = "busybox" ] && continue # maybe applet not found
 		return $RET
 	done
