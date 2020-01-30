@@ -58,15 +58,20 @@ cat > "$HOME/.config/chromium/Default/Bookmarks" <<EOF
 EOF
 
 # default chromium arguments
-chromium_args=("--noerrdialogs" "--disable-new-avatar-menu" "--disable-infobars" "--test-type")
+chromium_args=("--noerrdialogs" "--disable-translate" "--disable-new-avatar-menu" "--disable-infobars" "--test-type" "--fast" "--fast-start")
+
+# simulate a future build date to remove those update notification
+# TODO properly disable auto update feature when chromium supports it
+chromium_args+=("--simulate-outdated-no-au=\"Tue, 31 Dec 2099 23:59:59 GMT\"")
+
+# default to maximized on startup
+chromium_args+=("--start-maximized")
 
 if [ -z "$SLX_BROWSER_INTERACTIVE" ]; then
-	# non-interactive, set to kiosk mode
-	chromium_args+=("--kiosk")
-
-	# simulate a future build date to remove those update notification
-	# TODO properly disable auto update feature when chromium supports it
-	chromium_args+=("--simulate-outdated-no-au=\"Tue, 31 Dec 2099 23:59:59 GMT\"")
+	if [ -n "${SLX_AUTOLOGIN%OFF}" ]; then
+		# Autologin active, go full fullscreen
+		chromium_args+=("--kiosk")
+	fi
 
 	# swallow keyboard shortcuts of chromium
 	cat <<- EOF > "$HOME/.xbindkeysrc"

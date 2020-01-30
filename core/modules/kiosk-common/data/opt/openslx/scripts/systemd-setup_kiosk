@@ -1,50 +1,5 @@
 #!/bin/bash
 
-. /opt/openslx/config
-
-configure_fullscreen() {
-	# TODO having two variants of the rc.xml is quite bad, better to prune it with xmlstarlet?
-	local openbox_rc_file="/etc/xdg/openbox/rc.xml.kiosk"
-	local openbox_namespace="http://openbox.org/3.4/rc"
-	# for fullscreen functionality, use openbox
-	if [ ! -e "$openbox_rc_file" ]; then
-		echo "Could not find global openbox configuration"
-		return 1
-	fi
-	local browser_node="//x:applications/x:application[@role='browser']"
-	local -i browser_node_count="$(xmlstarlet sel -N x="$openbox_namespace" -t -c "count($browser_node)" "$openbox_rc_file")"
-	if [ "$browser_node_count" -gt 1 ]; then
-		echo "More than one node for '$browser_node' found. Removing them all..."
-		xmlstarlet ed -L -N x="$openbox_namespace" -d "$browser_node" "$openbox_rc_file"
-	fi
-	# either we removed everything, or we had none to start with
-	if [ "$browser_node_count" -eq 0 ] ; then
-		local tmpname="application$RANDOM"
-		xmlstarlet ed -L -N x="$openbox_namespace" -s "//x:applications" -t elem -n "$tmpname" -i "//$tmpname" -t attr -n "role" -v "browser" "$openbox_rc_file"
-		browser_node="//x:applications/x:$tmpname"
-	fi
-	# Fullscreen or maximized depends on whether we should start an interactive session or not
-	# For now use SLX_BROWSER_INTERACTIVE
-	local state
-	if [ -n "$SLX_BROWSER_INTERACTIVE" ]; then
-		state="maximized"
-		xmlstarlet ed -L -N x="$openbox_namespace" -d "$browser_node/x:fullscreen" "$openbox_rc_file"
-	else
-		state="fullscreen"
-		xmlstarlet ed -L -N x="$openbox_namespace" -d "$browser_node/x:maximized" "$openbox_rc_file"
-	fi
-
-	if ! xmlstarlet sel -Q -N x="$openbox_namespace" -t -c "$browser_node/x:$state" "$openbox_rc_file"; then
-		xmlstarlet ed -L -N x="$openbox_namespace" -s "$browser_node" -t elem -n "$state" -v "yes" "$openbox_rc_file"
-	elif [ "$(xmlstarlet sel -N x="$openbox_namespace" -t -v "$browser_node/x:$state" "$openbox_rc_file")" != "yes" ]; then
-		xmlstarlet ed -L -N x="$openbox_namespace" -u "$browser_node/x:$state" -v "yes" "$openbox_rc_file"
-	fi
-	xmlstarlet ed -L -N x="$openbox_namespace" -r "$browser_node" -v "application" "$openbox_rc_file"
-}
-
-## MAIN
-configure_fullscreen
-
 # Disable logout delay for demo user on shutdown/reboot/...
 mkdir -p "/run/openslx"
 touch "/run/openslx/demo-no-logout-delay"
