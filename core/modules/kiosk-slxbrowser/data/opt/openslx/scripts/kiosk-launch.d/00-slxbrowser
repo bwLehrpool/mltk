@@ -32,4 +32,7 @@ else
 	OPTS+=("--fullscreen")
 fi
 
+# HACK: give whatever enough time to whatever it does properly
+usleep 500000
+
 exec slxbrowser "${OPTS[@]}" "$SLX_BROWSER_URL"
