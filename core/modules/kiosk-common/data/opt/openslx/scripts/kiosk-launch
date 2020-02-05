@@ -3,6 +3,8 @@
 
 . /opt/openslx/config
 
+export PATH="$PATH:/opt/openslx/sbin:/opt/openslx/bin"
+
 [ -z "$SLX_BROWSER_URL" ] && exit 1
 
 # disable power management features
