@@ -26,13 +26,13 @@ if [ -n "$SLX_BROWSER_URLLIST" ]; then
 	( sleep 5; rm -f -- "$LIST" ) &
 fi
 
-if [ -n "$SLX_BROWSER_INTERACTIVE" ]; then
+if [ -z "${SLX_AUTOLOGIN%OFF}" ]; then
 	OPTS+=("--maximized")
 else
 	OPTS+=("--fullscreen")
 fi
 
 # HACK: give whatever enough time to whatever it does properly
-usleep 500000
+sleep 1
 
 exec slxbrowser "${OPTS[@]}" "$SLX_BROWSER_URL"
