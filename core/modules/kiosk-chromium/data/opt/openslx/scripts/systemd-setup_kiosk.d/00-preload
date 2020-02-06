@@ -1,13 +1,13 @@
 #!/bin/ash
 #
 # Simple "preload" by just reading the directory /usr/lib/chromium-browser 
-
-preload() {
-	find /usr/lib/chromium-browser -type f -exec dd if={} of=/dev/null \; &
-}
+# Tested the variation loading just the linked libraries, but it does
+# not bring the same startup acceleration than this trivial method...
 
 . /opt/openslx/config
 
 if [ "${SLX_BROWSER//chromium/}" != "$SLX_BROWSER" ]; then
-	preload &
+	(
+	find /usr/lib/chromium-browser -type f -exec dd if={} of=/dev/null \; &> /dev/null &
+	) &
 fi
