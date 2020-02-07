@@ -63,9 +63,18 @@ else
 fi
 tmpstatus="$(slx-tools fs_path_space /tmp | awk '{printf "%.1f", $2 / 1024 / 1024}')GiB ($tmpstatus)"
 
+# netboot version from cmdline, e.g. boot/bwlp/minilinux/1 to "MiniLinux 1"
+netboot="$(grep -oP '(?<=slxbase=boot/bwlp/)\S+' /proc/cmdline | tr '/' ' ')"
+# capitalize 'm' & 'l'
+netboot="${netboot^m}"
+netboot="${netboot^^l}"
+
+virtualbox="$( . /usr/lib/virtualbox/scripts/generated.sh; echo $VBOX_VERSION_STRING )"
+
 cat >> "$TMPFILE" <<EOF
 System model:%space% $system
 Kernel version:%space% $kernel
+Netboot version:%space% $netboot
 Temporary directory:%space% $tmpstatus
 Boot server:%space% $SLX_PXE_SERVER_IP
 Client address:%space% $SLX_PXE_CLIENT_IP
@@ -82,7 +91,9 @@ fi
 if [ -n "$player" ]; then
 	echo "VMware version:%space% ${player//'"'/}" >> "$TMPFILE"
 fi
-
+if [ -n "$virtualbox" ]; then
+	echo "VirtualBox version:%space% $virtualbox" >> "$TMPFILE"
+fi
 echo "" >> "$TMPFILE"
 
 # Crop to console width
