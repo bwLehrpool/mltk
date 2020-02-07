@@ -8,6 +8,6 @@
 
 if [ "${SLX_BROWSER//chromium/}" != "$SLX_BROWSER" ]; then
 	(
-	find /usr/lib/chromium-browser -type f -exec dd if={} of=/dev/null \; &> /dev/null &
+	dd if=/usr/lib/chromium-browser/chromium-browser of=/dev/null &> /dev/null &
 	) &
 fi
