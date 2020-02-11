@@ -30,7 +30,10 @@ kexec_load() {
 			exit 1
 		fi
 	done
-
+	if download_retry "http://${SLX_KCL_SERVERS}/tftp/bwlp.cpio" "${DIR}/bwlp.cpio"; then
+		cat "${DIR}/initramfs-stage31" "${DIR}/bwlp.cpio" > "${DIR}/initramfs-tmp"
+		mv -f -- "${DIR}/initramfs-tmp" "${DIR}/initramfs-stage31"
+	fi
 	if ! kexec -l "${DIR}/kernel" --initrd "${DIR}/initramfs-stage31" --reuse-cmdline; then
 		echo "Failed to load kernel/initrd from ${DIR}"
 		exit 1
