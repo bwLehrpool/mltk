@@ -171,6 +171,7 @@ chroot_handle_whiteouts() {
 		rm -f -- "$WHITEOUT" || perror "Could not delete whiteout $WHITEOUT!"
 	done
 	[ -s "$WHITEOUT_LIST" ] && pinfo "Whiteout list dumped to '${CHROOT_UPPERDIR}/overlay.whiteout.list'"
+	return 0
 }
 
 ###############################################################################
