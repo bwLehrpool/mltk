@@ -6,31 +6,19 @@ if [ -z "$kexec" ]; then
 	exit 1
 fi
 
-# download_retry <url> <path>
-download_retry() {
-	[ $# -ne 2 ] && return 1
-	for TIMEOUT in 1 1 2 3 END; do
-		[ "x$TIMEOUT" = "xEND" ] && break
-		if wget -T 2 -O "$2" "$1"; then
-			return 0
-			break
-		fi
-		sleep $TIMEOUT
-	done
-	return 1
-}
+. /opt/openslx/bin/slx-tools
 
 kexec_load() {
 	. /opt/openslx/config
 	local DIR="$(mktemp -d)"
 
 	for FILE in kernel initramfs-stage31; do
-		if ! download_retry "http://${SLX_KCL_SERVERS}/${SLX_BASE_PATH}/${FILE}" "${DIR}/${FILE}" ; then
+		if ! download_retry "http://${SLX_KCL_SERVERS}/${SLX_BASE_PATH}/${FILE}" > "${DIR}/${FILE}" ; then
 			echo "Failed to download ${FILE}."
 			exit 1
 		fi
 	done
-	if download_retry "http://${SLX_KCL_SERVERS}/tftp/bwlp.cpio" "${DIR}/bwlp.cpio"; then
+	if download_retry "http://${SLX_KCL_SERVERS}/tftp/bwlp.cpio" > "${DIR}/bwlp.cpio"; then
 		cat "${DIR}/initramfs-stage31" "${DIR}/bwlp.cpio" > "${DIR}/initramfs-tmp"
 		mv -f -- "${DIR}/initramfs-tmp" "${DIR}/initramfs-stage31"
 	fi
