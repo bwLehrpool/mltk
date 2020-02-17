@@ -207,6 +207,7 @@ finalize_machine_config() {
 	setup_ethernet
 	setup_cpu_ram
 	setup_sound
+	setup_displays
 	notempty VBOX_SHARED_FOLDERS && setup_shared_folders
 
 	if ! cp -p "$TMPCONFIG" "$VBOX_MACHINE_CONFIG"; then
