@@ -151,13 +151,15 @@ set_serial_ports() {
 	readonly SERIAL0 PARALLEL0
 }
 
-get_display_count() {
-	declare -g DISPLAY_COUNT="$(xrandr | grep -c -w 'connected')"
-	if ! [[ "$DISPLAY_COUNT" =~ ^[1-9]$ ]]; then
-		writelog "Weird monitor count detected ($DISPLAY_COUNT). Falling back to 1."
-		DISPLAY_COUNT=1
-	fi
-	readonly DISPLAY_COUNT
+get_displays() {
+	local list=$( mktemp )
+	beamergui -d | grep -v '^#' > "$list"
+	# These are logical screens, ie. cloned outputs count only once
+	declare -g DISPLAY_COUNT="$( < "$list"  wc -l || echo 1 )"
+	declare -g RESOLUTIONS="$( < "$list"  awk '{printf "%dx%d ", $3, $4}' )"
+	RESOLUTIONS=${RESOLUTIONS% } # trim
+	readonly RESOLUTIONS DISPLAY_COUNT
+	rm -f -- "$list"
 }
 
 ## MAIN ##
@@ -168,5 +170,5 @@ call_post_source \
 	set_virt_hostname \
 	set_serial_ports \
 	check_optical_drives \
-	get_display_count
+	get_displays
 
