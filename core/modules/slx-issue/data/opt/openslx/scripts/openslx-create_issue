@@ -21,8 +21,9 @@ export PATH="$PATH:/opt/openslx/bin:/opt/openslx/sbin"
 
 # Set greeting and add information about the booted system
 
+mkdir -p /run/openslx
 declare -rg INFILE=/opt/openslx/etc/issue.template
-declare -rg TMPFILE=$(mktemp)
+declare -rg TMPFILE=$(mktemp -p /run/openslx)
 declare -rg OUTFILE=/etc/issue
 
 . /opt/openslx/config
