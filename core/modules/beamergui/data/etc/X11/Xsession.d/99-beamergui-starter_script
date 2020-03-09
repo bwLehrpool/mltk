@@ -1,13 +1,22 @@
 #!/bin/ash
 
-/opt/openslx/bin/beamergui -a
-# Detach
-/bin/bash <<HERE
-{
-	ulimit -c unlimited
-	cd /tmp/
-	/opt/openslx/bin/beamergui -b &
-} &
+[ -z "$SLX_KCL_SERVERS" ] && . /opt/openslx/config
+
+if [ -z "$SLX_FORCE_RESOLUTION" ]; then
+	/opt/openslx/bin/beamergui -a
+	# Detach
+	/bin/bash <<HERE
+	{
+		ulimit -c unlimited
+		cd /tmp/
+		/opt/openslx/bin/beamergui -b &
+	} &
 HERE
+elif [ -z "$SLX_RESOLUTION_MAPPING" ]; then
+	/opt/openslx/bin/beamergui --resolutions "$SLX_FORCE_RESOLUTION"
+else
+	/opt/openslx/bin/beamergui --resolutions "$SLX_FORCE_RESOLUTION" --mapping "$SLX_RESOLUTION_MAPPING"
+fi
+
 true
 
