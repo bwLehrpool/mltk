@@ -60,6 +60,7 @@ setup_ethernet() {
 setup_optical_drives() {
 	# XXX: For now it's safe to assume ide channel 1 is free, as we support only one HDD.
 	# If it's IDE, it's on channel 0
+	sed -i '/^ide1:/d' "${TMPCONFIG}"
 	cat >> "${TMPCONFIG}" <<-HEREEND
 	ide1:0.present = "$CDROM0"
 	ide1:0.autodetect = "TRUE"
