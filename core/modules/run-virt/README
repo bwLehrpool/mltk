@@ -139,3 +139,13 @@ Note that this is a floppy, not the cloud, so you're limited to 1.44MB of storag
 
 Hook to set up read or write access to image. Here, only *.inc type hooks make sense, since they're
 expected to set either VM_DISKFILE_RO or VM_DISKFILE_RW, depending on desired access.
+
+# pre-exec.d/
+
+Hook that is run right before the virtualizer is executed. $1 is the virtualizer ID, $2 is the
+imageuuid.
+
+# post-exec.d/
+
+Hook that is run right after the virtualizer finished executing. $1 is the virtualizer ID, $2 is the
+imageuuid.

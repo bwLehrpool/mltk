@@ -177,11 +177,17 @@ main() {
 		cleanexit 1
 	fi
 
+	run_hooks "pre-exec" "$PLUGIN_ID" "$IMGUUID"
+
 	writelog "VM command: ${VIRTCMD} ${VIRTCMDOPTS[*]}"
 	# This will start the VM (no eval needed!)
+	local retval
 	"${VIRTCMD}" "${VIRTCMDOPTS[@]}"
+	retval=$?
 
-	writelog "Virtualizer exited with '$?'. Bye."
+	run_hooks "post-exec" "$PLUGIN_ID" "$IMGUUID"
+
+	writelog "Virtualizer exited with '$retval'. Bye."
 
 	cleanexit 0
 }
