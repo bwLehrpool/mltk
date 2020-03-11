@@ -41,6 +41,7 @@ done
 
 # check/create vboxusers group
 getent group vboxusers || addgroup -S vboxusers
+adduser demo vboxusers
 
 # set their permissions
 chmod 0600 /dev/vboxdrv /dev/vboxnetctl
