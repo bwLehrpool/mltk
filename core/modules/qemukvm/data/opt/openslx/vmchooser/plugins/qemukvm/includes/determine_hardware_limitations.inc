@@ -76,6 +76,7 @@ set_vm_hw_limits() {
 
 
 	# check for allocated cores
+	declare -g CPU_CORES="${HW_THREADS:-1}"
 	declare -rg HOST_CORE_COUNT="${CPU_CORES}"
 	[ "${CPU_CORES}" -gt "${MAXCORES}" ] && CPU_CORES="${MAXCORES}"
 
