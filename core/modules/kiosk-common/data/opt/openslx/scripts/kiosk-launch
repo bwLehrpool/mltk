@@ -28,7 +28,7 @@ kill_jobs() {
 	local j
 	for j in $(jobs -p); do
 		# Was already running before? Skip
-		[ " $BASE_JOBS " =~ " $j " ] && continue
+		[[ " $BASE_JOBS " == *" $j "* ]] && continue
 		kill "$j"
 	done
 }
