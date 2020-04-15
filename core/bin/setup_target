@@ -233,6 +233,13 @@ copy_files_with_deps () {
 	# from REQUIRED_FILES - these are assumed to be simple files, so only follow symlinks
 	[ ! -z "${REQUIRED_FILES}" ] && pinfo "Gathering required files from config file..."
 	for ENTRY in ${REQUIRED_FILES}; do
+		if [ "${ENTRY:0:1}" = "@" ]; then
+			ENTRY="${ENTRY:1}"
+			if [ ! -e "${MODULE_BUILD_DIR}/${ENTRY}" ]; then
+				pinfo "Skipping missing optional file: ${MODULE_BUILD_DIR}/${ENTRY}"
+				continue
+			fi
+		fi
 		get_link_chain "${MODULE_BUILD_DIR}/${ENTRY}" "${MODULE_BUILD_DIR}" >> "${COPYFILES_LIST}"
 	done
 
