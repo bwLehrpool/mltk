@@ -70,13 +70,13 @@ report_hardware_info() {
 		SHELL=/bin/sh
 		PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin:/opt/openslx/sbin:/opt/openslx/bin
 
-		${START}-59/5 *   * * *    root    sleep ${DELAY}; /opt/openslx/scripts/cron-system_usage_update
+		${START}-59/5 *   * * *    root    sleep ${DELAY}; /opt/openslx/scripts/cron-system_usage_update --full
 	EOF
 	# TODO remove this hack one day: Sometimes, aufs doesn't update the mtime of dirs
 	# when creating files, so cron would not rescan the cron directory.
 	touch "/etc/cron.d"
 	# Trigger right now so resource usage gets updated
-	/opt/openslx/scripts/cron-system_usage_update
+	/opt/openslx/scripts/cron-system_usage_update --full
 	return 0
 }
 

@@ -1,0 +1,4 @@
+#!/bin/ash - sourced
+
+[ "$DISPLAY" = ":0" ] && /opt/openslx/scripts/cron-system_usage_update &
+

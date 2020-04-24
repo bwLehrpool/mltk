@@ -1,5 +1,9 @@
 #!/bin/ash
 
+touch /run/openslx || exit 1
+full=false
+[ "$1" = "--full" ] && full=true
+
 [ -r "/etc/system-uuid" ] || exit 0
 
 . /opt/openslx/config
@@ -16,13 +20,15 @@ Name=
 LEGEND=
 loginctl --help 2>&1 | grep -q -- '--no-legend' && LEGEND="--no-legend"
 for SESSION in $(loginctl $LEGEND | awk '{print $1}'); do
-	unset Display Remote State
-	eval $(loginctl -p Display -p Remote -p State -p Class -p Name show-session "$SESSION")
+	unset Display Remote State Class
+	eval "$(loginctl -p Display -p Remote -p State -p Class -p Name show-session "$SESSION")"
 	if [ "$Display" = ":0" ] && [ "$Remote" = "no" ] && [ "$State" = "active" -o "$State" = "online" ] && [ "$Class" = "user" ]; then
 		USED=1 # We only consider sessions on the primary display, which should always be the case
-		break
+		break # keeps $Name set!
 	fi
+	unset Name
 done
+
 
 # Also report usage of /tmp and swap
 TMP="$( slx-tools fs_path_space /tmp )"
@@ -40,12 +46,34 @@ if [ -n "$SLX_EXAM" ]; then
 	# to know about it, more than other runmodes actually
 	SLX_RUNMODE_MODULE="exams"
 fi
+# CPU temp and load
+CPU_LOAD=
+if $full; then
+	current="$( awk '$1 == "cpu" {print ($5+$6) " " ($2+$3+$4+$5+$6+$7+$8)}' /proc/stat )"
+	c_count=${current#* }
+	write=false
+	if [ -s "/run/openslx/usage.update" ]; then
+		old="$( cat "/run/openslx/usage.state" )"
+		l_count="${old#* }"
+		# sloppy way to prevent rapid updates; counter speed varies depending on HZ and core count
+		if [ "$(( c_count - l_count ))" -gt 12000 ]; then
+			write=true
+			CPU_LOAD="$( echo "$current $old" | awk '{ print (100 - ($1 - $3)/($2 - $4) * 100) }' )"
+		fi
+	else
+		write=true
+	fi
+	if $write; then
+		echo "$current" > "/run/openslx/usage.state"
+	fi
+fi
 
 curl --retry 3 --retry-connrefused -m 6 -s --data-urlencode "type=~runstate" --data-urlencode "uuid=$UUID" --data-urlencode "used=$USED" \
 	--data-urlencode "user=$Name" --data-urlencode "tmpsize=$TMP_SIZE" --data-urlencode "tmpfree=$TMP_FREE" \
 	--data-urlencode "swapsize=$SWAP_SIZE" --data-urlencode "swapfree=$SWAP_FREE" \
 	--data-urlencode "memsize=$MEM_SIZE" --data-urlencode "memfree=$MEM_FREE" \
-	--data-urlencode "runmode=$SLX_RUNMODE_MODULE" "$SLX_REMOTE_LOG" > /dev/null 2>&1
+	--data-urlencode "runmode=$SLX_RUNMODE_MODULE" --data-urlencode "cpuload=$CPU_LOAD" \
+	"$SLX_REMOTE_LOG" > /dev/null 2>&1
 
 # Warn user if tmp or swap usage is high; system might crash soon
 
