@@ -201,6 +201,17 @@ setup_isolation() {
 	HEREEND
 }
 
+setup_vnc() {
+	local passwd="$( cat /tmp/vnc-passwd )"
+	[ -z "$passwd" ] && return
+	cat >> "${TMPCONFIG}" <<-HEREEND
+	RemoteDisplay.vnc.enabled = "TRUE"
+	RemoteDisplay.vnc.port = "5901"
+	RemoteDisplay.vnc.password = "$passwd"
+	RemoteDisplay.vnc.keymap = "de"
+	HEREEND
+}
+
 # Serial, parallel: Empty, nothing is being currently set. TODO later.
 
 setup_graphics() {
@@ -289,6 +300,7 @@ write_final_vmx() {
 	[ "x$HGFS_DISABLED" = "xFALSE" ] && setup_shared_folders
 	setup_isolation
 	setup_graphics
+	[[ " $SLX_REMOTE_VNC " == *" vmware "* ]] && setup_vnc
 	finalize_hardware
 
 	# At last: Let's copy it to $VM_CONF_DIR/run-vmware.conf
