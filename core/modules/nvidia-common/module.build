@@ -32,7 +32,9 @@ build() {
 		pdebug "Unpacking NVidia-Installer ..."
 		[ -d "$destdir" ] && rm -rf "$destdir"
 		sh "$bundle" --extract-only --target "$destdir" ||	perror "Could not extract $bundle to $destdir."
-		download "${REQUIRED_HTML//%VERSION%/$version}" "$builddir/supportedchips.html"
+		if ! [ -s "$builddir/supportedchips.html" ]; then
+			download "${REQUIRED_HTML//%VERSION%/$version}" "$builddir/supportedchips.html"
+		fi
 		local KMOD_ERROR="(ERROR: The nvidia kernel module was not created.|.ko failed to build)"
 		local KMOD_LOG="/var/log/nvidia-installer.kmod.log"
 		pinfo "Ready to chroot - may take some time."
