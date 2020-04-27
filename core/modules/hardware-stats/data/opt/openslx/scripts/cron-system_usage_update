@@ -48,6 +48,7 @@ if [ -n "$SLX_EXAM" ]; then
 fi
 # CPU temp and load
 CPU_LOAD=
+CPU_TEMP=
 if $full; then
 	current="$( awk '$1 == "cpu" {print ($5+$6) " " ($2+$3+$4+$5+$6+$7+$8)}' /proc/stat )"
 	c_count=${current#* }
@@ -66,6 +67,12 @@ if $full; then
 	if $write; then
 		echo "$current" > "/run/openslx/usage.state"
 	fi
+	if command -v sensors > /dev/null; then
+		# TODO JSON support arrived recently, port after base system is updated from 18.04
+		# Try to get the package id reading, use core temps as fallback
+		CPU_TEMP="$( sensors | tr 'A-Z' 'a-z' \
+			| awk 'BEGIN{p=0;pc=0;c=0;cc=0} {if ($1 == "package" && substr($4, 1, 1) == "+") {gsub("[^0-9.]", "", $4); p += $4; pc++} if ($1 ~ /^core/ && substr($3, 1, 1) == "+") {gsub("[^0-9.]", "", $3); c += $3; cc++} } END{if (pc > 0) print (p / pc); else if (cc > 0) print (c / cc);}' )"
+	fi
 fi
 
 curl --retry 3 --retry-connrefused -m 6 -s --data-urlencode "type=~runstate" --data-urlencode "uuid=$UUID" --data-urlencode "used=$USED" \
@@ -73,6 +80,7 @@ curl --retry 3 --retry-connrefused -m 6 -s --data-urlencode "type=~runstate" --d
 	--data-urlencode "swapsize=$SWAP_SIZE" --data-urlencode "swapfree=$SWAP_FREE" \
 	--data-urlencode "memsize=$MEM_SIZE" --data-urlencode "memfree=$MEM_FREE" \
 	--data-urlencode "runmode=$SLX_RUNMODE_MODULE" --data-urlencode "cpuload=$CPU_LOAD" \
+	--data-urlencode "cputemp=$CPU_TEMP" \
 	"$SLX_REMOTE_LOG" > /dev/null 2>&1
 
 # Warn user if tmp or swap usage is high; system might crash soon
