@@ -63,14 +63,30 @@ mount -t squashfs -o ro "$ADDON_PATH" "$ADDON_MOUNT_POINT" || \
 
 # Merge any passwd/group/... files
 merguez() {
-	local tmp=$(mktemp)
+	# checks for conflicts of entries and (uid|gid), assumes <entry>:x:<id>:... !
+	if [ "$1" = "--check-conflicts" ]; then
+		local cc=yes
+		shift
+	fi
+	local tmp="$(mktemp)"
 	cp -f -a -- "$1" "$tmp" # So we get the original perms/owner
-	cat "$@" | awk -F: '!n[$1]++' > "$tmp"
+	if [ -n "$cc" ]; then
+		local errors="$(mktemp)"
+		cat "$@" | awk -F: '{ if ($3 in n) { if (n[$3] != $1 ) { print "Conflicting entries "$1" ("$3")" > "/dev/stderr" } } else { n[$3]=$1 ; print $0} }' 2>"$errors" > "$tmp"
+		if [ -s "$errors" ]; then
+			slxlog --sync --echo "addon-merge-usergroups" "Conflicting user/groups in ${ADDON}." "$errors"
+		fi
+		rm -f -- "$errors"
+	else
+		# just merguez!
+		cat "$@" | awk -F: '!n[$1]++' > "$tmp"
+	fi
 	mv -f -- "$tmp" "$1"
 }
-for i in group shadow passwd; do
-	[ -s "${ADDON_MOUNT_POINT}/etc/$i" ] && merguez "/etc/$i" "${ADDON_MOUNT_POINT}/etc/$i"
+for i in group passwd; do
+	[ -s "${ADDON_MOUNT_POINT}/etc/$i" ] && merguez --check-conflicts "/etc/$i" "${ADDON_MOUNT_POINT}/etc/$i"
 done
+[ -s "${ADDON_MOUNT_POINT}/etc/shadow" ] && merguez "/etc/shadow" "${ADDON_MOUNT_POINT}/etc/shadow"
 
 # now append it to /
 echo "Appending ${ADDON_MOUNT_POINT} to /"
