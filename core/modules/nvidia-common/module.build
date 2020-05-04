@@ -47,6 +47,7 @@ build() {
 			|| /NVIDIA/nvidia-installer --no-nouveau-check --no-network --no-backup --no-rpms --no-runlevel-check \
 				--no-distro-scripts --no-cc-version-check --no-x-check --no-precompiled-interface --silent \
 				--no-kernel-module
+
 		exit 0 # Fake it since it will try to load the module and probably fail
 		EOF
 		if grep -qE "$KMOD_ERROR" "${builddir}${KMOD_LOG}"; then
@@ -60,6 +61,17 @@ build() {
 			mkdir -p "${builddir}/opt/openslx/etc"
 			mv "${builddir}/overlay.whiteout.list" "${builddir}/opt/openslx/etc/nvidia.whiteout"
 		fi
+
+		ldconfig -v -n -r "${builddir}" /usr/lib/x86_64-linux-gnu/ /usr/lib/x86_64-linux-gnu/vdpau/ /usr/lib/xorg/modules/extensions/
+		# These sometimes maybe don't get created
+		[ -f "${builddir}/usr/lib/x86_64-linux-gnu/vdpau/libvdpau_nvidia.so.${version}" ] \
+			&& ln -nfs "vdpau/libvdpau_nvidia.so.${version}" "${builddir}/usr/lib/x86_64-linux-gnu/libvdpau_nvidia.so"
+		if [ -f "${builddir}/usr/lib/x86_64-linux-gnu/libGLX_nvidia.so.${version}" ]; then
+			ln -nfs "libGLX_nvidia.so.${version}" "${builddir}/usr/lib/x86_64-linux-gnu/libGLX_nvidia.so.0"
+			ln -nfs "libGLX_nvidia.so.${version}" "${builddir}/usr/lib/x86_64-linux-gnu/libGLX_indirect.so.0"
+		fi
+		[ -f "${builddir}/usr/lib/xorg/modules/extensions/libglxserver_nvidia.so.${version}" ] \
+			&& ln -nfs "libglxserver_nvidia.so.${version}" "${builddir}/usr/lib/xorg/modules/extensions/libglxserver_nvidia.so"
 
 		# Kernel related - outside of version subdir ($builddir)
 		NVIDIA_MODULES="${MODULE_BUILD_DIR}/lib/modules/nvidia/${version}"
