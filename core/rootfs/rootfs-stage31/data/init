@@ -42,7 +42,7 @@ haveged --pidfile /tmp/haveged.pid # Tries to put it in /var/run by default, whi
 
 # IMPORTANT - check if kernel modules in initrams match kernel version
 BASEDIR="/lib/modules/$(uname -r)/kernel/drivers"
-for dir in gpu hid misc; do
+for dir in gpu hid; do
 	if ! [ -d "$BASEDIR/$dir" ]; then
 		echo "0" > /proc/sys/kernel/printk
 		reset
