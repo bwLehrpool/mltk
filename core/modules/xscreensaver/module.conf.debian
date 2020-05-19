@@ -1,0 +1,14 @@
+#!/bin/bash
+REQUIRED_INSTALLED_PACKAGES="
+	intltool
+	libglade2-dev
+	libgtk2.0-dev
+	libxxf86vm-dev
+	libxtst-dev
+	libxt-dev
+	libxss-dev
+	libxrandr-dev
+	libxext-dev
+	libpam0g-dev
+"
+REQUIRED_CONFIGURE_OPTIONS="--with-hackdir=/usr/lib/xscreensaver/"

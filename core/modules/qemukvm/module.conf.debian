@@ -1,0 +1,15 @@
+#!/bin/bash
+REQUIRED_INSTALLED_PACKAGES="
+		qemu
+		qemu-kvm
+"
+
+REQUIRED_CONTENT_PACKAGES="
+		qemu
+		qemu-kvm
+		qemu-system-common
+		qemu-system-x86
+		qemu-user
+		qemu-utils
+		seabios
+"

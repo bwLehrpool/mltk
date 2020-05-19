@@ -2,7 +2,6 @@
 REQUIRED_INSTALLED_PACKAGES="	
 	kdm
 	kde-workspace-kgreet-plugins
-	ttf-dejavu
 "
 REQUIRED_CONTENT_PACKAGES="	
 	kdm
@@ -22,9 +21,10 @@ REQUIRED_DIRECTORIES+="
 	/etc/kde4/kdm
 "
 # non-standard vars
-REQUIRED_SYSTEM_FILES+="	
-	/usr/share/fonts/truetype/ttf-dejavu/DejaVuSans.ttf
+REQUIRED_SYSTEM_FILES+="
 	/usr/share/kde4/apps/kdm/pics/shutdown.png
+	/usr/share/fonts/truetype/ttf-dejavu/DejaVuSans.ttf
+	/usr/share/fonts/truetype/ubuntu-font-family/Ubuntu-R.ttf
 	/usr/share/icons/default/index.theme
 "
 

@@ -1,7 +1,10 @@
 #!/bin/bash
 REQUIRED_INSTALLED_PACKAGES="
-	udisks2
+	dunst
+	libnotify-bin
 "
 REQUIRED_CONTENT_PACKAGES="
-	udisks2
+	dunst
+	libnotify-bin
 "
+REQUIRED_FILES=""

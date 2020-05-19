@@ -4,17 +4,16 @@ REQUIRED_INSTALLED_PACKAGES="
 			squashfs-tools
 			whois
 			xfsprogs
-			firmware-linux-free
-			curl
 			jfsutils
-			libssl-dev
+			curl
+			openssl
+			gawk
+			e2fsprogs
+			util-linux
+			kbd
+			dosfstools
+			strace
 "
 REQUIRED_CONTENT_PACKAGES="
-	
-"
-REQUIRED_DIRECTORIES="
-			/lib/xtables
-"
-REQUIRED_FILES+="
-			/etc/X11/app-defaults/Xvidtune
+			openssl
 "

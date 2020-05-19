@@ -1,7 +1,13 @@
 #!/bin/bash
-REQUIRED_INSTALLED_PACKAGES="
-	udisks2
+
+REQUIRED_BINARIES="
+	lightdm
 "
+
+REQUIRED_INSTALLED_PACKAGES="
+	lightdm
+"
+
 REQUIRED_CONTENT_PACKAGES="
-	udisks2
+	lightdm
 "

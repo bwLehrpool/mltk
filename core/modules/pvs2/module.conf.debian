@@ -1,7 +1,12 @@
 #!/bin/bash
 REQUIRED_INSTALLED_PACKAGES="
-libqt4-dev
-libvncserver-dev
+	libxss-dev
+	libqt5x11extras5-dev
+	libvncserver-dev
+	xinput
+	wmctrl
 "
 REQUIRED_CONTENT_PACKAGES="
+	xinput
+	wmctrl
 "

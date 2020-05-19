@@ -1,11 +1,11 @@
 #!/bin/bash
 REQUIRED_INSTALLED_PACKAGES="
-	libX11-data
+				libx11-data
 "
 REQUIRED_CONTENT_PACKAGES="
-	libX11-data
+				libx11-data
 "
 REQUIRED_DIRECTORIES+="
-	/usr/lib/locale
+	/usr/lib/locale/de_DE.utf8
 "
 

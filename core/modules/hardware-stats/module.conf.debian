@@ -1,7 +1,13 @@
 #!/bin/bash
 REQUIRED_INSTALLED_PACKAGES="
-	udisks2
+	msr-tools
+	dmidecode
+	util-linux
 "
+
 REQUIRED_CONTENT_PACKAGES="
-	udisks2
+	msr-tools
+	dmidecode
+	util-linux
 "
+

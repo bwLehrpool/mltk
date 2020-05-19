@@ -1,0 +1,19 @@
+#!/bin/bash
+REQUIRED_INSTALLED_PACKAGES="
+	cmake
+	libqt5gui5
+	libqt5svg5-dev
+	libqt5x11extras5-dev
+	qt5-qmake
+	qtbase5-dev
+	qtbase5-dev-tools
+	qttools5-dev
+	qttools5-dev-tools
+	qttranslations5-l10n
+"
+
+REQUIRED_CONTENT_PACKAGES="
+	libqt5gui5
+	libqt5svg5
+	qttranslations5-l10n
+"

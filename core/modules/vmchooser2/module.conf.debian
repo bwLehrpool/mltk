@@ -1,5 +1,0 @@
-#!/bin/bash
-REQUIRED_INSTALLED_PACKAGES="	
-				cmake
-				libqt4-dev
-"

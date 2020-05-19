@@ -16,6 +16,10 @@ build() {
 		grep -q -E -r '^\s*de_DE\.UTF-8' "/var/lib/locales/supported.d" || echo 'de_DE.UTF-8 UTF-8' >> "/var/lib/locales/supported.d/openslx"
 		locale-gen --no-archive --purge "de_DE.UTF-8" || perror "Could not generate locales (ubuntu style)"
 	fi
+	# Debian's version
+	if ! [ -d /usr/lib/locale/de_DE.utf8 ]; then
+		localedef -f UTF-8 -i de_DE --no-archive /usr/lib/locale/de_DE.utf8 || perror "Could not gen locales"
+	fi
 
 	# Put everything we build or get from the system in build dir
 	local FILELIST="$MODULE_WORK_DIR/list_copy_build"

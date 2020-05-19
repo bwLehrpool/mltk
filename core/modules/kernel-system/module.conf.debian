@@ -1,0 +1,5 @@
+#!/bin/bash
+REQUIRED_INSTALLED_PACKAGES="
+	linux-firmware
+	linux-headers-${SYSTEM_KERNEL_LONG}
+"

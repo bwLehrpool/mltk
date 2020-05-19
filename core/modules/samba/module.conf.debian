@@ -1,0 +1,21 @@
+#!/bin/bash
+REQUIRED_INSTALLED_PACKAGES="
+		samba
+		smbclient
+		winbind
+		krb5-user
+		cifs-utils
+		smbnetfs
+		fuse
+		keyutils
+"
+REQUIRED_CONTENT_PACKAGES="
+		samba
+		smbclient
+		winbind
+		krb5-user
+		cifs-utils
+		smbnetfs
+		fuse
+		keyutils
+"

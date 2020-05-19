@@ -1,10 +1,10 @@
 #!/bin/bash
 REQUIRED_CONTENT_PACKAGES="
 			dbus
+			dbus-x11
 "
-REQUIRED_DIRECTORIES+="		
-			/lib/systemd
+REQUIRED_FILES+="
 "
-REQUIRED_FILES="	
-			/etc/default/dbus
+REQUIRED_DIRECTORIES="
+			/usr/share/dbus-1
 "

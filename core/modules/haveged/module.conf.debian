@@ -1,13 +1,7 @@
 #!/bin/bash
 REQUIRED_CONTENT_PACKAGES="
-	cmake
-	fuse
+	haveged
 "
-
 REQUIRED_INSTALLED_PACKAGES="
-	cmake
-	zlib1g-dev
-	libfuse-dev
-	fuse
-	libjansson-dev
+	haveged
 "

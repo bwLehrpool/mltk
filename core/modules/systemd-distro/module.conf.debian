@@ -3,7 +3,6 @@ REQUIRED_INSTALLED_PACKAGES="
 			intltool
 			gperf
 			dbus
-			pkg-config
 			libcap-dev
 			libudev-dev
 			libdbus-1-dev

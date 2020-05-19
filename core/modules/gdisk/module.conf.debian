@@ -1,0 +1,6 @@
+#!/bin/bash
+REQUIRED_CONTENT_PACKAGES="
+	gdisk
+	xfsprogs
+	e2fsprogs
+"

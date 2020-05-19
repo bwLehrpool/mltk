@@ -1,7 +1,6 @@
 #!/bin/bash
 REQUIRED_INSTALLED_PACKAGES="
 				libx11-data
-				language-pack-de
 "
 REQUIRED_CONTENT_PACKAGES="
 				libx11-data
