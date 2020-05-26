@@ -81,7 +81,7 @@ Boot server:%space% $SLX_PXE_SERVER_IP
 Client address:%space% $SLX_PXE_CLIENT_IP
 EOF
 if [ -n "$linkspeed" ]; then
-	echo "Link speed:%space% ${linkspeed}MBit" >> "$TMPFILE"
+	echo "Link speed:%space% ${linkspeed}MBit/s" >> "$TMPFILE"
 fi
 if [ -n "$SLX_SHUTDOWN_SCHEDULE" ]; then
 	echo "Scheduled shutdown:%space% $SLX_SHUTDOWN_SCHEDULE" >> "$TMPFILE"
