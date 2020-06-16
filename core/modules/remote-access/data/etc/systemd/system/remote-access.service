@@ -1,0 +1,9 @@
+[Unit]
+Description=Check if remote access is desired, configure system
+Before=lightdm.service display-manager.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+Exec=/opt/openslx/scripts/systemd-remote_x_config
+

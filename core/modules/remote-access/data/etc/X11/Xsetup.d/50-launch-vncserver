@@ -1,0 +1,87 @@
+#!/bin/sh sourced
+
+[ -z "$SLX_KCL_SERVERS" ] && . /opt/openslx/config
+
+[ "$DISPLAY" = :0 ] && [ -n "$SLX_REMOTE_VNC" ] && {
+	# TODO GET
+	srchost="$SLX_REMOTE_HOST_ACCESS"
+	if [ -n "$srchost" ]; then
+		# IPTABLES
+		rule="/opt/openslx/iptables/rules.d/80-remote-access"
+		if ! [ -e "$rule" ]; then
+			(
+				echo "#!/bin/sh"
+				echo "iptables -A INPUT \! -s "'"'"$srchost"'"'" -p tcp --dport 5900 -j DROP"
+				echo "iptables -A INPUT \! -s "'"'"$srchost"'"'" -p tcp --dport 5901 -j DROP"
+			) > "$rule"
+			chmod +x "$rule"
+		fi
+	fi
+	set -x
+	exec &> /tmp/fooooooooooooo
+	# dd since busybox head doesn't know -c
+	passwd="$( < /dev/urandom  tr -c -d 'a-zA-Z0-9#&/=()[]{}' | dd bs=8 count=1 status=none )"
+	printf "%s" "$passwd" > "/tmp/vnc-passwd"
+	url="http://${SLX_PXE_SERVER_IP}/slx-admin/api.php?do=remoteaccess"
+	curl -L --retry 4 --retry-connrefused --max-time 3 --retry-max-time 10 \
+		--data-urlencode "password=$passwd" "$url"
+	killall x11vnc
+	(
+		fails=0
+		while true; do
+			s="$( date +%s )"
+			# skip keycode stuff fixes altgr for vmware
+			x11vnc -rfbport 5900 -shared -forever -passwd -xkb -skip_keycodes 92,187,188 -remap DEAD=gac,U20AC-EuroSign "$passwd"
+			e="$( date +%s )"
+			d="$(( e - s ))"
+			if [ "$d" -gt 5 ]; then
+				fails=0
+			else
+				fails="$(( fails + 1 ))"
+				[ "$fails" -gt 10 ] && break
+				[ "$fails" -gt 3 ] && usleep 333333
+			fi
+		done
+	) &> "/tmp/x11vnc-log-$$" &
+	vncpid=$!
+	gotone=false
+	vmvnc=false
+	idle=0
+	# In case of stale entry
+	iptables -t nat -D PREROUTING -p tcp --dport 5900 -j REDIRECT --to-ports 5901
+	while [ -d "/proc/${vncpid}" ]; do
+		sleep 5
+		if netstat -tn | awk 'BEGIN{ e=1 } { if ($4 ~ /:590[0123]$/) e=0 } END{ exit e }'; then
+			gotone=true
+			idle=0
+		else
+			idle=$(( idle + 1 ))
+		fi
+		if $gotone && [ "$idle" -gt 120 ]; then # 120 * 5 = 10 mins
+			kill "$vncpid"
+			break
+		fi
+		# In case we access vmplayer via x11vnc; vmplayer won't leave the keymap alone >:(
+		# TODO: Currently everything needs to be set to DE for this to work - X11 and
+		# the OS in the VM.
+		#setxkbmap -query | grep -q '^layout:\s*de$' || \ # NO, always reports 'de'
+		setxkbmap de
+		# Check if we should redirect to vmware
+		if netstat -tnl | awk 'BEGIN{ e=1 } { if ($4 ~ /:5901$/) e=0 } END{ exit e }'; then
+			#enable
+			if ! $vmvnc; then
+				killall x11vnc
+				usleep 10000
+				iptables -t nat -I PREROUTING 1 -p tcp --dport 5900 -j REDIRECT --to-ports 5901
+			fi
+			vmvnc=true
+		else
+			# disable
+			if $vmvnc; then
+				iptables -t nat -D PREROUTING -p tcp --dport 5900 -j REDIRECT --to-ports 5901
+			fi
+			vmvnc=false
+		fi
+	done
+	systemctl restart lightdm
+} &

@@ -1,0 +1,8 @@
+#!/bin/ash
+
+. /opt/openslx/config
+
+[ -n "$SLX_REMOTE_VNC" ] || exit 0 # Nothing to do
+
+ln -nfs /opt/openslx/remote-access/xorg.conf /etc/X11/xorg.conf.d/16-remote-access.conf
+
