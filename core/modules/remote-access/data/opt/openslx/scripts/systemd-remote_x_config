@@ -6,3 +6,7 @@
 
 ln -nfs /opt/openslx/remote-access/xorg.conf /etc/X11/xorg.conf.d/16-remote-access.conf
 
+cat > /etc/lightdm/qt-lightdm-greeter.conf.d/13-loginrpc.conf <<END
+[General]
+rpc-port = 7551
+END
