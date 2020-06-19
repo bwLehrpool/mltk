@@ -4,10 +4,44 @@
 
 [ -n "$SLX_REMOTE_VNC" ] || exit 0 # Nothing to do
 
-ln -nfs /opt/openslx/remote-access/xorg.conf /etc/X11/xorg.conf.d/16-remote-access.conf
+# Find connected output, get driver for according card
+driver=
+for cdir in /sys/class/drm/card?; do
+	card="${cdir##*/}"
+	grep -qFx 'connected' "$cdir/$card"-*/status || continue
+	driver="$( awk -F= '{ if ($1 = "DRIVER") { print $2; exit; } }' "$cdir/device/uevent" )"
+	[ -n "$driver" ] && break
+done
 
+# ???
+[ -z "$driver" ] && driver="i915"
+case "$driver" in
+	i915) driver="intel" ;;
+	vmwgfx) driver="vmware" ;;
+esac
+
+# Enable the dual-screen setup
+sed "s/%DRIVER%/$driver/g" "/opt/openslx/remote-access/xorg.conf" > "/etc/X11/xorg.conf.d/16-remote-access.conf"
+
+# Enable LoingRPC of greeter
 mkdir -p /etc/lightdm/qt-lightdm-greeter.conf.d
 cat > /etc/lightdm/qt-lightdm-greeter.conf.d/13-loginrpc.conf <<END
 [General]
 rpc-port = 7551
+END
+
+# Force :0.0 usage
+
+cat > /etc/X11/Xsession.d/00-force-screen0 <<END
+#!/bin/ash Being sourced but hey
+(
+export DISPLAY=:0.1
+text="Dieser PC wird gerade aus der Ferne verwendet.
+This computer is currently being used for a remote session.
+
+Bitte nicht abschalten.
+Please don't turn it off."
+zenity --info --width 630 --text "\$text" || xmessage -center "\$text"
+) &
+export DISPLAY=:0.0
 END
