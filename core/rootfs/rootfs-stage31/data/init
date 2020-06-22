@@ -93,6 +93,7 @@ modprobe -a -b $(cat /etc/modules) 2>/dev/null
 
 # Load drm gfx drivers, if successful, check if splash screen should be shown, and do so
 . "/inc/drm.functions"
+SD_CMDLINE=
 if [ "$SPLASH" -eq 1 ]; then
 	if setup_gfx; then
 		echo "1 1 0 1" > /proc/sys/kernel/printk
@@ -101,12 +102,20 @@ if [ "$SPLASH" -eq 1 ]; then
 		clear
 		echo -e "\033[?25l" >&4
 		if [ -e "/etc/splash.ppm.gz" ]; then
-			fbsplash -x -b -s "/etc/splash.ppm.gz" &
+			fbsplash -x -b -s "/etc/splash.ppm.gz" || MUTED_OUTPUT=
 		elif [ -e "/etc/splash.ppm" ]; then
-			fbsplash -x -b -s "/etc/splash.ppm" &
+			fbsplash -x -b -s "/etc/splash.ppm" || MUTED_OUTPUT=
 		else
 			echo "Splash screen requested, but not found in initramfs..." >&4
+			MUTED_OUTPUT=
 		fi
+		if [ -z "$MUTED_OUTPUT" ]; then
+			exec 1>&4 2>&5
+		fi
+	fi
+	if [ -z "$MUTED_OUTPUT" ]; then
+		echo "Cannot show splash screen :-("
+		SD_CMDLINE="--show-status"
 	fi
 else
 	setup_gfx
@@ -203,5 +212,5 @@ export HOME=/
 export init="/usr/lib/systemd/systemd"
 export recovery=
 export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/openslx/sbin:/opt/openslx/bin"
-exec /sbin/switch_root -c /dev/console /mnt /usr/lib/systemd/systemd
+exec /sbin/switch_root -c /dev/console /mnt /usr/lib/systemd/systemd $SD_CMDLINE
 
