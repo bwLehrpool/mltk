@@ -40,7 +40,9 @@ generate_messages() {
 	local blacklist="${root_dir}/blacklist"
 	local color do_contact
 	while read -r tag rest; do
+		old_IFS="$IFS"
 		IFS='|' tag_with_params=($tag)
+		IFS="$old_IFS"
 		# blacklisted?
 		grep -q "${tag_with_params[0]}" "$blacklist" && continue
 		# "meta" info?
