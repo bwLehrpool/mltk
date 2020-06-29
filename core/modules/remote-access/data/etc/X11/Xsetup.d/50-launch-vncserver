@@ -31,7 +31,7 @@
 		while true; do
 			s="$( date +%s )"
 			# skip keycode stuff fixes altgr for vmware
-			x11vnc -rfbport 5900 -shared -forever -passwd -xkb -skip_keycodes 92,187,188 -remap DEAD=gac,U20AC-EuroSign "$passwd"
+			x11vnc -rfbport 5900 -shared -forever -passwd -xkb -capslock -skip_keycodes 92,187,188 -remap DEAD=gac,U20AC-EuroSign "$passwd"
 			e="$( date +%s )"
 			d="$(( e - s ))"
 			if [ "$d" -gt 5 ]; then
