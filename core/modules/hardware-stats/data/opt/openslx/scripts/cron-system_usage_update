@@ -41,11 +41,6 @@ MEM_FREE=$( awk '{if ($1 == "MemAvailable:") { print $2; exit; }}' /proc/meminfo
 if [ -z "$MEM_FREE" ]; then
 	MEM_FREE=$( awk 'BEGIN{n=0}{if ($1 == "MemFree:" || $1 == "Buffers:" || $1 == "Cached:") n += $2}END{print n}' /proc/meminfo )
 fi
-if [ -n "$SLX_EXAM" ]; then
-	# This isn't an actual runmode, but in case exam mode is active on a client you definitely want
-	# to know about it, more than other runmodes actually
-	SLX_RUNMODE_MODULE="exams"
-fi
 # CPU temp and load
 set --
 if $full; then
@@ -78,7 +73,7 @@ curl --retry 3 --retry-connrefused -m 6 -s --data-urlencode "type=~runstate" --d
 	--data-urlencode "user=$Name" --data-urlencode "tmpsize=$TMP_SIZE" --data-urlencode "tmpfree=$TMP_FREE" \
 	--data-urlencode "swapsize=$SWAP_SIZE" --data-urlencode "swapfree=$SWAP_FREE" \
 	--data-urlencode "memsize=$MEM_SIZE" --data-urlencode "memfree=$MEM_FREE" \
-	--data-urlencode "runmode=$SLX_RUNMODE_MODULE" "$@" \
+	"$@" \
 	"$SLX_REMOTE_LOG" > /dev/null 2>&1
 
 # Warn user if tmp or swap usage is high; system might crash soon
