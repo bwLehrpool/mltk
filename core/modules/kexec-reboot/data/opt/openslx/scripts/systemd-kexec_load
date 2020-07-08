@@ -13,6 +13,10 @@ perror() {
 	exit 1
 }
 
+dl_long() {
+	download_retry --max-time 30 "$@"
+}
+
 # Download <base> <relative_or_absolute>
 dl_prefix() {
 	local url
@@ -21,7 +25,7 @@ dl_prefix() {
 	else
 		url="$1/${2#/}"
 	fi
-	download_retry "$url"
+	dl_long "$url"
 }
 
 kexec_load() {
@@ -46,7 +50,7 @@ kexec_load() {
 
 	if [ -n "$ipxeId" ]; then
 		local ok=
-		if ! download_retry "${base}/boot/ipxe?type=bash&entryid=$ipxeId&uuid=$(cat /etc/system-uuid)" > "${tempdir}/bootentry"; then
+		if ! dl_long "${base}/boot/ipxe?type=bash&entryid=$ipxeId&uuid=$(cat /etc/system-uuid)" > "${tempdir}/bootentry"; then
 			echo "Could not download iPXE menu entry, falling back..."
 		else
 			local ip="$( ip addr show dev br0 | awk '{ if ($1 == "inet") { print $2; exit 0 }}' )"
@@ -82,12 +86,12 @@ kexec_load() {
 	fi
 	if [ -z "$ipxeId" ]; then
 		echo "No iPXE menu id, guessing file names..."
-		download_retry "${base}/${SLX_BASE_PATH}/kernel" > "$newKernel" \
+		dl_long "${base}/${SLX_BASE_PATH}/kernel" > "$newKernel" \
 			|| perror "Failed to download new kernel."
-		download_retry "${base}/${SLX_BASE_PATH}/initramfs-stage31" > "$newInitRd" \
+		dl_long "${base}/${SLX_BASE_PATH}/initramfs-stage31" > "$newInitRd" \
 			|| perror "Failed to download new initramfs."
 		# Logo is not critical
-		download_retry "${base}/tftp/bwlp.cpio" > "$tempdir/logo" \
+		dl_long "${base}/tftp/bwlp.cpio" > "$tempdir/logo" \
 			&& cat "$tempdir/logo" >> "$newInitRd"
 		newKcl="$( cat /proc/cmdline )"
 		# TODO patch all the ipv4.* vars if they exist
