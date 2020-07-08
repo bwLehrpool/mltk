@@ -208,6 +208,7 @@ echo "Switching root...."
 echo "$bench_result" > "${FUTURE_ROOT}/opt/openslx/.benchmark"
 # Prepare environment (HOME is needed as a hack for nss_ldap with ssl and no caching)
 unset BOOT_IMAGE initrd KCL ip slxbase slxsrv IPINFO vga ip MAC BOOTIF DEBUG OLDPWD MUTED_OUTPUT GFX
+unset ip router dns hostname domain search if ntpsrv
 export HOME=/
 export init="/usr/lib/systemd/systemd"
 export recovery=

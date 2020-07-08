@@ -1,15 +1,5 @@
 #!/bin/ash
 
-eval $(grep -Eo BOOTIF=\\S+ /proc/cmdline)
-if [ "${#BOOTIF}" -ne "20" ]; then
-	echo "Getting MAC from /proc/cmdline failed, using 'ip a'..."
-	BOOTIF=01-$(ip a | grep -A 1 ': br0' | grep -o 'ether ..:..:..:..:..:..' | cut -d' ' -f2 | sed s/:/-/g)
-	if [ "${#BOOTIF}" -ne "20" ]; then
-		echo "FAIL FAIL FAIL"
-		BOOTIF="99-88-77-66-55-44-33"
-	fi
-fi
-
 UUID=$( dmidecode -q -s system-uuid | grep -v '^#' | head -n 1 | tr 'a-z' 'A-Z' )
 if [ "${#UUID}" -ne "36" ]; then
 	echo "Determined UUID (${UUID}) has not expected length of 36, falling back to MAC..."
@@ -37,8 +27,21 @@ else
 	rm -f -- "$TMPLIST" "$BADLIST"
 fi
 if [ -z "$UUID" ]; then
-	UUID=$( echo "$BOOTIF" | sed -r 's/[^0-9A-Fa-f]//g' )
-	[ "${#UUID}" -eq 14 ] && UUID="${UUID:2}"
+	if [ "${#MAC}" -ne 17 ]; then
+		MAC="$( grep -Eo '(?<=ipv4.if=)\S+' /proc/cmdline )"
+	fi
+	if [ "${#MAC}" -ne 17 ]; then
+		MAC="$( grep -Eo '(?<=BOOTIF=01-)\S+' /proc/cmdline )"
+	fi
+	if [ "${#MAC}" -ne 17 ]; then
+		echo "Getting MAC from /proc/cmdline failed, using 'ip a'..."
+		MAC="$( ip a | grep -A 1 ': br0' | grep -o 'ether ..:..:..:..:..:..' | cut -d' ' -f2 )"
+	fi
+	if [ "${#MAC}" -ne 17 ]; then
+		echo "FAIL FAIL FAIL"
+		MAC="88-77-66-55-44-33"
+	fi
+	UUID=$( echo "$MAC" | sed -r 's/[^0-9A-Fa-f]//g' )
 	if [ "${#UUID}" -eq 12 ]; then
 		UUID="baad1d00-9491-4716-b98b-$UUID"
 	else

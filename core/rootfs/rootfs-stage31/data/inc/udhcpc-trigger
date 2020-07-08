@@ -1,11 +1,25 @@
 #!/bin/ash
 
-exec >> /run/stdout
 exec 2>> /run/stderr
 set -x
 
 if [ "x$1" != "xbound" -a "x$1" != "xrenew" ] || [ "x$interface" != "xbr0" ] || [ -z "$ip" ]; then
+	echo "Ignoring DHCP hook '$1' for interface '$interface' -> '$ip'"
 	exit 0
+fi
+
+if [ "$ip" != "${ip#*/}" ]; then # CIDR
+	cidr="$ip"
+	ip="${ip%/*}"
+elif [ -n "$mask" ]; then
+	cidr="$ip/$mask"
+else
+	if [ -z "$subnet" ]; then
+		echo "$1 event with missing subnet mask"
+		exit 1
+	fi
+	# Non-CIDR + mask
+	cidr="$ip/$( ipcalc -s -p "$ip" "$subnet" | sed 's/.*=//' )"
 fi
 
 # If we already got an IP from KCL, see if it differs, and remove first if so
@@ -21,14 +35,14 @@ if [ -s "/run/firstip" ]; then
 		ip route del default 2>/dev/null
 		rm -f -- "/run/firstgw"
 		ip addr del "${OLD}" dev "${interface}" 2>/dev/null
-		ip addr add "${ip}/$(ipcalc -s -p "${ip}" "${subnet}" | sed s/.*=//)" dev "${interface}"
+		ip addr add "${cidr}" dev "${interface}"
 	fi
 else
 	#...no address configured yet, just add...
 	echo "..adding ${ip}.."
-	ip addr add "${ip}/$(ipcalc -s -p "${ip}" "${subnet}" | sed s/.*=//)" dev "${interface}"
+	ip addr add "${cidr}" dev "${interface}"
 fi
-echo -n "$ip" > "/run/firstip"
+printf "%s" "$ip" > "/run/firstip"
 
 # Same procedure for default gateway
 if [ -n "${router}" ]; then
@@ -42,7 +56,7 @@ if [ -n "${router}" ]; then
 	else
 		ip route add default via "$router"
 	fi
-	echo -n "$router" > "/run/firstgw"
+	printf "%s" "$router" > "/run/firstgw"
 fi
 
 rm -f -- "/etc/resolv.conf"
@@ -56,7 +70,7 @@ fi
 for serv in $dns; do
 	echo "nameserver $serv" >> "/etc/resolv.conf"
 done
-if [ -z "$domain" ]; then
+if [ -z "$domain" ] && [ -n "$dns" ]; then
 	# try to get domain via reverse lookup if empty
 	echo "..trying to get domain via DNS, as DHCP didn't supply one.."
 	fqdn=$(timeout -t 3 nslookup "$ip" | grep -E "^Address +[0-9]+: +$ip " | head -n 1 | awk '{print $4}')
@@ -92,7 +106,7 @@ done
 if [ -z "$hostname" ]; then
 	# as with domain, if there's no hostname, try to get via DNS
 	echo "..trying to get hostname via DNS, as DHCP didn't supply one.."
-	[ -z "$fqdn" ] && fqdn=$(timeout -t 3 nslookup "$ip" | grep -E "^Address +[0-9]+: +$ip " | head -n 1 | awk '{print $4}')
+	[ -z "$fqdn" ] && [ -n "$dns" ] && fqdn=$(timeout -t 3 nslookup "$ip" | grep -E "^Address +[0-9]+: +$ip " | head -n 1 | awk '{print $4}')
 	hostname="${fqdn%%.*}"
 elif [ -n "$domain" ]; then
 	fqdn="${hostname}.${domain}"
@@ -111,3 +125,4 @@ if [ -n "$hostname" ]; then
 	echo "SLX_HOSTNAME='$hostname'" >> "/run/config"
 fi
 
+exit 0

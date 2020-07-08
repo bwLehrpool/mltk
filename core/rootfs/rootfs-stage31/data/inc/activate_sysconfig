@@ -42,11 +42,11 @@ merge_text_config() {
 	# write IP and SLX_SERVER configuration to $CONFIG
 cat >> "$CONFIG" <<HEREEND
 # IP Config written in stage31
-SLX_PXE_CLIENT_IP='$CLIENTIP'
+SLX_PXE_CLIENT_IP='$ip'
 SLX_PXE_SERVER_IP='$SERVERIP'
-SLX_PXE_GATEWAY='$GATEWAY'
-SLX_PXE_DNS='$DNS_SERVER'
-SLX_PXE_MAC='$BRIDGEMAC'
+SLX_PXE_GATEWAY='$router'
+SLX_PXE_DNS='$dns'
+SLX_PXE_MAC='$MAC'
 HEREEND
 	return 0
 }

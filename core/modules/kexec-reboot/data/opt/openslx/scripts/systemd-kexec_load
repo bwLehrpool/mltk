@@ -1,4 +1,4 @@
-#!/bin/ash
+#!/bin/bash
 
 kexec=$(which kexec 2>/dev/null)
 if [ -z "$kexec" ]; then
@@ -8,22 +8,93 @@ fi
 
 . /opt/openslx/bin/slx-tools
 
+perror() {
+	echo "$*" >&2
+	exit 1
+}
+
+# Download <base> <relative_or_absolute>
+dl_prefix() {
+	local url
+	if regex_imatch "$2" 'https?:'; then
+		url="$2"
+	else
+		url="$1/${2#/}"
+	fi
+	download_retry "$url"
+}
+
 kexec_load() {
 	. /opt/openslx/config
-	local DIR="$(mktemp -d)"
-
-	for FILE in kernel initramfs-stage31; do
-		if ! download_retry "http://${SLX_KCL_SERVERS}/${SLX_BASE_PATH}/${FILE}" > "${DIR}/${FILE}" ; then
-			echo "Failed to download ${FILE}."
-			exit 1
-		fi
+	local serverip="${SLX_KCL_SERVERS%% *}"
+	local base="http://${serverip}"
+	local tempdir oldKcl ipxeId
+	local newKernel newInitRd newKcl
+	tempdir="$(mktemp -d)"
+	newKernel="${tempdir}/kernel"
+	newInitRd="${tempdir}/initrd"
+	read -r oldKcl < /proc/cmdline
+	newKcl="$oldKcl" # Fallback
+	ipxeId=
+	for opts in ${oldKcl}; do
+		case "${opts}" in
+			slx.ipxe.id=*)
+				ipxeId="${opts#slx.ipxe.id=}"
+				;;
+		esac
 	done
-	if download_retry "http://${SLX_KCL_SERVERS}/tftp/bwlp.cpio" > "${DIR}/bwlp.cpio"; then
-		cat "${DIR}/initramfs-stage31" "${DIR}/bwlp.cpio" > "${DIR}/initramfs-tmp"
-		mv -f -- "${DIR}/initramfs-tmp" "${DIR}/initramfs-stage31"
+
+	if [ -n "$ipxeId" ]; then
+		local ok=
+		if ! download_retry "${base}/boot/ipxe?type=bash&entryid=$ipxeId&uuid=$(cat /etc/system-uuid)" > "${tempdir}/bootentry"; then
+			echo "Could not download iPXE menu entry, falling back..."
+		else
+			local ip="$( ip addr show dev br0 | awk '{ if ($1 == "inet") { print $2; exit 0 }}' )"
+			local gateway="$( ip route show dev br0 | awk '{ if ($1 == "default") {print $3; exit 0 }}' )"
+			local dns="${SLX_DNS// /,}"
+			local hostname="${SLX_HOSTNAME}"
+			local domain="${SLX_NET_DOMAIN}"
+			local dnssl="${SLX_NET_SEARCH// /,}"
+			local mac="${SLX_PXE_MAC}"
+			local ntpsrv="${SLX_NTP_SERVER// /,}"
+			[ -z "$mac" ] && mac="$( ip addr show dev br0 | awk '{ if ($1 == "link/ether") { print $2; exit 0 }}' )"
+			. "${tempdir}/bootentry"
+			if [ -z "$kernel" ]; then
+				echo "iPXE boot entry is missing kernel, falling back..."
+			elif [ -z "$initrd" ]; then
+				echo "iPXE boot entry is missing initRd, falling back..."
+			else
+				# OK-ish, download files
+				dl_prefix "${base}" "${kernel}" > "$newKernel" \
+					|| perror "Error downloading new kernel $kernel"
+				for file in "${initrd[@]}"; do
+					dl_prefix "${base}" "${file}" >> "$newInitRd" \
+						|| perror "Could not download initrd $file"
+				done
+				if [ -n "$kcl" ]; then
+					newKcl="${kcl} slx.ipxe.id=$ipxeId"
+					echo "New KCL is $newKcl"
+				fi
+				ok=true
+			fi
+		fi
+		[ -z "$ok" ] && ipxeId=
 	fi
-	if ! kexec -l "${DIR}/kernel" --initrd "${DIR}/initramfs-stage31" --reuse-cmdline; then
-		echo "Failed to load kernel/initrd from ${DIR}"
+	if [ -z "$ipxeId" ]; then
+		echo "No iPXE menu id, guessing file names..."
+		download_retry "${base}/${SLX_BASE_PATH}/kernel" > "$newKernel" \
+			|| perror "Failed to download new kernel."
+		download_retry "${base}/${SLX_BASE_PATH}/initramfs-stage31" > "$newInitRd" \
+			|| perror "Failed to download new initramfs."
+		# Logo is not critical
+		download_retry "${base}/tftp/bwlp.cpio" > "$tempdir/logo" \
+			&& cat "$tempdir/logo" >> "$newInitRd"
+		newKcl="$( cat /proc/cmdline )"
+		# TODO patch all the ipv4.* vars if they exist
+	fi
+
+	if ! kexec -l "${newKernel}" --initrd "${newInitRd}" --command-line="${newKcl}"; then
+		echo "Failed to load kernel/initrd from ${tempdir}"
 		exit 1
 	fi
 }
