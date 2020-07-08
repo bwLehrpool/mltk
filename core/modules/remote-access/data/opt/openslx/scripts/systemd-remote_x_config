@@ -6,13 +6,18 @@
 
 # Find connected output, get driver for according card
 driver=
+fallback=
 for cdir in /sys/class/drm/card?; do
 	card="${cdir##*/}"
+	d="$( awk -F= '{ if ($1 = "DRIVER") { print $2; exit; } }' "$cdir/device/uevent" )"
+	[ -z "$d" ] && continue
+	[ -z "$fallback" ] && fallback="$d"
 	grep -qFx 'connected' "$cdir/$card"-*/status || continue
-	driver="$( awk -F= '{ if ($1 = "DRIVER") { print $2; exit; } }' "$cdir/device/uevent" )"
-	[ -n "$driver" ] && break
+	driver="$d"
+	break
 done
 
+[ -z "$driver" ] && driver="$fallback"
 # ???
 [ -z "$driver" ] && driver="i915"
 case "$driver" in
@@ -36,6 +41,7 @@ cat > /etc/X11/Xsession.d/00-force-screen0 <<END
 #!/bin/ash Being sourced but hey
 (
 export DISPLAY=:0.1
+xrandr --verbose \$( xrandr | grep '^[A-Z].* connected ' | awk '{print "--output " \$1 " --auto"}' )
 text="Dieser PC wird gerade aus der Ferne verwendet.
 This computer is currently being used for a remote session.
 
