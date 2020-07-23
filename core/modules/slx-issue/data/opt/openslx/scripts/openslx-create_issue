@@ -65,7 +65,7 @@ fi
 tmpstatus="$(slx-tools fs_path_space /tmp | awk '{printf "%.1f", $2 / 1024 / 1024}')GiB ($tmpstatus)"
 
 # netboot version from cmdline, e.g. boot/bwlp/minilinux/1 to "MiniLinux 1"
-netboot="$(grep -oP '(?<=slxbase=boot/bwlp/)\S+' /proc/cmdline | tr '/' ' ')"
+netboot="$(grep -oP '(?<=slxbase=boot/)\S+' /proc/cmdline | tr '/' ' ')"
 # capitalize 'm' & 'l'
 netboot="${netboot^m}"
 netboot="${netboot^^l}"
