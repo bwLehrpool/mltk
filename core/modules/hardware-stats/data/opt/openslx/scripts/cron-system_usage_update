@@ -1,4 +1,5 @@
-#!/bin/ash
+#!/bin/bash
+# Use bash not ash for >32bit arithmetic
 
 touch /run/openslx || exit 1
 full=false
