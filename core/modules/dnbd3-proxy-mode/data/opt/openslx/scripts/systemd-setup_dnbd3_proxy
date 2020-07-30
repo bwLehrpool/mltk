@@ -139,6 +139,7 @@ if [ -n "$islocal" ]; then
 	fi
 	DNBD3_LOOKUP="false"
 	DNBD3_SERVER_PENALTY="500000"
+	DNBD3_BGR_MIN_CLIENTS=1
 	MAX_REPLICATION_SIZE=500
 
 	# Use DNBD3 servers from openslx config and then patch it to say localhost
@@ -151,6 +152,7 @@ else
 	DNBD3_SPARSE="false"
 	DNBD3_PRETEND_CLIENT="false"
 	DNBD3_BGR="false"
+	DNBD3_BGR_MIN_CLIENTS=0
 	DNBD3_LOOKUP="false"
 	DNBD3_AUTOFREE="18h"
 	DNBD3_SERVER_PENALTY=2000 # no BGR = don't like other servers connecting so much
@@ -234,6 +236,7 @@ serverPenalty=${DNBD3_SERVER_PENALTY}
 clientPenalty=0
 isProxy=true
 backgroundReplication=${DNBD3_BGR}
+bgrMinClients=${DNBD3_BGR_MIN_CLIENTS}
 lookupMissingForProxy=${DNBD3_LOOKUP}
 sparseFiles=${DNBD3_SPARSE}
 removeMissingImages=false
@@ -256,10 +259,16 @@ chmod -R a+Xr "${DNBD3_CONF_DIR}"
 # create rpc.acl to allow the satellite only
 rm -f "${DNBD3_CONF_DIR}/rpc.acl"
 for SRV in ${SLX_KCL_SERVERS}; do
-	echo "$SRV ALL" >> "${DNBD3_CONF_DIR}/rpc.acl"
-done
+	echo "$SRV ALL"
+done >> "${DNBD3_CONF_DIR}/rpc.acl"
+# And self
+echo "127.0.0.1 STATS IMAGE_LIST" >> "${DNBD3_CONF_DIR}/rpc.acl"
 
 if [ -n "$islocal" ]; then
+	# Prepare, so dnbd3-server will be launched with -m
+	mkdir -p /mnt/dnbd3
+	chown dnbd3:dnbd3 /mnt/dnbd3
+	adduser dnbd3 fuse
 	# Start service, is not symlinked when not in proxy mode
 	systemctl --no-block start dnbd3-proxy.service
 fi

@@ -8,7 +8,12 @@ if [ -s "$ERRLOG" ]; then
 	exec $(which dnbd3-server) -n --errormsg "$(cat "$ERRLOG")" -c /etc/dnbd3-server
 fi
 
-exec $(which dnbd3-server) -n -c /etc/dnbd3-server
+if [ -d "/mnt/dnbd3" ]; then
+	set -- -m /mnt/dnbd3
+else
+	set --
+fi
+exec $(which dnbd3-server) -n -c /etc/dnbd3-server "$@"
 
 exit 1
 

@@ -29,6 +29,16 @@ cleanup_dnbd3() {
 	done
 }
 
+setup_dnbd3_proxy () {
+	[ -d "/mnt/dnbd3/images" ] || return 1
+	writelog "Trying to access via dnbd3-server-fuse"
+	echo "${SRC_IMG_RELATIVE}:0" > "/mnt/dnbd3/control" || return 1
+	VM_DISKFILE_REVISION=0
+	VM_DISKFILE_RO="/mnt/dnbd3/images/${SRC_IMG_RELATIVE}:0"
+	writelog "Success."
+	return 0
+}
+
 setup_dnbd3 () {
 	# Mount path for images mounted with dnbd3-fuse
 	declare -rg DNBD3_MOUNT_POINT="${TMPDIR}/dnbd3fuse.mnt"
@@ -127,12 +137,14 @@ setup_image_access() {
 
 setup_image_access_default() {
 	# See if we should setup dnbd3 image access at all
-	if ! check_dep dnbd3-fuse fusermount; then
-		writelog "\tCan't use dnbd3 as dnbd3-fuse/fusermount binaries are not in PATH"
-	elif ! isset SRC_IMG_RELATIVE; then
+	if ! isset SRC_IMG_RELATIVE; then
 		writelog "\tCan't use dnbd3 as SRC_IMG_RELATIVE is not set"
 	elif isempty SLX_DNBD3_SERVERS || [ "x${SLX_VM_DNBD3}" != "xyes" ]; then
 		writelog "\tCan't use dnbd3 as no servers are given in config, or SLX_VM_DNBD3 is not set to yes"
+	elif setup_dnbd3_proxy; then
+		writelog "\tImage setup done."
+	elif ! check_dep dnbd3-fuse fusermount; then
+		writelog "\tCan't use dnbd3 as dnbd3-fuse/fusermount binaries are not in PATH"
 	else
 		# register setup_dnbd3 as start hook after sourcing this include
 		writelog "Trying image access via DNBD3..."

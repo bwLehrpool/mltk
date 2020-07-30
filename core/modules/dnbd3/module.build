@@ -35,6 +35,7 @@ build() {
 		-DBUILD_FUSE_CLIENT=ON \
 		-DBUILD_KERNEL_MODULE=ON \
 		-DBUILD_SERVER=ON \
+		-DBUILD_SERVER_FUSE=ON \
 		-DBUILD_STRESSTEST=OFF \
 		"$MODULE_WORK_DIR/src/dnbd3" || perror "Could not cmake"
 	make dnbd3-client || perror "Could not make dnbd3-client"
