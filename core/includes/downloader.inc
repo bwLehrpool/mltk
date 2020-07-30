@@ -138,6 +138,7 @@ autoclone () {
 			if [ -n "$checkout" ]; then
 				cd "$dstdir/$dst" || perror "cd error. check redbook."
 				git checkout "$checkout" || perror "Could not checkout $checkout from $url"
+				cd -
 			fi
 		fi
 	done
