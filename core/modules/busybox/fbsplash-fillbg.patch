@@ -1,30 +1,37 @@
 diff --git a/miscutils/fbsplash.c b/miscutils/fbsplash.c
-index e3a55ca..daea60d 100644
+index 1419578..e920c06 100644
 --- a/miscutils/fbsplash.c
 +++ b/miscutils/fbsplash.c
-@@ -23,11 +23,12 @@
-  */
+@@ -9,6 +9,7 @@
+  * - put somewhere fbsplash.cfg file and an image in .ppm format.
+  * - run applet: $ setsid fbsplash [params] &
+  *      -c: hide cursor
++ *      -b: fill background with the color of top left pixel of image
+  *      -d /dev/fbN: framebuffer device (if not /dev/fb0)
+  *      -s path_to_image_file (can be "-" for stdin)
+  *      -i path_to_cfg_file
+@@ -47,10 +48,11 @@
+ //kbuild:lib-$(CONFIG_FBSPLASH) += fbsplash.o
  
  //usage:#define fbsplash_trivial_usage
--//usage:       "-s IMGFILE [-c] [-x] [-d DEV] [-i INIFILE] [-f CMD]"
-+//usage:       "-s IMGFILE [-c] [-x] [-b] [-d DEV] [-i INIFILE] [-f CMD]"
+-//usage:       "-s IMGFILE [-c] [-d DEV] [-i INIFILE] [-f CMD]"
++//usage:       "-s IMGFILE [-c] [-b] [-d DEV] [-i INIFILE] [-f CMD]"
  //usage:#define fbsplash_full_usage "\n\n"
  //usage:       "	-s	Image"
  //usage:     "\n	-c	Hide cursor"
- //usage:     "\n	-x	Center image (if smaller than screen)"
 +//usage:     "\n	-b	Fill background with color of top left pixel of image"
  //usage:     "\n	-d	Framebuffer device (default /dev/fb0)"
  //usage:     "\n	-i	Config file (var=value):"
  //usage:     "\n			BAR_LEFT,BAR_TOP,BAR_WIDTH,BAR_HEIGHT"
-@@ -57,6 +58,7 @@ struct globals {
+@@ -82,6 +84,7 @@ struct globals {
+ 	unsigned red_shift;
  	unsigned green_shift;
  	unsigned blue_shift;
- 	bool bcenter_image;
 +	bool bfill_background;
  };
  #define G (*ptr_to_globals)
  #define INIT_G() do { \
-@@ -342,6 +344,23 @@ static void fb_drawprogressbar(unsigned percent)
+@@ -369,6 +372,23 @@ static void fb_drawprogressbar(unsigned percent)
  			G.nbar_colr, G.nbar_colg, G.nbar_colb);
  }
  
@@ -48,27 +55,34 @@ index e3a55ca..daea60d 100644
  
  /**
   * Draw image from PPM file
-@@ -420,6 +439,10 @@ static void fb_drawimage(void)
+@@ -440,6 +460,10 @@ static void fb_drawimage(void)
  			bb_error_msg_and_die("bad PPM file '%s'", G.image_filename);
  		pixel = pixline;
- 		src = G.addr + (j + yoffset) * G.scr_fix.line_length + xoffset;
+ 		src = G.addr + (G.img_posy + j) * G.scr_fix.line_length + G.img_posx * G.bytes_per_pixel;
 +
 +		if (G.bfill_background && j == 0)
-+			fb_fillbackground(pixel, xoffset / G.bytes_per_pixel, yoffset, width, height);
++			fb_fillbackground(pixel, G.img_posx, G.img_posy, width, height);
 +
  		for (i = 0; i < width; i++) {
  			unsigned thispix = fb_pixel_value(pixel[0], pixel[1], pixel[2]);
  			fb_write_pixel(src, thispix);
-@@ -484,10 +507,11 @@ int fbsplash_main(int argc UNUSED_PARAM, char **argv)
+@@ -496,6 +520,7 @@ int fbsplash_main(int argc UNUSED_PARAM, char **argv)
+ 	FILE *fp = fp; // for compiler
+ 	char *num_buf;
+ 	unsigned num;
++	unsigned optret;
+ 	bool bCursorOff;
+ 
+ 	INIT_G();
+@@ -504,8 +529,10 @@ int fbsplash_main(int argc UNUSED_PARAM, char **argv)
  	fb_device = "/dev/fb0";
  	cfg_filename = NULL;
  	fifo_filename = NULL;
--	optret = getopt32(argv, "cxs:d:i:f:",
-+	optret = getopt32(argv, "cxbs:d:i:f:",
+-	bCursorOff = 1 & getopt32(argv, "cs:d:i:f:",
++	optret = getopt32(argv, "cbs:d:i:f:",
  			&G.image_filename, &fb_device, &cfg_filename, &fifo_filename);
- 	bCursorOff = 1 & optret;
- 	G.bcenter_image = 2 & optret;
-+	G.bfill_background = 4 & optret;
++	bCursorOff = 1 & optret;
++	G.bfill_background = 2 & optret;
  
  	// parse configuration file
  	if (cfg_filename)
