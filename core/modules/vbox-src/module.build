@@ -20,6 +20,7 @@ build() {
 	[ -n "${KERNEL_HEADERS_DIR}" ] || perror "KERNEL_HEADERS_DIR not set, kernel module present?"
 	cd "${MODULE_WORK_DIR}/src/VirtualBox-${REQUIRED_VBOX_VERSION}" || \
 		perror "Could not cd to '${MODULE_WORK_DIR}/src/VirtualBox-${REQUIRED_VBOX_VERSION}'."
+	sed -i 's/VBOX_WITH_CLOUD_NET = 1/VBOX_WITH_CLOUD_NET =/g' "Config.kmk" || perror "Could not disable cloud networking."
 	local VBOX_BUILD_DIR="${MODULE_WORK_DIR}/src/VirtualBox-${REQUIRED_VBOX_VERSION}/build"
 	mkdir -p "$VBOX_BUILD_DIR" || perror "Failed to mkdir '$VBOX_BUILD_DIR'."
 	./configure \
