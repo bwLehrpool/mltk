@@ -73,7 +73,7 @@ done
 if [ -z "$domain" ] && [ -n "$dns" ]; then
 	# try to get domain via reverse lookup if empty
 	echo "..trying to get domain via DNS, as DHCP didn't supply one.."
-	fqdn=$(timeout -t 3 nslookup "$ip" | grep -E "^Address +[0-9]+: +$ip " | head -n 1 | awk '{print $4}')
+	fqdn=$(timeout -t 3 nslookup "$ip" | awk '{if ($2 == "name") { print $4; exit; } }')
 	domain="${fqdn#*.}"
 fi
 # Add domain to list of search domains if not in there yet
@@ -106,7 +106,7 @@ done
 if [ -z "$hostname" ]; then
 	# as with domain, if there's no hostname, try to get via DNS
 	echo "..trying to get hostname via DNS, as DHCP didn't supply one.."
-	[ -z "$fqdn" ] && [ -n "$dns" ] && fqdn=$(timeout -t 3 nslookup "$ip" | grep -E "^Address +[0-9]+: +$ip " | head -n 1 | awk '{print $4}')
+	[ -z "$fqdn" ] && [ -n "$dns" ] && fqdn=$(timeout -t 3 nslookup "$ip" | awk '{if ($2 == "name") { print $4; exit; } }')
 	hostname="${fqdn%%.*}"
 elif [ -n "$domain" ]; then
 	fqdn="${hostname}.${domain}"
