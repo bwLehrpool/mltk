@@ -1,5 +1,7 @@
 #!/bin/bash
+
 REQUIRED_INSTALLED_PACKAGES="
+	libpam-cap
 	krb5-user
 	krb5-config
 	libpam-krb5
@@ -9,13 +11,14 @@ REQUIRED_INSTALLED_PACKAGES="
 	nfs-common
 	libpam0g-dev
 	cifs-utils
-	libpam-modules-bin
-	keyutils
+	libtool
 "
 REQUIRED_CONTENT_PACKAGES="
 	libpam0g
 	libpam-modules
+	libpam-modules-bin
 	libpam-cap
+	libldap-2.4-2
 	krb5-user
 	krb5-config
 	libpam-krb5
@@ -23,8 +26,10 @@ REQUIRED_CONTENT_PACKAGES="
 	libnfsidmap2
 	nfs-common
 	cifs-utils
-	libpam-modules-bin
 	keyutils
+"
+REQUIRED_BINARIES+="
+	mount.cifs
 "
 REQUIRED_DIRECTORIES+="
 	$SYS_PAM_MODULES_PATH

@@ -4,6 +4,7 @@ REQUIRED_CONTENT_PACKAGES="
 			dbus-x11
 "
 REQUIRED_FILES+="
-			/etc/default/dbus
 "
-
+REQUIRED_DIRECTORIES="
+			/usr/share/dbus-1
+"

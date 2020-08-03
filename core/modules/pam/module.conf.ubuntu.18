@@ -37,6 +37,7 @@ REQUIRED_DIRECTORIES+="
 	/usr/lib
 "
 REQUIRED_SYSTEM_FILES+="
+	/etc/securetty
 	/etc/pam.conf
 	/etc/default/locale
 "

@@ -7,8 +7,9 @@ REQUIRED_CONTENT_PACKAGES="
 "
 REQUIRED_DIRECTORIES+="
 	/usr/lib/policykit-1
+	/usr${ARCH_LIB_DIR}/polkit-1
 	/var/lib/polkit-1
-	/usr/share/dbus-1/system.d
+	/etc/dbus-1/system.d
 "
 # Module specific: Root of dirstructs we need directly from system
 REQUIRED_DIR_STRUCT="

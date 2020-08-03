@@ -1,13 +1,11 @@
 #!/bin/bash
 REQUIRED_INSTALLED_PACKAGES="
 			openbox
-			libpango1.0-0
 			libpango1.0-dev
 			libdbus-1-dev
 "
 REQUIRED_CONTENT_PACKAGES="
 			openbox
-			libpango1.0-0
 			libpango1.0-dev
 			libdbus-1-dev
 "

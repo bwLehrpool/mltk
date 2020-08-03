@@ -1,11 +1,15 @@
 #!/bin/bash
-REQUIRED_INSTALLED_PACKAGES="
-		cups
-		ghostscript-cups
-		foomatic-filters
-"
 REQUIRED_CONTENT_PACKAGES="
 		cups
-		ghostscript-cups
-		foomatic-filters
+		cups-daemon
+		cups-filters
+		cups-core-drivers
+		cups-filters-core-drivers
+		ghostscript
+		hplip
+		libgs9-common
 "
+REQUIRED_DIRECTORIES+="
+	/usr/share/color
+"
+
