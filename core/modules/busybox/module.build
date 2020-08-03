@@ -5,6 +5,7 @@ fetch_source() {
 		git clone --depth 1 "${REQUIRED_GIT}" --branch "$REQUIRED_BRANCH" src || perror "Could not clone busybox git"
 	fi
 	cde src
+	git apply "${MODULE_DIR}/1_31_1-stime.patch" || perror "Could not apply stime patch for 1.31.1"
 	# Patch background filling if not patched yet
 	if ! grep -q "bfill_background" "miscutils/fbsplash.c"; then
 		git apply "${MODULE_DIR}/fbsplash-fillbg.patch" || perror "Could not apply busybox patch for fbsplash background filling"
