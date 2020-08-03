@@ -1,7 +1,0 @@
-#!/bin/bash
-REQUIRED_INSTALLED_PACKAGES="
-	nslcd
-"
-REQUIRED_CONTENT_PACKAGES="
-	nslcd
-"
