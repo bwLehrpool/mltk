@@ -127,7 +127,7 @@ if [ "$SPLASH" -eq 1 ]; then
 			&& [ "$img_left" -ge 0 ] && [ "$img_left" -lt 8096 ] \
 			&& [ "$img_top" -ge 0 ] && [ "$img_top" -lt 8096 ]; then
 			printf "IMG_TOP=%d\nIMG_LEFT=%d\n" \
-				"$img_top" "$img_left"
+				"$img_top" "$img_left" \
 				> "$fbsplash_cfg"
 			fbsplash -b -i "$fbsplash_cfg" -s "$fbsplash_ppm" || MUTED_OUTPUT=
 		else
