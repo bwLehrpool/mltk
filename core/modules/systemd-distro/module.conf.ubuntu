@@ -11,3 +11,9 @@ REQUIRED_INSTALLED_PACKAGES="
 			libacl1-dev
 			libpam-dev
 "
+
+REQUIRED_CONTENT_PACKAGES="
+	systemd
+	libpam-systemd
+	udev
+"

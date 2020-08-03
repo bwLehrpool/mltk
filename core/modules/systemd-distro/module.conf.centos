@@ -4,5 +4,5 @@ REQUIRED_CONTENT_PACKAGES="
 	systemd-libs
 "
 REQUIRED_SYSTEM_FILES+="
-	/usr/lib/systemd/system
+	/lib/systemd/system
 "

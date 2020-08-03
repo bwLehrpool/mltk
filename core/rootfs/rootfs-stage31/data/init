@@ -189,7 +189,10 @@ if [ ! -z "$SLX_DEMO_PASS" ]; then
 fi
 
 # Activate debug shell after switchroot?
-[ -n "$DEBUG_SHELL" ] && ln -s "../debug-shell.service" "${FUTURE_ROOT}/usr/lib/systemd/system/sysinit.target.wants/debug-shell.service"
+if [ -n "$DEBUG_SHELL" ]; then
+	mkdir -p "${FUTURE_ROOT}/etc/systemd/system/sysinit.target.wants"
+	ln -s "../debug-shell.service" "${FUTURE_ROOT}/etc/systemd/system/sysinit.target.wants/debug-shell.service"
+fi
 
 # Exam mode
 if [ -n "$SLX_EXAM" ]; then
@@ -233,8 +236,11 @@ echo "$bench_result" > "${FUTURE_ROOT}/opt/openslx/.benchmark"
 unset BOOT_IMAGE initrd KCL ip slxbase slxsrv IPINFO vga ip MAC BOOTIF DEBUG OLDPWD MUTED_OUTPUT GFX
 unset ip router dns hostname domain search if ntpsrv
 export HOME=/
-export init="/usr/lib/systemd/systemd"
 export recovery=
 export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/openslx/sbin:/opt/openslx/bin"
-exec /sbin/switch_root -c /dev/console /mnt /usr/lib/systemd/systemd $SD_CMDLINE
+for init in "/lib/systemd/systemd" "/usr/lib/systemd/systemd"; do
+	[ -x "${FUTURE_ROOT}/${init}" ] || continue
+	export init
+	exec /sbin/switch_root -c /dev/console /mnt "$init" $SD_CMDLINE
+done
 

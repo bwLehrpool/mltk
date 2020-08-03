@@ -1,0 +1,1 @@
+ACTION=="add", TAG!="openslxignore", SUBSYSTEM=="net", KERNEL=="br0|eth*", TAG+="systemd", ENV{SYSTEMD_ALIAS}="/sys/subsystem/net/devices/$name", ENV{SYSTEMD_WANTS}="network-interface@$name.service"

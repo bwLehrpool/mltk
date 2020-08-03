@@ -15,6 +15,9 @@ build () {
 }
 
 post_copy() {
-	:
+	[ -d "${TARGET_BUILD_DIR}/usr/lib/systemd/system" ] \
+		&& ! [ -L "${TARGET_BUILD_DIR}/usr/lib/systemd/system" ] \
+		&& perror "/usr/lib/systemd/system must not exist in target build dir"
+	ln -nfs "../../../lib/systemd/system" "${TARGET_BUILD_DIR}/usr/lib/systemd/system"
 }
 

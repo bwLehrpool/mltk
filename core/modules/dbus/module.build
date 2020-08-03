@@ -25,43 +25,6 @@ build() {
 		[Service]
 		ExecStartPre=/${UUIDGEN#$MODULE_BUILD_DIR} --ensure
 	EOF
-
-	# First check if there is a system dbus file and copy it if so
-	declare -A found
-	for unit_type in service socket; do
-		for candidate in {,/usr}"/lib/systemd/system/dbus.${unit_type}"; do
-			if [ -e "$candidate" ]; then
-				cp -a "$candidate" "${MODULE_BUILD_DIR}/etc/systemd/system" \
-					|| perror "Failed to copy '$found' to '$MODULE_BUILD_DIR'."
-				found["$unit_type"]=oui
-			fi
-		done
-	done
-
-	# If not found, generate service file from the template
-	if [ -z "${found["service"]}" ]; then
-		# This is ugly, as the command line arguments changed over time. Try to do the right thing (whatever that is)
-		# Find path for: dbus-daemon
-		local DAEMON=$(find "$MODULE_BUILD_DIR" -name dbus-daemon -executable | head -n 1)
-		[ -z "$DAEMON" ] && perror "Could not determine dbus-daemon location"
-		DAEMON="/${DAEMON#$MODULE_BUILD_DIR}"
-
-		# Find path for: dbus-send
-		local SEND=$(find "$MODULE_BUILD_DIR" -name dbus-send -executable | head -n 1)
-		[ -z "$SEND" ] && perror "Could not determine dbus-send location"
-		SEND="/${SEND#$MODULE_BUILD_DIR}"
-
-		# Fill in the template
-		sed "s,%DAEMON%,$DAEMON,g;s,%SEND%,$SEND,g" "${MODULE_DIR}/templates/dbus.service" \
-			> "$MODULE_BUILD_DIR/etc/systemd/system/dbus.service" \
-			|| perror "Could not generate $MODULE_BUILD_DIR/etc/systemd/system/dbus.service"
-	fi
-
-	# Same for socket file
-	if [ -z "${found["socket"]}" ]; then
-		cp "${MODULE_DIR}/templates/dbus.socket" "$MODULE_BUILD_DIR/etc/systemd/system" \
-			|| perror "Could not copy templates/dbus.socket to build dir."
-	fi
 }
 
 post_copy() {
