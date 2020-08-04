@@ -4,9 +4,6 @@
 
 REQUIRED_CONTENT_PACKAGES="
 	libvdpau1
-"
-
-REQUIRED_INSTALLED_PACKAGES="
-	libvdpau1
+	libopengl0
 "
 
