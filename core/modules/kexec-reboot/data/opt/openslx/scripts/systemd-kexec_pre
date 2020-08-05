@@ -1,0 +1,36 @@
+#!/bin/ash
+
+grep -q '\bsplash\b' /proc/cmdline || exit 0
+
+screen_size="$(fbset | awk '$1 = /geometry/ {print $2" "$3}')"
+screen_width="${screen_size%% *}"
+screen_height="${screen_size#* }"
+[ "$screen_width" -gt 0 ] || exit 0
+[ "$screen_height" -gt 0 ] || exit 0
+fbsplash_cfg="/tmp/fbsplash.cfg"
+fbsplash_ppm="/opt/openslx/images/kexec-reboot.ppm"
+if [ -s "$fbsplash_ppm" ]; then
+	ppm_size="$(sed -n 2p "$fbsplash_ppm")"
+else
+	exit 0
+fi
+ppm_width="${ppm_size%% *}"
+ppm_height="${ppm_size#* }"
+ppm_height="${ppm_height%% *}" # make sure nothing weird is trailing
+img_top="$(( ( screen_width - ppm_width ) / 2  ))"
+img_left="$(( ( screen_height - ppm_height ) / 2  ))"
+# just checking if nothing too weird is set
+if [ -n "$img_left" ] && [ -n "$img_top" ] \
+	&& [ "$img_left" -ge 0 ] && [ "$img_left" -lt 8096 ] \
+	&& [ "$img_top" -ge 0 ] && [ "$img_top" -lt 8096 ]; then
+	printf "IMG_TOP=%d\nIMG_LEFT=%d\n" \
+		"$img_top" "$img_left" \
+		> "$fbsplash_cfg"
+	kill -SIGRTMIN+21 1
+	echo -e "\033[?25l" > /dev/console
+	clear > /dev/console
+	fbsplash -b -i "$fbsplash_cfg" -s "$fbsplash_ppm"
+	rm -f -- "$fbsplash_cfg"
+fi
+exit 0
+

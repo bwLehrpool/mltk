@@ -96,7 +96,11 @@ kexec_load() {
 		newKcl="$( cat /proc/cmdline )"
 		# TODO patch all the ipv4.* vars if they exist
 	fi
-	newKcl="$(printf "%s" "${newKcl}" | sed -r 's/\bvga=\S*//g') vga=current"
+	if grep -q '\bsplash\b' /proc/cmdline; then
+		newKcl="$(printf "%s" "${newKcl}" | sed -r 's/\bvga=\S*//g') vga=current"
+	else
+		newKcl="$(printf "%s" "${newKcl}" | sed -r 's/\bvga=\S*//g')"
+	fi
 
 	if ! kexec -l "${newKernel}" --initrd "${newInitRd}" --command-line="${newKcl}"; then
 		echo "Failed to load kernel/initrd from ${tempdir}"
