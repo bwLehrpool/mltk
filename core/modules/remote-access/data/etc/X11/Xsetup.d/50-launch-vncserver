@@ -17,8 +17,8 @@
 			chmod +x "$rule"
 		fi
 	fi
-	set -x
-	exec &> /tmp/fooooooooooooo
+	#set -x
+	#exec &> /tmp/fooooooooooooo
 	# dd since busybox head doesn't know -c
 	passwd="$( < /dev/urandom  tr -c -d 'a-zA-Z0-9#&/=()[]{}' | dd bs=8 count=1 status=none )"
 	printf "%s" "$passwd" > "/tmp/vnc-passwd"
