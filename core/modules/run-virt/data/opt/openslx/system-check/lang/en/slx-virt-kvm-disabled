@@ -1,0 +1,1 @@
+* 64-bit guest support (VT-X or AMD-V) is deactivated in BIOS. 64-bit VMs can not be started.

@@ -1,0 +1,1 @@
+* The CPU does not support 64-bit guests (VT-x or AMD-V). 64-bit VMs can not be started.
