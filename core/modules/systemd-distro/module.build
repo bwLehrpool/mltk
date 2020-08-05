@@ -12,6 +12,12 @@ build () {
 	[ -e "$COPYLIST" ] && rm "$COPYLIST"
 	list_packet_files >> "$COPYLIST"
 	tarcopy "$(cat "$COPYLIST" | sort -u)" "$MODULE_BUILD_DIR"
+	mkdir -p "${MODULE_BUILD_DIR}/etc/systemd/system"
+	for svc in kexec reboot poweroff halt; do
+		sed 's/umount\.target//' "${MODULE_BUILD_DIR}/lib/systemd/system/systemd-${svc}.service" \
+			> "${MODULE_BUILD_DIR}/etc/systemd/system/systemd-${svc}.service" \
+			|| perror "Could not remove umount.target from $svc"
+	done
 }
 
 post_copy() {
