@@ -25,15 +25,17 @@ case "$driver" in
 	vmwgfx) driver="vmware" ;;
 esac
 
-# Enable the dual-screen setup
-sed "s/%DRIVER%/$driver/g" "/opt/openslx/remote-access/xorg.conf" > "/etc/X11/xorg.conf.d/16-remote-access.conf"
-
 # Enable LoingRPC of greeter
 mkdir -p /etc/lightdm/qt-lightdm-greeter.conf.d
 cat > /etc/lightdm/qt-lightdm-greeter.conf.d/13-loginrpc.conf <<END
 [General]
 rpc-port = 7551
 END
+
+[ "$driver" = "intel" ] || exit 0 # Currently only intel supports zaphod head split
+
+# Enable the dual-screen setup
+sed "s/%DRIVER%/$driver/g" "/opt/openslx/remote-access/xorg.conf" > "/etc/X11/xorg.conf.d/16-remote-access.conf"
 
 # Force :0.0 usage
 
