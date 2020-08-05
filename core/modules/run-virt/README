@@ -46,6 +46,11 @@ the absolute path in case it's not supplied via the $XMLFILE, but
 $VMSTORE_PATH is known.
 This can be empty if $SRC_IMG_ABSOLUTE is given.
 
+# $TMPCONFIG
+Main config file for the virtualizer. This should be supplied by the
+meta data downloader, which can be overridden by a hook.
+For VMware, this is the basic vmx, for VirtualBox, the xml file.
+
 # $TMPDIR
 Temporary directory to work in. Create single files, or if you feel like you
 need a bunch of them, group within a subdirectory. This will be wiped on exit.
