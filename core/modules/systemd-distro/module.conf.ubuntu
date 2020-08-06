@@ -16,4 +16,5 @@ REQUIRED_CONTENT_PACKAGES="
 	systemd
 	libpam-systemd
 	udev
+	systemd-sysv
 "
