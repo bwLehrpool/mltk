@@ -120,8 +120,8 @@ if [ "$SPLASH" -eq 1 ]; then
 		ppm_width="${ppm_size%% *}"
 		ppm_height="${ppm_size#* }"
 		ppm_height="${ppm_height%% *}" # make sure nothing weird is trailing
-		img_top="$(( ( screen_width - ppm_width ) / 2  ))"
-		img_left="$(( ( screen_height - ppm_height ) / 2  ))"
+		img_left="$(( ( screen_width - ppm_width ) / 2  ))"
+		img_top="$(( ( screen_height - ppm_height ) / 2  ))"
 		# just checking if nothing too weird is set
 		if [ -n "$img_left" ] && [ -n "$img_top" ] \
 			&& [ "$img_left" -ge 0 ] && [ "$img_left" -lt 8096 ] \
