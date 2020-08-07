@@ -88,7 +88,7 @@ case "$1" in
 		fi
 
 		# get domain, hostname and thus fqdn from DNS
-		dns_fqdn=$(busybox timeout -t 3 rdns "$ip")
+		dns_fqdn=$(busybox timeout 3 rdns "$ip")
 		dns_short="${dns_fqdn%%.*}"
 		# check if it is fqdn
 		if [ "$dns_fqdn" == "$dns_short" ]; then
@@ -165,7 +165,7 @@ case "$1" in
 			fi
 			
 			# Only if network is not ready yet
-			if [ ! -e "/run/network/network-ready" ]; then
+			if ! [ -e "/run/network/network-ready" ] || ! [ -e "/etc/hostname" ] || grep -q '^noname-' "/etc/hostname"; then
 				# Update hostname
 				if [ -z "$dns_fqdn" ] && [ -n "$domain" ] && [ -n "$hostname" ]; then
 					# fallback to what the dhcp told us
