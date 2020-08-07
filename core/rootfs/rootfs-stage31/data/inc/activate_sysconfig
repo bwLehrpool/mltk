@@ -65,7 +65,15 @@ install_config_tgz() {
 	local TEMP_EXTRACT_DIR="/tmp/config.tgz.tmp"
 	# TODO perserve existing directories permissions (but overwrite the permissions of files!)
 	mkdir -p "${TEMP_EXTRACT_DIR}"
-	tar xf "${CONFIG}.tgz" -C "${TEMP_EXTRACT_DIR}" || { echo "Could not untar ${CONFIG}.tgz to ${TEMP_EXTRACT_DIR}"; return 1; }
+	# Recent versions of busybox tar bail out if two symlinks with the same name exist in archive
+	if ! tar xf "${CONFIG}.tgz" -C "${TEMP_EXTRACT_DIR}" 2> /tmp/tarpit; then
+		# Exit code is unclean...
+		if ! [ -s /tmp/tarpit ] || grep -q -v 'create symlink' /tmp/tarpit; then
+			# ...and we have en empty error log, OR any error that isn't "can't create symlink" -> abort
+			echo "Could not untar ${CONFIG}.tgz to ${TEMP_EXTRACT_DIR}"
+			return 1
+		fi
+	fi
 	# Write list to stage32 for debug
 	tar tvf "${CONFIG}.tgz" > "${FUTURE_ROOT}/opt/openslx/config.tgz.list" 2>&1
 	chown -R 0:0 "${TEMP_EXTRACT_DIR}" 2>/dev/null
