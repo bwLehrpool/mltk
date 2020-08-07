@@ -17,15 +17,15 @@ if [ "${SLX_VM_NFS#//}" = "${SLX_VM_NFS}" ]; then
 	# doesn't start with '//' -> assume NFS
 	RET=1
 	if [ -n "$SLX_VM_NFS_OPTS" ]; then
-		/opt/openslx/bin/timeout -t 10 -s 9 mount -v -t nfs -o "${SLX_VM_NFS_OPTS},ro" "$SLX_VM_NFS" /mnt/vmstore
+		/opt/openslx/bin/timeout -s 9 10 mount -v -t nfs -o "${SLX_VM_NFS_OPTS},ro" "$SLX_VM_NFS" /mnt/vmstore
 		RET=$?
 	fi
 	if [ "$RET" != "0" ]; then
-		/opt/openslx/bin/timeout -t 6 -s 9 mount -v -t nfs -o ro,async,nolock "$SLX_VM_NFS" /mnt/vmstore
+		/opt/openslx/bin/timeout -s 9 6 mount -v -t nfs -o ro,async,nolock "$SLX_VM_NFS" /mnt/vmstore
 		RET=$?
 	fi
 	if [ "$RET" != "0" ]; then
-		/opt/openslx/bin/timeout -t 6 -s 9 mount -v -t nfs -o vers=3,ro,async,nolock "$SLX_VM_NFS" /mnt/vmstore
+		/opt/openslx/bin/timeout -s 9 6 mount -v -t nfs -o vers=3,ro,async,nolock "$SLX_VM_NFS" /mnt/vmstore
 		RET=$?
 	fi
 else
@@ -34,7 +34,7 @@ else
 	export PASSWD="$SLX_VM_NFS_PASSWD"
 	RET=1
 	if [ -n "$SLX_VM_NFS_OPTS" ]; then
-		/opt/openslx/bin/timeout -t 10 -s 9 mount -v -t cifs -o "${SLX_VM_NFS_OPTS},uid=0,gid=0,forceuid,forcegid,file_mode=0664,dir_mode=0775,ro" "$SLX_VM_NFS" /mnt/vmstore
+		/opt/openslx/bin/timeout -s 9 10 mount -v -t cifs -o "${SLX_VM_NFS_OPTS},uid=0,gid=0,forceuid,forcegid,file_mode=0664,dir_mode=0775,ro" "$SLX_VM_NFS" /mnt/vmstore
 		RET=$?
 	fi
 	if [ "$RET" != "0" ]; then
@@ -42,7 +42,7 @@ else
 			[ -n "$vers" ] && vers=",vers=${vers}"
 			for sec in "" "ntlmssp" "ntlmv2" "ntlm"; do
 				[ -n "$sec" ] && sec=",sec=${sec}"
-				/opt/openslx/bin/timeout -t 10 -s 9 mount -v -t cifs -o "ro,file_mode=0644,dir_mode=0755,uid=0,gid=0,forceuid,forcegid,nounix${vers}${sec}" "$SLX_VM_NFS" /mnt/vmstore
+				/opt/openslx/bin/timeout -s 9 10 mount -v -t cifs -o "ro,file_mode=0644,dir_mode=0755,uid=0,gid=0,forceuid,forcegid,nounix${vers}${sec}" "$SLX_VM_NFS" /mnt/vmstore
 				RET=$?
 				[ "$RET" = "0" ] && break
 			done
