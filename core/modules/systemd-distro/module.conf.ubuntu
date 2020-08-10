@@ -1,16 +1,4 @@
 #!/bin/bash
-REQUIRED_INSTALLED_PACKAGES="
-			intltool
-			gperf
-			dbus
-			libcap-dev
-			libudev-dev
-			libdbus-1-dev
-			xsltproc
-			libblkid-dev
-			libacl1-dev
-			libpam-dev
-"
 
 REQUIRED_CONTENT_PACKAGES="
 	systemd
