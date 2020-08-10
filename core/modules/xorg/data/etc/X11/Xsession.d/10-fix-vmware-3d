@@ -6,5 +6,21 @@
 # and newer, which unfortunately completely breaks 3D acceleration with
 # VMware 15.5.6 (as of 2020-08-04 with Mesa 20.0 + Ubuntu 20.04 as base)
 
-export MESA_LOADER_DRIVER_OVERRIDE=i965
+drivers="$( grep -Po '(?<=Matched )\S*' /var/log/Xorg.0.log )"
+intel=false
+other=false
+for driver in $drivers; do
+	case "$driver" in
+	ati|amdgpu|nvidia|nouveau|vmware)
+		other=true
+		;;
+	intel)
+		intel=true
+		;;
+	esac
+done
+if $intel && ! $other; then
+	export MESA_LOADER_DRIVER_OVERRIDE=i965
+fi
+true
 
