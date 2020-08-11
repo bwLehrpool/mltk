@@ -21,8 +21,8 @@ json_bookmarks() {
 	local cur=0
 	local name url
 	while [ $# -ne 0 ]; do
-		name="${1%%,*}"
-		url="$(urldecode ${1#*,})"
+		name="$( urldecode "${1%%,*}" )"
+		url="$( urldecode "${1#*,}" )"
 		jq --null-input --join-output --compact-output --arg id "$(( cur++ ))" --arg name "$name" --arg url "$url" \
 			'{"id": $id, "type": "url", "name": $name, "url": $url}'
 		shift
