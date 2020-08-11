@@ -124,6 +124,7 @@ if [ -n "$SLX_BROWSER_RELOAD_SECS" ]; then
 		if [ "$current_idle " -ge "$SLX_BROWSER_RELOAD_SECS" ]; then
 			xdotool windowactivate "$wid"
 			xdotool key Alt+Home
+			sleep 10
 			continue
 		fi
 		sleep "$(( SLX_BROWSER_RELOAD_SECS - current_idle ))"
