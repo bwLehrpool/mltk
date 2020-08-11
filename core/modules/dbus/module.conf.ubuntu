@@ -2,9 +2,9 @@
 REQUIRED_CONTENT_PACKAGES="
 			dbus
 			dbus-x11
-"
-REQUIRED_FILES+="
+			dbus-user-session
 "
 REQUIRED_DIRECTORIES="
 			/usr/share/dbus-1
+			/usr/lib/systemd/user
 "
