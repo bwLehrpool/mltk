@@ -1,0 +1,17 @@
+#!/bin/ash
+
+[ -z "$1" ] && exit 1
+[ "$1" = "0" ] && exit 0
+
+pkill -u "$1"
+sleep 1
+home="$( getent passwd "$1" | awk -F: '{print $6}' )"
+
+if [ -n "$home" ]; then
+	umount -l "$home/PERSISTENT"
+	umount -l "$home/.openslx"
+	# Leave $home/ in case user saved documents there and realized the mistake before rebooting
+fi
+
+exit 0
+
