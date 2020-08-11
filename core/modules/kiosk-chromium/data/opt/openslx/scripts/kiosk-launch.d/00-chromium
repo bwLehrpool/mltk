@@ -97,7 +97,7 @@ if [ -z "$SLX_BROWSER_INTERACTIVE" ]; then
 
 fi
 
-if [ -n "$SLX_BROWSER_RELOAD_SECS" ]; then
+if [ -n "$SLX_BROWSER_RELOAD_SECS" ] && [ "$SLX_BROWSER_RELOAD_SECS" -gt 0 ]; then
 	(
 	wid=
 	wpid=
