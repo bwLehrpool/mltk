@@ -88,6 +88,7 @@ static BOOL _createMissingRemap = FALSE;
 
 static void setPowerState();
 static int setResolution();
+static int optimizeForRemote();
 static int muteSound(BOOL bMute);
 static int setShutdownText();
 static void readShareFile();
@@ -475,6 +476,14 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	} else {
 		_scriptDone = FALSE;
 	}
+	// Remote?
+	do {
+		char buffer[100];
+		GetPrivateProfileStringA("openslx", "runMode", "", buffer, sizeof(buffer), SETTINGS_FILE);
+		if (strcmp(buffer, "remoteaccess") == 0) {
+			optimizeForRemote();
+		}
+	} while (0);
 	// Message pump
 	MSG Msg;
 	while(GetMessage(&Msg, NULL, 0, 0) > 0) {
@@ -687,6 +696,58 @@ static int setResolution()
 		}
 		return 1;
 	}
+	return 0;
+}
+
+static int optimizeForRemote()
+{
+	LONG ret;
+	HKEY hKey;
+
+	ret = RegOpenKeyExW(HKEY_CURRENT_USER,
+			L"Control Panel\\Cursors",
+			0, KEY_WOW64_64KEY | KEY_READ | KEY_WRITE, &hKey);
+	if (ret != ERROR_SUCCESS) {
+		alog("Opening registry for optimizing remote access failed: %ld", (long)ret);
+		return 1;
+	}
+	DWORD val = 0;
+	ret = RegSetValueExW(hKey, L"Scheme Source", 0, REG_DWORD, (BYTE*)&val, sizeof(val));
+	if (ret != ERROR_SUCCESS) {
+		alog("Cannot set Scheme Source to 0: %ld", (long)ret);
+	}
+	static const char *keys[] = {
+		"AppStarting", "Arrow", "Crosshair", "Hand", "Help", "IBeam", "No", "NWPen",
+		"SizeAll", "SizeNESW", "SizeNS", "SizeNWSE", "SizeWE", "UpArrow", "Wait",
+		NULL
+	};
+	for (const char **key = keys; *key != NULL; ++key) {
+		ret = RegSetValueExA(hKey, *key, 0, REG_SZ, (const BYTE*)"", 1);
+		if (ret != ERROR_SUCCESS) {
+			alog("Cannot set %s to empty string", key);
+		}
+	}
+	RegCloseKey(hKey);
+	static const UINT paramsOff[] = {
+		SPI_SETCLIENTAREAANIMATION, SPI_SETMOUSEVANISH, SPI_SETDROPSHADOW, SPI_SETMENUFADE,
+		SPI_SETTOOLTIPFADE, SPI_SETTOOLTIPANIMATION, SPI_SETSELECTIONFADE, SPI_SETMENUANIMATION,
+		SPI_SETLISTBOXSMOOTHSCROLLING, SPI_SETCURSORSHADOW, SPI_SETCOMBOBOXANIMATION,
+		0
+	}, paramsOn[] = {
+		SPI_SETDISABLEOVERLAPPEDCONTENT,
+		0
+	};
+	for (const UINT *s = paramsOff; *s != 0; ++s) {
+		SystemParametersInfo(*s, 0, (PVOID)FALSE, SPIF_UPDATEINIFILE);
+	}
+	for (const UINT *s = paramsOn; *s != 0; ++s) {
+		SystemParametersInfo(*s, 0, (PVOID)TRUE, SPIF_UPDATEINIFILE);
+	}
+	// Try this although it needs admin perms
+	ANIMATIONINFO ai = { .cbSize = sizeof(ai), .iMinAnimate = 0, };
+	SystemParametersInfo(SPI_SETANIMATION, 0, &ai, SPIF_UPDATEINIFILE);
+	// Apply cursors, broadcast changes to whole system
+	SystemParametersInfo(SPI_SETCURSORS, 0, 0, SPIF_UPDATEINIFILE | SPIF_SENDCHANGE);
 	return 0;
 }
 

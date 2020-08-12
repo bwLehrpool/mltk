@@ -128,6 +128,7 @@ setup_virtual_floppy() {
 	bootIp=${SLX_PXE_CLIENT_IP}
 	muteSound=${MUTED}
 	noHomeWarn=${SHARE_NO_HOME_WARN}
+	runMode=${SLX_RUNMODE_MODULE}
 	
 	[remap]
 	documents=${SHARE_DOCUMENTS}
