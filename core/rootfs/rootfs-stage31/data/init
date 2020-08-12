@@ -101,7 +101,7 @@ if [ "$SPLASH" -eq 1 ]; then
 		MUTED_OUTPUT=1
 		clear
 		echo -e "\033[?25l" >&4
-		screen_size="$(fbset | awk '$1 = /geometry/ {print $2" "$3}')"
+		screen_size="$(fbset | awk '$1 ~ /geometry/ {print $2" "$3}')"
 		screen_width="${screen_size%% *}"
 		screen_height="${screen_size#* }"
 		fbsplash_cfg="/etc/fbsplash.cfg"
