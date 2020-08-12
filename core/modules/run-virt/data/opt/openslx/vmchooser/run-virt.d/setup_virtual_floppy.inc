@@ -117,7 +117,8 @@ setup_virtual_floppy() {
 	cat > "${FLOPPYDIR}/openslx.ini" <<-EOF
 	[openslx]
 	username=${UNAME}
-	resolution=${resolution}
+	resolution=${resolution%% *}
+	resolution2=${resolution}
 	createMissingRemap=${SHARE_CREATE_MISSING_REMAP}
 	remapMode=${SHARE_REMAP_MODE_INI}
 	homeDrive=${SHARE_HOME_DRIVE}

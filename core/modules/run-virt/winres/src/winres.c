@@ -590,21 +590,36 @@ static void setPowerState()
 static int setResolution()
 {
 	int ret;
-	static int width = 0, height = 0;
-	if (width == 0 && height == 0) {
+	static int nres = 0;
+	static struct { long int w, h; } res[16];
+	if (nres == -1) // We've been here before and consider config invalid, or are done
+		return 0;
+	if (nres == 0) {
 		// use config file in floppy
-		char data[200] = "";
-		GetPrivateProfileStringA("openslx", "resolution", "", data, sizeof(data), SETTINGS_FILE);
-		char *x = strchr(data, 'x');
-		if (x == NULL) {
-			alog("Malformed resolution in " SETTINGS_FILE ": '%s'", data);
-			return 0;
+		char data[300] = "";
+		GetPrivateProfileStringA("openslx", "resolution2", "", data, sizeof(data), SETTINGS_FILE); // Multi-res, space separated
+		if (data[0] == '\0') {
+			GetPrivateProfileStringA("openslx", "resolution", "", data, sizeof(data), SETTINGS_FILE); // Fallback
 		}
-		*x++ = '\0';
-		width = atoi(data);
-		height = atoi(x);
-		if (width < 320 || height < 240) {
-			alog("Invalid resolution in " SETTINGS_FILE ": '%s' (parsed width=%d, height=%d)", data, width, height);
+		char *pos = data, *end;
+		while (*pos != '\0' && nres < 16) {
+			res[nres].w = strtol(pos, &end, 10);
+			if (*end != 'x')
+				break;
+			res[nres].h = strtol(end + 1, &pos, 10);
+			if (*pos != '\0' && *pos != ' ')
+				break;
+			if (res[nres].w < 320 || res[nres].h < 240) {
+				alog("Invalid resolution in " SETTINGS_FILE ": '%s' (parsed width=%ld, height=%ld)", data, res[nres].w, res[nres].h);
+				continue;
+			}
+			nres++;
+		}
+		if (*pos != '\0') {
+			alog("Malformed resolution in " SETTINGS_FILE ": '%s'", data);
+		}
+		if (nres == 0) {
+			nres = -1;
 			return 0;
 		}
 	}
@@ -627,24 +642,32 @@ static int setResolution()
 	}
 	if (path[0] != 0 && fileExists(path)) {
 		wchar_t cmdline[MAX_PATH];
-		StringCchPrintfW(cmdline, MAX_PATH, L"VMwareResolutionSet.exe 0 1 , 0 0 %d %d", width, height);
+		wchar_t *pos = cmdline;
+		size_t rem = MAX_PATH;
+		long int sx = 0, i = 0;
+		StringCchPrintfExW(pos, rem, &pos, &rem, 0, L"VMwareResolutionSet.exe 0 %d", nres);
+		while (rem > 0 && i < nres) {
+			StringCchPrintfExW(pos, rem, &pos, &rem, 0, L" , %ld 0 %ld %ld", sx, res[i].w, res[i].h);
+			sx += res[i++].w;
+		}
+		//wlog(L"cmd: %s", cmdline);
 		int ret = execute(path, cmdline);
 		if (ret == -1) {
 			alog("VmwareRes: CreateProcess failed (%d)", (int)GetLastError());
 		} else if (ret == -2) {
 			alog("VmwareRes: GetExitCode failed (%d)", (int)GetLastError());
+		} else {
+			return 0;
 		}
 	}
 	// Use WinAPI as fallback
-	DEVMODE mode;
-	int query = 1337;
-	memset(&mode, 0, sizeof(mode));
-	mode.dmSize = sizeof(mode);
+	// TODO: Multi-Screen (once it really matters)
+	DEVMODE mode = { .dmSize = sizeof(mode) };
 	// MSDN recommends to fill the struct first by querying....
-	query = EnumDisplaySettings(NULL, ENUM_CURRENT_SETTINGS, &mode);
+	int query = EnumDisplaySettings(NULL, ENUM_CURRENT_SETTINGS, &mode);
 	// Then set our own desired mode
-	mode.dmPelsWidth = width;
-	mode.dmPelsHeight = height;
+	mode.dmPelsWidth = res[0].w;
+	mode.dmPelsHeight = res[0].h;
 	mode.dmFields = DM_PELSWIDTH | DM_PELSHEIGHT;
 	ret = ChangeDisplaySettings(&mode, CDS_GLOBAL | CDS_UPDATEREGISTRY);
 	if (ret != DISP_CHANGE_SUCCESSFUL) {
@@ -659,8 +682,8 @@ static int setResolution()
 	if (ret != DISP_CHANGE_SUCCESSFUL) {
 		static int fails = 0;
 		if (++fails == 5) {
-			alog("Fehler beim Setzen der Auflösung: %d (soll: 0) / %d ( soll: !0) - Zielaufloesung: %d * %d",
-					ret, query, width, height);
+			alog("Fehler beim Setzen der Auflösung: %d (soll: 0) / %d ( soll: !0) - Zielaufloesung: %ld * %ld",
+					ret, query, res[0].w, res[0].h);
 		}
 		return 1;
 	}
