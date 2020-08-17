@@ -121,7 +121,7 @@ if [ -n "$SLX_BROWSER_RELOAD_SECS" ] && [ "$SLX_BROWSER_RELOAD_SECS" -gt 0 ]; th
 			exit 0
 		fi
 		current_idle="$(idle-daemon --send 'get :0' | grep -oP '(?<=idleSeconds=)[0-9]+')"
-		if [ "$current_idle " -ge "$SLX_BROWSER_RELOAD_SECS" ]; then
+		if [ "$current_idle" -ge "$SLX_BROWSER_RELOAD_SECS" ]; then
 			xdotool windowactivate "$wid"
 			xdotool key Alt+Home
 			sleep 10
