@@ -10,7 +10,7 @@ start_wm() {
 	unset RUNVIRT_DM
 	for DM in "$@" openbox kwin blackbox; do
 		if type "${DM}" >/dev/null 2>&1 ; then
-			declare -rg RUNVIRT_DM="${DM}"
+			declare -g RUNVIRT_DM="${DM}"
 			break
 		fi
 	done
