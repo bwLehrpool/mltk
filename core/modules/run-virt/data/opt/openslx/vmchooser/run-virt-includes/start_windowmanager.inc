@@ -8,7 +8,7 @@
 start_wm() {
 	# Sanity checks
 	unset RUNVIRT_DM
-	for DM in openbox kwin xfwm4 metacity blackbox twm fvwm2 ; do
+	for DM in "$@" openbox kwin blackbox; do
 		if type "${DM}" >/dev/null 2>&1 ; then
 			declare -rg RUNVIRT_DM="${DM}"
 			break
@@ -34,12 +34,17 @@ start_wm() {
 		OPTS+=( "-replace" "-f" "${TMPDIR}/fvwm" )
 		;;
 	esac
+	stop_wm
 	{
+		trap '[ -n "$wpid" ] && kill "$wpid"; exit' EXIT TERM INT
 		dc=0
 		while true; do
 			s="$( date +%s )"
-			"${RUNVIRT_DM}" "${OPTS[@]}" &> /dev/null
-			ret="$?"
+			"${RUNVIRT_DM}" "${OPTS[@]}" &> /dev/null &
+			wpid=$!
+			wait
+			ret=$?
+			wpid=
 			e="$( date +%s )"
 			duration="$(( e - s ))"
 			case "$ret" in
@@ -53,15 +58,20 @@ start_wm() {
 			fi
 		done
 	} &
-	declare -rg RUNVIRT_DM_PID="$!"
-	add_cleanup stop_wm
+	declare -g RUNVIRT_DM_PID="$!"
+	if isempty HAVE_WM_CLEANUP_HOOK; then
+		add_cleanup stop_wm
+		declare -rg HAVE_WM_CLEANUP_HOOK=yes
+	fi
 	return 0
 }
 
 stop_wm() {
+	isempty RUNVIRT_DM_PID && return 0
 	kill "$RUNVIRT_DM_PID"
-	usleep 500000
+	usleep 100000
 	kill -9 "$RUNVIRT_DM_PID"
+	declare -g RUNVIRT_DM_PID=
 }
 
 ## MAIN ##

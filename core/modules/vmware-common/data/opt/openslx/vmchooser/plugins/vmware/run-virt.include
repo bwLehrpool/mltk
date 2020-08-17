@@ -45,6 +45,12 @@ run_plugin() {
 	# For debugging
 	cp "$VM_RUN_FILE" "/tmp/vmware-last-config"
 
+	# If we have multi-screen, try to switch to blackbox, seems the only
+	# lean WM to handle this properly.
+	if [ "$DISPLAY_COUNT" -gt 1 ] && command -v blackbox > /dev/null; then
+		start_wm "blackbox"
+	fi
+
 	# HACK: make the mouse disappear
 	(
 		local WINDOWS="$(xdotool search --sync --name '.*VMware.*Player.*')"
