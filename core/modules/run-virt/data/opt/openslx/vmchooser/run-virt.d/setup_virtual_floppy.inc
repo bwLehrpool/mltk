@@ -105,20 +105,11 @@ setup_virtual_floppy() {
 		SHARE_NO_HOME_WARN=0
 	fi
 
-	local resolution=
-	# Ugly hack for multi-monitor support with virtualbox.
-	# The guest additions properly set up the resolutions of multiple
-	# monitor, thus we need to disable the resolution feature of
-	# the openslx.exe as it would break what virtualbox did.
-	if [ "$PLUGIN_ID" != "virtualbox" ] || [ "$DISPLAY_COUNT" -eq 1 ]; then
-		resolution="${RESOLUTIONS}"
-	fi
-
 	cat > "${FLOPPYDIR}/openslx.ini" <<-EOF
 	[openslx]
 	username=${UNAME}
-	resolution=${resolution%% *}
-	resolution2=${resolution}
+	resolution=${RESOLUTIONS%% *}
+	resolution2=${RESOLUTIONS}
 	createMissingRemap=${SHARE_CREATE_MISSING_REMAP}
 	remapMode=${SHARE_REMAP_MODE_INI}
 	homeDrive=${SHARE_HOME_DRIVE}

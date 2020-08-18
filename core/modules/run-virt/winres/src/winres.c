@@ -51,7 +51,7 @@ static const ssize_t KEYLEN = 16;
 
 static BOOL _debug = FALSE;
 
-static HINSTANCE hKernel32, hShell32;
+static HINSTANCE hKernel32, hShell32, hUser32;
 static OSVERSIONINFO winVer;
 static BOOL shareFileOk = FALSE;
 static netdrive_t drives[DRIVEMAX];
@@ -424,6 +424,10 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	if (hShell32 == NULL) {
 		alog("Cannot load shell32.dll");
 	}
+	hUser32 = LoadLibraryW(L"user32.dll");
+	if (hUser32 == NULL) {
+		alog("Cannot load user32.dll");
+	}
 	winVer.dwOSVersionInfoSize = sizeof(winVer);
 	BOOL retVer = GetVersionEx(&winVer);
 	CoInitializeEx(NULL, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
@@ -499,6 +503,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	}
 	FreeLibrary(hKernel32);
 	FreeLibrary(hShell32);
+	FreeLibrary(hUser32);
 	return 0;
 }
 
@@ -596,11 +601,20 @@ static void setPowerState()
 	}
 }
 
+typedef LONG (WINAPI *CDSTYPE)(LPCWSTR, PDEVMODEW, HWND, DWORD, LPVOID);
+typedef BOOL (WINAPI *EDDTYPE)(LPCWSTR, DWORD, PDISPLAY_DEVICEW, DWORD);
+
+struct resolution {
+	long int w, h;
+};
+
+static BOOL setResWinMulti(struct resolution *res, int nres);
+static BOOL setResWinLegacy(struct resolution *res, int nres);
+
 static int setResolution()
 {
-	int ret;
 	static int nres = 0;
-	static struct { long int w, h; } res[16];
+	static struct resolution res[16];
 	if (nres == -1) // We've been here before and consider config invalid, or are done
 		return 0;
 	if (nres == 0) {
@@ -665,12 +679,85 @@ static int setResolution()
 			alog("VmwareRes: CreateProcess failed (%d)", (int)GetLastError());
 		} else if (ret == -2) {
 			alog("VmwareRes: GetExitCode failed (%d)", (int)GetLastError());
-		} else {
+		} else if (ret == 0) {
 			return 0;
 		}
 	}
 	// Use WinAPI as fallback
-	// TODO: Multi-Screen (once it really matters)
+	if (setResWinMulti(res, nres))
+		return 0;
+	// Legacy WinAPI (single screen only)
+	if (setResWinLegacy(res, nres))
+		return 0;
+	return 1;
+}
+
+/*
+ * This seems to be broken with VirtualBox, and I'm not sure whether
+ * I'm doing something wrong here. For a dualscreen setup, this
+ * returns two devices, but only the first one has a monitor, i.e.
+ * the inner loop never runs for the second device.
+ * I'm still leaving this here as a starting-point for future
+ * changes or new virtualizers.
+ */
+static BOOL setResWinMulti(struct resolution *res, int nres)
+{
+	if (hUser32 == NULL)
+		return FALSE;
+	CDSTYPE cdsEx = NULL;
+	EDDTYPE edd = NULL;
+	cdsEx = (CDSTYPE)GetProcAddress(hUser32, "ChangeDisplaySettingsExW");
+	edd = (EDDTYPE)GetProcAddress(hUser32, "EnumDisplayDevicesW");
+	if (cdsEx == NULL || edd == NULL)
+		return FALSE;
+	DISPLAY_DEVICEW ddev = { .cb = sizeof(ddev) };
+	DWORD devNum = 0;
+	int ires = 0;
+	int chret;
+	//alog("Trying multiscreen");
+	while (edd(NULL, devNum++, &ddev, 0)) {
+		//wlog(L"Have device %s (%s)", ddev.DeviceName, ddev.DeviceString);
+		DISPLAY_DEVICEW screen = { .cb = sizeof(screen) };
+		DWORD screenNum = 0;
+		long int sx = 0;
+		while (edd(ddev.DeviceName, screenNum++, &screen, 0)) {
+			DEVMODEW mode = { .dmSize = sizeof(mode) };
+			EnumDisplaySettingsW(screen.DeviceName, ENUM_CURRENT_SETTINGS, &mode);
+			//wlog(L"%s (%s) currently %dx%d+%d+%d", screen.DeviceName, screen.DeviceString, mode.dmPelsWidth, mode.dmPelsHeight, mode.dmPosition.x, mode.dmPosition.y);
+			if (ires < nres) {
+				// Enable
+				mode.dmPelsWidth = res[ires].w;
+				mode.dmPelsHeight = res[ires].h;
+				mode.dmPosition.x = sx;
+				mode.dmPosition.y = 0;
+				sx += mode.dmPelsWidth;
+				mode.dmFields = DM_PELSWIDTH | DM_PELSHEIGHT | DM_POSITION;
+			} else {
+				// Disable
+				mode.dmPelsWidth = mode.dmPelsHeight = 0;
+				mode.dmFields = DM_POSITION;
+			}
+			//wlog(L"New: %dx%d+%d+%d", mode.dmPelsWidth, mode.dmPelsHeight, mode.dmPosition.x, mode.dmPosition.y);
+			chret = cdsEx(screen.DeviceName, &mode, 0, (CDS_UPDATEREGISTRY | CDS_NORESET), NULL);
+			if (chret != DISP_CHANGE_SUCCESSFUL) {
+				//alog("Returned %d", chret);
+			}
+			ires++;
+			screen = (DISPLAY_DEVICEW){ .cb = sizeof(DISPLAY_DEVICEW) };
+		}
+		ddev = (DISPLAY_DEVICEW){ .cb = sizeof(DISPLAY_DEVICEW) };
+	}
+	chret = cdsEx(NULL, NULL, NULL, 0, NULL);
+	if (chret != DISP_CHANGE_SUCCESSFUL) {
+		alog("Final multiscreen change display call: %d", chret);
+		return FALSE;
+	}
+	return ires >= nres; // Did we find enough (virtual) screens?
+}
+
+static BOOL setResWinLegacy(struct resolution *res, int nres)
+{
+	// Legacy single screen
 	DEVMODE mode = { .dmSize = sizeof(mode) };
 	// MSDN recommends to fill the struct first by querying....
 	int query = EnumDisplaySettings(NULL, ENUM_CURRENT_SETTINGS, &mode);
@@ -678,7 +765,7 @@ static int setResolution()
 	mode.dmPelsWidth = res[0].w;
 	mode.dmPelsHeight = res[0].h;
 	mode.dmFields = DM_PELSWIDTH | DM_PELSHEIGHT;
-	ret = ChangeDisplaySettings(&mode, CDS_GLOBAL | CDS_UPDATEREGISTRY);
+	int ret = ChangeDisplaySettings(&mode, CDS_GLOBAL | CDS_UPDATEREGISTRY);
 	if (ret != DISP_CHANGE_SUCCESSFUL) {
 		ret = ChangeDisplaySettings(&mode, CDS_GLOBAL);
 	}
@@ -688,15 +775,20 @@ static int setResolution()
 	if (ret != DISP_CHANGE_SUCCESSFUL) {
 		ret = ChangeDisplaySettings(&mode, 0);
 	}
+	static int fails = 0;
 	if (ret != DISP_CHANGE_SUCCESSFUL) {
-		static int fails = 0;
 		if (++fails == 5) {
-			alog("Fehler beim Setzen der Auflösung: %d (soll: 0) / %d ( soll: !0) - Zielaufloesung: %ld * %ld",
+			alog("Fehler beim Setzen der Auflösung: %d (soll: 0) / %d ( soll: !0) - Zielauflösung: %ld * %ld",
 					ret, query, res[0].w, res[0].h);
 		}
-		return 1;
+		return FALSE;
 	}
-	return 0;
+	if (nres > 1) {
+		// Fake a failure since we want the other methods to be retried
+		// If we get called repeatedly, eventually return TRUE to make it stop.
+		return fails++ > 4;
+	}
+	return TRUE;
 }
 
 static int optimizeForRemote()
