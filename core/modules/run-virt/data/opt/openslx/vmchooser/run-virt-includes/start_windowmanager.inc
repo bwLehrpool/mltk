@@ -8,7 +8,9 @@
 start_wm() {
 	# Sanity checks
 	unset RUNVIRT_DM
-	for DM in "$@" openbox kwin blackbox; do
+	# xfwm4 and metacity make the VM appear frozen after openslx.exe
+	# tries to change the resolution
+	for DM in "$@" openbox blackbox kwin; do
 		if type "${DM}" >/dev/null 2>&1 ; then
 			declare -g RUNVIRT_DM="${DM}"
 			break
@@ -28,8 +30,11 @@ start_wm() {
 	openbox|kwin|xfwm4|metacity)
 		OPTS+=( "--replace" )
 		;;
+	blackbox)
+		# Don't replace background, toolbar not always on top
+		OPTS+=( "-rc" "/opt/openslx/vmchooser/config/blackbox.rc" )
+		;;
 	fvwm2)
-		# fvwm2 is not even in the minilinux, so this might be obsolete...
 		echo "EdgeScroll 0 0" > "${TMPDIR}/fvwm"
 		OPTS+=( "-replace" "-f" "${TMPDIR}/fvwm" )
 		;;
