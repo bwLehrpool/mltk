@@ -6,27 +6,29 @@
 # Some problems may arise with windows opening in background when
 # using eg. vmware without a window manager.
 start_wm() {
-	# Sanity checks
-	unset RUNVIRT_DM
 	# xfwm4 and metacity make the VM appear frozen after openslx.exe
 	# tries to change the resolution
-	for DM in "$@" openbox blackbox kwin; do
-		if type "${DM}" >/dev/null 2>&1 ; then
-			declare -g RUNVIRT_DM="${DM}"
+	local i dm
+	dm=
+	for i in "$@" openbox blackbox kwin; do
+		if command -v "${i}" &> /dev/null ; then
+			dm="$i"
 			break
 		fi
 	done
-	if ! isset RUNVIRT_DM; then
+	if isempty dm; then
 		# not fatal, so do not exit but report via slxlog
 		slxlog "runvirt-wm" "Could not find any window manager to use!"
 		notify_user "Konnte keinen Window Manager finden. (Das ist schlecht!)"
 		return 1
 	fi
 
-	# start RUNVIRT_DM determined above
-	writelog "Starting ${RUNVIRT_DM}."
+	# If it's the same, do nothing
+	is_wm_runnning "${dm}" && return 0
+
+	# start DM determined above
 	declare -a OPTS=()
-	case "$RUNVIRT_DM" in
+	case "${dm}" in
 	openbox|kwin|xfwm4|metacity)
 		OPTS+=( "--replace" )
 		;;
@@ -40,6 +42,8 @@ start_wm() {
 		;;
 	esac
 	stop_wm
+	writelog "Starting ${dm} ${OPTS[*]}."
+	declare -g RUNVIRT_DM="${dm}"
 	{
 		trap '[ -n "$wpid" ] && kill "$wpid"; exit' EXIT TERM INT
 		dc=0
@@ -71,12 +75,19 @@ start_wm() {
 	return 0
 }
 
+is_wm_running() {
+	isempty RUNVIRT_DM_PID && return 1
+	! isempty "$1" && [ "$RUNVIRT_DM" != "$1" ] && return 1
+	kill -0 "$RUNVIRT_DM_PID"
+}
+
 stop_wm() {
 	isempty RUNVIRT_DM_PID && return 0
 	kill "$RUNVIRT_DM_PID"
 	usleep 100000
 	kill -9 "$RUNVIRT_DM_PID"
 	declare -g RUNVIRT_DM_PID=
+	declare -g RUNVIRT_DM=
 }
 
 ## MAIN ##
