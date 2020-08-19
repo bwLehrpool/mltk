@@ -4,10 +4,17 @@ mkdir -p tmp
 rm -- winres.exe tmp/resource.res tmp/winres.debug.exe
 i686-w64-mingw32-windres -i src/winres.rc -o tmp/resource.res -O coff
 i686-w64-mingw32-gcc -Wall -Wextra -pedantic -Wno-unused-parameter -flto -std=c99 -Os -Wl,--subsystem,windows -o tmp/winres.debug.exe src/winres.c tmp/resource.res -lole32 -luuid -lgdi32 -lws2_32 -lshell32 -lmpr -lshlwapi
+RED='\033[1;31m'
+GREEN='\033[1;32m'
+RESET='\033[0m'
+echo "--"
 if strip -o winres.exe tmp/winres.debug.exe; then
-	echo "Successfully created winres.exe"
+	echo "${GREEN}Successfully created winres.exe${RESET}"
 	echo "It has NOT been moved to data/.../openslx.exe"
-else
-	echo "FAIL FAIL FAIL no EXE generated!"
+	exit 0
 fi
+
+
+echo "${RED}FAIL FAIL FAIL${RESET} no EXE generated!"
+exit 1
 

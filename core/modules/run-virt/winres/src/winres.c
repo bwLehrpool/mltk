@@ -5,6 +5,8 @@
 #define _UNICODE
 #define UNICODE
 #define NO_SHLWAPI_STRFCNS
+#define ENOTSUP 95
+#define EAGAIN 11
 #include <windows.h>
 #include <winsock2.h>
 #include <winnetwk.h>
@@ -145,7 +147,8 @@ static void wlog(const wchar_t *fmt, ...)
 	fclose(f);
 }
 
-#define dlog(...) do { if (_debug) alog(__VA_ARGS__); } while (0)
+#define dalog(...) do { if (_debug) alog(__VA_ARGS__); } while (0)
+#define dwlog(...) do { if (_debug) wlog(__VA_ARGS__); } while (0)
 
 static void CALLBACK resetShutdown(HWND hWnd, UINT uMsg, UINT_PTR idEvent, DWORD dwTime)
 {
@@ -177,13 +180,13 @@ static void CALLBACK setupNetworkDrives(HWND hWnd, UINT uMsg, UINT_PTR idEvent, 
 		return;
 	bInProc = TRUE;
 	if (!shareFileOk) {
-		dlog("No shareFileOk in sND");
+		dalog("No shareFileOk in sND");
 		if (_remapMode == RM_NATIVE_FALLBACK || _remapMode == RM_VMWARE) {
 			remapViaSharedFolder();
 		}
 	} else {
 		int ret = queryPasswordDaemon();
-		dlog("sND: qPD = %d", ret);
+		dalog("sND: qPD = %d", ret);
 		if (ret != 0) {
 			if (++fails < 10)
 				goto exit_func;
@@ -238,7 +241,7 @@ static void CALLBACK launchRunscript(HWND hWnd, UINT uMsg, UINT_PTR idEvent, DWO
 	}
 	// Prepare credentials cmdline
 	if (spass == NULL) {
-		dlog("launchRun: No spass");
+		dalog("launchRun: No spass");
 		goto failure;
 	}
 	BOOL ok = TRUE;
@@ -435,6 +438,11 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	loadPaths();
 	if (lpCmdLine != NULL && strstr(lpCmdLine, "/debug") != NULL) {
 		_debug = TRUE;
+	}
+	if (!_debug && GetPrivateProfileIntA("openslx", "debug", 0, SETTINGS_FILE) != 0) {
+		_debug = TRUE;
+	}
+	if (_debug) {
 		alog("Windows Version %d.%d", (int)winVer.dwMajorVersion, (int)winVer.dwMinorVersion);
 	}
 	// Mute sound?
@@ -448,8 +456,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	// Any network shares to mount?
 	readShareFile();
 	if (shareFileOk || _remapMode != RM_NONE) {
-		UINT_PTR tRet = SetTimer(NULL, 0, 1550, (TIMERPROC)&setupNetworkDrives);
-		dlog("init: &setupNetworkDrives");
+		UINT_PTR tRet = SetTimer(NULL, 0, 1650, (TIMERPROC)&setupNetworkDrives);
+		dalog("init: &setupNetworkDrives");
 		if (tRet == 0) {
 			alog("Could not create timer for mounting network shares: %d", (int)GetLastError());
 		} else {
@@ -466,15 +474,14 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		}
 	}
 	// Resolution
-	if (fileExists(SETTINGS_FILE_W) && setResolution() != 0) {
-		UINT_PTR tRet = SetTimer(NULL, 0, 3111, (TIMERPROC)&tmrResolution);
-		if (tRet == 0) {
-			alog("Could not create timer for resolution setting: %d", (int)GetLastError());
-		}
+	UINT_PTR tRet;
+	tRet = SetTimer(NULL, 0, 211, (TIMERPROC)&tmrResolution);
+	if (tRet == 0) {
+		alog("Could not create timer for resolution setting: %d", (int)GetLastError());
 	}
 	// Runscript
-	UINT_PTR tRet = SetTimer(NULL, 0, 3456, (TIMERPROC)&launchRunscript);
-	dlog("init: &launchRunscript");
+	tRet = SetTimer(NULL, 0, 3456, (TIMERPROC)&launchRunscript);
+	dalog("init: &launchRunscript");
 	if (tRet == 0) {
 		alog("Could not create timer for runscript: %d", (int)GetLastError());
 	} else {
@@ -495,7 +502,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		DispatchMessage(&Msg);
 		if (!_deletedCredentials && _mountDone && _scriptDone) {
 			if (spass != NULL) {
-				dlog("Erasing password from memory");
+				dalog("Erasing password from memory");
 				SecureZeroMemory(spass, strlen(spass));
 				_deletedCredentials = TRUE;
 			}
@@ -608,14 +615,17 @@ struct resolution {
 	long int w, h;
 };
 
-static BOOL setResWinMulti(struct resolution *res, int nres);
-static BOOL setResWinLegacy(struct resolution *res, int nres);
+static int setResWinMulti(struct resolution *res, int nres);
+static int setResWinLegacy(struct resolution *res, int nres);
+static int setResVMware(struct resolution *res, int nres);
 
 static int setResolution()
 {
 	static int nres = 0;
 	static struct resolution res[16];
-	if (nres == -1) // We've been here before and consider config invalid, or are done
+	static int callCount = -1;
+	callCount++;
+	if (nres == -1 || callCount > 10) // We've been here before and consider config invalid, or are done
 		return 0;
 	if (nres == 0) {
 		// use config file in floppy
@@ -642,54 +652,50 @@ static int setResolution()
 			alog("Malformed resolution in " SETTINGS_FILE ": '%s'", data);
 		}
 		if (nres == 0) {
+			// Nothing found -- consider this success
 			nres = -1;
 			return 0;
 		}
 	}
-	// Try vmware tools
-	static wchar_t path[MAX_PATH] = L"";
-	if (path[0] == 0) {
-		StringCchPrintfW(path, MAX_PATH, L"%s\\VMware\\VMware Tools\\VMwareResolutionSet.exe", programsPath);
-		if (!fileExists(path)) {
-			// Strip (x86) if found and try again
-			wchar_t *x86 = wcsstr(path, L" (x86)");
-			if (x86 != NULL) {
-				while ((*x86 = *(x86 + 6)) != 0) ++x86;
+	int ret;
+	switch (callCount % 3) {
+		case 0:
+			// Use WinAPI first
+			ret = setResWinMulti(res, nres);
+			if (ret != ENOTSUP)
+				break;
+			// Fallthrough
+		case 1:
+			// Try vmware tools
+			ret = setResVMware(res, nres);
+			if (ret != ENOTSUP)
+				break;
+		default:
+			// Legacy WinAPI (single screen only)
+			ret = setResWinLegacy(res, nres);
+			if (ret != ENOTSUP)
+				break;
+			if (ret == 0 && nres > 1 && callCount == 2) {
+				// Legacy winapi worked, but if we have more than one screen, pretend it failed
+				// the first time, so maybe one of the methods above will work if we call them again
+				// (Looking at you, VMwareResolutionSet)
+				ret = EAGAIN; // Fake failure
 			}
-		}
-		if (!fileExists(path)) {
-			char buffer[300];
-			WideCharToMultiByte(CP_UTF8, 0, path, -1, buffer, 300, NULL, NULL);
-			alog("vmware tools not found, using winapi to set resolution (path: %s)", buffer);
-		}
 	}
-	if (path[0] != 0 && fileExists(path)) {
-		wchar_t cmdline[MAX_PATH];
-		wchar_t *pos = cmdline;
-		size_t rem = MAX_PATH;
-		long int sx = 0, i = 0;
-		StringCchPrintfExW(pos, rem, &pos, &rem, 0, L"VMwareResolutionSet.exe 0 %d", nres);
-		while (rem > 0 && i < nres) {
-			StringCchPrintfExW(pos, rem, &pos, &rem, 0, L" , %ld 0 %ld %ld", sx, res[i].w, res[i].h);
-			sx += res[i++].w;
-		}
-		//wlog(L"cmd: %s", cmdline);
-		int ret = execute(path, cmdline);
-		if (ret == -1) {
-			alog("VmwareRes: CreateProcess failed (%d)", (int)GetLastError());
-		} else if (ret == -2) {
-			alog("VmwareRes: GetExitCode failed (%d)", (int)GetLastError());
-		} else if (ret == 0) {
-			return 0;
-		}
+	return ret;
+}
+
+static BOOL foobar(HMONITOR Arg1, HDC Arg2, LPRECT Arg3, LPARAM Arg4)
+{
+	MONITORINFOEXW info = { .cbSize = sizeof(info) };
+	if (GetMonitorInfoW(Arg1, (LPMONITORINFO)&info) == 0)
+		dalog("Minotirinfo FAILED for %d", (int)Arg1);
+	else {
+		dalog("MonitorInfo for %d:", (int)Arg1);
+		dalog("Flags: %d", (int)info.dwFlags);
+		dwlog(L"Name: %s", info.szDevice);
 	}
-	// Use WinAPI as fallback
-	if (setResWinMulti(res, nres))
-		return 0;
-	// Legacy WinAPI (single screen only)
-	if (setResWinLegacy(res, nres))
-		return 0;
-	return 1;
+	return TRUE;
 }
 
 /*
@@ -700,30 +706,49 @@ static int setResolution()
  * I'm still leaving this here as a starting-point for future
  * changes or new virtualizers.
  */
-static BOOL setResWinMulti(struct resolution *res, int nres)
+static int setResWinMulti(struct resolution *res, int nres)
 {
 	if (hUser32 == NULL)
-		return FALSE;
+		return ENOTSUP;
 	CDSTYPE cdsEx = NULL;
 	EDDTYPE edd = NULL;
 	cdsEx = (CDSTYPE)GetProcAddress(hUser32, "ChangeDisplaySettingsExW");
 	edd = (EDDTYPE)GetProcAddress(hUser32, "EnumDisplayDevicesW");
 	if (cdsEx == NULL || edd == NULL)
-		return FALSE;
+		return ENOTSUP;
 	DISPLAY_DEVICEW ddev = { .cb = sizeof(ddev) };
 	DWORD devNum = 0;
 	int ires = 0;
 	int chret;
-	//alog("Trying multiscreen");
-	while (edd(NULL, devNum++, &ddev, 0)) {
-		//wlog(L"Have device %s (%s)", ddev.DeviceName, ddev.DeviceString);
+	long int sx = 0;
+	BOOL ok = TRUE;
+	dalog("WinAPI multiscreen");
+	// XXX Debug
+	EnumDisplayMonitors(NULL, NULL, (MONITORENUMPROC)&foobar, 0);
+	dalog("End of monitor enum dump");
+	// XXX END DEBUG
+//	while (edd(NULL, devNum++, &ddev, 0)) {
+//		wlog(L"Have device %s (%s)", ddev.DeviceName, ddev.DeviceString);
 		DISPLAY_DEVICEW screen = { .cb = sizeof(screen) };
 		DWORD screenNum = 0;
-		long int sx = 0;
-		while (edd(ddev.DeviceName, screenNum++, &screen, 0)) {
+		while (edd(NULL /* ddev.DeviceName */, screenNum++, &screen, 0)) {
 			DEVMODEW mode = { .dmSize = sizeof(mode) };
-			EnumDisplaySettingsW(screen.DeviceName, ENUM_CURRENT_SETTINGS, &mode);
-			//wlog(L"%s (%s) currently %dx%d+%d+%d", screen.DeviceName, screen.DeviceString, mode.dmPelsWidth, mode.dmPelsHeight, mode.dmPosition.x, mode.dmPosition.y);
+			int query = EnumDisplaySettingsW(screen.DeviceName, ENUM_CURRENT_SETTINGS, &mode);
+			if (query == 0) {
+				dalog("EnumDisplaySettings: Retrying with index 0");
+				query = EnumDisplaySettingsW(screen.DeviceName, 0, &mode);
+			}
+			mode.dmFields = 0;
+			if (query == 0) {
+				dalog("EnumDisplaySettings: Falling back to default values");
+				mode.dmFields |= DM_BITSPERPEL | DM_DISPLAYFREQUENCY;
+				mode.dmBitsPerPel = 32;
+				mode.dmDisplayFrequency = 60;
+			}
+			dwlog(L"%s (%s) currently %dx%d+%d+%d, %dHz, %dbpp (Query: %d)",
+					screen.DeviceName, screen.DeviceString,
+					mode.dmPelsWidth, mode.dmPelsHeight, mode.dmPosition.x, mode.dmPosition.y,
+					mode.dmDisplayFrequency, mode.dmBitsPerPel, query);
 			if (ires < nres) {
 				// Enable
 				mode.dmPelsWidth = res[ires].w;
@@ -731,32 +756,34 @@ static BOOL setResWinMulti(struct resolution *res, int nres)
 				mode.dmPosition.x = sx;
 				mode.dmPosition.y = 0;
 				sx += mode.dmPelsWidth;
-				mode.dmFields = DM_PELSWIDTH | DM_PELSHEIGHT | DM_POSITION;
+				mode.dmFields |= DM_PELSWIDTH | DM_PELSHEIGHT | DM_POSITION;
 			} else {
 				// Disable
 				mode.dmPelsWidth = mode.dmPelsHeight = 0;
 				mode.dmFields = DM_POSITION;
 			}
-			//wlog(L"New: %dx%d+%d+%d", mode.dmPelsWidth, mode.dmPelsHeight, mode.dmPosition.x, mode.dmPosition.y);
+			dwlog(L"New: %dx%d+%d+%d", mode.dmPelsWidth, mode.dmPelsHeight, mode.dmPosition.x, mode.dmPosition.y);
 			chret = cdsEx(screen.DeviceName, &mode, 0, (CDS_UPDATEREGISTRY | CDS_NORESET), NULL);
 			if (chret != DISP_CHANGE_SUCCESSFUL) {
-				//alog("Returned %d", chret);
+				dalog("Returned %d", chret);
+				ok = FALSE;
 			}
 			ires++;
 			screen = (DISPLAY_DEVICEW){ .cb = sizeof(DISPLAY_DEVICEW) };
 		}
-		ddev = (DISPLAY_DEVICEW){ .cb = sizeof(DISPLAY_DEVICEW) };
-	}
+//		ddev = (DISPLAY_DEVICEW){ .cb = sizeof(DISPLAY_DEVICEW) };
+//	}
 	chret = cdsEx(NULL, NULL, NULL, 0, NULL);
-	if (chret != DISP_CHANGE_SUCCESSFUL) {
-		alog("Final multiscreen change display call: %d", chret);
-		return FALSE;
+	if (chret != DISP_CHANGE_SUCCESSFUL || !ok) {
+		alog("Final multiscreen change display call failed: %d", chret);
+		return EAGAIN;
 	}
-	return ires >= nres; // Did we find enough (virtual) screens?
+	return ires >= nres ? 0 : EAGAIN; // Did we find enough (virtual) screens?
 }
 
-static BOOL setResWinLegacy(struct resolution *res, int nres)
+static int setResWinLegacy(struct resolution *res, int nres)
 {
+	dalog("Using legacy single-screen WinAPI");
 	// Legacy single screen
 	DEVMODE mode = { .dmSize = sizeof(mode) };
 	// MSDN recommends to fill the struct first by querying....
@@ -775,20 +802,109 @@ static BOOL setResWinLegacy(struct resolution *res, int nres)
 	if (ret != DISP_CHANGE_SUCCESSFUL) {
 		ret = ChangeDisplaySettings(&mode, 0);
 	}
-	static int fails = 0;
 	if (ret != DISP_CHANGE_SUCCESSFUL) {
-		if (++fails == 5) {
-			alog("Fehler beim Setzen der Auflösung: %d (soll: 0) / %d ( soll: !0) - Zielauflösung: %ld * %ld",
-					ret, query, res[0].w, res[0].h);
+		dalog("WinAPI Legacy: CDS: %d (should: 0), EDS: %d (should: !0) - Want: %ld * %ld",
+				ret, query, res[0].w, res[0].h);
+		return EAGAIN;
+	}
+	return 0;
+}
+
+static void gfxReset()
+{
+	INPUT keys[8] = {
+		{
+			.type = INPUT_KEYBOARD,
+			.ki.dwFlags = 0,
+			.ki.wVk = VK_LWIN,
+		},
+		{
+			.type = INPUT_KEYBOARD,
+			.ki.dwFlags = 0,
+			.ki.wVk = VK_LSHIFT,
+		},
+		{
+			.type = INPUT_KEYBOARD,
+			.ki.dwFlags = 0,
+			.ki.wVk = VK_LCONTROL,
+		},
+		{
+			.type = INPUT_KEYBOARD,
+			.ki.dwFlags = 0,
+			.ki.wVk = VkKeyScanA('b') & 0xff,
+		},
+		// UP
+		{
+			.type = INPUT_KEYBOARD,
+			.ki.dwFlags = KEYEVENTF_KEYUP,
+			.ki.wVk = VkKeyScanA('b') & 0xff,
+		},
+		{
+			.type = INPUT_KEYBOARD,
+			.ki.dwFlags = KEYEVENTF_KEYUP,
+			.ki.wVk = VK_LWIN,
+		},
+		{
+			.type = INPUT_KEYBOARD,
+			.ki.dwFlags = KEYEVENTF_KEYUP,
+			.ki.wVk = VK_LSHIFT,
+		},
+		{
+			.type = INPUT_KEYBOARD,
+			.ki.dwFlags = KEYEVENTF_KEYUP,
+			.ki.wVk = VK_LCONTROL,
+		},
+	};
+	UINT ret = SendInput(8, keys, sizeof(INPUT));
+	if (ret == 0) {
+		dalog("SendInput failed: %d", (int)GetLastError());
+	} else {
+		Sleep(250);
+	}
+}
+
+static int setResVMware(struct resolution *res, int nres)
+{
+	static wchar_t path[MAX_PATH] = L"";
+	if (path[0] == 0) {
+		StringCchPrintfW(path, MAX_PATH, L"%s\\VMware\\VMware Tools\\VMwareResolutionSet.exe", programsPath);
+		if (!fileExists(path)) {
+			// Strip (x86) if not found and try again
+			wchar_t *x86 = wcsstr(path, L" (x86)");
+			if (x86 != NULL) {
+				while ((*x86 = *(x86 + 6)) != 0) ++x86;
+			}
 		}
-		return FALSE;
+		if (!fileExists(path)) {
+			char buffer[300];
+			WideCharToMultiByte(CP_UTF8, 0, path, -1, buffer, 300, NULL, NULL);
+			dalog("vmware tools not found, using winapi to set resolution (path: %s)", buffer);
+			return ENOTSUP;
+		}
+	} else if (!fileExists(path)) {
+		return ENOTSUP;
 	}
-	if (nres > 1) {
-		// Fake a failure since we want the other methods to be retried
-		// If we get called repeatedly, eventually return TRUE to make it stop.
-		return fails++ > 4;
+	wchar_t cmdline[MAX_PATH];
+	wchar_t *pos = cmdline;
+	size_t rem = MAX_PATH;
+	long int sx = 0, i = 0;
+	StringCchPrintfExW(pos, rem, &pos, &rem, 0, L"VMwareResolutionSet.exe 0 %d", nres);
+	while (rem > 0 && i < nres) {
+		StringCchPrintfExW(pos, rem, &pos, &rem, 0, L" , %ld 0 %ld %ld", sx, res[i].w, res[i].h);
+		sx += res[i++].w;
 	}
-	return TRUE;
+	dwlog(L"vmwareRS cmd: %s", cmdline);
+	int ret = execute(path, cmdline);
+	if (ret == -1) {
+		alog("VmwareRes: CreateProcess failed (%d)", (int)GetLastError());
+	} else if (ret == -2) {
+		alog("VmwareRes: GetExitCode failed (%d)", (int)GetLastError());
+	} else if (ret != 0) {
+		dalog("VmwareRes: Exit code: %d", ret);
+	} else {
+		return 0;
+	}
+	return EAGAIN;
 }
 
 static int optimizeForRemote()
@@ -922,7 +1038,7 @@ const char* uncReplaceFqdnByIp(const char* path)
 	char name[201];
 	strncpy(name, host, rest - host);
 	name[rest-host] = '\0';
-	dlog("Trying to resolve '%s'...", name);
+	dalog("Trying to resolve '%s'...", name);
 	struct hostent *remote = gethostbyname(name);
 	if (remote == NULL || remote->h_addrtype != AF_INET || remote->h_addr_list[0] == 0)
 		return NULL;
@@ -934,7 +1050,7 @@ const char* uncReplaceFqdnByIp(const char* path)
 	size_t len = 2 /* \\ */ + strlen(ip) /* 1.2.3.4 */ + strlen(rest) /* \path\to\share */ + 1 /* nullchar */;
 	char *retval = malloc(len);
 	snprintf(retval, len, "\\\\%s%s", ip, rest);
-	dlog("Turned '%s' into '%s'", path, retval);
+	dalog("Turned '%s' into '%s'", path, retval);
 	return retval;
 }
 
@@ -984,11 +1100,11 @@ drive_fail:
 	fclose(h);
 	if (shost == NULL || sport == NULL || skey1 == NULL || skey2 == NULL || suser == NULL) {
 		// Credential stuff missing
-		dlog("Incomplete first line in shares.dat");
+		dalog("Incomplete first line in shares.dat");
 		return;
 	}
 	if (*shost == '-' && *sport == '-') {
-		dlog("Demo mode detected");
+		dalog("Demo mode detected");
 		shareFileOk = TRUE;
 		spass = malloc(1);
 		*spass = '\0';
@@ -1024,10 +1140,10 @@ LRESULT CALLBACK slxWindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPara
 static int queryPasswordDaemon()
 {
 	// See if preconditions are met
-	dlog("in qPD");
+	dalog("in qPD");
 	if (!shareFileOk || spass != NULL)
 		return 0;
-	dlog("...");
+	dalog("...");
 	static int wsaInit = 1337;
 	static SOCKET sock = INVALID_SOCKET;
 	static HWND sockWnd = NULL;
@@ -1068,7 +1184,7 @@ static int queryPasswordDaemon()
 
 static void udpReceived(SOCKET sock)
 {
-	dlog("UDP received");
+	dalog("UDP received");
 	int ret;
 	uint8_t buffer[200];
 	ret = recv(sock, (char*)buffer, sizeof(buffer), 0);
@@ -1211,15 +1327,15 @@ static BOOL mountNetworkShare(const netdrive_t *d, BOOL useIp)
 			// Printer
 			letter[0] = 0;
 			share.dwType = RESOURCETYPE_PRINT;
-			dlog("Is a printer");
+			dalog("Is a printer");
 		} else if (letter[0] == '-') {
 			// No letter, just use as resource
 			letter[0] = 0;
-			dlog("Is a resource");
+			dalog("Is a resource");
 		} else {
 			letter[1] = ':';
 			letter[2] = 0;
-			dlog("Is a share with letter");
+			dalog("Is a share with letter");
 		}
 		// Connect defined share
 		retval = mount(&share, pass, user);
