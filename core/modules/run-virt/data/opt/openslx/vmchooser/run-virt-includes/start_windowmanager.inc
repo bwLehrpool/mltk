@@ -29,8 +29,11 @@ start_wm() {
 	# start DM determined above
 	declare -a OPTS=()
 	case "${dm}" in
-	openbox|kwin|xfwm4|metacity)
+	openbox|kwin|metacity)
 		OPTS+=( "--replace" )
+		;;
+	xfwm4)
+		OPTS+=( "--replace" "--compositor=off" )
 		;;
 	blackbox)
 		# Don't replace background, toolbar not always on top
