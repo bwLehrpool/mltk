@@ -4,6 +4,8 @@
 ###########################################
 ## Functions ##
 create_vmhome_preferences_file() {
+	local nobar=1
+	[ "$DISPLAY_COUNT" -gt 1 ] && nobar=0
 	cat > "${VM_HOME}/preferences" <<-HEREEND
 		.encoding = "UTF-8"
 		# This configuration file was generated on $(date)
@@ -45,7 +47,7 @@ create_vmhome_preferences_file() {
 		# fullscreen/mouse/keyboard
 		pref.fullscreen.toolbarPixels = "0"
 		pref.vmplayer.fullscreen.autohide = "TRUE"
-		pref.vmplayer.fullscreen.nobar = 1
+		pref.vmplayer.fullscreen.nobar = $nobar
 		pref.grabOnMouseClick = "TRUE"
 		pref.grabOnKeyPress = "TRUE"
 		pref.motionGrab = "TRUE"

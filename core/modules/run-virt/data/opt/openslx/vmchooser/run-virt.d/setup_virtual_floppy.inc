@@ -105,11 +105,20 @@ setup_virtual_floppy() {
 		SHARE_NO_HOME_WARN=0
 	fi
 
+	local resolution=
+	# Now that we fixed openslx.exe for VBox, we need the same hack for VMware
+	# since using VMwareResolutionSet can freeze the guest. Instead, we additionally
+	# show the full-screen toolbar again for > 1 display and let the user hammer
+	# the multi-screen button until it works.
+	if [ "$PLUGIN_ID" != "vmware" ] || [ "$DISPLAY_COUNT" -eq 1 ]; then
+		resolution="${RESOLUTIONS}"
+	fi
+
 	cat > "${FLOPPYDIR}/openslx.ini" <<-EOF
 	[openslx]
 	username=${UNAME}
-	resolution=${RESOLUTIONS%% *}
-	resolution2=${RESOLUTIONS}
+	resolution=${resolution%% *}
+	resolution2=${resolution}
 	createMissingRemap=${SHARE_CREATE_MISSING_REMAP}
 	remapMode=${SHARE_REMAP_MODE_INI}
 	homeDrive=${SHARE_HOME_DRIVE}

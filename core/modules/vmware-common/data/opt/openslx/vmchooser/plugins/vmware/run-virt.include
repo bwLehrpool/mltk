@@ -47,8 +47,8 @@ run_plugin() {
 
 	# If we have multi-screen, try to switch to blackbox, seems the only
 	# lean WM to handle this properly.
-	if [ "$DISPLAY_COUNT" -gt 1 ] && command -v blackbox > /dev/null; then
-		start_wm "blackbox"
+	if [ "$DISPLAY_COUNT" -gt 1 ] && command -v xfwm4 > /dev/null; then
+		start_wm "xfwm4"
 	fi
 
 	# HACK: make the mouse disappear
