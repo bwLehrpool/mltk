@@ -673,14 +673,13 @@ static int setResolution()
 		default:
 			// Legacy WinAPI (single screen only)
 			ret = setResWinLegacy(res, nres);
-			if (ret != ENOTSUP)
-				break;
 			if (ret == 0 && nres > 1 && callCount == 2) {
 				// Legacy winapi worked, but if we have more than one screen, pretend it failed
 				// the first time, so maybe one of the methods above will work if we call them again
 				// (Looking at you, VMwareResolutionSet)
 				ret = EAGAIN; // Fake failure
 			}
+			break;
 	}
 	return ret;
 }
