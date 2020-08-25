@@ -94,7 +94,8 @@ fi
 if ! chown -R dnbd3:dnbd3 "${DNBD3_DATA_DIR}"; then
 	errormsg "Failed to chown '${DNBD3_DATA_DIR}' to dnbd3."
 fi
-if ! chmod -R go-w,u+rwX "${DNBD3_DATA_DIR}"; then
+# user rw, group ro, other nothing
+if ! chmod -R o-rwx,u+rwX,g+rX-w "${DNBD3_DATA_DIR}"; then
 	errormsg "Failed to chmod '${DNBD3_DATA_DIR}' to dnbd3."
 fi
 
