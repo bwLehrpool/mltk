@@ -1,0 +1,148 @@
+#!/bin/ash
+
+# Wrapper around fbsplash to facilitate positioning images.
+# Contains two different modes
+# 1) Just display an image centered, or in one of the four
+#    corners. --center, --tl, --tr, --bl, --br
+# 2) Display startup icons that signal initialization progress
+#    which will turn from inactive to active.
+#    Needs a directory tree where you have two dirs named
+#    inactive and active, with identically named *.ppm files
+#    in them. Call with "--reset [dir], so all images from
+#    the inactive subdir will be drawn in alphabetical order.
+#    Call with --icon [dir/active/xxx.ppm] to draw that
+#    specific icon in its active state. Will assume the
+#    screen stays intact between calls.
+
+unset mode ppm base index
+count=0
+
+while [ "$#" -gt 0 ]; do
+	case "$1" in
+	--center|--reset|--icon|--tl|--bl|--tr|--br)
+		mode="${1:2}"
+		;;
+	*) break ;;
+	esac
+	shift
+done
+
+ppm="$1"
+shift
+# remaining args go to fbsplash, except for icon and reset modes
+
+if [ "$mode" = "reset" ]; then
+	base="$ppm/inactive"
+elif [ "$mode" = "icon" ]; then
+	base="$( dirname "$( dirname "$ppm" )" )/inactive"
+fi
+
+if [ -n "$base" ]; then
+	# Need this for either reset (draw all as inactive), or icon (know how many icons)
+	if ! [ -d "$base" ]; then
+		echo "$base is not a directory" >&2
+		exit 1
+	fi
+	count=0
+	for i in "$base"/*.ppm*; do
+		count=$(( count + 1 ))
+	done
+fi
+
+
+draw () {
+	local ppm="$3"
+	local img_left="$1"
+	local img_top="$2"
+	shift 3
+	# See ift's an actual file
+	[ -s "${ppm}.gz" ] && ppm="${ppm}.gz"
+	if ! [ -s "$ppm" ]; then
+		echo "$ppm not found" >&2
+		exit 1
+	fi
+
+	local cfg="/tmp/fbsplash.$$"
+	# just checking if nothing too weird is set
+	if [ -n "$img_left" ] && [ -n "$img_top" ] \
+		&& [ "$img_left" -ge 0 ] && [ "$img_left" -lt 8096 ] \
+		&& [ "$img_top" -ge 0 ] && [ "$img_top" -lt 8096 ]; then
+		printf "IMG_TOP=%d\nIMG_LEFT=%d\n" \
+			"$img_top" "$img_left" \
+			> "$cfg"
+		fbsplash "$@" -i "$cfg" -s "$ppm"
+		ret=$?
+		rm -f -- "$cfg"
+	elif [ "$mode" = "center" ]; then
+		# otherwise just use top left and be done with it
+		fbsplash "$@" -s "$ppm"
+		ret=$?
+	fi
+	return $ret
+}
+
+# Draw
+
+screen_size="$(fbset | awk '$1 == "geometry" {print $2 " " $3; exit}')"
+screen_width="${screen_size%% *}"
+screen_height="${screen_size#* }"
+
+if [ "$count" -gt 0 ]; then
+	# This is one of the icon modes
+	if ! [ "$screen_width" -gt 0 ] || ! [ "$screen_height" -gt 0 ]; then
+		echo "Unknown screen size ($screen_size)" >&2
+		exit 1
+	fi
+	xmargin=$(( screen_width - (128 * count) ))
+	if [ "$xmargin" -gt 300 ] && [ "$count" -gt 1 ]; then
+		xmargin=$(( (xmargin - 100) / (count - 1) ))
+		[ "$xmargin" -gt 32 ] && xmargin=32
+	else
+		xmargin=0
+	fi
+	xpos=$(( ( screen_width - (128 * count) - (xmargin * (count - 1)) ) / 2 ))
+	ypos=$(( screen_height - 256 ))
+	# Loop over all inactive icons
+	unset wantfile
+	if [ "$mode" = "icon" ]; then
+		wantfile="$( basename "$ppm" .gz )"
+	fi
+	for f in "$base"/*.ppm*; do
+		if [ "$mode" = "reset" ]; then
+			draw "$xpos" "$ypos" "$f"
+		elif [ "$( basename "$f" .gz )" = "$wantfile" ]; then
+			draw "$xpos" "$ypos" "$ppm"
+		fi
+		xpos=$(( xpos + 128 + xmargin ))
+	done
+else
+	# Normal mode
+	# getimgsize
+	if [ "${ppm%.gz}" != "${ppm}" ]; then
+		ppm_size="$(zcat "$ppm" | sed -n 2p)"
+	else
+		ppm_size="$(sed -n 2p "$ppm")"
+	fi
+	if [ -z "$ppm_size" ]; then
+		echo "Invalid ppm? Could not extract dimensions" >&2
+		exit 1
+	fi
+	ppm_width="${ppm_size%% *}"
+	ppm_height="${ppm_size#* }"
+	ppm_height="${ppm_height%% *}" # make sure nothing weird is trailing
+	# pos
+	imf_left=0
+	img_top=0
+	case "$mode" in
+		center|tr|br) img_left="$(( screen_width - ppm_width ))" ;;
+	esac
+	case "$mode" in
+		center|bl|br) img_top="$(( screen_height - ppm_height ))" ;;
+	esac
+	if [ "$mode" = "center" ]; then
+		img_left=$(( img_left / 2 ))
+		img_top=$(( img_top / 2 ))
+	fi
+	draw "$img_left" "$img_top" "$ppm" "$@"
+fi
+

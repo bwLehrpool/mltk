@@ -1,0 +1,35 @@
+#!/bin/ash
+
+		screen_size="$(fbset | awk '$1 ~ /geometry/ {print $2" "$3}')"
+		screen_width="${screen_size%% *}"
+		screen_height="${screen_size#* }"
+		fbsplash_cfg="/etc/fbsplash.cfg"
+		fbsplash_ppm="/etc/splash.ppm.gz"
+		if [ -s "$fbsplash_ppm" ]; then
+			ppm_size="$(zcat "$fbsplash_ppm" | sed -n 2p)"
+		else
+			fbsplash_ppm="/etc/splash.ppm"
+			if [ -s "$fbsplash_ppm" ]; then
+				ppm_size="$(sed -n 2p "$fbsplash_ppm")"
+			else
+				echo "Splash screen requested, but not found in initramfs..." >&4
+				MUTED_OUTPUT=
+			fi
+		fi
+		ppm_width="${ppm_size%% *}"
+		ppm_height="${ppm_size#* }"
+		ppm_height="${ppm_height%% *}" # make sure nothing weird is trailing
+		img_left="$(( ( screen_width - ppm_width ) / 2  ))"
+		img_top="$(( ( screen_height - ppm_height ) / 2  ))"
+		# just checking if nothing too weird is set
+		if [ -n "$img_left" ] && [ -n "$img_top" ] \
+			&& [ "$img_left" -ge 0 ] && [ "$img_left" -lt 8096 ] \
+			&& [ "$img_top" -ge 0 ] && [ "$img_top" -lt 8096 ]; then
+			printf "IMG_TOP=%d\nIMG_LEFT=%d\n" \
+				"$img_top" "$img_left" \
+				> "$fbsplash_cfg"
+			fbsplash -b -i "$fbsplash_cfg" -s "$fbsplash_ppm" || MUTED_OUTPUT=
+		else
+			# otherwise just use top left and be done with it
+			fbsplash -b -s "$fbsplash_ppm" || MUTED_OUTPUT=
+		fi
