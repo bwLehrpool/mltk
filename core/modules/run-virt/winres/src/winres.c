@@ -689,7 +689,7 @@ static BOOL foobar(HMONITOR Arg1, HDC Arg2, LPRECT Arg3, LPARAM Arg4)
 {
 	MONITORINFOEXW info = { .cbSize = sizeof(info) };
 	if (GetMonitorInfoW(Arg1, (LPMONITORINFO)&info) == 0)
-		dalog("Minotirinfo FAILED for %d", (int)Arg1);
+		dalog("MonitorInfo FAILED for %d", (int)Arg1);
 	else {
 		dalog("MonitorInfo for %d:", (int)Arg1);
 		dalog("Flags: %d", (int)info.dwFlags);
@@ -727,55 +727,51 @@ static int setResWinMulti(struct resolution *res, int nres)
 	EnumDisplayMonitors(NULL, NULL, (MONITORENUMPROC)&foobar, 0);
 	dalog("End of monitor enum dump");
 	// XXX END DEBUG
-//	while (edd(NULL, devNum++, &ddev, 0)) {
-//		wlog(L"Have device %s (%s)", ddev.DeviceName, ddev.DeviceString);
-		DISPLAY_DEVICEW screen = { .cb = sizeof(screen) };
-		DWORD screenNum = 0;
-		while (edd(NULL /* ddev.DeviceName */, screenNum++, &screen, 0)) {
-			DEVMODEW mode = { .dmSize = sizeof(mode) };
-			int query = EnumDisplaySettingsW(screen.DeviceName, ENUM_CURRENT_SETTINGS, &mode);
-			if (query == 0) {
-				dalog("EnumDisplaySettings: Retrying with index 0");
-				query = EnumDisplaySettingsW(screen.DeviceName, 0, &mode);
-			}
-			mode.dmFields = 0;
-			if (query == 0) {
-				dalog("EnumDisplaySettings: Falling back to default values");
-				mode.dmFields |= DM_BITSPERPEL | DM_DISPLAYFREQUENCY;
-				mode.dmBitsPerPel = 32;
-				mode.dmDisplayFrequency = 60;
-			}
-			dwlog(L"%s (%s) currently %dx%d+%d+%d, %dHz, %dbpp (Query: %d)",
-					screen.DeviceName, screen.DeviceString,
-					mode.dmPelsWidth, mode.dmPelsHeight, mode.dmPosition.x, mode.dmPosition.y,
-					mode.dmDisplayFrequency, mode.dmBitsPerPel, query);
-			if (ires < nres) {
-				// Enable
-				mode.dmPelsWidth = res[ires].w;
-				mode.dmPelsHeight = res[ires].h;
-				mode.dmPosition.x = sx;
-				mode.dmPosition.y = 0;
-				sx += mode.dmPelsWidth;
-				mode.dmFields |= DM_PELSWIDTH | DM_PELSHEIGHT | DM_POSITION;
-			} else {
-				// Disable
-				mode.dmPelsWidth = mode.dmPelsHeight = 0;
-				mode.dmFields = DM_POSITION;
-			}
-			dwlog(L"New: %dx%d+%d+%d", mode.dmPelsWidth, mode.dmPelsHeight, mode.dmPosition.x, mode.dmPosition.y);
-			chret = cdsEx(screen.DeviceName, &mode, 0, (CDS_UPDATEREGISTRY | CDS_NORESET), NULL);
-			if (chret != DISP_CHANGE_SUCCESSFUL) {
-				dalog("Returned %d", chret);
-				ok = FALSE;
-			}
-			ires++;
-			screen = (DISPLAY_DEVICEW){ .cb = sizeof(DISPLAY_DEVICEW) };
+	DISPLAY_DEVICEW screen = { .cb = sizeof(screen) };
+	DWORD screenNum = 0;
+	while (edd(NULL /* ddev.DeviceName */, screenNum++, &screen, 0)) {
+		DEVMODEW mode = { .dmSize = sizeof(mode) };
+		int query = EnumDisplaySettingsW(screen.DeviceName, ENUM_CURRENT_SETTINGS, &mode);
+		if (query == 0) {
+			dalog("EnumDisplaySettings: Retrying with index 0");
+			query = EnumDisplaySettingsW(screen.DeviceName, 0, &mode);
 		}
-//		ddev = (DISPLAY_DEVICEW){ .cb = sizeof(DISPLAY_DEVICEW) };
-//	}
+		mode.dmFields = 0;
+		if (query == 0) {
+			dalog("EnumDisplaySettings: Falling back to default values");
+			mode.dmFields |= DM_BITSPERPEL | DM_DISPLAYFREQUENCY;
+			mode.dmBitsPerPel = 32;
+			mode.dmDisplayFrequency = 60;
+		}
+		dwlog(L"%s (%s) currently %dx%d+%d+%d, %dHz, %dbpp (Query: %d)",
+				screen.DeviceName, screen.DeviceString,
+				mode.dmPelsWidth, mode.dmPelsHeight, mode.dmPosition.x, mode.dmPosition.y,
+				mode.dmDisplayFrequency, mode.dmBitsPerPel, query);
+		if (ires < nres) {
+			// Enable
+			mode.dmPelsWidth = res[ires].w;
+			mode.dmPelsHeight = res[ires].h;
+			mode.dmPosition.x = sx;
+			mode.dmPosition.y = 0;
+			sx += mode.dmPelsWidth;
+			mode.dmFields |= DM_PELSWIDTH | DM_PELSHEIGHT | DM_POSITION;
+		} else {
+			// Disable
+			mode.dmPelsWidth = mode.dmPelsHeight = 0;
+			mode.dmFields = DM_POSITION;
+		}
+		dwlog(L"New: %dx%d+%d+%d", mode.dmPelsWidth, mode.dmPelsHeight, mode.dmPosition.x, mode.dmPosition.y);
+		chret = cdsEx(screen.DeviceName, &mode, 0, (CDS_UPDATEREGISTRY | CDS_NORESET), NULL);
+		if (chret != DISP_CHANGE_SUCCESSFUL) {
+			dalog("Returned %d", chret);
+			ok = FALSE;
+		}
+		ires++;
+		screen = (DISPLAY_DEVICEW){ .cb = sizeof(DISPLAY_DEVICEW) };
+	}
 	chret = cdsEx(NULL, NULL, NULL, 0, NULL);
 	if (chret != DISP_CHANGE_SUCCESSFUL || !ok) {
-		alog("Final multiscreen change display call failed: %d", chret);
+		dalog("Final multiscreen change display call failed: %d", chret);
 		return EAGAIN;
 	}
 	return ires >= nres ? 0 : EAGAIN; // Did we find enough (virtual) screens?

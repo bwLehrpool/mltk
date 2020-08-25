@@ -113,6 +113,9 @@ setup_virtual_floppy() {
 	if [ "$PLUGIN_ID" != "vmware" ] || [ "$DISPLAY_COUNT" -eq 1 ]; then
 		resolution="${RESOLUTIONS}"
 	fi
+	# Enable openslx.exe debug output if we're running in debug mode
+	local debug=
+	$DEBUG && debug=1
 
 	cat > "${FLOPPYDIR}/openslx.ini" <<-EOF
 	[openslx]
@@ -129,6 +132,7 @@ setup_virtual_floppy() {
 	muteSound=${MUTED}
 	noHomeWarn=${SHARE_NO_HOME_WARN}
 	runMode=${SLX_RUNMODE_MODULE}
+	debug=${debug}
 	
 	[remap]
 	documents=${SHARE_DOCUMENTS}
