@@ -806,59 +806,6 @@ static int setResWinLegacy(struct resolution *res, int nres)
 	return 0;
 }
 
-static void gfxReset()
-{
-	INPUT keys[8] = {
-		{
-			.type = INPUT_KEYBOARD,
-			.ki.dwFlags = 0,
-			.ki.wVk = VK_LWIN,
-		},
-		{
-			.type = INPUT_KEYBOARD,
-			.ki.dwFlags = 0,
-			.ki.wVk = VK_LSHIFT,
-		},
-		{
-			.type = INPUT_KEYBOARD,
-			.ki.dwFlags = 0,
-			.ki.wVk = VK_LCONTROL,
-		},
-		{
-			.type = INPUT_KEYBOARD,
-			.ki.dwFlags = 0,
-			.ki.wVk = VkKeyScanA('b') & 0xff,
-		},
-		// UP
-		{
-			.type = INPUT_KEYBOARD,
-			.ki.dwFlags = KEYEVENTF_KEYUP,
-			.ki.wVk = VkKeyScanA('b') & 0xff,
-		},
-		{
-			.type = INPUT_KEYBOARD,
-			.ki.dwFlags = KEYEVENTF_KEYUP,
-			.ki.wVk = VK_LWIN,
-		},
-		{
-			.type = INPUT_KEYBOARD,
-			.ki.dwFlags = KEYEVENTF_KEYUP,
-			.ki.wVk = VK_LSHIFT,
-		},
-		{
-			.type = INPUT_KEYBOARD,
-			.ki.dwFlags = KEYEVENTF_KEYUP,
-			.ki.wVk = VK_LCONTROL,
-		},
-	};
-	UINT ret = SendInput(8, keys, sizeof(INPUT));
-	if (ret == 0) {
-		dalog("SendInput failed: %d", (int)GetLastError());
-	} else {
-		Sleep(250);
-	}
-}
-
 static int setResVMware(struct resolution *res, int nres)
 {
 	static wchar_t path[MAX_PATH] = L"";
