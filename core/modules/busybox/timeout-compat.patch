@@ -1,0 +1,14 @@
+diff --git a/coreutils/timeout.c b/coreutils/timeout.c
+index 8b7bc2e..974854d 100644
+--- a/coreutils/timeout.c
++++ b/coreutils/timeout.c
+@@ -63,7 +63,7 @@ int timeout_main(int argc UNUSED_PARAM, char **argv)
+ 
+        /* -t SECONDS; -p PARENT_PID */
+        /* '+': stop at first non-option */
+-       getopt32(argv, "+s:" USE_FOR_NOMMU("p:+"), &opt_s, &parent);
++       getopt32(argv, "+s:" USE_FOR_NOMMU("p:+") "t", &opt_s, &parent);
+        /*argv += optind; - no, wait for bb_daemonize_or_rexec! */
+ 
+        signo = get_signum(opt_s);
+
