@@ -615,6 +615,8 @@ struct resolution {
 	long int w, h;
 };
 
+#define MAX_SCREENS (16)
+static int isResolutionFine(struct resolution *res, int nres);
 static int setResWinMulti(struct resolution *res, int nres);
 static int setResWinLegacy(struct resolution *res, int nres);
 static int setResVMware(struct resolution *res, int nres);
@@ -622,7 +624,7 @@ static int setResVMware(struct resolution *res, int nres);
 static int setResolution()
 {
 	static int nres = 0;
-	static struct resolution res[16];
+	static struct resolution res[MAX_SCREENS];
 	static int callCount = -1;
 	callCount++;
 	if (nres == -1 || callCount > 10) // We've been here before and consider config invalid, or are done
@@ -654,10 +656,14 @@ static int setResolution()
 		if (nres == 0) {
 			// Nothing found -- consider this success
 			nres = -1;
+			dalog("No resolution information in openslx.ini -- doing nothing");
 			return 0;
 		}
 	}
-	int ret;
+	int check, ret;
+	check = isResolutionFine(res, nres);
+	if (check == 0)
+		return 0; // Yay! Save the hassle.
 	switch (callCount % 3) {
 		case 0:
 			// Use WinAPI first
@@ -681,7 +687,63 @@ static int setResolution()
 			}
 			break;
 	}
-	return ret;
+	if (ret == 0 && check == ENOTSUP)
+		return 0; // Couldn't query, attempt to set didn't yield an error -> OK
+	return EAGAIN; // Otherwise, regardless of attempt's return value, call again,
+	// in which case isResolutionFine should yield success.
+}
+
+static int isResolutionFine(struct resolution *res, int nres)
+{
+	EDDTYPE edd = (EDDTYPE)GetProcAddress(hUser32, "EnumDisplayDevicesW");
+	if (edd == NULL) {
+		// Old Windows with no multiscreen support
+		DEVMODEW mode = { .dmSize = sizeof(mode) };
+		int query = EnumDisplaySettingsW(NULL, ENUM_CURRENT_SETTINGS, &mode);
+		if (query == 0) {
+			dalog("Could not query current resolution for old Windows.");
+			return ENOTSUP;
+		}
+		return res[0].w == mode.dmPelsWidth && res[0].h == mode.dmPelsHeight;
+	}
+	// Modern/multi-screen aware approach
+	DISPLAY_DEVICEW screen = { .cb = sizeof(screen) };
+	int offsets[MAX_SCREENS] = { 0 };
+	DWORD screenNum = 0;
+	// First make a list of expected offsets for our resolutions
+	for (int i = 1; i < nres; ++i) {
+		offsets[i] = offsets[i - 1] + res[i - 1].w;
+	}
+	while (edd(NULL, screenNum++, &screen, 0)) {
+		DEVMODEW mode = { .dmSize = sizeof(mode) };
+		int query = EnumDisplaySettingsW(screen.DeviceName, ENUM_CURRENT_SETTINGS, &mode);
+		if (query == 0 || mode.dmPelsWidth == 0)
+			continue; // Not active
+		// See if this screen matches any of the expected res+offset
+		BOOL found = FALSE;
+		for (int i = 0; i < nres; ++i) {
+			if (offsets[i] == mode.dmPosition.x
+					&& res[i].w == mode.dmPelsWidth && res[i].h == mode.dmPelsHeight) {
+				offsets[i] = -1; // Marker
+				found = TRUE;
+				break;
+			}
+		}
+		if (!found) {
+			dalog("Non-matching screen active (%dx%d @ %d)", mode.dmPelsWidth, mode.dmPelsHeight,
+					mode.dmPosition.x);
+			return EAGAIN;
+		}
+	}
+	// If all offsets are set to -1, everything matched up perfectly
+	for (int i = 0; i < nres; ++i) {
+		if (offsets[i] != -1) {
+			dalog("Expected screen %dx%d @ %d not found in active setup", res[i].w, res[i].h, offsets[i]);
+			return EAGAIN;
+		}
+	}
+	dalog("Current screen layout matches expected one");
+	return 0;
 }
 
 static BOOL foobar(HMONITOR Arg1, HDC Arg2, LPRECT Arg3, LPARAM Arg4)
@@ -709,14 +771,11 @@ static int setResWinMulti(struct resolution *res, int nres)
 {
 	if (hUser32 == NULL)
 		return ENOTSUP;
-	CDSTYPE cdsEx = NULL;
-	EDDTYPE edd = NULL;
-	cdsEx = (CDSTYPE)GetProcAddress(hUser32, "ChangeDisplaySettingsExW");
-	edd = (EDDTYPE)GetProcAddress(hUser32, "EnumDisplayDevicesW");
+	CDSTYPE cdsEx = (CDSTYPE)GetProcAddress(hUser32, "ChangeDisplaySettingsExW");
+	EDDTYPE edd = (EDDTYPE)GetProcAddress(hUser32, "EnumDisplayDevicesW");
 	if (cdsEx == NULL || edd == NULL)
 		return ENOTSUP;
 	DISPLAY_DEVICEW ddev = { .cb = sizeof(ddev) };
-	DWORD devNum = 0;
 	int ires = 0;
 	int chret;
 	long int sx = 0;
@@ -728,7 +787,7 @@ static int setResWinMulti(struct resolution *res, int nres)
 	// XXX END DEBUG
 	DISPLAY_DEVICEW screen = { .cb = sizeof(screen) };
 	DWORD screenNum = 0;
-	while (edd(NULL /* ddev.DeviceName */, screenNum++, &screen, 0)) {
+	while (edd(NULL, screenNum++, &screen, 0)) {
 		DEVMODEW mode = { .dmSize = sizeof(mode) };
 		int query = EnumDisplaySettingsW(screen.DeviceName, ENUM_CURRENT_SETTINGS, &mode);
 		if (query == 0) {
