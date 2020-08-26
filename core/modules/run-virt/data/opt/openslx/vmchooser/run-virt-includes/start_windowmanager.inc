@@ -7,10 +7,19 @@
 # using eg. vmware without a window manager.
 start_wm() {
 	# xfwm4 and metacity make the VM appear frozen after openslx.exe
-	# tries to change the resolution
+	# tries to change the resolution. for xfwm4 the fix is to disable
+	# composition. xfwm4 is better suited for mutli-screen. openbox
+	# sometimes puts both virtual screens on the same physical screen,
+	# vmware outright acts up if the window manager doesn't expose the
+	# _NET_WM_FULLSCREEN_MONITORS atom (which openbox doesn't).
+	if [ "$DISPLAY_COUNT" -gt 1 ]; then
+		set -- "$@" xfwm4 openbox
+	else
+		set -- "$@" openbox xfwm4
+	fi
 	local i dm
 	dm=
-	for i in "$@" openbox blackbox kwin; do
+	for i in "$@" blackbox kwin; do
 		if command -v "${i}" &> /dev/null ; then
 			dm="$i"
 			break
