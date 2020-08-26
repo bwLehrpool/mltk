@@ -105,14 +105,14 @@ main() {
 	$(safesource --exit "${RUN_VIRT_INCLUDE_DIR}/init_core.inc")
 	writelog "#################### Initialization ####################"
 
+	# Read vmchooser.conf, (generated) virtualization.conf and slx config files
+	$(safesource --exit "${RUN_VIRT_INCLUDE_DIR}/load_configs.inc")
+
 	# Declaration of hardware related variables
 	$(safesource --exit "${RUN_VIRT_INCLUDE_DIR}/set_runvirt_hardware_variables.inc")
 
 	# Window manager required early for user feedback through popups (e.g. errors) etc.
 	$(safesource "${RUN_VIRT_INCLUDE_DIR}/start_windowmanager.inc")
-
-	# Read vmchooser.conf, (generated) virtualization.conf and slx config files
-	$(safesource --exit "${RUN_VIRT_INCLUDE_DIR}/load_configs.inc")
 
 	# Read needed variables from XML file
 	$(safesource --exit "${RUN_VIRT_INCLUDE_DIR}/get_xml_file_variables.inc")
