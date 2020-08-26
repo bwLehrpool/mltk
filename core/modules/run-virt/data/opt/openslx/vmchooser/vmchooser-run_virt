@@ -105,6 +105,9 @@ main() {
 	$(safesource --exit "${RUN_VIRT_INCLUDE_DIR}/init_core.inc")
 	writelog "#################### Initialization ####################"
 
+	# Declaration of hardware related variables
+	$(safesource --exit "${RUN_VIRT_INCLUDE_DIR}/set_runvirt_hardware_variables.inc")
+
 	# Window manager required early for user feedback through popups (e.g. errors) etc.
 	$(safesource "${RUN_VIRT_INCLUDE_DIR}/start_windowmanager.inc")
 
@@ -116,9 +119,6 @@ main() {
 
 	# Download metadata from server (e.g. vmx for vmware)
 	$(safesource --exit "${RUN_VIRT_INCLUDE_DIR}/download_vm_metadata.inc")
-
-	# Declaration of hardware related variables
-	$(safesource --exit "${RUN_VIRT_INCLUDE_DIR}/set_runvirt_hardware_variables.inc")
 
 	# Try to use dnbd3 to access the image, nfs/cifs fallback
 	$(safesource --exit "${RUN_VIRT_INCLUDE_DIR}/setup_image_access.inc")
