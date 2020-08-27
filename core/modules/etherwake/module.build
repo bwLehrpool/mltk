@@ -15,7 +15,8 @@ build() {
 	cde "$MODULE_BUILD_DIR"
 
 	mkdir -p "${MODULE_BUILD_DIR}/etc/udev/rules.d"
-	sed "s,%ETHTOOL%,$(which ethtool)," "${MODULE_DIR}/templates/99-enable-wol.rules" > "${MODULE_BUILD_DIR}/etc/udev/rules.d/99-enable-wol.rules" \
+	sed "s,%ETHTOOL%,$(which ethtool)," "${MODULE_DIR}/templates/99-enable-wol-disable-pause.rules" \
+		> "${MODULE_BUILD_DIR}/etc/udev/rules.d/99-enable-wol-disable-pause.rules" \
 		|| perror "Cannot write udev rule to enable WOL"
 
 	local COPYLIST="list_dpkg_output"
