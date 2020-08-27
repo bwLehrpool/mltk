@@ -54,7 +54,7 @@ cleanup() {
 slxfdisk() {
 	local binary RET
 	for binary in "/opt/openslx/sbin/fdisk -u" "busybox fdisk -u" "fdisk"; do
-		$binary "$@" | sed -r 's/\s+[0-9]+,[0-9]+,[0-9]+\s+/ /g' # Work around busybox YET AGAIN changing something in an incompatible way
+		$binary "$@"
 		RET=$?
 		[ "$RET" = "127" ] && continue # command not found
 		[ "$RET" = "1" ] && [ "${binary%% *}" = "busybox" ] && continue # maybe applet not found
@@ -174,7 +174,7 @@ if ! slx-tools fs_path_isvolatile "/tmp/virt" ; then
 		fi
 		if [ "$ID44" = 0 ]; then
 			# slxfdisk fallback
-			for c in $(slxfdisk -l | grep -E '[0-9]+[\-\+]?\s+44\s+' | awk '{print $1}'); do
+			for c in $(slxfdisk -l | grep -E '[0-9]+[\-\+MG]?\s+44\s+' | awk '{print $1}'); do
 				val=$(blockdev --getsize64 "$c")
 				[ -z "$val" ] && continue
 				[ "$val" -gt "$ID44" ] && ID44=$val
@@ -196,7 +196,7 @@ for disk in /dev/disk/by-path/!(*-part*|*-usb-*); do
 	[ -L "$disk" ] || continue
 	disk="$( readlink -f "$disk" )"
 	DISKS+=("$disk")
-	slxfdisk -l "$disk"
+	slxfdisk -l "$disk" | sed -r 's/\s+[0-9]+,[0-9]+,[0-9]+\s/ /g' # Work around busybox YET AGAIN changing something in an incompatible way
 done > "$FDISK"
 shopt -u extglob
 [ -z "$SLX_SMARTCTL_MIN_REALLOC" ] && SLX_SMARTCTL_MIN_REALLOC=0
