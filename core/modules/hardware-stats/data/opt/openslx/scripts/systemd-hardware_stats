@@ -54,7 +54,7 @@ cleanup() {
 slxfdisk() {
 	local binary RET
 	for binary in "/opt/openslx/sbin/fdisk -u" "busybox fdisk -u" "fdisk"; do
-		$binary "$@"
+		$binary "$@" | sed -r 's/\s+[0-9]+,[0-9]+,[0-9]+\s+/ /g' # Work around busybox YET AGAIN changing something in an incompatible way
 		RET=$?
 		[ "$RET" = "127" ] && continue # command not found
 		[ "$RET" = "1" ] && [ "${binary%% *}" = "busybox" ] && continue # maybe applet not found
