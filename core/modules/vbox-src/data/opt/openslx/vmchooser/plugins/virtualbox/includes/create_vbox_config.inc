@@ -21,6 +21,7 @@ create_vbox_config() {
 			<ExtraDataItem name="GUI/UpdateDate" value="never"/>
 			<ExtraDataItem name="GUI/SuppressMessages" value=",remindAboutAutoCapture,confirmInputCapture,remindAboutWrongColorDepth,confirmGoingFullscreen,remindAboutMouseIntegrationOn,remindAboutMouseIntegrationOff,showRuntimeError.warning.DevATA_DISKFULL,remindAboutPausedVMInput,confirmVMReset,showRuntimeError.warning.HostAudioNotResponding,showRuntimeError.warning.ExtPackNoEhci,remindAboutMouseIntegration"/>
 			<ExtraDataItem name="GUI/TrayIcon/Enabled" value="false"/>
+			<ExtraDataItem name="GUI/ShowMiniToolBar" value="false"/>
 		</ExtraData>
 		<MachineRegistry>
 			<MachineEntry uuid="{${MACHINE_UUID}}" src="Machines/${VM_CLEANNAME}/${VM_CLEANNAME}.xml"/>
