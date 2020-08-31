@@ -196,7 +196,7 @@ for disk in /dev/disk/by-path/!(*-part*|*-usb-*); do
 	[ -L "$disk" ] || continue
 	disk="$( readlink -f "$disk" )"
 	DISKS+=("$disk")
-	slxfdisk -l "$disk" | sed -r 's/\s+[0-9]+,[0-9]+,[0-9]+/ /g;s/\s[0-9]+\.?[0-9]+[MGT]\s/ /;s/^Units: /Units =foo= /' # Work around busybox YET AGAIN changing something in an incompatible way
+	slxfdisk -l "$disk" | sed -r 's/\s+[0-9]+,[0-9]+,[0-9]+/ /g;/^\// s/\s[0-9]+\.?[0-9]+[MGT]\s/ /;s/^Units: /Units =foo= /' # Work around busybox YET AGAIN changing something in an incompatible way
 done > "$FDISK"
 shopt -u extglob
 [ -z "$SLX_SMARTCTL_MIN_REALLOC" ] && SLX_SMARTCTL_MIN_REALLOC=0
