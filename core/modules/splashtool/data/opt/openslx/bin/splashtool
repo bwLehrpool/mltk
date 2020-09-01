@@ -56,7 +56,6 @@ draw () {
 	local img_top="$2"
 	shift 3
 	# See ift's an actual file
-	[ -s "${ppm}.gz" ] && ppm="${ppm}.gz"
 	if ! [ -s "$ppm" ]; then
 		echo "$ppm not found" >&2
 		exit 1
@@ -118,6 +117,9 @@ if [ "$count" -gt 0 ]; then
 else
 	# Normal mode
 	# getimgsize
+	if ! [ -s "${ppm}" ]; then
+		ppm="${ppm}.gz"
+	fi
 	if [ "${ppm%.gz}" != "${ppm}" ]; then
 		ppm_size="$(zcat "$ppm" | sed -n 2p)"
 	else
