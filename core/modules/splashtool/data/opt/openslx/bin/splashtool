@@ -34,7 +34,15 @@ shift
 if [ "$mode" = "reset" ]; then
 	base="$ppm/inactive"
 elif [ "$mode" = "icon" ]; then
-	base="$( dirname "$( dirname "$ppm" )" )/inactive"
+	base="${base%/*}"
+	base="${base%/*}"
+	base="${base:-.}/inactive"
+	globname() (
+		IFS=
+		set -- $1
+		printf "%s" "$1"
+	)
+	ppm="$( globname "$ppm" )"
 fi
 
 if [ -n "$base" ]; then
@@ -133,7 +141,7 @@ else
 	ppm_height="${ppm_size#* }"
 	ppm_height="${ppm_height%% *}" # make sure nothing weird is trailing
 	# pos
-	imf_left=0
+	img_left=0
 	img_top=0
 	case "$mode" in
 		center|tr|br) img_left="$(( screen_width - ppm_width ))" ;;
