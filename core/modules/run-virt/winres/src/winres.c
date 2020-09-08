@@ -610,6 +610,8 @@ static void setPowerState()
 
 typedef LONG (WINAPI *CDSTYPE)(LPCWSTR, PDEVMODEW, HWND, DWORD, LPVOID);
 typedef BOOL (WINAPI *EDDTYPE)(LPCWSTR, DWORD, PDISPLAY_DEVICEW, DWORD);
+typedef BOOL (WINAPI *EDMTYPE)(HDC, LPCRECT, MONITORENUMPROC, LPARAM);
+typedef BOOL (WINAPI *GMITYPE)(HMONITOR, LPMONITORINFO);
 
 struct resolution {
 	long int w, h;
@@ -748,8 +750,11 @@ static int isResolutionFine(struct resolution *res, int nres)
 
 static BOOL foobar(HMONITOR Arg1, HDC Arg2, LPRECT Arg3, LPARAM Arg4)
 {
+	GMITYPE gmi = (GMITYPE)GetProcAddress(hUser32, "GetMonitorInfoW");
+	if (gmi == NULL)
+		return FALSE;
 	MONITORINFOEXW info = { .cbSize = sizeof(info) };
-	if (GetMonitorInfoW(Arg1, (LPMONITORINFO)&info) == 0)
+	if (gmi(Arg1, (LPMONITORINFO)&info) == 0)
 		dalog("MonitorInfo FAILED for %d", (int)Arg1);
 	else {
 		dalog("MonitorInfo for %d:", (int)Arg1);
@@ -782,8 +787,11 @@ static int setResWinMulti(struct resolution *res, int nres)
 	BOOL ok = TRUE;
 	dalog("WinAPI multiscreen");
 	// XXX Debug
-	EnumDisplayMonitors(NULL, NULL, (MONITORENUMPROC)&foobar, 0);
-	dalog("End of monitor enum dump");
+	EDMTYPE edm = (EDMTYPE)GetProcAddress(hUser32, "EnumDisplayMonitors");
+	if (edm != NULL) {
+		edm(NULL, NULL, (MONITORENUMPROC)&foobar, 0);
+		dalog("End of monitor enum dump");
+	}
 	// XXX END DEBUG
 	DISPLAY_DEVICEW screen = { .cb = sizeof(screen) };
 	DWORD screenNum = 0;
