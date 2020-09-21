@@ -32,6 +32,12 @@ cat > /etc/lightdm/qt-lightdm-greeter.conf.d/13-loginrpc.conf <<END
 rpc-port = 7551
 END
 
+# Currently the zaphod head solution on intel can create a mysterious
+# problem where the cursor turns into an X and everything stops working
+# disable any warnings and just let the screen enter standby
+exit 0
+
+# DISABLED BELOW
 [ "$driver" = "intel" ] || exit 0 # Currently only intel supports zaphod head split
 
 # Enable the dual-screen setup
