@@ -52,6 +52,7 @@ disksize () {
 	fi
 }
 
+DNBD3_PORT=5003
 # Creates the DNBD3 server configuration under DNBD3_CONF_DIR
 DNBD3_CONF_DIR="/etc/dnbd3-server"
 if ! mkdir -p "${DNBD3_CONF_DIR}"; then
@@ -226,7 +227,6 @@ EOF
 
 fi
 
-DNBD3_PORT=5003
 rm -f "${DNBD3_CONF_DIR}/server.conf"
 # Refer to http://git.openslx.org/dnbd3.git/tree/conf for configuration options
 cat << EOF > "${DNBD3_CONF_DIR}/server.conf"
