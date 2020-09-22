@@ -141,13 +141,13 @@ MACADDRSUFFIX="$( printf "%s" "$HOSTMACADDR" | awk -F ":" '{print "%VMID%:" $(NF
 	j=0
 	for CDROM in $(dmesg|grep -i "Attached scsi CD-ROM sr" | sed "s,.*Attached scsi CD-ROM ,,"); do
 		echo "CDROM_${j}=/dev/${CDROM}"
-		j="$( j + 1 )"
+		j="$(( j + 1 ))"
 	done
 
 	j=0
 	for FLOPPY in $(dmesg|grep -i "Floppy drive"|sed "s,.*(s): ,,;s, is .*,,"); do
 		echo "FLOPPY_${j}=/dev/${FLOPPY}"
-		j="$( j + 1 )"
+		j="$(( j + 1 ))"
 	done
 
 	# Serial ports
