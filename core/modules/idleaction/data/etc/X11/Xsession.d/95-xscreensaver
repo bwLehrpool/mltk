@@ -1,6 +1,6 @@
 #!/bin/ash
 
-if which xscreensaver; then
+if command -v xscreensaver; then
 	DPMS=False
 	AUTOLOCK=True
 	secsToTime() {
@@ -16,6 +16,10 @@ if which xscreensaver; then
 	. /opt/openslx/config
 	SBY="${SLX_SCREEN_STANDBY_TIMEOUT}"
 	SVR="${SLX_SCREEN_SAVER_TIMEOUT}"
+	if [ -n "${SLX_REMOTE_VNC}" ]; then
+		# TODO Remove after 2021-07-01, variables should be set by slx-admin
+		SVR=0
+	fi
 	if [ -n "${SLX_EXAM}" ]; then
 		SLX_SCREEN_SAVER_GRACE_TIME=
 		AUTOLOCK=False
@@ -72,8 +76,13 @@ programs:     /opt/openslx/bin/bwlp-screensaver
 selected:     0
 EOF
 	(
-	# HACK: This prevents xscreensaver from ever locking
-	[ -n "$SLX_EXAM" ] && export RUNNING_UNDER_GDM="not really but yea"
+	# HACK: This env vars prevent xscreensaver from ever locking
+	# Only one would be needed but set both in case one of them
+	# gets removed in the future.
+	if [ -n "$SLX_EXAM" ]; then
+		export RUNNING_UNDER_GDM="not really but yea"
+		export WAYLAND_DISPLAY="none, haha"
+	fi
 	xscreensaver -no-splash &
 	)
 fi
