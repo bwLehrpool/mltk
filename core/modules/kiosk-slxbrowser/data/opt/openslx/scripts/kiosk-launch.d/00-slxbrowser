@@ -1,8 +1,6 @@
 #!/bin/bash
 # ^ sourced!
 
-export PATH=$PATH:/opt/openslx/sbin:/opt/openslx/bin
-
 command -v slxbrowser || return 0
 
 OPTS=()

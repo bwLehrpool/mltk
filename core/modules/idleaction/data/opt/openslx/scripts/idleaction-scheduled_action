@@ -1,6 +1,7 @@
 #!/bin/ash
 
-export PATH="$PATH:/opt/openslx/bin:/opt/openslx/sbin"
+# Called via mgmt SSH so PATH might be wrong!
+export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/openslx/sbin:/opt/openslx/bin"
 
 if ! touch "/run"; then
 	echo "Only root can call this" >&2

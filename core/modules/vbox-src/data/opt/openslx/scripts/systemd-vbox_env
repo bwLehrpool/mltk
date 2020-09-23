@@ -16,8 +16,6 @@
 #    - This is the preparation script for the configuration of VirtualBox.
 ################################################################################
 
-export PATH="$PATH":/opt/openslx/bin:/opt/openslx/sbin
-
 ## sanity checks
 VBOX_BASE_DIR="/usr/lib/virtualbox"
 VBOX_KMOD_DIR="/lib/modules/vbox"

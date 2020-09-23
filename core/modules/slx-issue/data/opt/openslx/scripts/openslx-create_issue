@@ -17,8 +17,6 @@
 # First script for initial ramfs for OpenSLX linux stateless clients
 #############################################################################
 
-export PATH="$PATH:/opt/openslx/bin:/opt/openslx/sbin"
-
 # Set greeting and add information about the booted system
 
 mkdir -p /run/openslx

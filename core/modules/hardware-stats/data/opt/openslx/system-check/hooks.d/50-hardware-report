@@ -1,7 +1,5 @@
 #!/bin/ash
 
-export PATH=$PATH:/opt/openslx/sbin:/opt/openslx/bin
-
 . /opt/openslx/config
 
 disable_remote_logging() {

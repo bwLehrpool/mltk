@@ -2,8 +2,6 @@
 
 . /opt/openslx/config || exit 1
 
-export PATH="$PATH:/opt/openslx/sbin:/opt/openslx/bin"
-
 [ -z "$SLX_VM_NFS" ] && exit 0
 
 # create target directory

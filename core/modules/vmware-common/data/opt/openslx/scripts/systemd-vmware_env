@@ -17,8 +17,6 @@
 #			VMware modules and services
 ################################################################################
 
-export PATH="$PATH:/opt/openslx/sbin:/opt/openslx/bin"
-
 VMWARE_CONF_DIR=/opt/openslx/vmchooser/vmware
 VMCHOOSER_CONF_DIR=/opt/openslx/vmchooser/config
 

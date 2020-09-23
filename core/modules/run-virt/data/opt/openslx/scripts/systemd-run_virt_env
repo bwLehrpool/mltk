@@ -23,8 +23,6 @@
 ### Define default dirs / get configs
 ################################################################################
 
-export PATH=$PATH:/opt/openslx/bin:/opt/openslx/sbin
-
 # source config file with vars (e.g. ipaddr, macaddr, HOSTNAME)
 . /opt/openslx/config
 

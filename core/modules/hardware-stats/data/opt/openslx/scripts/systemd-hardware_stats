@@ -8,8 +8,6 @@
 export LANG=C
 export LC_ALL=C
 
-export PATH=$PATH:/opt/openslx/sbin:/opt/openslx/bin
-
 touch "/tmp/hw-delete-list" || exit 10
 chmod 0600 "/tmp/hw-delete-list" || exit 11
 echo -n "" > "/tmp/hw-delete-list" || exit 12

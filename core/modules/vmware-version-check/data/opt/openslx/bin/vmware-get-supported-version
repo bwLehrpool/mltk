@@ -3,8 +3,6 @@
 # * Intel: check for "VMX Unrestricted Guest" CPU flag
 # * AMD:   check if CPU family is Bulldozer or newer
 
-export PATH=$PATH:/opt/openslx/sbin:/opt/openslx/bin
-
 VIRTTYPE=$(grep -m1 '^flags\s*:' /proc/cpuinfo | grep -wo -e svm -e vmx)
 
 if [ -z "$VIRTTYPE" ]; then
