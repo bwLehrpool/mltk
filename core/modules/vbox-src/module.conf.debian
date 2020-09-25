@@ -2,6 +2,7 @@ REQUIRED_INSTALLED_PACKAGES="
 	kbuild
 	iasl
 	makeself
+	nasm
 	genisoimage
 	libcurl4-openssl-dev
 	libcap-dev
