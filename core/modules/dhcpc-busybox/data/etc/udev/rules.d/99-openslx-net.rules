@@ -1,1 +1,1 @@
-ACTION=="add", SUBSYSTEM=="net", KERNEL=="br0", TAG+="systemd", ENV{SYSTEMD_ALIAS}="/sys/subsystem/net/devices/$name", ENV{SYSTEMD_WANTS}="network-interface@$name.service"
+ACTION=="add", SUBSYSTEM=="net", KERNEL=="br0|br-nic-*", TAG+="systemd", ENV{SYSTEMD_ALIAS}="/sys/subsystem/net/devices/$name", ENV{SYSTEMD_WANTS}="network-interface@$name.service"
