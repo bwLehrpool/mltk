@@ -33,7 +33,7 @@ start_wm() {
 	fi
 
 	# If it's the same, do nothing
-	is_wm_runnning "${dm}" && return 0
+	is_wm_running "${dm}" && return 0
 
 	# start DM determined above
 	declare -a OPTS=()
