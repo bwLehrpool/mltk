@@ -4,6 +4,9 @@
 
 [ -n "$SLX_REMOTE_VNC" ] || exit 0 # Nothing to do
 
+# Disable all input drivers
+cp "/opt/openslx/remote-access/xorg-noinput.conf" "/etc/X11/xorg.conf.d/16-remote-access-noinput.conf"
+
 # Find connected output, get driver for according card
 driver=
 fallback=
@@ -41,7 +44,7 @@ exit 0
 [ "$driver" = "intel" ] || exit 0 # Currently only intel supports zaphod head split
 
 # Enable the dual-screen setup
-sed "s/%DRIVER%/$driver/g" "/opt/openslx/remote-access/xorg.conf" > "/etc/X11/xorg.conf.d/16-remote-access.conf"
+sed "s/%DRIVER%/$driver/g" "/opt/openslx/remote-access/xorg-zaphod.conf" > "/etc/X11/xorg.conf.d/16-remote-access-zaphod.conf"
 
 # Force :0.0 usage
 
