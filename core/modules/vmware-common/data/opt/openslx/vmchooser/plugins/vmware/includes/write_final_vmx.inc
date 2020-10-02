@@ -88,11 +88,15 @@ setup_floppies() {
 		floppy0.fileType = "device"
 	HEREEND
 	if [ -b "$FLOPPY_0" ]; then
-		floppy0.autodetect = "FALSE"
-		floppy0.fileName = "$FLOPPY_0"
+		cat <<-HEREEND
+			floppy0.autodetect = "FALSE"
+			floppy0.fileName = "$FLOPPY_0"
+		HEREEND
 	else
-		floppy0.autodetect = "TRUE"
-		floppy0.fileName = "auto detect"
+		cat <<-HEREEND
+			floppy0.autodetect = "TRUE"
+			floppy0.fileName = "auto detect"
+		HEREEND
 	fi
 	cat <<-HEREEND
 		floppy1.present = "$SLX_FLOPPY"
