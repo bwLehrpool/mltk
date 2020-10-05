@@ -23,10 +23,16 @@
 	passwd="$( < /dev/urandom  tr -c -d 'a-zA-Z0-9#&/=()[]{}' | dd bs=8 count=1 status=none )"
 	printf "%s" "$passwd" > "/tmp/vnc-passwd"
 	url="http://${SLX_PXE_SERVER_IP}/slx-admin/api.php?do=remoteaccess"
-	curl -L --retry 4 --retry-connrefused --max-time 3 --retry-max-time 10 \
-		--data-urlencode "password=$passwd" "$url"
-	killall x11vnc
+	curl -s -S -L --retry 4 --retry-connrefused --max-time 3 --retry-max-time 10 \
+		--data-urlencode "password=$passwd" "$url" > /dev/null
 	(
+		# Make a copy of xauth, so if the xserver restarts, we'll use the old one and fail to connect
+		if [ -n "$XAUTHORITY" ]; then
+			copy="$( mktemp )"
+			cat "$XAUTHORITY" > "$copy"
+			export XAUTHORITY="$copy"
+			trap 'rm -f -- "$copy"' EXIT INT TERM
+		fi
 		fails=0
 		while true; do
 			s="$( date +%s )"
