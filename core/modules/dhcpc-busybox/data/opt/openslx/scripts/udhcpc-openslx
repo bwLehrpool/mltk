@@ -33,7 +33,20 @@ rebuild_resolv_conf () {
 	[ "x$(readlink "/etc/resolv.conf")" == "x${RESOLV_CONF}" ] || return 0
 	# Maybe make this smarter some time, if anyone is using clients that are on multiple networks at once etc...
 	# This is a little braindead but should work most of the time
-	sort -u /run/network/*.resolv > "$RESOLV_CONF" 2> /dev/null
+	# See man resolv.conf -> only the last "search" line is valid, thus we merge them
+	sort -u /run/network/*.resolv \
+		| awk '{
+			if ( $1 == "search" )
+				search[++idx] = $2
+			else
+				print $0
+			}
+			END {
+				printf "%s", "search"
+				for (s in search)
+					printf " %s", search[s]
+			}' \
+		> "$RESOLV_CONF" 2> /dev/null
 
 	# add support for resolv.conf update scripts // see man(8) resolvconf
 	for s in /etc/resolvconf/update.d/*.sh; do
