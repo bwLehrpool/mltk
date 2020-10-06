@@ -20,10 +20,11 @@ disable_magic_keys() {
 }
 
 change_loginscreen() {
+	mkdir -o "/etc/lightdm/qt-lightdm-greeter.conf.d"
 	cat > "/etc/lightdm/qt-lightdm-greeter.conf.d/99-exam-mode.conf" <<EOF
 [General]
 greeter-background-gradient = FFB22C FFB22C
-greeter-background =
+greeter-background-image =
 EOF
 	/opt/openslx/scripts/lightdm-patch_logo "Prüfungsmodus" '#888687'
 }
