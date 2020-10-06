@@ -20,9 +20,12 @@ disable_magic_keys() {
 }
 
 change_loginscreen() {
-	local CF="/etc/lightdm/qt-lightdm-greeter.conf"
-	sed -r -i '/^greeter-background/d;s:(^greeter-banner-image=).*$:\1/opt/openslx/lightdm/bwlp-banner-exam.svg:' "$CF"
-	echo "greeter-background-gradient=FFB22C FFB22C" >> "$CF"
+	cat > "/etc/lightdm/qt-lightdm-greeter.conf.d/99-exam-mode.conf" <<EOF
+[General]
+greeter-background-gradient = FFB22C FFB22C
+greeter-background =
+EOF
+	/opt/openslx/scripts/lightdm-patch_logo "Prüfungsmodus" '#888687'
 }
 
 systemd_config() {

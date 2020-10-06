@@ -7,6 +7,8 @@
 # Disable all input drivers
 cp "/opt/openslx/remote-access/xorg-noinput.conf" "/etc/X11/xorg.conf.d/16-remote-access-noinput.conf"
 
+/opt/openslx/scripts/lightdm-patch_logo "Fernzugriff" '#555555'
+
 # Find connected output, get driver for according card
 driver=
 fallback=

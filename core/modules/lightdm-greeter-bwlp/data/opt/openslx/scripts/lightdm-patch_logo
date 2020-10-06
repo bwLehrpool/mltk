@@ -1,0 +1,15 @@
+#!/bin/ash
+
+text="$1"
+color=
+if [ -n "$2" ]; then
+	color=";s:#[0-9a-f][0-9a-f][0-9a-f][0-9a-f]*:${2}:gI"
+fi
+
+text="${text//</}"
+text="${text//>/}"
+text="${text//:/}"
+text="${text//'"'/}"
+
+# Add text to bwLehrpool logo
+sed -i "s:<!--SUBTITLE-->:${text}:${color}" '/opt/openslx/lightdm/bwlp-banner.svg'
