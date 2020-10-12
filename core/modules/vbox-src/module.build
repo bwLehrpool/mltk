@@ -3,8 +3,11 @@ fetch_source() {
 	[ -d "${MODULE_WORK_DIR}/src" ] && rm -rf "${MODULE_WORK_DIR}/src"
 	[ -z "${REQUIRED_VBOX_VERSION}" ] && perror "REQUIRED_VBOX_VERSION is not set!"
 
+	local BASEVER="${REQUIRED_VBOX_VERSION}"
+	# In case we have something like 1.2.3a, we need 1.2.3 for the directory name below
+	[[ "${BASEVER: -1}" =~ ^[0-9]$ ]] || BASEVER="${BASEVER:0:-1}"
 	local BASE_URL="http://download.virtualbox.org/virtualbox"
-	local DOWNLOAD_URL="${BASE_URL}/${REQUIRED_VBOX_VERSION}/VirtualBox-${REQUIRED_VBOX_VERSION}.tar.bz2"
+	local DOWNLOAD_URL="${BASE_URL}/${BASEVER}/VirtualBox-${REQUIRED_VBOX_VERSION}.tar.bz2"
 	download_untar "$DOWNLOAD_URL" "${MODULE_WORK_DIR}/src" || \
 		perror "Could not download_untar '$DOWNLOAD_URL' to '${MODULE_WORK_DIR}/src'."
 
@@ -32,12 +35,14 @@ build() {
 		--out-path="${VBOX_BUILD_DIR}"	\
 			|| perror "'configure' failed."
 
-	# the configure script should have created a file called 'env.sh'
-	source "${VBOX_BUILD_DIR}/env.sh" || perror "Failed to source '${VBOX_BUILD_DIR}/env.sh'."
-	# copy the LocalConfig.kmk to the build dir to be more LSB-compliant
-	cp "${MODULE_DIR}/LocalConfig.kmk" "${VBOX_BUILD_DIR}" || \
-		perror "Failed to cp LocalConfig.kmk to build dir"
-	kmk all || perror "Failed to execute 'kmk'."
+	(
+		# the configure script should have created a file called 'env.sh'
+		source "${VBOX_BUILD_DIR}/env.sh" || perror "Failed to source '${VBOX_BUILD_DIR}/env.sh'."
+		# copy the LocalConfig.kmk to the build dir to be more LSB-compliant
+		cp "${MODULE_DIR}/LocalConfig.kmk" "${VBOX_BUILD_DIR}" || \
+			perror "Failed to cp LocalConfig.kmk to build dir"
+		kmk all || perror "Failed to execute 'kmk'."
+	) || perror "Failed"
 
 	# check the generated build directory, use BUILD_PLATFORM_ARCH defined in env.sh
 	local VBOX_RELEASE_BUILD_DIR="${VBOX_BUILD_DIR}/linux.${BUILD_PLATFORM_ARCH}/release"
@@ -71,7 +76,7 @@ build() {
 	# check they were, in fact, built and copy them to build dir
 	mkdir -p "${MODULE_BUILD_DIR}/lib/modules/vbox" || \
 		perror "Failed to mkdir '${MODULE_BUILD_DIR}/lib/modules/vbox'."
-	for MOD in $(find * -maxdepth 0 -type d); do
+	for MOD in $(find ./* -maxdepth 0 -type d); do
 		[ -e "$MOD.ko" ] || perror "Module '$MOD' was not built!"
 		cp "$MOD.ko" "${MODULE_BUILD_DIR}/lib/modules/vbox/" || \
 			perror "Failed to cp $MOD.ko to '${MODULE_BUILD_DIR}/lib/modules/vbox/'."
@@ -87,7 +92,7 @@ build() {
 
 	# od binary
 	local OD_BIN="$(which od 2>/dev/null)"
-	if [ -n "$OD_BIN" -a -e "$OD_BIN" ]; then
+	if [ -n "$OD_BIN" ] && [ -f "$OD_BIN" ]; then
 		tarcopy "$OD_BIN" "$MODULE_BUILD_DIR"
 	fi
 }
