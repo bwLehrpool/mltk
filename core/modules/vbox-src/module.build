@@ -45,59 +45,59 @@ build() {
 		cp "${MODULE_DIR}/LocalConfig.kmk" "${VBOX_BUILD_DIR}" || \
 			perror "Failed to cp LocalConfig.kmk to build dir"
 		kmk all || perror "Failed to execute 'kmk'."
-	) || perror "Failed"
 
-	# check the generated build directory, use BUILD_PLATFORM_ARCH defined in env.sh
-	local VBOX_RELEASE_BUILD_DIR="${VBOX_BUILD_DIR}/linux.${BUILD_PLATFORM_ARCH}/release"
-	[ -d "${VBOX_RELEASE_BUILD_DIR}" ] || \
-		perror "No release build dir found under '${VBOX_RELEASE_BUILD_DIR}'. Build failed?"
+		# check the generated build directory, use BUILD_PLATFORM_ARCH defined in env.sh
+		local VBOX_RELEASE_BUILD_DIR="${VBOX_BUILD_DIR}/linux.${BUILD_PLATFORM_ARCH}/release"
+		[ -d "${VBOX_RELEASE_BUILD_DIR}" ] || \
+			perror "No release build dir found under '${VBOX_RELEASE_BUILD_DIR}'. Build failed?"
 
-	# the resulting linux.<arch>/release/bin folder contains the whole build,
-	# copy it over to usr/lib/virtualbox
-	mkdir -p "${MODULE_BUILD_DIR}/usr/lib/virtualbox" || \
-		perror "Failed to mkdir '${MODULE_BUILD_DIR}/usr/lib/virtualbox'."
-	cp -r "${VBOX_RELEASE_BUILD_DIR}/bin/"* "${MODULE_BUILD_DIR}/usr/lib/virtualbox" || \
-		perror "Failed to cp -r '${VBOX_RELEASE_BUILD_DIR}/bin' to '${MODULE_BUILD_DIR}/usr/lib/virtualbox'."
+		# the resulting linux.<arch>/release/bin folder contains the whole build,
+		# copy it over to usr/lib/virtualbox
+		mkdir -p "${MODULE_BUILD_DIR}/usr/lib/virtualbox" || \
+			perror "Failed to mkdir '${MODULE_BUILD_DIR}/usr/lib/virtualbox'."
+		cp -r "${VBOX_RELEASE_BUILD_DIR}/bin/"* "${MODULE_BUILD_DIR}/usr/lib/virtualbox" || \
+			perror "Failed to cp -r '${VBOX_RELEASE_BUILD_DIR}/bin' to '${MODULE_BUILD_DIR}/usr/lib/virtualbox'."
 
-	# set suid bits
-	for BIN in VBoxHeadless VBoxNetAdpCtl VBoxNetDHCP VBoxSDL VBoxVolInfo VirtualBox VBoxNetAdpCtl VirtualBoxVM; do
-		if ! [ -e "${MODULE_BUILD_DIR}/usr/lib/virtualbox/$BIN" ]; then
-			pwarning "No such file: '${MODULE_BUILD_DIR}/usr/lib/virtualbox/$BIN', cannot add suid bit."
-			continue
+		# set suid bits
+		for BIN in VBoxHeadless VBoxNetAdpCtl VBoxNetDHCP VBoxSDL VBoxVolInfo VirtualBox VBoxNetAdpCtl VirtualBoxVM; do
+			if ! [ -e "${MODULE_BUILD_DIR}/usr/lib/virtualbox/$BIN" ]; then
+				pwarning "No such file: '${MODULE_BUILD_DIR}/usr/lib/virtualbox/$BIN', cannot add suid bit."
+				continue
+			fi
+			chmod u+s "${MODULE_BUILD_DIR}/usr/lib/virtualbox/${BIN}" || perror "Failed to set suid bit on '${BIN}'."
+		done
+
+		## Kernel modules
+		# build kernel modules from the release dir
+		cd "${VBOX_RELEASE_BUILD_DIR}/bin/src" || \
+			perror "Failed to cd to '${VBOX_RELEASE_BUILD_DIR}/bin/src'."
+		make \
+			KERN_DIR="${KERNEL_HEADERS_DIR}" \
+			KERN_VER="${TARGET_KERNEL_LONG}" \
+				|| perror "Build kernel modules failed."
+		# check they were, in fact, built and copy them to build dir
+		mkdir -p "${MODULE_BUILD_DIR}/lib/modules/vbox" || \
+			perror "Failed to mkdir '${MODULE_BUILD_DIR}/lib/modules/vbox'."
+		for MOD in $(find ./* -maxdepth 0 -type d); do
+			[ -e "$MOD.ko" ] || perror "Module '$MOD' was not built!"
+			cp "$MOD.ko" "${MODULE_BUILD_DIR}/lib/modules/vbox/" || \
+				perror "Failed to cp $MOD.ko to '${MODULE_BUILD_DIR}/lib/modules/vbox/'."
+		done
+
+		# finally copy the extension pack files, everthing is needed as the subfolders
+		# target the guest architectures and not that of the host!
+		local VBOX_EXTPACK_DIR="${MODULE_BUILD_DIR}/usr/lib/virtualbox/ExtensionPacks/Oracle_VM_VirtualBox_Extension_Pack"
+		cp -ar "${MODULE_WORK_DIR}/extpack" "${VBOX_EXTPACK_DIR}" || \
+			perror "Failed to cp '${MODULE_WORK_DIR}/extpack' to '${VBOX_EXTPACK_DIR}'."
+		chown -R root:root "${VBOX_EXTPACK_DIR}" || \
+			perror "Failed to chown '${VBOX_EXTPACK_DIR}' to root:root."
+
+		# od binary
+		local OD_BIN="$(which od 2>/dev/null)"
+		if [ -n "$OD_BIN" ] && [ -f "$OD_BIN" ]; then
+			tarcopy "$OD_BIN" "$MODULE_BUILD_DIR"
 		fi
-		chmod u+s "${MODULE_BUILD_DIR}/usr/lib/virtualbox/${BIN}" || perror "Failed to set suid bit on '${BIN}'."
-	done
-
-	## Kernel modules
-	# build kernel modules from the release dir
-	cd "${VBOX_RELEASE_BUILD_DIR}/bin/src" || \
-		perror "Failed to cd to '${VBOX_RELEASE_BUILD_DIR}/bin/src'."
-	make \
-		KERN_DIR="${KERNEL_HEADERS_DIR}" \
-		KERN_VER="${TARGET_KERNEL_LONG}" \
-			|| perror "Build kernel modules failed."
-	# check they were, in fact, built and copy them to build dir
-	mkdir -p "${MODULE_BUILD_DIR}/lib/modules/vbox" || \
-		perror "Failed to mkdir '${MODULE_BUILD_DIR}/lib/modules/vbox'."
-	for MOD in $(find ./* -maxdepth 0 -type d); do
-		[ -e "$MOD.ko" ] || perror "Module '$MOD' was not built!"
-		cp "$MOD.ko" "${MODULE_BUILD_DIR}/lib/modules/vbox/" || \
-			perror "Failed to cp $MOD.ko to '${MODULE_BUILD_DIR}/lib/modules/vbox/'."
-	done
-
-	# finally copy the extension pack files, everthing is needed as the subfolders
-	# target the guest architectures and not that of the host!
-	local VBOX_EXTPACK_DIR="${MODULE_BUILD_DIR}/usr/lib/virtualbox/ExtensionPacks/Oracle_VM_VirtualBox_Extension_Pack"
-	cp -ar "${MODULE_WORK_DIR}/extpack" "${VBOX_EXTPACK_DIR}" || \
-		perror "Failed to cp '${MODULE_WORK_DIR}/extpack' to '${VBOX_EXTPACK_DIR}'."
-	chown -R root:root "${VBOX_EXTPACK_DIR}" || \
-		perror "Failed to chown '${VBOX_EXTPACK_DIR}' to root:root."
-
-	# od binary
-	local OD_BIN="$(which od 2>/dev/null)"
-	if [ -n "$OD_BIN" ] && [ -f "$OD_BIN" ]; then
-		tarcopy "$OD_BIN" "$MODULE_BUILD_DIR"
-	fi
+	) || perror "Failed"
 }
 
 post_copy() {
