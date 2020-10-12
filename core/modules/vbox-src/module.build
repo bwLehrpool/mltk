@@ -97,6 +97,7 @@ build() {
 		if [ -n "$OD_BIN" ] && [ -f "$OD_BIN" ]; then
 			tarcopy "$OD_BIN" "$MODULE_BUILD_DIR"
 		fi
+		true
 	) || perror "Failed"
 }
 
