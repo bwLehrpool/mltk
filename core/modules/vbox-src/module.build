@@ -12,7 +12,7 @@ fetch_source() {
 		perror "Could not download_untar '$DOWNLOAD_URL' to '${MODULE_WORK_DIR}/src'."
 
 	# oracle's extension pack
-	DOWNLOAD_URL="${DOWNLOAD_URL%/*}/Oracle_VM_VirtualBox_Extension_Pack-${REQUIRED_VBOX_VERSION}.vbox-extpack"
+	DOWNLOAD_URL="${DOWNLOAD_URL%/*}/Oracle_VM_VirtualBox_Extension_Pack-${BASEVAR}.vbox-extpack"
 	download_untar "$DOWNLOAD_URL" "${MODULE_WORK_DIR}/extpack" || \
 		perror "Could not download_untar '$DOWNLOAD_URL' to '${MODULE_WORK_DIR}/extpack'."
 	# Nice, Oracle - files in the tarball are world writable, but vbox refuses to use the extpack that way
