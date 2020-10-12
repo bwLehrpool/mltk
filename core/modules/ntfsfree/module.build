@@ -1,0 +1,19 @@
+#!/bin/bash
+fetch_source() {
+	autoclone
+}
+
+build() {
+	local SRCDIR="${MODULE_WORK_DIR}/src/ntfsfree"
+	mkdir -p "${MODULE_BUILD_DIR}/opt/openslx/sbin"
+	cde "${MODULE_BUILD_DIR}/opt/openslx/sbin"
+	pinfo "Running cmake"
+	cmake "$SRCDIR" || perror "'cmake $SRCDIR' failed."
+	pinfo "Running make"
+	make || perror "'make' failed."
+}
+
+post_copy() {
+	:
+}
+

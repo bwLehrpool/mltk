@@ -1,0 +1,345 @@
+#!/bin/bash
+
+MODE=
+case "$1" in
+	--*)
+		MODE="${1:2}"
+		shift
+		;;
+	*)
+		echo "Missing mode"
+		exit 1
+		;;
+esac
+
+declare -rg POOL="$1"
+
+if [ -z "$POOL" ] || ! [ -b "$POOL" ]; then
+	echo "Pool '$POOL' doesn't exist"
+	exit 1
+fi
+
+if [ "$MODE" = "wait" ]; then
+	debug_reset() {
+		DEBUG_FILE="/tmp/dm-resize-log.${$}.${RANDOM}"
+	}
+	debug_reset
+
+	debug() {
+		echo "$*"
+		echo "$(date +%H:%M:%S.%N) $*" >> "$DEBUG_FILE"
+	}
+
+	debug_submit() {
+		[ -s "$DEBUG_FILE" ] || return
+		slxlog --sync "id44-grow" "ID44 remaining space monitoring" "$DEBUG_FILE"
+		debug_reset
+	}
+else
+	debug_submit() { :; }
+	debug() { echo "$*"; }
+fi
+
+is_space_running_out() {
+	local target fill used size remaining watermark
+	read -r _ _ target _ _ fill _ < <( dmsetup status "$POOL" )
+
+	if [ "$target" != "thin-pool" ]; then
+		debug "$POOL is not a thin-pool"
+		exit 1
+	fi
+
+	used="${fill%/*}"
+	size="${fill#*/}"
+
+	if (( used <= 0 )) || (( size <= 0 )); then
+		debug "Malformed status of $POOL ($fill)"
+		return 1
+	fi
+	read -r _ _ target _ _ _ watermark _ < <( dmsetup table "$POOL" )
+	if [ "$target" != "thin-pool" ]; then
+		debug "$POOL is not a thin-pool anymore, but was before."
+		exit 1
+	fi
+	if (( watermark < 10 )); then
+		watermark=10 # Force something, especially 0 would be rather dangrous for us
+		return 1
+	fi
+
+	remaining="$(( size - used ))"
+
+	if (( remaining > watermark )); then
+		echo "Watermark ($watermark) not yet reached ($remaining remaining), doing nothing"
+		return 1
+	fi
+	return 0
+}
+
+declare -rg LOCKFILE="/tmp/dm-grow-lock"
+HAVE_LOCK=
+
+lock() {
+	if [ -n "$HAVE_LOCK" ]; then
+		debug "ASSERTION FAILED: lock called when lock is already held."
+		exit 1
+	fi
+	if ! mkdir "${LOCKFILE}"; then
+		local n b
+		n="$( date +%s )"
+		b="$( stat -c %W "${LOCKFILE}" )"
+		if (( b + 5 < n )); then
+			debug "BREAKING STALE LOCK"
+			rm -rf -- "${LOCKFILE}"
+			if ! [ -d "${LOCKFILE}" ]; then
+				lock
+				return
+			fi
+		fi
+		echo "Lost race"
+		return 1
+	fi
+	HAVE_LOCK=1
+	return 0
+}
+
+unlock() {
+	if [ -z "$HAVE_LOCK" ]; then
+		debug "ASSERTION FAILED: unlock called when lock is not held."
+		exit 1
+	fi
+	HAVE_LOCK=
+	if ! rmdir "${LOCKFILE}"; then
+		echo "WARNING: Could not delete lock dir. Trying rm -rf..."
+		rm -rf -- "${LOCKFILE}"
+	fi
+}
+
+exit_hook() {
+	debug_submit
+	[ -n "$HAVE_LOCK" ] && unlock
+}
+
+trap exit_hook EXIT TERM INT
+
+# Try to grow via NTFS volume
+# Must honor and update $current_data_sz, and echo into $new_table
+ram_grow() {
+	local mnt="/run/openslx/emergency-pool-extension"
+	local size_sz size_kb loopdev actual_sz
+	[ -d "$mnt" ] && return 1
+	mkdir -p "$mnt"
+	size_sz="$( awk '/^MemAvailable:/ {print $2; exit}' /proc/meminfo )"
+	if [ -z "$size_sz" ] || (( size_sz < 2097152 )); then
+		debug "ram_grow: Cannot determine available memory, or memory less than 1GB. Forcing 1GB."
+		size_sz=2097152
+	fi
+	size_kb="$(( size_sz / 2 ))"
+	debug "ram_grow: Setting up tmpfs CoW extension of $(( size_kb / 1024 )) MiB"
+	if ! mount -t tmpfs -o size=$(( size_kb + 100 ))k emerg "$mnt"; then
+		debug "Cannot mount tmpfs for emergency pool extension"
+		return 1
+	fi
+	if ! truncate -s $(( size_kb * 1024 )) "$mnt/image" \
+			&& ! dd if=/dev/null of="$mnt/image" bs=512 seek="$size_sz"; then
+		debug "Failed setting size of $mnt"
+		return 1
+	fi
+	loopdev="$( losetup --show --find "$mnt/image" )"
+	if [ "$?" != 0 ] || [ -z "$loopdev" ]; then
+		debug "losetup for emergency tmpfs pool growth failed"
+		umount -lf "$mnt"
+		return 1
+	fi
+	actual_sz="$( blockdev --getsz "$loopdev" )"
+	if [ -z "$actual_sz" ]; then
+		debug "Cannot get actual size of $loopdev, assuming $size_sz"
+		actual_sz="$size_sz"
+	elif (( actual_sz != size_sz )); then
+		debug "Weird. Wanted loopdev of sz $size_sz but got $actual_sz"
+	fi
+	if echo "$current_data_sz $actual_sz linear $loopdev 0" >> "$new_table"; then
+		(( current_data_sz += actual_sz ))
+		debug "Successfully extended CoW layer in RAM, now apply new table.."
+		return 0
+	fi
+	debug "Could not write new table row into $new_table"
+	return 1
+}
+
+# Try to grow via NTFS volume
+# Must honor and update $current_data_sz, and echo into $new_table
+ntfs_grow() {
+	if ! [ -s "/run/openslx/.thin-ntfs-candidates" ]; then
+		return 1
+	fi
+
+	if ! command -v ntfsfree &> /dev/null; then
+		debug "NTFS: Cannot grow: ntfsfree not installed."
+		rm -f -- "/run/openslx/.thin-ntfs-candidates"
+		return 1
+	fi
+	# Grow
+	local current grow_max_sz slice_sz range_start_b range_sz disk_max_sz disk_dev
+	# How much extra we accounted for with the metadata device size
+	grow_max_sz="$( cat /run/openslx/.thin-ntfs-growsize )"
+	[ -z "$grow_max_sz" ] && grow_max_sz=0
+	(( grow_max_sz > 0 )) || grow_max_sz=209715200 # 100GB max
+
+	debug "NTFS: Trying to grow pool by $(( grow_max_sz / 1024 / 1024 ))MiB"
+	current=0
+	while read -r disk_max_sz disk_dev _; do
+		if (( disk_max_sz <= 0 )); then
+			debug "Corrupt line in ntfs-list: '$disk_max_sz $disk_dev'"
+			continue
+		fi
+		if ! [ -b "$disk_dev" ]; then
+			debug "Invalid partition in ntfs-list: $disk_dev"
+			continue
+		fi
+		# Get list of ranges
+		while read -r word range_start_b _ range_sz _; do
+			[ "$word" = "Range" ] || continue
+			(( range_sz > 0 )) || continue
+			slice_sz="$(( grow_max_sz - current ))"
+			(( slice_sz <= 0 )) && break
+			(( slice_sz > range_sz )) && slice_sz="$range_sz"
+			# Append line
+			if echo "$current_data_sz $slice_sz linear $disk_dev $range_start_b" >> "$new_table"; then
+				# Update counter
+				(( current_data_sz += slice_sz ))
+				(( current += slice_sz ))
+			else
+				debug "Could not write new table row into $new_table"
+			fi
+		done < <( ntfsfree --block-size 512 --min-size "$(( 256 * 1024 * 1024 ))" "$disk_dev" )
+		(( current >= grow_max_sz )) && break
+	done < "/run/openslx/.thin-ntfs-candidates"
+
+	# Delete NTFS files so we don't do this again
+	rm -f -- "/run/openslx/.thin-ntfs-candidates" "/run/openslx/.thin-ntfs-growsize"
+
+	if (( current == 0 )); then
+		debug "NTFS: Nothing changed."
+		return 1
+	fi
+	debug "Prepared NTFS growth, now apply table.."
+	return 0
+}
+
+do_resize() {
+	local table target data_dev new_table
+	read -r _ _ target _ data_dev _ < <( dmsetup table "$POOL" )
+	if [ -z "$data_dev" ]; then
+		debug "Cannot determine data dev for $POOL"
+		exit 1
+	fi
+	data_dev="$( readlink -f "/sys/dev/block/$data_dev" )"
+	declare -r DEV="/dev/$( basename "$data_dev" )"
+
+	if ! [ -b "$DEV" ]; then
+		debug "Underlying $DEV doesn't exist!"
+		exit 1
+	fi
+
+	new_table="/run/openslx/new-table.$$.$RANDOM"
+	if ! touch "$new_table"; then
+		debug "Cannot create tempfile $new_table"
+		return 1
+	fi
+	if ! dmsetup table "$DEV" > "$new_table" || ! [ -s "$new_table" ]; then
+		debug "Underlying data device is not a dm-device. TODO"
+		# TODO: Create a linear target in place, 1:1 mapping to the old device, then
+		# appending our new stuff.
+		return 1
+	fi
+	# We don't care too much what type of target the old data device is. Most likely linear,
+	# but we can just append linear chunks to whatever else we already have.
+	local current_data_sz
+	current_data_sz="$( blockdev --getsz "$DEV" )"
+	if ! (( current_data_sz > 0 )); then
+		debug "Cannot get old size"
+		exit 1
+	fi
+
+	if ! ntfs_grow && ! ram_grow; then
+		debug "Can neither grow via NTFS nor tmpfs."
+		return 1
+	fi
+
+	debug " * New table:
+$(cat "$new_table")"
+
+	if ! dmsetup load "$DEV" "$new_table"; then
+		debug "Cannot load new $DEV table from $new_table"
+		return 1
+	fi
+	if ! dmsetup suspend "$DEV"; then
+		debug "Cannot suspend $DEV"
+		return 1
+	fi
+	dmsetup resume "$DEV" || debug "WARN WARN CANNOT RESUME $DEV"
+	usleep 10000
+	# Query fresh instead of just using $current_data_sz, just to be extra safe
+	new_sz="$( blockdev --getsz "$DEV" )"
+	if (( new_sz != current_data_sz )); then
+		debug "Sanity check failed: current_data_sz = $current_data_sz, new_sz = $new_sz"
+		return 1
+	fi
+	# Patch current table with new value
+	table="$( dmsetup table "$POOL" | awk -v nv="$current_data_sz" '{$2 = nv; print $0}' )"
+	debug "Updating pool size...: $table"
+	if ! dmsetup load "$POOL" --table "$table"; then
+		debug "Reloading pool table failed."
+		return 1
+	fi
+	if ! dmsetup suspend "$POOL"; then
+		debug "Cannot suspend pool. Updating table fails."
+		return 1
+	fi
+	# On pool resume, the watermark trigger flag gets reset, so we would be called again
+	# if we run out of space again
+	dmsetup resume "$POOL" || debug "WARN WARN CANNOT RESUME $POOL"
+	return 0
+}
+
+if [ "$MODE" = "now" ]; then
+	## Immediately try to grow without checking remaining space
+	lock && do_resize
+	exit
+elif [ -z "$MODE" ]; then
+	# Default mode: Check remaining space, grow if < low_watermark
+	lock && is_space_running_out && do_resize
+	exit
+elif [ "$MODE" = "wait" ]; then
+	# Listen for dm events which might signal low_watermark hits,
+	# grow if necessary
+	next=
+	while true; do
+		if lock; then
+			if is_space_running_out; then
+				if do_resize; then
+					debug "CoW layer extended."
+				elif is_space_running_out; then
+					debug "Resizing seems to have failed. Rebooting for safety measures."
+					if ! idle-daemon --send "reboot 10"; then
+						( sleep 2; reboot ) &
+					fi
+				fi
+			fi
+			unlock
+		fi
+		debug_submit
+		if [ -z "$next" ]; then
+			next="$( dmsetup info -c -o events --noheadings "$POOL" )"
+			[ "$next" -ge 0 ] || next=0
+		else
+			(( next++ ))
+		fi
+		dmsetup wait "$POOL" "$next" || break
+	done
+	debug "Error in dmsetup wait"
+	exit 1
+else
+	echo "Unknown mode $MODE"
+	exit 1
+fi

@@ -1,0 +1,7 @@
+[Unit]
+Description=Watch thinpool remaining space and try to grow in case of emergency
+ConditionPathExists=/dev/mapper/pool
+After=systemd-udevd.service systemd-udev-trigger.service
+
+[Service]
+ExecStart=/opt/openslx/scripts/thinpool-grow --wait /dev/mapper/pool

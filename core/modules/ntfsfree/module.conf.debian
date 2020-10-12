@@ -1,0 +1,5 @@
+#!/bin/bash
+REQUIRED_INSTALLED_PACKAGES="
+	ntfs-3g-dev
+"
+
