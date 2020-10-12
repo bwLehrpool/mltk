@@ -21,10 +21,13 @@ fetch_source() {
 
 build() {
 	[ -n "${KERNEL_HEADERS_DIR}" ] || perror "KERNEL_HEADERS_DIR not set, kernel module present?"
-	cd "${MODULE_WORK_DIR}/src/VirtualBox-${REQUIRED_VBOX_VERSION}" || \
-		perror "Could not cd to '${MODULE_WORK_DIR}/src/VirtualBox-${REQUIRED_VBOX_VERSION}'."
+	local BASEVER="${REQUIRED_VBOX_VERSION}"
+	# In case we have something like 1.2.3a, we need 1.2.3 for the directory name below
+	[[ "${BASEVER: -1}" =~ ^[0-9]$ ]] || BASEVER="${BASEVER:0:-1}"
+	cd "${MODULE_WORK_DIR}/src/VirtualBox-${BASEVER}" || \
+		perror "Could not cd to '${MODULE_WORK_DIR}/src/VirtualBox-${BASEVER}'."
 	sed -i 's/VBOX_WITH_CLOUD_NET = 1/VBOX_WITH_CLOUD_NET =/g' "Config.kmk" || perror "Could not disable cloud networking."
-	local VBOX_BUILD_DIR="${MODULE_WORK_DIR}/src/VirtualBox-${REQUIRED_VBOX_VERSION}/build"
+	local VBOX_BUILD_DIR="${MODULE_WORK_DIR}/src/VirtualBox-${BASEVER}/build"
 	mkdir -p "$VBOX_BUILD_DIR" || perror "Failed to mkdir '$VBOX_BUILD_DIR'."
 	./configure \
 		--disable-docs				\
