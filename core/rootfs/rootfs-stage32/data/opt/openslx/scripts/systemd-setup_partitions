@@ -347,5 +347,6 @@ if [ "$HAVE_SWAP" = "no" ]; then
 	fi
 fi
 
+[ -n "$SLX_SPLASH" ] && splashtool --icon "/opt/openslx/icons/active/??-hdd.ppm"
 exit 0
 

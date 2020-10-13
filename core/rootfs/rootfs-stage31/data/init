@@ -17,7 +17,7 @@
 #############################################################################
 
 # set PATH correctly
-export PATH=/bin:/sbin:/usr/bin:/usr/sbin
+export PATH=/bin:/sbin:/usr/bin:/usr/sbin:/opt/openslx/bin
 
 # import common functions
 . "/inc/functions"
@@ -94,47 +94,23 @@ modprobe -a -b $(cat /etc/modules) 2>/dev/null
 # Load drm gfx drivers, if successful, check if splash screen should be shown, and do so
 . "/inc/drm.functions"
 SD_CMDLINE=
+showicon() {
+	:
+}
 if [ "$SPLASH" -eq 1 ]; then
 	if setup_gfx; then
 		echo "1 1 0 1" > /proc/sys/kernel/printk
 		exec 4>&1 5>&2 > /dev/null 2>&1
-		MUTED_OUTPUT=1
 		clear
 		echo -e "\033[?25l" >&4
-		screen_size="$(fbset | awk '$1 ~ /geometry/ {print $2" "$3}')"
-		screen_width="${screen_size%% *}"
-		screen_height="${screen_size#* }"
-		fbsplash_cfg="/etc/fbsplash.cfg"
-		fbsplash_ppm="/etc/splash.ppm.gz"
-		if [ -s "$fbsplash_ppm" ]; then
-			ppm_size="$(zcat "$fbsplash_ppm" | sed -n 2p)"
+		if splashtool --center "/etc/splash.ppm" -b; then
+			MUTED_OUTPUT=1
+			showicon() {
+				splashtool "$@"
+			}
+			showicon --reset "/opt/openslx/icons"
 		else
-			fbsplash_ppm="/etc/splash.ppm"
-			if [ -s "$fbsplash_ppm" ]; then
-				ppm_size="$(sed -n 2p "$fbsplash_ppm")"
-			else
-				echo "Splash screen requested, but not found in initramfs..." >&4
-				MUTED_OUTPUT=
-			fi
-		fi
-		ppm_width="${ppm_size%% *}"
-		ppm_height="${ppm_size#* }"
-		ppm_height="${ppm_height%% *}" # make sure nothing weird is trailing
-		img_left="$(( ( screen_width - ppm_width ) / 2  ))"
-		img_top="$(( ( screen_height - ppm_height ) / 2  ))"
-		# just checking if nothing too weird is set
-		if [ -n "$img_left" ] && [ -n "$img_top" ] \
-			&& [ "$img_left" -ge 0 ] && [ "$img_left" -lt 8096 ] \
-			&& [ "$img_top" -ge 0 ] && [ "$img_top" -lt 8096 ]; then
-			printf "IMG_TOP=%d\nIMG_LEFT=%d\n" \
-				"$img_top" "$img_left" \
-				> "$fbsplash_cfg"
-			fbsplash -b -i "$fbsplash_cfg" -s "$fbsplash_ppm" || MUTED_OUTPUT=
-		else
-			# otherwise just use top left and be done with it
-			fbsplash -b -s "$fbsplash_ppm" || MUTED_OUTPUT=
-		fi
-		if [ -z "$MUTED_OUTPUT" ]; then
+			MUTED_OUTPUT=
 			exec 1>&4 2>&5
 		fi
 	fi
@@ -163,6 +139,7 @@ bench_event "NETWORK" "Network up and running"
 
 . "/inc/activate_sysconfig" || drop_shell "Could not source /inc/activate_sysconfig"
 bench_event "CONFIG" "Downloaded config"
+showicon --icon "/opt/openslx/icons/active/??-config.ppm"
 # From here on, we have all the vars from /opt/openslx/config
 
 # Sync time via NTP
@@ -172,6 +149,7 @@ bench_event "CONFIG" "Downloaded config"
 
 . "/inc/setup_stage32" || drop_shell "Problem setting up stage3.2"
 bench_event "STAGE32" "Downloaded stage 3.2"
+showicon --icon "/opt/openslx/icons/active/??-rootfs.ppm"
 
 # copy files needed for stage3.2 to FUTURE_ROOT
 echo "Copying busybox etc. to stage32..."
@@ -197,9 +175,7 @@ fi
 # Exam mode
 if [ -n "$SLX_EXAM" ]; then
 	# Visual: Move splash screen to upper left corner
-	if [ -s "$fbsplash_ppm" ]; then
-		fbsplash -b -s "$fbsplash_ppm" &
-	fi
+	showicon --tl "/etc/splash.ppm"
 fi
 
 # Merge freshly generated config to stage32
@@ -224,8 +200,12 @@ bench_event "PRESWITCH" "Switching to stage 3.2"
 for mnt in run tmp; do
 	busybox umount -f -l "/$mnt" 2>/dev/null
 done
-mkdir -p /mnt/dev
-busybox mount -o move /dev /mnt/dev
+mkdir -p "${FUTURE_ROOT}/dev"
+busybox mount -o move /dev "${FUTURE_ROOT}/dev"
+
+# Copy splashtool and icons
+cp /opt/openslx/bin/splashtool "${FUTURE_ROOT}/opt/openslx/bin/"
+cp -r /opt/openslx/icons "${FUTURE_ROOT}/opt/openslx/"
 
 echo "Waiting for async processes..."
 wait

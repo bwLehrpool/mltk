@@ -3,12 +3,18 @@
 wait_for_iface() {
 	local DEVICE=$1
 	local TIMEOUT=10
-	local state laststate current relax
+	local state laststate current relax img in
 	local want=
 	local ret=1 # error
 	[ -n "$2" ] && TIMEOUT="$2"
 	echo -n "Waiting ${TIMEOUT}s for interface $DEVICE: "
 	TIMEOUT="$(( TIMEOUT * 2 ))"
+	if [ "$DEVICE" = "br0" ]; then
+		img="??-bridge"
+	else
+		img="??-nic"
+	fi
+	showicon --icon "/opt/openslx/icons/inactive/${img}.ppm"
 	# Some systems don't have operstate. Seems to be hardware dependent
 	[ -e "/sys/class/net/${DEVICE}/operstate" ] || sleep 1
 	[ -e "/sys/class/net/${DEVICE}/operstate" ] && want="up"
@@ -40,6 +46,9 @@ wait_for_iface() {
 			# else
 			echo -n "."
 			usleep 500000
+			in=
+			[ "$(( current % 2 ))" = 0 ] && in="in"
+			showicon --icon "/opt/openslx/icons/${in}active/${img}.ppm" &
 		done
 	else
 		# we really don't have a operstate .. then just wait a sec and hope for the best.
@@ -47,6 +56,11 @@ wait_for_iface() {
 		echo -n "... no operstate or carrier, let's hope for the best..."
 	fi
 	echo
+	if [ "$ret" = 0 ]; then
+		showicon --icon "/opt/openslx/icons/active/${img}.ppm"
+	else
+		showicon --icon "/opt/openslx/icons/inactive/${img}.ppm"
+	fi
 	return "$ret"
 }
 true

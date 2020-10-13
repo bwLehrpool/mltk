@@ -14,6 +14,8 @@
 #    specific icon in its active state. Will assume the
 #    screen stays intact between calls.
 
+ICON_SIZE=64
+
 unset mode ppm base index
 count=0
 
@@ -34,7 +36,7 @@ shift
 if [ "$mode" = "reset" ]; then
 	base="$ppm/inactive"
 elif [ "$mode" = "icon" ]; then
-	base="${base%/*}"
+	base="${ppm%/*}"
 	base="${base%/*}"
 	base="${base:-.}/inactive"
 	globname() (
@@ -100,14 +102,14 @@ if [ "$count" -gt 0 ]; then
 		echo "Unknown screen size ($screen_size)" >&2
 		exit 1
 	fi
-	xmargin=$(( screen_width - (128 * count) ))
+	xmargin=$(( screen_width - (ICON_SIZE * count) ))
 	if [ "$xmargin" -gt 300 ] && [ "$count" -gt 1 ]; then
 		xmargin=$(( (xmargin - 100) / (count - 1) ))
-		[ "$xmargin" -gt 32 ] && xmargin=32
+		[ "$xmargin" -gt 24 ] && xmargin=24
 	else
 		xmargin=0
 	fi
-	xpos=$(( ( screen_width - (128 * count) - (xmargin * (count - 1)) ) / 2 ))
+	xpos=$(( ( screen_width - (ICON_SIZE * count) - (xmargin * (count - 1)) ) / 2 ))
 	ypos=$(( screen_height - 256 ))
 	# Loop over all inactive icons
 	unset wantfile
@@ -120,7 +122,7 @@ if [ "$count" -gt 0 ]; then
 		elif [ "$( basename "$f" .gz )" = "$wantfile" ]; then
 			draw "$xpos" "$ypos" "$ppm"
 		fi
-		xpos=$(( xpos + 128 + xmargin ))
+		xpos=$(( xpos + ICON_SIZE + xmargin ))
 	done
 else
 	# Normal mode
