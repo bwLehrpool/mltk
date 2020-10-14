@@ -3,41 +3,30 @@
 # * Intel: check for "VMX Unrestricted Guest" CPU flag
 # * AMD:   check if CPU family is Bulldozer or newer
 
-VIRTTYPE=$(grep -m1 '^flags\s*:' /proc/cpuinfo | grep -wo -e svm -e vmx)
+VIRTTYPE="$( grep -m1 '^flags\s*:' /proc/cpuinfo | grep -woF -e svm -e vmx )"
 
 if [ -z "$VIRTTYPE" ]; then
-	echo 12
+	# No need to bother with msr
+	echo "legacy"
 	exit 0
 fi
 
 modprobe msr
 
-VT=
+version="legacy"
 if [ "$VIRTTYPE" = "vmx" ]; then    # intel
-	BIT1=$(rdmsr --bitfield 0:0 0x3a 2>/dev/null || echo "fail")
-	BIT2=$(rdmsr --bitfield 2:2 0x3a 2>/dev/null || echo "fail")
+	BIT1="$( rdmsr --bitfield 0:0 0x3a 2>/dev/null || echo "fail" )"
+	BIT2="$( rdmsr --bitfield 2:2 0x3a 2>/dev/null || echo "fail" )"
 	if [ "$BIT1" = "0" ] || [ "$BIT2" = "1" ]; then
-		VT="ENABLED"
+		flag="$( rdmsr --bitfield 5:5 0x485 )"
+		[ "$flag" = "1" ] && version="new"
 	fi
 elif [ "$VIRTTYPE" = "svm" ]; then  # amd
-	BIT=$(rdmsr --bitfield 4:4 0xc0010114 2>/dev/null || echo "fail")
+	BIT="$( rdmsr --bitfield 4:4 0xc0010114 2>/dev/null || echo "fail" )"
 	if [ "$BIT" = "0" ]; then
-		VT="ENABLED"
+		family="$( awk '$1$2 == "cpufamily" {print $NF;exit}' /proc/cpuinfo )"
+		[ "$family" -ge 21 ] && version="new"
 	fi
-fi
-
-if [ "$VT" != "ENABLED" ]; then
-	echo 12
-	exit 0
-fi
-
-version=12
-if [ "$VIRTTYPE" = "vmx" ]; then
-	flag="$( rdmsr --bitfield 5:5 0x485 )"
-	[ "$flag" = "1" ] && version=15
-elif [ "$VIRTTYPE" = "svm" ]; then
-	family="$( awk '$1$2 == "cpufamily" {print $NF;exit}' /proc/cpuinfo )"
-	[ "$family" -ge 21 ] && version=15
 fi
 
 echo "$version"

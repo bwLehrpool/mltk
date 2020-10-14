@@ -18,7 +18,7 @@
 . /opt/openslx/config || { echo "Could not source config!"; exit 23; }
 
 # source functions.inc for the download function
-. /opt/openslx/inc/functions || { echo "/opt/openslx/inc/functions not found!"; exit 1337; }
+. /opt/openslx/inc/functions || { echo "/opt/openslx/inc/functions not found!"; exit 42; }
 
 # quick fix for the missing FUTURE_ROOT needed by /opt/openslx/etc/functions.inc
 export FUTURE_ROOT="/"
@@ -65,13 +65,17 @@ if [ $# -eq 1 ]; then
 	FILE="$ADDON"
 	if [ "$ADDON" = "vmware" ]; then
 		# check with the helper
-		version="$(vmware-get-supported-version)"
-		FILE="vmware$version"
-		echo "Deciding to download $FILE instead of $ADDON after checking CPU"
+		version="$( vmware-get-supported-version )"
+		if [ "$version" = "legacy" ]; then
+			FILE="${ADDON}-${version}"
+		fi
+		echo "Deciding to download flavor '$version' of $ADDON ($FILE) after checking CPU"
 	fi
 	# XXX
 	if ! download "${SLX_BASE_PATH}/${FILE}.sqfs" "${ADDON_TARGET_PATH}"; then
-		slxlog --echo "addon-download" "Download of '${HTTP_BASE_PATH}/${ADDON}.sqfs' failed."
+		if [ "$ADDON" = "$FILE" ] || ! download "${SLX_BASE_PATH}/${ADDON}.sqfs" "${ADDON_TARGET_PATH}"; then
+			slxlog --echo "addon-download" "Download of '${HTTP_BASE_PATH}/${FILE}.sqfs' failed. (${ADDON})"
+		fi
 		exit 1
 	fi
 fi
