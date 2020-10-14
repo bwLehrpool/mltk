@@ -48,8 +48,9 @@ HandleLidSwitch=ignore
 IdleAction=ignore
 EOF
 	# reload
-	systemctl daemon-reload
-	systemctl restart systemd-logind
+	timeout 2 systemctl daemon-reload
+	timeout 3 systemctl try-restart systemd-logind
+	systemctl --no-block stop getty@tty1 # Since this is hard-linked
 }
 
 ssh_banner() {
