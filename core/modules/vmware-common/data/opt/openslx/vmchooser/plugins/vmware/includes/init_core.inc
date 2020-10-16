@@ -36,21 +36,16 @@ declare -rg VM_HOME="${HOME}/.vmware"
 $(safesource "${VMWARE_PLUGIN_DIR}/vmware.conf")
 
 # Determine maximum hw version
-# Try to tell from the xml files in this dir, and hope nobody added any
-gmax="$( find /etc/vmware/hostd/env/ -name "ws-*.xml" | grep -o '[0-9]*' | sort -nr | head -n 1 )"
-if [ -z "$gmax" ]; then
-	# Failed, VMware 16 doesn't have above xml files anymore, great. Back to hard coded lists
-	gmax="$( grep -m 1 -F '.product.version' /etc/vmware/config | grep -oE '[0-9]+\.[0-9.]+' | head -n 1 )"
-	case "$gmax" in
-		16.*) gmax=18 ;;
-		15.5.*|15.1.*) gmax=16 ;;
-		*)
-			# No hit, guess major version number == max hw version, which unfortunately VMware decided to fuck up with
-			# VMware 15.1.0, which supports hw version 16
-			gmax="${gmax%%.*}"
-			;;
-	esac
-fi
+gmax="$( grep -m 1 -F '.product.version' /etc/vmware/config | grep -oE '[0-9]+\.[0-9.]+' | head -n 1 )"
+case "$gmax" in
+	16.*) gmax=18 ;;
+	15.5.*|15.1.*) gmax=16 ;;
+	*)
+		# No hit, guess major version number == max hw version, which unfortunately VMware decided to fuck up with
+		# VMware 15.1.0, which supports hw version 16
+		gmax="${gmax%%.*}"
+		;;
+esac
 
 [ -n "$gmax" ] && maxhardwareversion="$gmax"
 
