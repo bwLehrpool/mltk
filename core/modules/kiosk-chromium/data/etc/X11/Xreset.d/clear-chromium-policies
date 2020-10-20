@@ -1,7 +1,5 @@
 #!/bin/ash
 
 policy_dir="/etc/chromium-browser/policies/managed"
-for file in "$policy_dir/kiosk-mode.json" "$policy_dir/url-filter.json"; do
-	rm -f -- "$file"
-done
+rm -f -- "$policy_dir/kiosk-mode.json" "$policy_dir/url-filter.json"
 true
