@@ -5,12 +5,10 @@ fetch_source() {
 
 build() {
 	local SRCDIR="${MODULE_WORK_DIR}/src/ntfsfree"
-	mkdir -p "${MODULE_BUILD_DIR}/opt/openslx/sbin"
-	cde "${MODULE_BUILD_DIR}/opt/openslx/sbin"
-	pinfo "Running cmake"
-	cmake "$SRCDIR" || perror "'cmake $SRCDIR' failed."
-	pinfo "Running make"
+	cde "$SRCDIR"
 	make || perror "'make' failed."
+	mkdir -p "${MODULE_BUILD_DIR}/opt/openslx/sbin"
+	cp "${SRCDIR}/ntfsfree" "${MODULE_BUILD_DIR}/opt/openslx/sbin/ntfsfree" || perror "cp failed"
 }
 
 post_copy() {
