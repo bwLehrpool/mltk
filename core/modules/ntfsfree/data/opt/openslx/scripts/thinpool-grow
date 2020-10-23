@@ -185,7 +185,7 @@ ntfs_grow() {
 	[ -z "$grow_max_sz" ] && grow_max_sz=0
 	(( grow_max_sz > 0 )) || grow_max_sz=209715200 # 100GB max
 
-	debug "NTFS: Trying to grow pool by $(( grow_max_sz / 1024 / 1024 ))MiB"
+	debug "NTFS: Trying to grow pool by $(( grow_max_sz / 2 / 1024 ))MiB"
 	current=0
 	while read -r disk_max_sz disk_dev _; do
 		if (( disk_max_sz <= 0 )); then
