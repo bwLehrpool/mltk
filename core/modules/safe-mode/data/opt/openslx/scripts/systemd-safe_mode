@@ -31,7 +31,7 @@ EOF
 
 systemd_config() {
 	# Disable ctrl-alt-delete
-	rm -- "/usr/lib/systemd/system/ctrl-alt-del.target"
+	systemctl mask --no-block ctrl-alt-del.target
 	# No idleaction
 	rm -- "/etc/cron.d/openslx-idleaction"
 	# Ignore everything but power button, no VTs
