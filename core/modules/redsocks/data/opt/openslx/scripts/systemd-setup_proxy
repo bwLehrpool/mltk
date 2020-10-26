@@ -77,6 +77,7 @@ if [ "${SLX_PROXY_TYPE:0:5}" = "http-" ]; then
 	#echo "iptables -t nat -A REDSOCKS -p tcp --dport 80 -j DNAT --to-destination ${SLX_PROXY_IP}:${SLX_PROXY_PORT}" >> "$tfile"
 	mkdir -p "/etc/profile.d" &> /dev/null
 	echo "export http_proxy='http://${SLX_PROXY_IP}:${SLX_PROXY_PORT}/'"
+	echo "export all_proxy='http://${SLX_PROXY_IP}:${SLX_PROXY_PORT}/'"
 	echo -n "export no_proxy='${SLX_PXE_SERVER_IP}"
 	for ADDR in $SLX_PROXY_BLACKLIST; do
 		echo -n ", $ADDR"
