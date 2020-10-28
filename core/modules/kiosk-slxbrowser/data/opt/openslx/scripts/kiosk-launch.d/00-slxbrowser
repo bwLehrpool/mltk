@@ -9,19 +9,29 @@ OPTS=()
 [ -n "$SLX_BROWSER_INSECURE" ] && [ "$SLX_BROWSER_INSECURE" -gt 0 ] && OPTS+=("--insecure")
 # On inactivity, reload every X seconds
 [ -n "$SLX_BROWSER_RELOAD_SECS" ] && [ "$SLX_BROWSER_RELOAD_SECS" -gt 0 ] && OPTS+=("--reload-interval" "$SLX_BROWSER_RELOAD_SECS")
-# If set, is a space separated list of URLs or hosts
-if [ -n "$SLX_BROWSER_URLLIST" ]; then
-	# Turn into file with one entry per line
-	LIST=$(mktemp)
-	echo "$SLX_BROWSER_URLLIST" | sed -r 's/\s+/\n/g' > "$LIST"
-	# Is it a whitelist or blacklist
-	if [ -n "$SLX_BROWSER_IS_WHITELIST" ] && [ "$SLX_BROWSER_IS_WHITELIST" -gt 0 ]; then
-		OPTS+=("--whitelist" "$LIST")
+# If we have no black- or whitelist, see if the legacy vars exist
+if [ -z "$SLX_BROWSER_BLACKLIST" ] && [ -z "$SLX_BROWSER_WHITELIST" ] && [ -n "$SLX_BROWSER_URLLIST" ]; then
+	# If set, is a space separated list of URLs or hosts
+	if [ "$SLX_BROWSER_IS_WHITELIST" -gt 0 ]; then
+		SLX_BROWSER_WHITELIST="$SLX_BROWSER_URLLIST"
 	else
-		OPTS+=("--blacklist" "$LIST")
+		SLX_BROWSER_BLACKLIST="$SLX_BROWSER_URLLIST"
 	fi
+fi
+
+if [ -n "$SLX_BROWSER_BLACKLIST" ]; then
+	# Turn into file with one entry per line
+	bl="$( mktemp )"
+	sed -r 's/\s+/\n/g' <<<"$SLX_BROWSER_BLACKLIST" > "$bl"
+	OPTS+=("--blacklist" "$bl")
 	# Async, clean up file after slxbrowser read it
-	( sleep 5; rm -f -- "$LIST" ) &
+	( sleep 4; rm -f -- "$bl" ) &
+fi
+if [ -n "$SLX_BROWSER_WHITELIST" ]; then
+	wl="$( mktemp )"
+	sed -r 's/\s+/\n/g' <<<"$SLX_BROWSER_WHITELIST" > "$wl"
+	OPTS+=("--whitelist" "$wl")
+	( sleep 4; rm -f -- "$wl" ) &
 fi
 
 if [ -z "${SLX_AUTOLOGIN%OFF}" ]; then
