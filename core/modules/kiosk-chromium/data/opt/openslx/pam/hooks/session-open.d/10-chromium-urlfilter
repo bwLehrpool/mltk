@@ -48,21 +48,33 @@ format_urls() {
 }
 
 main() {
-	[ -e "/opt/openslx/config" ] || exit 0
-	. /opt/openslx/config
+	[ -z "$SLX_PXE_CLIENT_IP" ] && . /opt/openslx/config
 
 	local url_policy_file="/etc/chromium-browser/policies/managed/url-filter.json"
-	echo "{" > "$url_policy_file"
-	local ttype
-	if [ "$SLX_BROWSER_IS_WHITELIST" -eq 1 ]; then
-		ttype="White"
-		echo -e '\t"URLBlacklist": [ "*" ],' >> "$url_policy_file"
-	else
-		ttype="Black"
+	if [ -z "$SLX_BROWSER_BLACKLIST" ] && [ -z "$SLX_BROWSER_WHITELIST" ]; then
+		# Legacy format
+		if [ "$SLX_BROWSER_IS_WHITELIST" -eq 1 ]; then
+			SLX_BROWSER_BLACKLIST="*"
+			SLX_BROWSER_WHITELIST="$SLX_BROWSER_URLLIST"
+		else
+			SLX_BROWSER_BLACKLIST="$SLX_BROWSER_URLLIST"
+		fi
 	fi
-	if [ -n "$SLX_BROWSER_URLLIST" ]; then
-		echo -e '\t"'"URL${ttype}list"'": ' >> "$url_policy_file"
-		format_urls $SLX_BROWSER_URLLIST \
+	if [ -z "$SLX_BROWSER_BLACKLIST" ] && [ -z "$SLX_BROWSER_WHITELIST" ]; then
+		rm -f -- "$url_policy_file"
+		return
+	fi
+	# Create file
+	echo "{" > "$url_policy_file"
+	if [ -n "$SLX_BROWSER_BLACKLIST" ]; then
+		echo -e '\tURLBlacklist: ' >> "$url_policy_file"
+		format_urls $SLX_BROWSER_BLACKLIST \
+			| jq -Rs 'rtrimstr("\n") | split("\n")' >> "$url_policy_file"
+		[ -n "$SLX_BROWSER_WHITELIST" ] && echo ',' >> "$url_policy_file"
+	fi
+	if [ -n "$SLX_BROWSER_WHITELIST" ]; then
+		echo -e '\tURLWhitelist: ' >> "$url_policy_file"
+		format_urls $SLX_BROWSER_WHITELIST \
 			| jq -Rs 'rtrimstr("\n") | split("\n")' >> "$url_policy_file"
 	fi
 	echo '}' >> "$url_policy_file"
