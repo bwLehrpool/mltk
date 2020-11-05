@@ -238,6 +238,7 @@ clientPenalty=0
 isProxy=true
 backgroundReplication=${DNBD3_BGR}
 bgrMinClients=${DNBD3_BGR_MIN_CLIENTS}
+bgrWindowSize=1
 lookupMissingForProxy=${DNBD3_LOOKUP}
 sparseFiles=${DNBD3_SPARSE}
 removeMissingImages=false
@@ -247,11 +248,21 @@ pretendClient=${DNBD3_PRETEND_CLIENT}
 autoFreeDiskSpaceDelay=${DNBD3_AUTOFREE}
 
 [limits]
+maxPayload=10M
 maxReplicationSize=${MAX_REPLICATION_SIZE}G
 
 [logging]
 consoleMask=ERROR WARNING MINOR INFO
 EOF
+
+# Extra overrides - make this proerly ini aware some day. For now we don't
+# have any name clashes between the ini sections so this works
+for item in $SLX_DNBD3_EXTRA; do # space sep
+	item="${item#*.}"
+	key="${item%%=*}"
+	val="${item#*=}"
+	sed -i "s/^${key}=.*$/${key}=${val}/" "${DNBD3_CONF_DIR}/server.conf"
+done
 
 # To this day, only the sat IP is in SLX_KCL_SERVERS afaik
 [ -z "${FOUND_SAT}" ] && add_alt_server ${SLX_KCL_SERVERS}
