@@ -4,23 +4,32 @@ fetch_source() {
 }
 
 build() {
-	mkdir -p "${MODULE_BUILD_DIR}/opt/openslx/bin" \
-		|| perror "Could not create opt/openslx/bin"
-	cd "${MODULE_BUILD_DIR}/opt/openslx/bin" \
-		|| perror "Could not cd to build dir for client binary"
+	local build_dir="${MODULE_WORK_DIR}/src/dnbd3/build"
+	mkdir -p "$build_dir" || perror "Could not create '$build_dir'."
+	cd "$build_dir" || perror "Could not cd to '$build_dir'."
 	cmake \
+		-DCMAKE_BUILD_TYPE=Release \
 		-DBUILD_FUSE_CLIENT=ON \
 		-DBUILD_KERNEL_MODULE=OFF \
 		-DBUILD_SERVER=ON \
 		-DBUILD_SERVER_FUSE=ON \
 		-DBUILD_STRESSTEST=OFF \
-		"$MODULE_WORK_DIR/src/dnbd3" || perror "Could not cmake"
+		.. || perror "Could not cmake"
+
 	make dnbd3-fuse || perror "Could not make dnbd3-fuse"
 	make dnbd3-server || perror "Could not make dnbd3-server"
-	chown root:root "dnbd3-client" "dnbd3-fuse" "dnbd3-server"
-	chmod +x "dnbd3-fuse" "dnbd3-server"
-	add_group "fuse"
-	cd "$MODULE_WORK_DIR"
+
+	cd src || perror "Could not src to '${PWD}/src'."
+	chown root:root "fuse/dnbd3-fuse" "server/dnbd3-server" \
+		|| perror "Could not chown dnbd3 components."
+	chmod +x "fuse/dnbd3-fuse" "server/dnbd3-server" \
+		|| perror "Could not set executable bit of components."
+
+	local install_dir="${MODULE_BUILD_DIR}/opt/openslx/bin"
+	mkdir -p "$install_dir" \
+		|| perror "Could not create installation directory."
+	cp -f "fuse/dnbd3-fuse" "server/dnbd3-server" "$install_dir" \
+		|| perror "Could not copy components to installation directory."
 
 	COPYLIST="list_dpkg_output"
 	[ -e "$COPYLIST" ] && rm "$COPYLIST"
