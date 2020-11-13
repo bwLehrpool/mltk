@@ -7,13 +7,13 @@ build() {
 	local build_dir="${MODULE_WORK_DIR}/src/dnbd3/build"
 	mkdir -p "$build_dir" || perror "Could not create '$build_dir'."
 	cd "$build_dir" || perror "Could not cd to '$build_dir'."
+	# let's be explicit on what we want even though some defaults currently match
 	cmake \
 		-DCMAKE_BUILD_TYPE=Release \
-		-DBUILD_FUSE_CLIENT=ON \
-		-DBUILD_KERNEL_MODULE=OFF \
-		-DBUILD_SERVER=ON \
-		-DBUILD_SERVER_FUSE=ON \
-		-DBUILD_STRESSTEST=OFF \
+		-DDNBD3_CLIENT_FUSE=ON \
+		-DDNBD3_SERVER=ON \
+		-DDNBD3_SERVER_FUSE=ON \
+		-DDNBD3_KERNEL_MODULE=OFF \
 		.. || perror "Could not cmake"
 
 	make dnbd3-fuse || perror "Could not make dnbd3-fuse"
