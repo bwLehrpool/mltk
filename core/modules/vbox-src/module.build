@@ -11,12 +11,14 @@ fetch_source() {
 	download_untar "$DOWNLOAD_URL" "${MODULE_WORK_DIR}/src" || \
 		perror "Could not download_untar '$DOWNLOAD_URL' to '${MODULE_WORK_DIR}/src'."
 
-	# oracle's extension pack
-	DOWNLOAD_URL="${DOWNLOAD_URL%/*}/Oracle_VM_VirtualBox_Extension_Pack-${BASEVER}.vbox-extpack"
-	download_untar "$DOWNLOAD_URL" "${MODULE_WORK_DIR}/extpack" || \
-		perror "Could not download_untar '$DOWNLOAD_URL' to '${MODULE_WORK_DIR}/extpack'."
-	# Nice, Oracle - files in the tarball are world writable, but vbox refuses to use the extpack that way
-	chmod -R go-w "${MODULE_WORK_DIR}/extpack"
+	if [ -n "$REQUIRED_EXTPACK" ]; then
+		# oracle's extension pack
+		DOWNLOAD_URL="${DOWNLOAD_URL%/*}/Oracle_VM_VirtualBox_Extension_Pack-${BASEVER}.vbox-extpack"
+		download_untar "$DOWNLOAD_URL" "${MODULE_WORK_DIR}/extpack" || \
+			perror "Could not download_untar '$DOWNLOAD_URL' to '${MODULE_WORK_DIR}/extpack'."
+		# Nice, Oracle - files in the tarball are world writable, but vbox refuses to use the extpack that way
+		chmod -R go-w "${MODULE_WORK_DIR}/extpack"
+	fi
 }
 
 build() {
@@ -84,13 +86,15 @@ build() {
 				perror "Failed to cp $MOD.ko to '${MODULE_BUILD_DIR}/lib/modules/vbox/'."
 		done
 
-		# finally copy the extension pack files, everthing is needed as the subfolders
-		# target the guest architectures and not that of the host!
-		local VBOX_EXTPACK_DIR="${MODULE_BUILD_DIR}/usr/lib/virtualbox/ExtensionPacks/Oracle_VM_VirtualBox_Extension_Pack"
-		cp -ar "${MODULE_WORK_DIR}/extpack" "${VBOX_EXTPACK_DIR}" || \
-			perror "Failed to cp '${MODULE_WORK_DIR}/extpack' to '${VBOX_EXTPACK_DIR}'."
-		chown -R root:root "${VBOX_EXTPACK_DIR}" || \
-			perror "Failed to chown '${VBOX_EXTPACK_DIR}' to root:root."
+		if [ -n "$REQUIRED_EXTPACK" ]; then
+			# finally copy the extension pack files, everthing is needed as the subfolders
+			# target the guest architectures and not that of the host!
+			local VBOX_EXTPACK_DIR="${MODULE_BUILD_DIR}/usr/lib/virtualbox/ExtensionPacks/Oracle_VM_VirtualBox_Extension_Pack"
+			cp -ar "${MODULE_WORK_DIR}/extpack" "${VBOX_EXTPACK_DIR}" || \
+				perror "Failed to cp '${MODULE_WORK_DIR}/extpack' to '${VBOX_EXTPACK_DIR}'."
+			chown -R root:root "${VBOX_EXTPACK_DIR}" || \
+				perror "Failed to chown '${VBOX_EXTPACK_DIR}' to root:root."
+		fi
 
 		# od binary
 		local OD_BIN="$(which od 2>/dev/null)"
