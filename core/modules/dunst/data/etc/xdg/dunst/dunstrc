@@ -1,6 +1,6 @@
 [global]
     font = DejaVu-Sans 10
-    allow_markup = yes
+    markup = full
     plain_text = no
     format = "  <b>%s</b>\n%b"
     sort = yes
@@ -27,11 +27,9 @@
     separator_color = frame
     startup_notification = false
     icon_position = left
-    icon_folders = /usr/share/icons/gnome/16x16/status/:/usr/share/icons/gnome/16x16/devices/
-
-[frame]
-    width = 2
-    color = "#bbbbbb"
+    icon_path = /usr/share/icons/elementary-xfce/status/16/:/usr/share/icons/elementary-xfce/devices/16/
+    frame_width = 2
+    frame_color = "#bbbbbb"
 
 [shortcuts]
     close = ctrl+mod1+mod4+space
