@@ -46,11 +46,11 @@ add_node() {
 	done
 	# args parsed, now create the node using xmlstarlet
 	# insert namespace to xpath expression
-	PARENT="$(print_namespaced "x" "${PARENT}")"
+	PARENT="$(print_namespaced "_" "${PARENT}")"
 	# create node and set the internal variable newnode to it
 	# to then add the attributes to it
 	local ret
-	xmlstarlet ed -L -N x="${VBOX_NAMESPACE}" \
+	xmlstarlet ed -L \
 		-s "${PARENT}" -t elem -n "${NODE}" \
 		--var newnode '$prev' \
 		${ATTRS_OPTS} \
@@ -77,14 +77,14 @@ set_attr() {
 	else
 		local ret
 		if ! attr_exists "$1" "$2"; then
-			xmlstarlet ed -L -N x="${VBOX_NAMESPACE}" \
-				-i "$(print_namespaced "x" "$1")" \
+			xmlstarlet ed -L \
+				-i "$(print_namespaced "_" "$1")" \
 				-t attr -n "$2" -v "$3" \
 				"${TMPCONFIG}"
 			ret=$?
 		else
-			xmlstarlet ed -L -N x="${VBOX_NAMESPACE}" \
-				-u "$(print_namespaced "x" "$1")/@$2" \
+			xmlstarlet ed -L \
+				-u "$(print_namespaced "_" "$1")/@$2" \
 				-v "$3" \
 				"${TMPCONFIG}"
 			ret=$?
@@ -106,8 +106,8 @@ del_node() {
 		return 1
 	fi
 	local ret
-	xmlstarlet ed -L -N x="${VBOX_NAMESPACE}" \
-		-d "$(print_namespaced "x" "$1")" \
+	xmlstarlet ed -L \
+		-d "$(print_namespaced "_" "$1")" \
 		"${TMPCONFIG}"
 	ret=$?
 	if [ "$ret" -ne 0 ]; then
@@ -124,8 +124,8 @@ attr_exists() {
 	if [ -z "$1" -o -z "$2" ]; then
 		writelog "${FUNCNAME[0]} some arguments were empty: $@"
 	fi
-	xmlstarlet -q sel -N x="${VBOX_NAMESPACE}" \
-		-t -v "$(print_namespaced "x" "$1")/@$2" \
+	xmlstarlet -q sel \
+		-t -v "$(print_namespaced "_" "$1")/@$2" \
 		"${TMPCONFIG}"
 	ret=$?
 	if [ "$ret" -ne 0 ]; then
@@ -143,8 +143,8 @@ node_exists() {
 		writelog "${FUNCNAME[0]} empty xpath expression given."
 		return 1
 	fi
-	xmlstarlet -q sel -N x="${VBOX_NAMESPACE}" \
-		-t -c "$(print_namespaced "x" "$1")" \
+	xmlstarlet -q sel \
+		-t -c "$(print_namespaced "_" "$1")" \
 		"${TMPCONFIG}"
 	ret=$?
 	if [ "$ret" -ne 0 ]; then
@@ -230,9 +230,6 @@ Ihren Satelliten scheint VirtualBox nicht zu unterstützen." cleanexit 1
 	fi
 	# Virtualbox configuration dir instead of $HOME/.VirtualBox
 	export VBOX_USER_HOME="${VBOX_ROOT}"
-
-	# xml namespace for vbox configs
-	declare -rg VBOX_NAMESPACE="http://www.virtualbox.org/"
 
 	# path to the main machine configuration file
 	declare -rg VBOX_MACHINE_CONFIG="${VBOX_MACHINES_DIR}/${VM_CLEANNAME}/${VM_CLEANNAME}.xml"
