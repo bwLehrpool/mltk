@@ -151,6 +151,8 @@ if [ -n "$SLX_SYSTEMD_TARGET" ]; then
 	done
 fi
 
+run_hooks post-config-tgz
+
 # Activate jumbo frames if requested
 (
 	. /run/network.conf

@@ -1,4 +1,4 @@
-#########################################################################
+#!/bin/ash ##############################################################
 #
 #			COMMON HELPER FUNCTIONS
 #
@@ -97,4 +97,13 @@ tarcopy() {
 	tar -c -p -T /tmp/tctmp | tar -xp -C "$2"
 	rm -f -- /tmp/tctmp
 	cd - &>/dev/null
+}
+
+run_hooks () {
+	[ -d "/inc/${1}.d" ] || return 0
+	local i
+	for i in "/inc/${1}.d/"*; do
+		[ -f "$i" ] && . "$i"
+	done
+	return 0
 }
