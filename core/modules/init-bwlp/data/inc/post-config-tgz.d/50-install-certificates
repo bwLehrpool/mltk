@@ -1,0 +1,26 @@
+#!/bin/ash
+
+# $FUTURE_ROOT - root dir of final stage 4 (config.tgz extracted to here)
+# $CONFIG      - current path to /opt/openslx/config (changes to this end up in stage 4)
+
+# Set up SSL communication with server
+if [ -d "${FUTURE_ROOT}/opt/openslx/ssl" ] && ! rmdir "${FUTURE_ROOT}/opt/openslx/ssl"; then
+	# Copy certs and symlinks to CA path
+	cp -a "${FUTURE_ROOT}"/opt/openslx/ssl/* "${FUTURE_ROOT}/etc/ssl/certs/"
+	# Append to combined ca bundle
+	find "${FUTURE_ROOT}/opt/openslx/ssl" -type f -exec cat {} \; \
+		>> "${FUTURE_ROOT}/etc/ssl/certs/ca-certificates.crt"
+	# Move certs (without symlinks), so they will be re-included if we run update-ca-certificates later
+	mkdir -p "${FUTURE_ROOT}/usr/local/share/ca-certificates"
+	find "${FUTURE_ROOT}/opt/openslx/ssl" -type f \
+		-exec mv {} "${FUTURE_ROOT}/usr/local/share/ca-certificates/" \;
+	# Delete symlinks
+	find "${FUTURE_ROOT}/opt/openslx/ssl" -type l -delete
+	# Add entry to /etc/hosts for boot server (satellite server)
+	# Change all the URLs in config to use SSL
+	if [ -n "$SLX_REMOTE_SSL" ] && ! grep -qF 'satellite.bwlehrpool' "/etc/hosts"; then
+		echo "$SLX_REMOTE_SSL    satellite.bwlehrpool" >> "/etc/hosts"
+		sed -i "s,http://${SLX_REMOTE_SSL}/,https://satellite.bwlehrpool/," "${CONFIG}"
+	fi
+fi
+true
