@@ -178,7 +178,7 @@ patch_aufs() {
 		patch=$(( patch - 1 ))
 	done
 	pinfo "Getting branch origin/$NEEDED_BRANCH"
-	git checkout "origin/$NEEDED_BRANCH" || git checkout "origin/aufs4.x-rcN" || perror "Could not checkout needed branch."
+	git checkout "origin/$NEEDED_BRANCH" || git checkout "origin/${AUFS}.x-rcN" || perror "Could not checkout needed branch."
 	pinfo "Starting to patch... $NEEDED_BRANCH"
 	tarcopy "Documentation fs" "$MODULE_WORK_DIR/ksrc"
 
