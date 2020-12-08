@@ -207,6 +207,8 @@ busybox mount -o move /dev "${FUTURE_ROOT}/dev"
 cp /opt/openslx/bin/splashtool "${FUTURE_ROOT}/opt/openslx/bin/"
 cp -r /opt/openslx/icons "${FUTURE_ROOT}/opt/openslx/"
 
+run_hooks pre-switchroot
+
 echo "Waiting for async processes..."
 wait
 
