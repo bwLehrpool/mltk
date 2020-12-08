@@ -1,10 +1,10 @@
 #!/bin/ash
 
 # $FUTURE_ROOT - root dir of final stage 4 (config.tgz extracted to here)
-# $CONFIG      - current path to /opt/openslx/config (changes to this end up in stage 4)
 
 # Set up SSL communication with server
 if [ -d "${FUTURE_ROOT}/opt/openslx/ssl" ] && ! rmdir "${FUTURE_ROOT}/opt/openslx/ssl"; then
+	CONFIG="${FUTURE_ROOT}/opt/openslx/config"
 	# Copy certs and symlinks to CA path
 	cp -a "${FUTURE_ROOT}"/opt/openslx/ssl/* "${FUTURE_ROOT}/etc/ssl/certs/"
 	# Append to combined ca bundle
