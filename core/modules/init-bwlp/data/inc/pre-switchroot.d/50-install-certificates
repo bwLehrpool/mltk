@@ -18,8 +18,8 @@ if [ -d "${FUTURE_ROOT}/opt/openslx/ssl" ] && ! rmdir "${FUTURE_ROOT}/opt/opensl
 	find "${FUTURE_ROOT}/opt/openslx/ssl" -type l -delete
 	# Add entry to /etc/hosts for boot server (satellite server)
 	# Change all the URLs in config to use SSL
-	if [ -n "$SLX_REMOTE_SSL" ] && ! grep -qF 'satellite.bwlehrpool' "/etc/hosts"; then
-		echo "$SLX_REMOTE_SSL    satellite.bwlehrpool" >> "/etc/hosts"
+	if [ -n "$SLX_REMOTE_SSL" ] && ! grep -qF 'satellite.bwlehrpool' "${FUTURE_ROOT}/etc/hosts"; then
+		echo "$SLX_REMOTE_SSL    satellite.bwlehrpool" >> "${FUTURE_ROOT}/etc/hosts"
 		sed -i "s,http://${SLX_REMOTE_SSL}/,https://satellite.bwlehrpool/," "${CONFIG}"
 	fi
 fi
