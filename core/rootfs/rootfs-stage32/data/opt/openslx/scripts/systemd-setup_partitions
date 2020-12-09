@@ -25,6 +25,8 @@ PARTITION_FILE="/run/openslx/partitions"
 readonly MOUNT_POINT_45 PARTITION_FILE
 mkdir -p "/run/openslx"
 
+. /opt/openslx/config
+
 declare -a TMPFILES
 gettmp () {
 	local vn file
