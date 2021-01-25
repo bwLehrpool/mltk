@@ -28,7 +28,8 @@ if [ ! $(mount 2>/dev/null | grep -q "$DISKMOUNTDIR") ]; then
 fi
 
 # CIFSVERSIONS="3.11 3.0 2.1 2.0 1.0"
-CIFSVERSIONS="3.0 2.1 1.0 3.11 2.0"
+#CIFSVERSIONS="3.0 2.1 1.0 3.11 2.0"
+CIFSVERSIONS="vers=3.0,sec=ntlmssp vers=2.1,sec=ntlmssp vers=1.0,sec=ntlm vers=3.0,sec=ntlmv2 vers=1.0,sec=ntlmv2 vers=3.0,sec=ntlm vers=2.0,sec=ntlmssp"
 MOUNTCIFSPRAE="-v -t cifs -o "
 MOUNTCIFSOPTS="uid=$(id --user "$LOCALUSER"),gid=$(id --group "$LOCALUSER"),forceuid,forcegid,file_mode=0700,dir_mode=0700,nobrl,noacl"
 MOUNTNFSPRAE="-v -t nfs4 -o "

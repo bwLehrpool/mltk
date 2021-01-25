@@ -49,7 +49,7 @@ function mounter()
 				x=2
 				for VERSION in $CIFSVERSIONS; do
 					AUSGANG=0
-					while ! mount $1 vers="$VERSION",${2} $3 $4 2>/dev/null 1>&2; do
+					while ! mount $1 "$VERSION",${2} $3 $4 2>/dev/null 1>&2; do
 						logger "openslx sharemapper: could not mount ${3} to ${4}, waited another $x seconds, retrying."
 						sleep $x
 						if [ "$x" -gt 4 ]; then
