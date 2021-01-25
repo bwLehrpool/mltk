@@ -30,11 +30,20 @@ for SESSION in $(loginctl $LEGEND | awk '{print $1}'); do
 	unset Name
 done
 
+. "$( which slx-tools )"
 
 # Also report usage of /tmp and swap
-TMP="$( slx-tools fs_path_space /tmp )"
+TMP="$( fs_path_space /tmp )"
 TMP_FREE="${TMP% *}"
 TMP_SIZE="${TMP#* }"
+PERSISTENT_SIZE=0
+PERSISTENT_FREE=0
+if fs_path_ismountpoint /opt/openslx/persistent; then
+	TMP="$( fs_path_space /opt/openslx/persistent )"
+	ID45_FREE="${TMP% *}"
+	ID45_SIZE="${TMP#* }"
+fi
+
 SWAP_SIZE=$( awk '{if ($1 == "SwapTotal:") { print $2; exit; }}' /proc/meminfo )
 SWAP_FREE=$( awk '{if ($1 == "SwapFree:") { print $2; exit; }}' /proc/meminfo )
 MEM_SIZE=$( awk '{if ($1 == "MemTotal:") { print $2; exit; }}' /proc/meminfo )
@@ -72,6 +81,7 @@ fi
 
 curl --retry 3 --retry-connrefused -m 6 -s --data-urlencode "type=~runstate" --data-urlencode "uuid=$UUID" --data-urlencode "used=$USED" \
 	--data-urlencode "user=$Name" --data-urlencode "tmpsize=$TMP_SIZE" --data-urlencode "tmpfree=$TMP_FREE" \
+	--data-urlencode "id45size=$ID45_SIZE" --data-urlencode "id45free=$ID45_FREE" \
 	--data-urlencode "swapsize=$SWAP_SIZE" --data-urlencode "swapfree=$SWAP_FREE" \
 	--data-urlencode "memsize=$MEM_SIZE" --data-urlencode "memfree=$MEM_FREE" \
 	"$@" \
