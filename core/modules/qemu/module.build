@@ -5,14 +5,11 @@ fetch_source() {
 
 build() {
 	COPYLIST="list_dpkg_output"
-	[ -e "$COPYLIST" ] && rm "$COPYLIST"
-	list_packet_files >> "$COPYLIST"
-
-
+	[ -e "${COPYLIST}" ] && rm "${COPYLIST}"
+	list_packet_files >> "${COPYLIST}"
 	tarcopy "$(cat "${COPYLIST}" | sort -u)" "${MODULE_BUILD_DIR}"
 }
 
 post_copy() {
-	# qemu-bridge-helper needs suid to be called within run-virt
-	find ${TARGET_BUILD_DIR} -type f -executable -name "*qemu-bridge-helper*" -exec chmod u+s {} \;
+	:
 }
