@@ -1,0 +1,16 @@
+#!/bin/bash
+REQUIRED_INSTALLED_PACKAGES="
+	libvirt-daemon-system
+	libvirt-daemon
+	libvirt-clients
+	virt-manager
+	virt-viewer
+"
+
+REQUIRED_CONTENT_PACKAGES="
+	libvirt-daemon-system
+	libvirt-daemon
+	libvirt-clients
+	virt-manager
+	virt-viewer
+"
