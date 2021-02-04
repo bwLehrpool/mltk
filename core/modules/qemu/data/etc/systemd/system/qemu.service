@@ -1,9 +1,9 @@
 [Unit]
-Description=Sets up the virtual box environment
+Description=Sets up the QEMU hypervisor
 Requires=run-virt-env.service
 After=run-virt-env.service
 
 [Service]
 Type=oneshot
 RemainAfterExit=yes
-ExecStart=/opt/openslx/scripts/systemd-qemukvm_env start
+ExecStart=/opt/openslx/scripts/systemd-qemu_env start

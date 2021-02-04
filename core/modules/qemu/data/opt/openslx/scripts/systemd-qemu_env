@@ -1,7 +1,7 @@
-#!/bin/ash
+#!/bin/bash
 # -----------------------------------------------------------------------------
 #
-# Copyright (c) 2017..2018 bwLehrpool-Projektteam
+# Copyright (c) 2017..2021 bwLehrpool-Projektteam
 #
 # This program/file is free software distributed under the GPL version 2.
 # See https://www.gnu.org/licenses/old-licenses/gpl-2.0-standalone.html
@@ -12,8 +12,8 @@
 # General information about bwLehrpool can be found at https://bwlehrpool.de
 #
 # -----------------------------------------------------------------------------
-# systemd-qemukvm_env
-#    - This is the preparation script for the configuration of Linux Qemu/KVM.
+# systemd-qemu_env
+#    - This is the preparation script for the configuration of QEMU on Linux.
 ################################################################################
 
 # lazy load all kvm related modules
@@ -22,7 +22,6 @@ modprobe kvm_amd
 modprobe kvm_intel
 
 if [ ! -e /dev/kvm ]; then
-	slxlog "qemukvm-modules" "/dev/kvm not found! Missing kvm kernel module(s)?"
+	slxlog "qemu-modules" "/dev/kvm not found! Missing kvm kernel module(s)?"
 	exit 1
 fi
-
