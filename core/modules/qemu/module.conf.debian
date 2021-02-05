@@ -2,6 +2,9 @@
 REQUIRED_INSTALLED_PACKAGES="
 	qemu
 	qemu-kvm
+	mvn
+	openjdk-11-jdk-headless
+	openjdk-11-jre
 "
 
 REQUIRED_CONTENT_PACKAGES="
@@ -13,4 +16,5 @@ REQUIRED_CONTENT_PACKAGES="
 	qemu-utils
 	seabios
 	ovmf
+	openjdk-11-jre
 "
