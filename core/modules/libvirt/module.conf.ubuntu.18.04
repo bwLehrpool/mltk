@@ -1,12 +1,10 @@
 #!/bin/bash
 REQUIRED_INSTALLED_PACKAGES="
 	libvirt-bin
-	virt-manager
 	virt-viewer
 "
 
 REQUIRED_CONTENT_PACKAGES="
 	libvirt-bin
-	virt-manager
 	virt-viewer
 "
