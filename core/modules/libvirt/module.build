@@ -11,5 +11,9 @@ build() {
 }
 
 post_copy() {
-	:
+	#
+	# remove default network configuration
+	#
+	rm /etc/libvirt/qemu/networks/default.xml
+	rm /etc/libvirt/qemu/networks/autostart/default.xml
 }
