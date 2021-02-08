@@ -16,12 +16,31 @@
 #    - This is the preparation script for the configuration of QEMU on Linux.
 ################################################################################
 
-# lazy load all kvm related modules
-modprobe kvm
-modprobe kvm_amd
-modprobe kvm_intel
+#
+# load general KVM module
+#
+modprobe "kvm" || slxlog "qemu" "Could not load 'kvm' kernel modul!"
 
+#
+# load CPU specific KVM implementation
+#
+virt=$(egrep -m1 -w '^flags[[:blank:]]*:' /proc/cpuinfo | egrep -wo '(vmx|svm)') || true
+
+if [ "${virt}" = "vmx" ]; then
+	kmod="kvm_intel"
+elif [ "${virt}" = "svm" ]; then
+	kmod="kvm_amd"
+else
+	slxlog "qemu" "CPU does not support KVM extensions!"
+	exit 1
+fi
+
+modprobe "${kmod}" || slxlog "qemu" "Could not load '${kmod}' kernel modul!"
+
+#
+# check that the KVM exposed device exists
+#
 if [ ! -e /dev/kvm ]; then
-	slxlog "qemu-modules" "/dev/kvm not found! Missing kvm kernel module(s)?"
+	slxlog "qemu" "/dev/kvm not found! Missing kvm kernel module(s)?"
 	exit 1
 fi
