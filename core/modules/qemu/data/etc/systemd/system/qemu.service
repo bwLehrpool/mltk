@@ -1,7 +1,9 @@
 [Unit]
 Description=Sets up the QEMU hypervisor
 Requires=run-virt-env.service
+Requires=libvirtd.service
 After=run-virt-env.service
+After=libvirtd.service
 
 [Service]
 Type=oneshot
