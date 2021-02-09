@@ -1,0 +1,5 @@
+<network ipv6='no'>
+  <name>vsw2</name>
+  <forward mode='bridge'/>
+  <bridge name='vsw2'/>
+</network>
