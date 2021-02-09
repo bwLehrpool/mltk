@@ -7,6 +7,8 @@ export PATH="$PATH:/opt/openslx/sbin:/opt/openslx/bin"
 
 [ -z "$SLX_BROWSER_URL" ] && exit 1
 
+. /opt/openslx/bin/slx-tools
+
 # disable power management features
 xset s off
 xset -dpms

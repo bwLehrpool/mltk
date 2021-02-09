@@ -9,6 +9,9 @@ if [ "$(whoami)" = "demo" ]; then
 	mkdir -p "$HOME/.config/chromium/Default"
 fi
 
+cert_to_nssdb /etc/ssl/certs/ "${HOME}/.pki/nssdb" &
+nss_pid=$!
+
 # Helper to decode URL-encoded strings
 # e.g. urldecode http%3A%2F%2Ffoobar.com -> http://foobar.com
 urldecode() {
@@ -135,6 +138,9 @@ fi
 if [ -n "$SLX_BROWSER_INSECURE" ]; then
 	chromium_args+=("--allow-running-insecure-content" "--ignore-certificate-errors")
 fi
+
+# Wait until cert store is fully populated
+wait $nss_pid
 
 # finally exec to chromium
 exec chromium-browser "${chromium_args[@]}"
