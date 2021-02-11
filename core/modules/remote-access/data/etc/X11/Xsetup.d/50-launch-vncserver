@@ -11,8 +11,12 @@
 		if ! [ -e "$rule" ]; then
 			(
 				echo "#!/bin/sh"
-				echo "iptables -A INPUT \! -s "'"'"$srchost"'"'" -p tcp --dport 5900 -j DROP"
-				echo "iptables -A INPUT \! -s "'"'"$srchost"'"'" -p tcp --dport 5901 -j DROP"
+				echo "iptables -A INPUT -s "'"'"$srchost"'"'" -p tcp --dport 5900 -j ACCEPT"
+				echo "iptables -A INPUT -s "'"'"$srchost"'"'" -p tcp --dport 5901 -j ACCEPT"
+				echo "iptables -A INPUT -s "'"'"$srchost"'"'" -p tcp --dport 7551 -j ACCEPT"
+				echo "iptables -A INPUT -p tcp --dport 5900 -j DROP"
+				echo "iptables -A INPUT -p tcp --dport 5901 -j DROP"
+				echo "iptables -A INPUT -p tcp --dport 7551 -j DROP"
 			) > "$rule"
 			chmod +x "$rule"
 		fi
