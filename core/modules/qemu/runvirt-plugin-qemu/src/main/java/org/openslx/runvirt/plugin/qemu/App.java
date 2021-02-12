@@ -18,17 +18,17 @@ public class App
 	/**
 	 * Stores name of the run-virt QEMU plugin (command line tool).
 	 */
-	private static final String APP_NAME = "run-virt QEMU plugin";
+	public static final String APP_NAME = "run-virt QEMU plugin";
 
 	/**
 	 * Stores description of the run-virt QEMU plugin (command line tool).
 	 */
-	private static final String APP_DESC = "Finalize a Libvirt VM (domain XML) configuration and manage the VM.";
+	public static final String APP_DESC = "Finalize a Libvirt VM (domain XML) configuration and manage the VM.";
 
 	/**
 	 * Stores additional information for the run-virt QEMU plugin (command line tool).
 	 */
-	private static final String APP_INFO = "The " + APP_NAME + " is part of the bwLehrpool infrastructure.";
+	public static final String APP_INFO = "The " + APP_NAME + " is part of the bwLehrpool infrastructure.";
 
 	/**
 	 * Instance of a logger to log messages.
@@ -64,6 +64,9 @@ public class App
 
 		// print command line arguments for debugging purposes
 		App.printCmdLnArgs( cmdLn );
+
+		// return with successful exit code
+		System.exit( 0 );
 	}
 
 	/**
