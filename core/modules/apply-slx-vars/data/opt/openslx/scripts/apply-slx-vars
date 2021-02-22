@@ -1,0 +1,15 @@
+#!/bin/ash
+
+. /opt/openslx/config
+
+# Disable TTY switch
+if [ "$SLX_TTY_SWITCH" = "no" ]; then
+	mkdir -p /etc/X11/xorg.conf.d
+	cat > /etc/X11/xorg.conf.d/50-no-tty.conf <<EOF
+Section "ServerFlags"
+	Option "DontVTSwitch" "true"
+EndSection
+EOF
+fi
+
+exit 0
