@@ -1,7 +1,7 @@
 #!/bin/ash
 
 disable_tty_switch() {
-	cat <<EOF > /etc/X11/xorg.conf.d/50-no-tty.conf
+	cat > /etc/X11/xorg.conf.d/50-no-tty.conf <<EOF
 Section "ServerFlags"
 	Option "DontVTSwitch" "true"
 EndSection
