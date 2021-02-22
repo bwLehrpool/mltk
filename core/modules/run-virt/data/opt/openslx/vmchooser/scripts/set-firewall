@@ -37,6 +37,22 @@ done
 
 declare -rg AUTORULES=$(mktemp)
 
+parse_uri () {
+	local scheme
+	ip="${1,,}"
+	scheme="${ip%%://*}"
+	ip="${ip#*://}"
+	port="${ip##*:}"
+	if [[ "$port" =~ ^[0-9]+$ ]]; then
+		ip="${ip%:*}"
+	elif [ "$scheme" = "ldaps" ]; then
+		port=636
+	else
+		port=389
+	fi
+	(( port >= 0 && port <= 65535 )) || port=0
+}
+
 add_ips () {
 	# add_ips "IN/OUT" "IP1 IP2 IPn" "PORT" "ACCEPT/REJECT"
 	local IP
@@ -51,6 +67,24 @@ add_ips "OUT" "127.0.0.0/8" 0 "ACCEPT"
 add_ips "OUT" "$SLX_DNS" 53 "ACCEPT"
 add_ips "OUT" "$SLX_DNBD3_SERVERS" 5003 "ACCEPT"
 add_ips "OUT" "$SLX_KCL_SERVERS $SLX_SERVER_IP" 0 "ACCEPT"
+
+# sssd
+sssd="$( < /etc/sssd/sssd.conf  grep -P '^\s*ldap_(backup_)?uri\s*=' | sed -r 's/^[^=]*=//' )"
+sssd="${sssd//,/ }"
+for uri in $sssd; do
+	parse_uri "$uri"
+	add_ips "OUT" "$ip" "$port" "ACCEPT"
+done
+
+# pam-slx-plug
+for file in /opt/openslx/pam/slx-ldap.d/*; do
+	[ -f "$file" ] || continue
+	uris="$( grep -Po "(?<=LDAP_URI=')[^']*" "$file" )"
+	for uri in $uris; do
+		parse_uri "$uri"
+		add_ips "OUT" "$ip" "$port" "ACCEPT"
+	done
+done
 
 if [ -n "$SLX_VM_NFS" ]; then
 	IP=
