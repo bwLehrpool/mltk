@@ -31,8 +31,8 @@ for TOOL in iptables ip6tables; do
 	if ! $TOOL -w -C FORWARD -o br0 -j runvirt-OUTPUT; then
 		$TOOL -w -A FORWARD -o br0 -j runvirt-OUTPUT
 	fi
-	$TOOL -A runvirt-INPUT -m conntrack --ctstate ESTABLISHED -j ACCEPT
-	$TOOL -A runvirt-OUTPUT -m conntrack --ctstate ESTABLISHED -j ACCEPT
+	$TOOL -A runvirt-INPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+	$TOOL -A runvirt-OUTPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
 done
 
 declare -rg AUTORULES=$(mktemp)
@@ -55,10 +55,17 @@ parse_uri () {
 
 add_ips () {
 	# add_ips "IN/OUT" "IP1 IP2 IPn" "PORT" "ACCEPT/REJECT"
-	local IP
-	[ -z "$1" -o -z "$2" -o -z "$3" -o -z "$4" ] && return 1
-	for IP in $2; do
-		echo "$1 $IP $3 $4" >> "${AUTORULES}"
+	local ip port port_def
+	port_def="$3"
+	[ -z "$1" -o -z "$2" -o -z "$port_def" -o -z "$4" ] && return 1
+	for ip in $2; do
+		port="${ip#*:}"
+		if (( port > 0 && port < 65536 )); then
+			ip="${ip%:*}"
+		else
+			port="$port_def"
+		fi
+		echo "$1 ${ip} ${port} $4" >> "${AUTORULES}"
 	done
 }
 
