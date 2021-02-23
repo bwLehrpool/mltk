@@ -62,6 +62,11 @@ reload_rules () {
 		iptables -w -t mangle -I "$chain" 1 -j "ipt-helper-$chain"
 	done
 
+	# Loopback
+	iptables -w -A ipt-helper-INPUT -i lo -j ACCEPT
+	iptables -w -A ipt-helper-OUTPUT -o lo -j ACCEPT
+	# TODO: IPv6 (in general)
+
 	# Apply
 	local LOGFILE=$(mktemp)
 	local DISABLED="/opt/openslx/iptables/rules.d/disabled/"
