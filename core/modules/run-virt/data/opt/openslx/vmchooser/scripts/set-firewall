@@ -4,9 +4,14 @@
 
 [ "$UID" = "0" ] || exit 1
 
-declare -rg RULES=$(mktemp)
+declare -rg RULES="$( mktemp )"
+declare -rg AUTORULES="$( mktemp )"
+declare -rg REMOTERULES="$( mktemp )"
+declare -rg LOGFILE="$( mktemp )"
 
 [ -n "$RULES" ] || exit 2
+
+trap 'rm -f -- "$RULES" "$AUTORULES" "$REMOTERULES" "$LOGFILE"' EXIT
 
 [ -n "$1" ] || exit 3
 
@@ -35,7 +40,6 @@ for TOOL in iptables ip6tables; do
 	$TOOL -A runvirt-OUTPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
 done
 
-declare -rg AUTORULES=$(mktemp)
 
 parse_uri () {
 	local scheme
@@ -107,18 +111,27 @@ fi
 sort -u "${AUTORULES}" > "${RULES}"
 
 # determine the URL to download the netrules from
-. /opt/openslx/vmchooser/config/resource_urls.conf
+if [ -s /opt/openslx/vmchooser/config/resource_urls.conf ]; then
+	. /opt/openslx/vmchooser/config/resource_urls.conf
+fi
 NETRULES_URL=
 [ -n "$url_lecture_netrules" ] && NETRULES_URL="${url_lecture_netrules//%UUID%/${1}}"
 [ -z "$NETRULES_URL" ] && NETRULES_URL="${SLX_VMCHOOSER_BASE_URL}/lecture/$1/netrules"
-wget -T 6 -O - "${NETRULES_URL}" >> "${RULES}" 2> "${AUTORULES}"
+wget -T 8 -O - "${NETRULES_URL}" > "${REMOTERULES}" 2> "${LOGFILE}"
 RET=$?
 
 if [ "$RET" != "0" ]; then
 	echo "wget exit code: $RET :-("
-	grep -q "ERROR 404" "${AUTORULES}" && exit 0
+	grep -q "ERROR 404" "${LOGFILE}" && exit 0 # Old sat, doesn't support firewall rules
+	echo "WGET error output:"
+	cat "${LOGFILE}"
+	echo "------------ Downloaded content follows"
+	cat "${REMOTERULES}"
 	exit 6
 fi
+
+# Download OK, append to rules
+cat "${REMOTERULES}" >> "${RULES}"
 
 declare -rg V4='^[0-9]+(\.[0-9]+)*(/[0-9]+)?$'
 declare -rg V6='^([0-9a-fA-F]+|:)(:+[0-9a-fA-F]*)*(/[0-9]+)?$'
