@@ -127,6 +127,7 @@ function mount_home()
 	export USER="${GLOBALUSER}"
 	export PASSWD="${PW}"
 	ERRORMSG=""
+	[ -n "$GLOBALDOMAIN" ] && MOUNTOPTS="${MOUNTOPTS},domain=$GLOBALDOMAIN"
 	mounter "${MOUNTPARAM}" "${MOUNTOPTS}" "${SHAREPATH}" "${USERHOMEDIR}" 2>/dev/null 1>&2
 	ERR=$?
 	unset USER

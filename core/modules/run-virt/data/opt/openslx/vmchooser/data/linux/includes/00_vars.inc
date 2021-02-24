@@ -39,6 +39,7 @@ NATADDR=$(head -n 1 "$CONFIGFILE" | cut -f 1 -d$'\t')
 PORT=$(head -n 1 "$CONFIGFILE" | cut -f 2 -d$'\t')
 SCHLUESSEL=$(head -n 1 "$CONFIGFILE" | cut -f 4 -d$'\t')
 GLOBALDOMAINUSER=$(head -n 1 "$CONFIGFILE" | cut -f 5 -d$'\t')
+GLOBALDOMAIN=$(echo "$GLOBALDOMAINUSER" | cut -d '\' -f 1)
 GLOBALUSER=$(echo "$GLOBALDOMAINUSER" | cut -d '\' -f 2)
 
 ##### Remap #######################
