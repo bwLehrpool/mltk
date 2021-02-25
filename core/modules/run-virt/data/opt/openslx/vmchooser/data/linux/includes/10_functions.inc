@@ -23,45 +23,51 @@ function already_mounted()
 
 function mounter()
 {
+	MOUNTPARAM="$1"
+	MOUNTOPTS="$2"
+	SHAREPATH="$3"
+	MOUNTDIR="$4"
+
 	# Ausgabe: konnte mounten: 0, konnte nicht mounten: 1, schon gemountet 2
-	already_mounted "$4"
+	already_mounted "$MOUNTDIR"
 	ERR=$?
 	if [ "$ERR" -eq 0 ]; then
-		logger "openslx sharemapper: $3 already mounted."
+		logger "openslx sharemapper: $SHAREPATH already mounted."
 		AUSGANG=2	
 	else	
 		case "$MOUNTER" in 
 			nfs)	AUSGANG=0
 				x=2
-				while ! mount $1 $2 $3 $4 2>/dev/null 1>&2; do
-					logger "openslx sharemapper: could not mount ${3} to ${4}, waited another $x seconds, retrying."
+				while ! mount $MOUNTPARAM "${MOUNTOPTS}" "$SHAREPATH" "$MOUNTDIR" 2>/dev/null 1>&2; do
+					logger "openslx sharemapper: could not mount ${SHAREPATH} to ${MOUNTDIR}, waited another $x seconds, retrying."
 					sleep $x
 					if [ "$x" -gt 6 ]; then
 						AUSGANG=1
-						logger "openslx sharemapper: timeout, could not mount ${3} to ${4}. mount.nfs installed?"
+						logger "openslx sharemapper: timeout, could not mount ${SHAREPATH} to ${MOUNTDIR}. mount.nfs installed?"
 						break
 					fi
 					let x=x+2
 				done
-				[ "$AUSGANG" -eq 0 ] 	&& logger "openslx sharemapper: ${3} mounted to ${4} (nfs)."	# Todo: Schöner schreiben:)
+				[ "$AUSGANG" -eq 0 ] 	&& logger "openslx sharemapper: ${SHAREPATH} mounted to ${MOUNTDIR} (nfs)."	# Todo: Schöner schreiben:)
 				;;
 			cifs)	AUSGANG=0
 				x=2
+				[ -n "$GLOBALDOMAIN" ] && MOUNTOPTS="${MOUNTOPTS},domain=$GLOBALDOMAIN"
 				for VERSION in $CIFSVERSIONS; do
 					AUSGANG=0
-					while ! mount $1 "$VERSION",${2} $3 $4 2>/dev/null 1>&2; do
-						logger "openslx sharemapper: could not mount ${3} to ${4}, waited another $x seconds, retrying."
+					while ! mount $MOUNTPARAM "${VERSION}","${MOUNTOPTS}" "$SHAREPATH" "$MOUNTDIR" 2>/dev/null 1>&2; do
+						logger "openslx sharemapper: could not mount ${SHAREPATH} to ${MOUNTDIR}, waited another $x seconds, retrying."
 						sleep $x
 						if [ "$x" -gt 4 ]; then
 							AUSGANG=1
-							logger "openslx sharemapper: timeout, could not mount ${3} to ${4} cifs v${VERSION}."
+							logger "openslx sharemapper: timeout, could not mount ${SHAREPATH} to ${MOUNTDIR} cifs v${VERSION}."
 							break
 						fi
 						let x=x+2
 					done
 					[ "$AUSGANG" -eq 0 ] && break
 				done
-				[ "$AUSGANG" -eq 0 ]    && logger "openslx sharemapper: ${3} mounted to ${4} (cifs $VERSION)."
+				[ "$AUSGANG" -eq 0 ]    && logger "openslx sharemapper: ${SHAREPATH} mounted to ${MOUNTDIR} (cifs $VERSION)."
 				;;
 			*)	logger "openslx sharemapper: unknown mounter ${MOUNTER}!"
 				;;
@@ -127,7 +133,6 @@ function mount_home()
 	export USER="${GLOBALUSER}"
 	export PASSWD="${PW}"
 	ERRORMSG=""
-	[ -n "$GLOBALDOMAIN" ] && MOUNTOPTS="${MOUNTOPTS},domain=$GLOBALDOMAIN"
 	mounter "${MOUNTPARAM}" "${MOUNTOPTS}" "${SHAREPATH}" "${USERHOMEDIR}" 2>/dev/null 1>&2
 	ERR=$?
 	unset USER
