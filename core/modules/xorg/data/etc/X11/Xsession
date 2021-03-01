@@ -1,4 +1,4 @@
-#!/bin/ash
+#!/bin/bash
 #
 # /etc/X11/Xsession
 #
@@ -19,45 +19,31 @@ message () {
   fi
 }
 
-message_nonl () {
-  # pretty-print messages of arbitrary length (no trailing newline); use
-  # xmessage if it is available and $DISPLAY is set
-  MESSAGE="$PROGNAME: $*"
-  echo -n "$MESSAGE" | fold -s -w ${COLUMNS:-80} >&2;
-  if [ -n "$DISPLAY" ] && which xmessage > /dev/null 2>&1; then
-    echo -n "$MESSAGE" | fold -s -w ${COLUMNS:-80} | xmessage -center -file -
-  fi
-}
-
 errormsg () {
   # exit script with error
   message "$*"
   exit 1
 }
 
-internal_errormsg () {
-  # exit script with error; essentially a "THIS SHOULD NEVER HAPPEN" message
-  # One big call to message() for the sake of xmessage; if we had two then
-  # the user would have dismissed the error we want reported before seeing the
-  # request to report it.
-  errormsg "$*" \
-           "Please report the installed version of the \"x11-common\"" \
-           "package and the complete text of this error message to" \
-           "<debian-x@lists.debian.org>."
-}
+# Make sure we source the global profile - needed for ssh-agent, etc.
+[ -e "/etc/profile" ] && . "/etc/profile"
 
 # Workaround to start Xsession. The original Xsession script includes error handling functionality and sources other scrips from the Xsession.d/ directory.
 
 SESSIONDIR="/etc/X11/Xsession.d"
 
-if [ -d "$SESSIONDIR" ]; then
-	for file in $SESSIONDIR/*; do
-		. $file || slxlog "xsession" "Xsession: Could not source $file" "$file"
-	done
+tmpfile="$( mktemp "/tmp/xsession-log-$( date +%s )-XXXXXX" )"
+if [ -n "$tmpfile" ]; then
+	exec &> "$tmpfile"
+	set -x
 fi
 
-# Make sure we source the global profile - needed for ssh-agent, etc.
-[ -e "/etc/profile" ] && source "/etc/profile"
+if [ -d "$SESSIONDIR" ]; then
+	for file in "$SESSIONDIR"/*; do
+		[ -f "$file" ] || continue
+		. "$file"
+	done
+fi
 
 # start selected session
 case "$1" in
@@ -80,21 +66,21 @@ case "$1" in
 	default)
 		# Specific program was requested.
 		SESSION="default"
-		if [ -e $HOME/.dmrc ]; then
-			SESSION=$(cat $HOME/.dmrc|grep "Session"| cut -d "=" -f2)
+		if [ -s "$HOME/.dmrc" ]; then
+			SESSION=$( < "$HOME/.dmrc"  grep -m1 "Session" | cut -d "=" -f2 )
 		fi
 		# somehow .dmrc is cleared when logging in the first time after boot
-		if [ -e $HOME/.dmrc.real ]; then
-			SESSION=$(cat $HOME/.dmrc.real|grep "Session"| cut -d "=" -f2)
+		if [ -s "$HOME/.dmrc.real" ]; then
+			SESSION=$( < "$HOME/.dmrc.real"  grep -m1 "Session" | cut -d "=" -f2 )
 		fi
 		[ "x$SESSION" == "xdefault" ] && SESSION="gnome"
-		CMD=$(cat /opt/openslx/xsessions/$SESSION.desktop|grep "Exec"| cut -d "=" -f2-99|head -n1)
+		CMD=$( < "/opt/openslx/xsessions/$SESSION.desktop"  grep -m1 "Exec" | cut -d "=" -f2-99 | head -n1 )
 		exec $CMD
 	;;
 
 	*)
 		# Specific program was requested.
-		STARTUP_FULL_PATH=$(/opt/openslx/bin/which "${1%% *}" || true)
+		STARTUP_FULL_PATH=$( which "${1%% *}" || true )
 		if [ -n "$STARTUP_FULL_PATH" ] && [ -e "$STARTUP_FULL_PATH" ]; then
 			if [ -x "$STARTUP_FULL_PATH" ]; then
 				exec $1
