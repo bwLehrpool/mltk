@@ -13,17 +13,24 @@ TOOLS="
 	dmidecode
 "
 
-URL="http://132.230.8.113/error_report.php"
+URLS="
+	https://bwlp-masterserver.ruf.uni-freiburg.de/error_report.php
+	http://132.230.8.113/error_report.php
+	end
+"
 
 if [ "$UID" != "0" ]; then
 	echo "Debug Reports können nur von root versendet werden" >&2
 	exit 1
 fi
 
-if ! curl -H "Expect:" -f -s -S --connect-timeout 5 "$URL" > /dev/null; then
-	echo "Kann den Debug-Report-Server in Freiburg nicht erreichen. :-(" >&2
-	exit 1
-fi
+for URL in $URLS; do
+	if [ "$URL" = "end" ]; then
+		echo "Kann den Debug-Report-Server in Freiburg nicht erreichen. :-(" >&2
+		exit 1
+	fi
+	curl -L -H "Expect:" -f -s -S --connect-timeout 5 "$URL" > /dev/null && break
+done
 
 rm -rf /tmp/debug-report
 mkdir -p /tmp/debug-report/{static/proc,generated}
@@ -134,10 +141,13 @@ fi
 echo "....fertig!"
 
 echo -n "Lade Fehlerbericht hoch...."
-if ! curl -H "Expect:" -f -s -S -F "file=@error-report.tar.gz;filename=report" "$URL" > /dev/null; then
-	echo "Fehler beim Hochladen des Fehlerberichts :-(" >&2
-	exit 1
-fi
+for URL in $URLS; do
+	if [ "$URL" = "end" ]; then
+		echo "Fehler beim Hochladen des Fehlerberichts :-(" >&2
+		exit 1
+	fi
+	curl -L -H "Expect:" -f -s -S -F "file=@error-report.tar.gz;filename=report" "$URL" > /dev/null && break
+done
 
 echo "Fehlerbericht erfolgreich versendet!"
 
