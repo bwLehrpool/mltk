@@ -35,7 +35,8 @@
 			copy="$( mktemp )"
 			cat "$XAUTHORITY" > "$copy"
 			export XAUTHORITY="$copy"
-			trap 'rm -f -- "$copy"' EXIT INT TERM
+			trap 'exit 1' INT TERM
+			trap 'rm -f -- "$copy"' EXIT
 		fi
 		fails=0
 		while true; do
