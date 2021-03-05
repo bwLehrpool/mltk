@@ -3,7 +3,9 @@
 [ -z "$SLX_KCL_SERVERS" ] && . /opt/openslx/config
 
 [ "$DISPLAY" = :0 ] && [ -n "$SLX_REMOTE_VNC" ] && {
-	# TODO GET
+	# TODO If we support multiple parallel sessions in the future, we need dedicated
+	# ports for each session for both, the VNC and the RPC port.
+	vnc_port="${SLX_REMOTE_VNC_PORT:-5900}"
 	srchost="$SLX_REMOTE_HOST_ACCESS"
 	if [ -n "$srchost" ]; then
 		# IPTABLES
@@ -11,11 +13,9 @@
 		if ! [ -e "$rule" ]; then
 			(
 				echo "#!/bin/sh"
-				echo "iptables -A INPUT -s "'"'"$srchost"'"'" -p tcp --dport 5900 -j ACCEPT"
-				echo "iptables -A INPUT -s "'"'"$srchost"'"'" -p tcp --dport 5901 -j ACCEPT"
+				echo "iptables -A INPUT -s "'"'"$srchost"'"'" -p tcp --dport $vnc_port -j ACCEPT"
 				echo "iptables -A INPUT -s "'"'"$srchost"'"'" -p tcp --dport 7551 -j ACCEPT"
-				echo "iptables -A INPUT -p tcp --dport 5900 -j DROP"
-				echo "iptables -A INPUT -p tcp --dport 5901 -j DROP"
+				echo "iptables -A INPUT -p tcp --dport $vnc_port -j DROP"
 				echo "iptables -A INPUT -p tcp --dport 7551 -j DROP"
 			) > "$rule"
 			chmod +x "$rule"
@@ -28,7 +28,9 @@
 	printf "%s" "$passwd" > "/tmp/vnc-passwd"
 	url="http://${SLX_PXE_SERVER_IP}/slx-admin/api.php?do=remoteaccess"
 	curl -s -S -L --retry 4 --retry-connrefused --max-time 3 --retry-max-time 10 \
-		--data-urlencode "password=$passwd" "$url" > /dev/null
+		--data-urlencode "password=$passwd" \
+		--data-urlencode "vncport=$vnc_port" \
+		"$url" > /dev/null
 	(
 		# Make a copy of xauth, so if the xserver restarts, we'll use the old one and fail to connect
 		if [ -n "$XAUTHORITY" ]; then
@@ -42,7 +44,7 @@
 		while true; do
 			s="$( date +%s )"
 			# skip keycode stuff fixes altgr for vmware
-			x11vnc -rfbport 5900 -shared -forever -noxrecord -xkb -capslock -skip_keycodes 92,187,188 -remap DEAD=gac,U20AC-EuroSign -passwd "$passwd"
+			x11vnc -rfbport "$vnc_port" -shared -forever -noxrecord -xkb -capslock -skip_keycodes 92,187,188 -remap DEAD=gac,U20AC-EuroSign -passwd "$passwd"
 			e="$( date +%s )"
 			d="$(( e - s ))"
 			if [ "$d" -gt 5 ]; then
@@ -59,7 +61,8 @@
 	vmvnc=false
 	idle=0
 	# In case of stale entry
-	iptables -t nat -D PREROUTING -p tcp --dport 5900 -j REDIRECT --to-ports 5901
+	# TODO: This sucks anyways performance-wise for VMware, maybe remove?
+	iptables -t nat -D PREROUTING -p tcp --dport "$vnc_port" -j REDIRECT --to-ports 5901
 	while [ -d "/proc/${vncpid}" ]; do
 		sleep 5
 		if netstat -tn | awk 'BEGIN{ e=1 } { if ($4 ~ /:590[0123]$/) e=0 } END{ exit e }'; then
@@ -83,13 +86,13 @@
 			if ! $vmvnc; then
 				killall x11vnc
 				usleep 10000
-				iptables -t nat -I PREROUTING 1 -p tcp --dport 5900 -j REDIRECT --to-ports 5901
+				iptables -t nat -I PREROUTING 1 -p tcp --dport "$vnc_port" -j REDIRECT --to-ports 5901
 			fi
 			vmvnc=true
 		else
 			# disable
 			if $vmvnc; then
-				iptables -t nat -D PREROUTING -p tcp --dport 5900 -j REDIRECT --to-ports 5901
+				iptables -t nat -D PREROUTING -p tcp --dport "$vnc_port" -j REDIRECT --to-ports 5901
 			fi
 			vmvnc=false
 		fi
