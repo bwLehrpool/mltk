@@ -95,7 +95,7 @@ if ! [ -s "${IDP_QUERY_CACHE}" ]; then
 		echo "No IDP info cached, cache path not writable for current user."
 		exit 7
 	fi
-	idpret="$(curl -w "%{http_code}" -o "${IDP_QUERY_CACHE}" --connect-timeout 5 --max-time 15 "$IDP_QUERY_URL")"
+	idpret="$(curl --retry 3 --retry-connrefused --retry-delay 1 --retry-max-time 15 -w "%{http_code}" -o "${IDP_QUERY_CACHE}" --connect-timeout 2 --max-time 6 "$IDP_QUERY_URL")"
 	if [ "${#idpret}" != 3 ] || [ "x${idpret:0:1}" != "x2" ]; then
 		echo "Could not download the list of identity providers from '$IDP_QUERY_URL'. Aborting."
 		rm -f -- "$IDP_QUERY_CACHE"
