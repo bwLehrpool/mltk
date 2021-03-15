@@ -215,7 +215,7 @@ chown "${USER_UID}" "${TEMP_HOME_DIR}/WARNING.txt"
 
 # Remember for hooks in auth-slx-source.d
 if [ "${NETWORK_HOME:0:2}" = '//' ]; then
-	PERSISTENT_NETPATH=$(echo "$NETWORK_HOME" | tr '/' '\')
+	PERSISTENT_NETPATH=$(echo "$NETWORK_HOME" | tr '/' '\\')
 else
 	PERSISTENT_NETPATH="$NETWORK_HOME"
 fi
