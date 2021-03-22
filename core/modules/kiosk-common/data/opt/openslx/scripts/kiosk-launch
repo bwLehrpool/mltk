@@ -19,6 +19,14 @@ openbox --config-file "/etc/xdg/openbox/rc.xml.kiosk" &
 # move the mouse away
 xdotool mousemove 20000 20000
 
+if [ -z "$SLX_BROWSER_INTERACTIVE" ]; then
+	# swallow keyboard shortcuts of chromium
+	xbindkeys -f /opt/openslx/lightdm/xbindkeys-kiosk.rc &
+else
+	# volume controls only
+	xbindkeys -f /opt/openslx/lightdm/xbindkeys-kiosk-interactive.rc &
+fi
+
 # Remember list of jobs running the background, so we can clean up
 # any mess left around by failed attempts below
 #

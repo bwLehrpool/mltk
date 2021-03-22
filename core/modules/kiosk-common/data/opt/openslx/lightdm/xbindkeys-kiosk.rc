@@ -1,0 +1,24 @@
+	"true"
+		Control+d
+	"true"
+		Control+t
+	"true"
+		Control+s
+	"true"
+		Control+n
+	"true"
+		Control+j
+	"true"
+		Control+p
+	"true"
+		Control+h
+	"true"
+		Control+Shift+o
+	"pactl set-sink-volume @DEFAULT_SINK@ +1000"
+		XF86AudioRaiseVolume
+	"pactl set-sink-volume @DEFAULT_SINK@ -1000"
+		XF86AudioLowerVolume
+	"pactl set-sink-mute @DEFAULT_SINK@ toggle"
+		XF86AudioMute
+	"pactl set-source-mute @DEFAULT_SOURCE@ toggle"
+		XF86AudioMicMute

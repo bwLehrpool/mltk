@@ -75,29 +75,6 @@ if [ -z "$SLX_BROWSER_INTERACTIVE" ]; then
 		# Autologin active, go full fullscreen
 		chromium_args+=("--kiosk")
 	fi
-
-	# swallow keyboard shortcuts of chromium
-	cat <<- EOF > "$HOME/.xbindkeysrc"
-	"true"
-		Control+d
-	"true"
-		Control+t
-	"true"
-		Control+s
-	"true"
-		Control+n
-	"true"
-		Control+j
-	"true"
-		Control+p
-	"true"
-		Control+h
-	"true"
-		Control+Shift+o
-	EOF
-	# xbinkeys requires a daemon, run it
-	xbindkeys_autostart &
-
 fi
 
 if [ -n "$SLX_BROWSER_RELOAD_SECS" ] && [ "$SLX_BROWSER_RELOAD_SECS" -gt 0 ]; then
