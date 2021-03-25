@@ -1,10 +1,10 @@
 [Unit]
 Description=Apply SLX_* config var settings
 DefaultDependencies=no
+RefuseManualStart=true
 Before=basic.target
 
 [Service]
 Type=oneshot
 RemainAfterExit=true
-RefuseManualStart=true
 ExecStart=/opt/openslx/scripts/apply-slx-vars
