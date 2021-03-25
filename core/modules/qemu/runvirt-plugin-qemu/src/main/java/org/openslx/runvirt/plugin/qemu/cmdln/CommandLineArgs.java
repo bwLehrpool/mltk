@@ -289,13 +289,43 @@ public class CommandLineArgs
 	}
 
 	/**
-	 * Returns the argument of the command line option {@link CmdLnOption#VM_AUDIO0}.
+	 * Returns the argument of the command line option {@link CmdLnOption#VM_FSSRC0}.
 	 * 
-	 * @return argument of the command line option {@link CmdLnOption#VM_AUDIO0}.
+	 * @return argument of the command line option {@link CmdLnOption#VM_FSSRC0}.
 	 */
-	public String getVmModelSoundCard0()
+	public String getVmFsSrc0()
 	{
-		return this.getArgument( CmdLnOption.VM_AUDIO0 );
+		return this.getArgument( CmdLnOption.VM_FSSRC0 );
+	}
+
+	/**
+	 * Returns the argument of the command line option {@link CmdLnOption#VM_FSTGT0}.
+	 * 
+	 * @return argument of the command line option {@link CmdLnOption#VM_FSTGT0}.
+	 */
+	public String getVmFsTgt0()
+	{
+		return this.getArgument( CmdLnOption.VM_FSTGT0 );
+	}
+
+	/**
+	 * Returns the argument of the command line option {@link CmdLnOption#VM_FSSRC1}.
+	 * 
+	 * @return argument of the command line option {@link CmdLnOption#VM_FSSRC1}.
+	 */
+	public String getVmFsSrc1()
+	{
+		return this.getArgument( CmdLnOption.VM_FSSRC1 );
+	}
+
+	/**
+	 * Returns the argument of the command line option {@link CmdLnOption#VM_FSTGT1}.
+	 * 
+	 * @return argument of the command line option {@link CmdLnOption#VM_FSTGT1}.
+	 */
+	public String getVmFsTgt1()
+	{
+		return this.getArgument( CmdLnOption.VM_FSTGT1 );
 	}
 
 	/**
@@ -324,7 +354,10 @@ public class CommandLineArgs
 		VM_PARALLEL0( 'p', "vmparallel0", true,  "Device for the first parallel port interface" ),
 		VM_SERIAL0  ( 'q', "vmserial0",   true,  "Device for the first serial port interface" ),
 		VM_MAC0     ( 'a', "vmmac0",      true,  "MAC address for the first network interface" ),
-		VM_AUDIO0   ( 'x', "vmaudio0",    true,  "Hardware model for the first sound card" );
+		VM_FSSRC0   ( 't', "vmfssrc0",    true,  "Source directory for first file system passthrough (shared folder)" ),
+		VM_FSTGT0   ( 'u', "vmfstgt0",    true,  "Target directory for first file system passthrough (shared folder)" ),
+		VM_FSSRC1   ( 'v', "vmfssrc1",    true,  "Source directory for second file system passthrough (shared folder)" ),
+		VM_FSTGT1   ( 'w', "vmfstgt1",    true,  "Target directory for second file system passthrough (shared folder)" );
 		// @formatter:on
 
 		/**

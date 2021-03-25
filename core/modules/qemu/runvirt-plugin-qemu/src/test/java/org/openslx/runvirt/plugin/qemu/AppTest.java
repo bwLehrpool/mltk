@@ -63,7 +63,7 @@ public class AppTest
 			assertTrue( shortHelpOptionCorrectOutput.contains( App.APP_DESC ) );
 
 			// test that no error was logged and output is available
-			assertEquals( 1641, shortHelpOptionCorrectOutput.length() );
+			assertEquals( 2026, shortHelpOptionCorrectOutput.length() );
 			assertEquals( 0, shortHelpOptionCorrectErrOutput.length() );
 		}
 
@@ -91,7 +91,7 @@ public class AppTest
 			assertTrue( longHelpOptionCorrectOutput.contains( App.APP_DESC ) );
 
 			// test that no error was logged and output is available
-			assertEquals( 1641, longHelpOptionCorrectOutput.length() );
+			assertEquals( 2026, longHelpOptionCorrectOutput.length() );
 			assertEquals( 0, longHelpOptionCorrectErrOutput.length() );
 		}
 
@@ -119,7 +119,7 @@ public class AppTest
 			assertTrue( shortHelpOptionIncorrectOutput.contains( App.APP_DESC ) );
 
 			// test that error was logged and output is available
-			assertEquals( 1641, shortHelpOptionIncorrectOutput.length() );
+			assertEquals( 2026, shortHelpOptionIncorrectOutput.length() );
 			assertEquals( 0, shortHelpOptionIncorrectErrOutput.length() );
 		}
 
@@ -147,7 +147,7 @@ public class AppTest
 			assertTrue( longHelpOptionIncorrectOutput.contains( App.APP_DESC ) );
 
 			// test that error was logged and output is available
-			assertEquals( 1641, longHelpOptionIncorrectOutput.length() );
+			assertEquals( 2026, longHelpOptionIncorrectOutput.length() );
 			assertEquals( 0, longHelpOptionIncorrectErrOutput.length() );
 		}
 

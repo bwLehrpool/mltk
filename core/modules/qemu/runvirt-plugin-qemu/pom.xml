@@ -154,5 +154,13 @@
         <version>3.0.0</version>
       </plugin>
     </plugins>
+    <testResources>
+		<testResource>
+			<directory>${basedir}/src/test/resources</directory>
+			<includes>
+				<include>libvirt/xml/*</include>
+			</includes>
+		</testResource>
+	</testResources>
   </build>
 </project>

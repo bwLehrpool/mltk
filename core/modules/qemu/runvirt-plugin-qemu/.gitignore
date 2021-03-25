@@ -1,3 +1,14 @@
-/target/
-.classpath
-.settings/
+/testing
+/.settings
+/.project
+/.classpath
+/target
+/gen-java
+*~
+!src/
+!test/
+*.swp
+
+# Ignore IntelliJ Project Files
+/.idea
+*.iml

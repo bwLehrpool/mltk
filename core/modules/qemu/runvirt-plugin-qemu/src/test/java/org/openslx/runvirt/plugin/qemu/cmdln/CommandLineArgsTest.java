@@ -13,8 +13,8 @@ import org.openslx.runvirt.plugin.qemu.cmdln.CommandLineArgs.CmdLnOption;
 public class CommandLineArgsTest
 {
 	// @formatter:off
-	private static final String CMDLN_PREFIX_OPTION_SHORT = "-";
-	private static final String CMDLN_PREFIX_OPTION_LONG  = "--";
+	public static final String CMDLN_PREFIX_OPTION_SHORT = "-";
+	public static final String CMDLN_PREFIX_OPTION_LONG  = "--";
 
 	private static final String CMDLN_TEST_NAME        = "test";
 	private static final String CMDLN_TEST_FILENAME    = System.getProperty( "user.dir" ) + File.separator + CMDLN_TEST_NAME;
@@ -25,7 +25,6 @@ public class CommandLineArgsTest
 	private static final String CMDLN_TEST_PARPORT     = "/dev/parport0";
 	private static final String CMDLN_TEST_SERPORT     = "/dev/ttyS0";
 	private static final String CMDLN_TEST_MAC         = "02:42:8e:77:1b:e6";
-	private static final String CMDLN_TEST_AUDIO_MODEL = "sb16";
 	// @formatter:on
 
 	@Test
@@ -519,30 +518,114 @@ public class CommandLineArgsTest
 	}
 
 	@Test
-	@DisplayName( "Test the parsing of the VM first sound card type command line option (short version)" )
-	public void testCmdlnOptionVmAudio0Short() throws CommandLineArgsException
+	@DisplayName( "Test the parsing of the VM first file system source command line option (short version)" )
+	public void testCmdlnOptionVmFsSrc0Short() throws CommandLineArgsException
 	{
 		final String[] args = {
-				CMDLN_PREFIX_OPTION_SHORT + CmdLnOption.VM_AUDIO0.getShortOption(),
-				CMDLN_TEST_AUDIO_MODEL
+				CMDLN_PREFIX_OPTION_SHORT + CmdLnOption.VM_FSSRC0.getShortOption(),
+				CMDLN_TEST_FILENAME
 		};
 
 		CommandLineArgs cmdLn = new CommandLineArgs( args );
 
-		assertEquals( CMDLN_TEST_AUDIO_MODEL, cmdLn.getVmModelSoundCard0() );
+		assertEquals( CMDLN_TEST_FILENAME, cmdLn.getVmFsSrc0() );
 	}
 
 	@Test
-	@DisplayName( "Test the parsing of the VM first sound card type command line option (long version)" )
-	public void testCmdlnOptionVmAudio0Long() throws CommandLineArgsException
+	@DisplayName( "Test the parsing of the VM first file system source command line option (long version)" )
+	public void testCmdlnOptionVmFsSrc0Long() throws CommandLineArgsException
 	{
 		final String[] args = {
-				CMDLN_PREFIX_OPTION_LONG + CmdLnOption.VM_AUDIO0.getLongOption(),
-				CMDLN_TEST_AUDIO_MODEL
+				CMDLN_PREFIX_OPTION_LONG + CmdLnOption.VM_FSSRC0.getLongOption(),
+				CMDLN_TEST_FILENAME
 		};
 
 		CommandLineArgs cmdLn = new CommandLineArgs( args );
 
-		assertEquals( CMDLN_TEST_AUDIO_MODEL, cmdLn.getVmModelSoundCard0() );
+		assertEquals( CMDLN_TEST_FILENAME, cmdLn.getVmFsSrc0() );
+	}
+
+	@Test
+	@DisplayName( "Test the parsing of the VM first file system target command line option (short version)" )
+	public void testCmdlnOptionVmFsTgt0Short() throws CommandLineArgsException
+	{
+		final String[] args = {
+				CMDLN_PREFIX_OPTION_SHORT + CmdLnOption.VM_FSTGT0.getShortOption(),
+				CMDLN_TEST_NAME
+		};
+
+		CommandLineArgs cmdLn = new CommandLineArgs( args );
+
+		assertEquals( CMDLN_TEST_NAME, cmdLn.getVmFsTgt0() );
+	}
+
+	@Test
+	@DisplayName( "Test the parsing of the VM first file system target command line option (long version)" )
+	public void testCmdlnOptionVmFsTgt0Long() throws CommandLineArgsException
+	{
+		final String[] args = {
+				CMDLN_PREFIX_OPTION_LONG + CmdLnOption.VM_FSTGT0.getLongOption(),
+				CMDLN_TEST_NAME
+		};
+
+		CommandLineArgs cmdLn = new CommandLineArgs( args );
+
+		assertEquals( CMDLN_TEST_NAME, cmdLn.getVmFsTgt0() );
+	}
+
+	@Test
+	@DisplayName( "Test the parsing of the VM second file system source command line option (short version)" )
+	public void testCmdlnOptionVmFsSrc1Short() throws CommandLineArgsException
+	{
+		final String[] args = {
+				CMDLN_PREFIX_OPTION_SHORT + CmdLnOption.VM_FSSRC1.getShortOption(),
+				CMDLN_TEST_FILENAME
+		};
+
+		CommandLineArgs cmdLn = new CommandLineArgs( args );
+
+		assertEquals( CMDLN_TEST_FILENAME, cmdLn.getVmFsSrc1() );
+	}
+
+	@Test
+	@DisplayName( "Test the parsing of the VM second file system source command line option (long version)" )
+	public void testCmdlnOptionVmFsSrc1Long() throws CommandLineArgsException
+	{
+		final String[] args = {
+				CMDLN_PREFIX_OPTION_LONG + CmdLnOption.VM_FSSRC1.getLongOption(),
+				CMDLN_TEST_FILENAME
+		};
+
+		CommandLineArgs cmdLn = new CommandLineArgs( args );
+
+		assertEquals( CMDLN_TEST_FILENAME, cmdLn.getVmFsSrc1() );
+	}
+
+	@Test
+	@DisplayName( "Test the parsing of the VM second file system target command line option (short version)" )
+	public void testCmdlnOptionVmFsTgt1Short() throws CommandLineArgsException
+	{
+		final String[] args = {
+				CMDLN_PREFIX_OPTION_SHORT + CmdLnOption.VM_FSTGT1.getShortOption(),
+				CMDLN_TEST_NAME
+		};
+
+		CommandLineArgs cmdLn = new CommandLineArgs( args );
+
+		assertEquals( CMDLN_TEST_NAME, cmdLn.getVmFsTgt1() );
+	}
+
+	@Test
+	@DisplayName( "Test the parsing of the VM second file system target command line option (long version)" )
+	public void testCmdlnOptionVmFsTgt1Long() throws CommandLineArgsException
+	{
+		final String[] args = {
+				CMDLN_PREFIX_OPTION_LONG + CmdLnOption.VM_FSTGT1.getLongOption(),
+				CMDLN_TEST_NAME
+		};
+
+		CommandLineArgs cmdLn = new CommandLineArgs( args );
+
+		assertEquals( CMDLN_TEST_NAME, cmdLn.getVmFsTgt1() );
 	}
 }

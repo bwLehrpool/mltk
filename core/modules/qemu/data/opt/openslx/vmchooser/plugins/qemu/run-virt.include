@@ -19,7 +19,7 @@
 declare -rg QEMU_PLUGIN_DIR="$(dirname "${BASH_SOURCE[0]}")"
 declare -rg QEMU_INCLUDE_DIR="${QEMU_PLUGIN_DIR}/includes"
 
-# Define which features the VMware plugin supports
+# Define which features the QEMU plugin supports
 declare -rg PLUGIN_FEATURES="firewall printer usb slxfloppy sound netshares"
 
 run_plugin() {
@@ -45,5 +45,8 @@ run_plugin() {
 	isset CDROM_1           && VIRTCMDOPTS+=( "-vmcdrom1"    "${CDROM_1}" )
 	isset SERIAL0           && VIRTCMDOPTS+=( "-vmserial0"   "${SERIAL0}" )
 	isset PARALLEL0         && VIRTCMDOPTS+=( "-vmparallel0" "${PARALLEL0}" )
-	isset SOUND_DEV         && VIRTCMDOPTS+=( "-vmsound0"    "${SOUND_DEV}" )
+	isset HOME_SHARE_PATH   && VIRTCMDOPTS+=( "-vmfssrc0"    "${HOME_SHARE_PATH}" )
+	isset HOME_SHARE_NAME   && VIRTCMDOPTS+=( "-vmfstgt0"    "${HOME_SHARE_NAME}" )
+	isset COMMON_SHARE_PATH && VIRTCMDOPTS+=( "-vmfssrc1"    "${COMMON_SHARE_PATH}" )
+	isset COMMON_SHARE_NAME && VIRTCMDOPTS+=( "-vmfstgt1"    "${COMMON_SHARE_NAME}" )
 }
