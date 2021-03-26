@@ -101,7 +101,7 @@ public class FilterTestUtils
 		Domain domain = null;
 
 		try {
-			domain = new Domain( FilterTestResources.getLibvirtXmlFile( "qemu-kvm_default-ubuntu-20-04-vm.xml" ) );
+			domain = new Domain( FilterTestResources.getLibvirtXmlFile( "qemu-kvm_default-ubuntu-20-04-vm_filtered.xml" ) );
 		} catch ( LibvirtXmlDocumentException | LibvirtXmlSerializationException | LibvirtXmlValidationException e ) {
 			fail( "Cannot prepare requested Libvirt domain XML file from the resources folder: "
 					+ e.getLocalizedMessage() );
