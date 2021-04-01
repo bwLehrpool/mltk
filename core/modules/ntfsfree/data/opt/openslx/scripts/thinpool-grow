@@ -119,7 +119,7 @@ exit_hook() {
 	[ -n "$HAVE_LOCK" ] && unlock
 }
 
-trap exit_hook EXIT TERM INT
+trap exit_hook EXIT
 
 # Try to grow via NTFS volume
 # Must honor and update $current_data_sz, and echo into $new_table
@@ -335,7 +335,9 @@ elif [ "$MODE" = "wait" ]; then
 		else
 			(( next++ ))
 		fi
-		dmsetup wait "$POOL" "$next" || break
+		dmsetup wait "$POOL" "$next" &>> "$DEBUG_FILE" \
+			|| dmsetup wait "$POOL" "$next" &>> "$DEBUG_FILE" \
+			|| break
 	done
 	debug "Error in dmsetup wait"
 	exit 1
