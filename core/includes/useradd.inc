@@ -207,6 +207,7 @@ add_group () {
 
 init_users_and_groups() {
 	[ -z "$TARGET_BUILD_DIR" -o "$TARGET_BUILD_DIR" == "/" ] && perror "Almost wrecked your local passwd, group and shadow file. phew."
+	local USER
 	local PASSWD="$TARGET_BUILD_DIR/etc/passwd"
 	local GROUP="$TARGET_BUILD_DIR/etc/group"
 	local SHADOW="$TARGET_BUILD_DIR/etc/shadow"
