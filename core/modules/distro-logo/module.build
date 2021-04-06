@@ -1,0 +1,25 @@
+#!/bin/bash
+fetch_source() {
+	:
+}
+
+build() {
+	:
+}
+
+post_copy() {
+	# Try to fetch distro logo
+	if [ ! -s "$TARGET_BUILD_DIR/etc/distro.png" ]; then
+		local DIST=$(lsb_release -si)
+		if [ -n "$DIST" ]; then
+			[ -z "$CFG_DISTLOGO_URL" ] && CFG_DISTLOGO_URL='http://mltk-services.ruf.uni-freiburg.de/distro_logo.php?distro='
+			wget -t 3 -T 3 -O "$TARGET_BUILD_DIR/etc/distro.png" "${CFG_DISTLOGO_URL}${DIST}"
+			if [ ! -s "$TARGET_BUILD_DIR/etc/distro.png" ]; then
+				rm -f "$TARGET_BUILD_DIR/etc/distro.png"
+				pwarning "Could not download distro-logo"
+			fi
+		else
+			pwarning "Could not determine distribution"
+		fi
+	fi
+}
