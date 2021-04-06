@@ -213,6 +213,7 @@ init_users_and_groups() {
 	local SHADOW="$TARGET_BUILD_DIR/etc/shadow"
 	[ -s "${PASSWD}" -a -s "${GROUP}" -a -s "${SHADOW}" ] && return
 	pinfo "Creating users and groups based on local system...."
+	mkdir -p "${PASSWD%/*}" || perror "Could not mkdir '${PASSWD%/*}'."
 	cp -a "/etc/passwd" "$PASSWD" || perror "Could not copy /etc/passwd"
 	cp -a "/etc/group" "$GROUP" || perror "Could not copy /etc/group"
 	cp -a "/etc/shadow" "$SHADOW" || perror "Could not copy /etc/shadow"
