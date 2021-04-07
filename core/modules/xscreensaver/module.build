@@ -5,6 +5,7 @@ fetch_source() {
 
 build() {
 	local SRCDIR="${MODULE_WORK_DIR}/src/"
+	local bin
 
 	# xscreensaver
 	mkdir -p "${MODULE_BUILD_DIR}/usr/bin"
@@ -16,8 +17,11 @@ build() {
 			--prefix=/usr --without-proc-interrupts $REQUIRED_CONFIGURE_OPTIONS \
 			|| perror "'./configure' failed"
 	cde driver
-	make xscreensaver xscreensaver-command || perror "'make' failed"
-	cp xscreensaver xscreensaver-command "${MODULE_BUILD_DIR}/usr/bin/" || perror "cp fail"
+	for bin in $REQUIRED_BINARIES; do
+		[[ "$bin" == xscreensaver* ]] || continue
+		make "$bin" || perror "'make $bin' failed"
+		cp "$bin" "${MODULE_BUILD_DIR}/usr/bin/" || perror "cp $bin fail"
+	done
 
 	mkdir -p "${MODULE_BUILD_DIR}/${REQUIRED_PREFIX}"
 	cde "${MODULE_BUILD_DIR}/${REQUIRED_PREFIX}"
