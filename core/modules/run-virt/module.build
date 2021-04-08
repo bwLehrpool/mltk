@@ -11,7 +11,7 @@ build () {
 	tarcopy "$(cat "$COPYLIST" | sort -u)" "${MODULE_BUILD_DIR}"
 	# Compile pwdaemon
 	mkdir -p "${MODULE_BUILD_DIR}/opt/openslx/bin"
-	gcc -std=gnu99 -o "${MODULE_BUILD_DIR}/opt/openslx/bin/pwdaemon" -Os "${MODULE_DIR}/pw_daemon.c" || perror "Could not compile the pwdaemon"
+	gcc -D_GNU_SOURCE -std=gnu99 -o "${MODULE_BUILD_DIR}/opt/openslx/bin/pwdaemon" -Os "${MODULE_DIR}/pw_daemon.c" || perror "Could not compile the pwdaemon"
 	gcc -std=gnu99 -o "${MODULE_BUILD_DIR}/opt/openslx/bin/slxfwtool" -Os "${MODULE_DIR}/fwtool/main.c" || perror "Could not compile slxfwtool"
 }
 

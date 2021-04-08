@@ -28,6 +28,7 @@ static char *key1s = NULL, *key2s = NULL;
 
 static int mode_daemon(const uid_t uidNumber);
 static int mode_query(const char *socketPath);
+static int mode_pw(const char *socketPath);
 static void sig_handler(int sig);
 static int setup_vars(const char *envuser, const char *envpass);
 static uint8_t* keygen();
@@ -47,6 +48,10 @@ int main(int argc, char **argv)
 		return mode_daemon(uid);
 	} else if (argc > 2 && strcmp(argv[1], "--query") == 0) {
 		return mode_query(argv[2]);
+		/*
+	} else if (argc > 2 && strcmp(argv[1], "--pw") == 0) {
+		return mode_pw(argv[2]);
+		*/
 	}
 	fprintf(stderr, "Invalid call. Use --daemon [uidNumber] or --query [unixSocket]\n");
 	return 1;
@@ -110,13 +115,39 @@ static int mode_query(const char *socketPath)
 	return 0;
 }
 
+static int mode_pw(const char *socketPath)
+{
+	int fd;
+	char buffer[200];
+	ssize_t ret;
+	fd = connect_local(socketPath, 0);
+	if (fd == -1)
+		return 1;
+	if (write(fd, "PW", 3) == -1) {
+		perror("Writing to pw daemon failed");
+		return 1;
+	}
+	ret = read(fd, buffer, sizeof(buffer)-1);
+	if (ret == -1) {
+		perror("Reading from pw daemon failed");
+		return 1;
+	}
+	if (ret < 1 || (size_t)ret > sizeof(buffer)-1) {
+		fprintf(stderr, "Reply from pw daemon has invalid length\n");
+		return 1;
+	}
+	buffer[ret] = '\0';
+	printf("%s", buffer);
+	return 0;
+}
+
 static int mode_daemon(const uid_t uidNumber)
 {
 	int listenFd, udpPort = -1, testFd;
 	struct sockaddr_un addr;
 	struct sigaction sig;
 	const char *envuser = getenv("USERNAME");
-	const char *envpass = getenv("PASSWORD");
+	volatile char *envpass = getenv("PASSWORD");
 	const char *pwsocket = getenv("PWSOCKET");
 	gid_t gidNumber = 65534;
 	memset(&addr, 0, sizeof(addr));
@@ -144,6 +175,9 @@ static int mode_daemon(const uid_t uidNumber)
 	if (setup_vars(envuser, envpass) == -1) {
 		fprintf(stderr, "Error setting up variables\n");
 		return 1;
+	}
+	while (*envpass) {
+		*envpass++ = ' ';
 	}
 	// Drop privs
 	setgroups(1, &gidNumber);
@@ -204,12 +238,31 @@ static int mode_daemon(const uid_t uidNumber)
 			pid_t child = fork();
 			if (child == 0) {
 				// This is the child
+				struct ucred ucred;
 				ssize_t ret;
 				char buffer[200];
-				ret = read(fd, buffer, sizeof(buffer));
-				if (ret >= 3 && strncmp(buffer, "GET", 3) == 0) {
-					snprintf(buffer, sizeof(buffer), "%d\t%s\t%s\t%s\n", udpPort, key1s, key2s, username);
-					ret = write(fd, buffer, strlen(buffer));
+				len = sizeof(ucred);
+				if (getsockopt(fd, SOL_SOCKET, SO_PEERCRED, &ucred, &len) == -1) {
+					const char *msg = "Could not get credentials of connection\n";
+					write(fd, msg, strlen(msg));
+				} else if (ucred.uid != geteuid()) {
+					const char *msg = "uid mismatch\n";
+					write(fd, msg, strlen(msg));
+				} else {
+					ret = read(fd, buffer, sizeof(buffer));
+					if (ret >= 3 && strncmp(buffer, "GET", 3) == 0) {
+						snprintf(buffer, sizeof(buffer), "%d\t%s\t%s\t%s\n", udpPort, key1s, key2s, username);
+						ret = write(fd, buffer, strlen(buffer));
+					} else if (ret >= 2 && strncmp(buffer, "PW", 2) == 0) {
+						int len = passwordLen - 2;
+						if (len > sizeof(buffer)) {
+							len = sizeof(buffer);
+						}
+						for (int i = 0; i < len; ++i) {
+							buffer[i] = passwordEnc[i+2] ^ key2[i % KEYLEN];
+						}
+						ret = write(fd, buffer, len);
+					}
 				}
 				close(fd);
 				return 0;
