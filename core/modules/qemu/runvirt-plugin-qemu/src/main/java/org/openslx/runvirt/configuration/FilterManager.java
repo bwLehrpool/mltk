@@ -33,16 +33,13 @@ public final class FilterManager<T, R>
 
 	public void register( String name, FilterFunction<T, R> filterFunction, boolean enabled )
 	{
-		final Filter<T, R> filter = new Filter<T, R>( name ) {
+		this.register( new Filter<T, R>( name ) {
 			@Override
 			public void filter( T document, R args ) throws FilterException
 			{
 				filterFunction.apply( document, args );
 			}
-		};
-
-		filter.setEnabled( enabled );
-		this.filters.add( filter );
+		}, enabled );
 	}
 
 	public void filterAll() throws FilterException
