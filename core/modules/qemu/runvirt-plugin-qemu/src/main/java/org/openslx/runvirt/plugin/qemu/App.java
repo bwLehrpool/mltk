@@ -9,30 +9,30 @@ import org.openslx.libvirt.domain.Domain;
 import org.openslx.libvirt.xml.LibvirtXmlDocumentException;
 import org.openslx.libvirt.xml.LibvirtXmlSerializationException;
 import org.openslx.libvirt.xml.LibvirtXmlValidationException;
-import org.openslx.runvirt.configuration.FilterException;
-import org.openslx.runvirt.configuration.FilterManager;
 import org.openslx.runvirt.plugin.qemu.cmdln.CommandLineArgs;
 import org.openslx.runvirt.plugin.qemu.cmdln.CommandLineArgs.CmdLnOption;
 import org.openslx.runvirt.plugin.qemu.cmdln.CommandLineArgsException;
-import org.openslx.runvirt.plugin.qemu.configuration.FilterGenericCpu;
-import org.openslx.runvirt.plugin.qemu.configuration.FilterGenericDiskCdromDevices;
-import org.openslx.runvirt.plugin.qemu.configuration.FilterGenericDiskFloppyDevices;
-import org.openslx.runvirt.plugin.qemu.configuration.FilterGenericDiskStorageDevices;
-import org.openslx.runvirt.plugin.qemu.configuration.FilterGenericFileSystemDevices;
-import org.openslx.runvirt.plugin.qemu.configuration.FilterGenericInterfaceDevices;
-import org.openslx.runvirt.plugin.qemu.configuration.FilterGenericMemory;
-import org.openslx.runvirt.plugin.qemu.configuration.FilterGenericName;
-import org.openslx.runvirt.plugin.qemu.configuration.FilterGenericParallelDevices;
-import org.openslx.runvirt.plugin.qemu.configuration.FilterSpecificQemuSerialDevices;
-import org.openslx.runvirt.plugin.qemu.configuration.FilterGenericUuid;
-import org.openslx.runvirt.plugin.qemu.configuration.FilterSpecificQemuArchitecture;
-import org.openslx.runvirt.plugin.qemu.configuration.FilterSpecificQemuNvidiaGpuPassthrough;
+import org.openslx.runvirt.plugin.qemu.configuration.TransformationGenericCpu;
+import org.openslx.runvirt.plugin.qemu.configuration.TransformationGenericDiskCdromDevices;
+import org.openslx.runvirt.plugin.qemu.configuration.TransformationGenericDiskFloppyDevices;
+import org.openslx.runvirt.plugin.qemu.configuration.TransformationGenericDiskStorageDevices;
+import org.openslx.runvirt.plugin.qemu.configuration.TransformationGenericFileSystemDevices;
+import org.openslx.runvirt.plugin.qemu.configuration.TransformationGenericInterfaceDevices;
+import org.openslx.runvirt.plugin.qemu.configuration.TransformationGenericMemory;
+import org.openslx.runvirt.plugin.qemu.configuration.TransformationGenericName;
+import org.openslx.runvirt.plugin.qemu.configuration.TransformationGenericParallelDevices;
+import org.openslx.runvirt.plugin.qemu.configuration.TransformationSpecificQemuSerialDevices;
+import org.openslx.runvirt.plugin.qemu.configuration.TransformationGenericUuid;
+import org.openslx.runvirt.plugin.qemu.configuration.TransformationSpecificQemuArchitecture;
+import org.openslx.runvirt.plugin.qemu.configuration.TransformationSpecificQemuNvidiaGpuPassthrough;
 import org.openslx.runvirt.plugin.qemu.virtualization.LibvirtHypervisorQemu;
 import org.openslx.runvirt.plugin.qemu.virtualization.LibvirtHypervisorQemu.QemuSessionType;
 import org.openslx.runvirt.virtualization.LibvirtHypervisor;
 import org.openslx.runvirt.virtualization.LibvirtHypervisorException;
 import org.openslx.runvirt.virtualization.LibvirtVirtualMachine;
 import org.openslx.runvirt.virtualization.LibvirtVirtualMachineException;
+import org.openslx.virtualization.configuration.transformation.TransformationException;
+import org.openslx.virtualization.configuration.transformation.TransformationManager;
 
 /**
  * Run-virt QEMU plugin (command line tool) to finalize a Libvirt domain XML configuration.
@@ -113,35 +113,35 @@ public class App
 			System.exit( 3 );
 		}
 
-		// create filter manager to finalize VM configuration
-		final FilterManager<Domain, CommandLineArgs> filterManager;
-		filterManager = new FilterManager<Domain, CommandLineArgs>( config, cmdLn );
+		// create transformation manager to finalize VM configuration
+		final TransformationManager<Domain, CommandLineArgs> transformationManager;
+		transformationManager = new TransformationManager<Domain, CommandLineArgs>( config, cmdLn );
 
-		// register necessary filters to finalize configuration template
-		filterManager.register( new FilterGenericName(), true );
-		filterManager.register( new FilterGenericUuid(), true );
-		filterManager.register( new FilterGenericCpu(), true );
-		filterManager.register( new FilterGenericMemory(), true );
-		filterManager.register( new FilterGenericDiskStorageDevices(), true );
-		filterManager.register( new FilterGenericDiskCdromDevices(), true );
-		filterManager.register( new FilterGenericDiskFloppyDevices(), true );
-		filterManager.register( new FilterGenericInterfaceDevices(), true );
-		filterManager.register( new FilterGenericParallelDevices(), true );
-		filterManager.register( new FilterGenericFileSystemDevices(), true );
+		// register necessary transformations to finalize configuration template
+		transformationManager.register( new TransformationGenericName(), true );
+		transformationManager.register( new TransformationGenericUuid(), true );
+		transformationManager.register( new TransformationGenericCpu(), true );
+		transformationManager.register( new TransformationGenericMemory(), true );
+		transformationManager.register( new TransformationGenericDiskStorageDevices(), true );
+		transformationManager.register( new TransformationGenericDiskCdromDevices(), true );
+		transformationManager.register( new TransformationGenericDiskFloppyDevices(), true );
+		transformationManager.register( new TransformationGenericInterfaceDevices(), true );
+		transformationManager.register( new TransformationGenericParallelDevices(), true );
+		transformationManager.register( new TransformationGenericFileSystemDevices(), true );
 
-		// register QEMU specific filters to finalize configuration template
+		// register QEMU specific transformations to finalize configuration template
 		if ( hypervisor instanceof LibvirtHypervisorQemu ) {
 			final LibvirtHypervisorQemu hypervisorQemu = LibvirtHypervisorQemu.class.cast( hypervisor );
 
-			filterManager.register( new FilterSpecificQemuArchitecture( hypervisorQemu ), true );
-			filterManager.register( new FilterSpecificQemuSerialDevices( hypervisorQemu ), true );
-			filterManager.register( new FilterSpecificQemuNvidiaGpuPassthrough( hypervisorQemu ), false );
+			transformationManager.register( new TransformationSpecificQemuArchitecture( hypervisorQemu ), true );
+			transformationManager.register( new TransformationSpecificQemuSerialDevices( hypervisorQemu ), true );
+			transformationManager.register( new TransformationSpecificQemuNvidiaGpuPassthrough( hypervisorQemu ), false );
 		}
 
 		// finalize Libvirt VM configuration template
 		try {
-			filterManager.filterAll();
-		} catch ( FilterException e ) {
+			transformationManager.transform();
+		} catch ( TransformationException e ) {
 			LOGGER.error( "Failed to finalize VM configuration file: " + e.getLocalizedMessage() );
 			hypervisor.close();
 			System.exit( 4 );

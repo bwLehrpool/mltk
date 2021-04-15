@@ -5,21 +5,21 @@ import java.util.ArrayList;
 import org.openslx.libvirt.domain.Domain;
 import org.openslx.libvirt.domain.device.Disk.StorageType;
 import org.openslx.libvirt.domain.device.DiskStorage;
-import org.openslx.runvirt.configuration.FilterException;
-import org.openslx.runvirt.configuration.FilterGeneric;
 import org.openslx.runvirt.plugin.qemu.cmdln.CommandLineArgs;
-import org.openslx.vm.QemuMetaDataUtils;
+import org.openslx.virtualization.configuration.machine.QemuMetaDataUtils;
+import org.openslx.virtualization.configuration.transformation.TransformationException;
+import org.openslx.virtualization.configuration.transformation.TransformationGeneric;
 
-public class FilterGenericDiskStorageDevices extends FilterGeneric<Domain, CommandLineArgs>
+public class TransformationGenericDiskStorageDevices extends TransformationGeneric<Domain, CommandLineArgs>
 {
 	private static final String FILTER_NAME = "Disk storage devices [HDD, SSD, ...]";
 
-	public FilterGenericDiskStorageDevices()
+	public TransformationGenericDiskStorageDevices()
 	{
-		super( FilterGenericDiskStorageDevices.FILTER_NAME );
+		super( TransformationGenericDiskStorageDevices.FILTER_NAME );
 	}
 
-	private void filterDiskStorageDevice( Domain config, String fileName, int index ) throws FilterException
+	private void filterDiskStorageDevice( Domain config, String fileName, int index ) throws TransformationException
 	{
 		final ArrayList<DiskStorage> devices = config.getDiskStorageDevices();
 		final DiskStorage disk = QemuMetaDataUtils.getArrayIndex( devices, index );
@@ -36,7 +36,7 @@ public class FilterGenericDiskStorageDevices extends FilterGeneric<Domain, Comma
 	}
 
 	@Override
-	public void filter( Domain config, CommandLineArgs args ) throws FilterException
+	public void transform( Domain config, CommandLineArgs args ) throws TransformationException
 	{
 		this.filterDiskStorageDevice( config, args.getVmDiskFileNameHDD0(), 0 );
 

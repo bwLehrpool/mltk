@@ -6,21 +6,21 @@ import org.openslx.libvirt.domain.Domain;
 import org.openslx.libvirt.domain.device.FileSystem;
 import org.openslx.libvirt.domain.device.FileSystem.AccessMode;
 import org.openslx.libvirt.domain.device.FileSystem.Type;
-import org.openslx.runvirt.configuration.FilterException;
-import org.openslx.runvirt.configuration.FilterGeneric;
 import org.openslx.runvirt.plugin.qemu.cmdln.CommandLineArgs;
-import org.openslx.vm.QemuMetaDataUtils;
+import org.openslx.virtualization.configuration.machine.QemuMetaDataUtils;
+import org.openslx.virtualization.configuration.transformation.TransformationException;
+import org.openslx.virtualization.configuration.transformation.TransformationGeneric;
 
-public class FilterGenericFileSystemDevices extends FilterGeneric<Domain, CommandLineArgs>
+public class TransformationGenericFileSystemDevices extends TransformationGeneric<Domain, CommandLineArgs>
 {
 	private static final String FILTER_NAME = "File system devices";
 
-	public FilterGenericFileSystemDevices()
+	public TransformationGenericFileSystemDevices()
 	{
-		super( FilterGenericFileSystemDevices.FILTER_NAME );
+		super( TransformationGenericFileSystemDevices.FILTER_NAME );
 	}
 
-	private void filterFileSystemDevice( Domain config, String source, String target, int index ) throws FilterException
+	private void filterFileSystemDevice( Domain config, String source, String target, int index ) throws TransformationException
 	{
 		final ArrayList<FileSystem> devices = config.getFileSystemDevices();
 		final FileSystem fileSystem = QemuMetaDataUtils.getArrayIndex( devices, index );
@@ -50,7 +50,7 @@ public class FilterGenericFileSystemDevices extends FilterGeneric<Domain, Comman
 	}
 
 	@Override
-	public void filter( Domain config, CommandLineArgs args ) throws FilterException
+	public void transform( Domain config, CommandLineArgs args ) throws TransformationException
 	{
 		this.filterFileSystemDevice( config, args.getVmFsSrc0(), args.getVmFsTgt0(), 0 );
 		this.filterFileSystemDevice( config, args.getVmFsSrc1(), args.getVmFsTgt1(), 1 );

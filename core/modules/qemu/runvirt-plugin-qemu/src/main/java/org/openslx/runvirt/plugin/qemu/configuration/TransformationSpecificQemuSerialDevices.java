@@ -7,19 +7,19 @@ import java.util.stream.Collectors;
 import org.openslx.libvirt.domain.Domain;
 import org.openslx.libvirt.domain.device.Serial.Type;
 import org.openslx.libvirt.domain.device.Serial;
-import org.openslx.runvirt.configuration.FilterException;
-import org.openslx.runvirt.configuration.FilterSpecific;
 import org.openslx.runvirt.plugin.qemu.cmdln.CommandLineArgs;
 import org.openslx.runvirt.plugin.qemu.virtualization.LibvirtHypervisorQemu;
-import org.openslx.vm.QemuMetaDataUtils;
+import org.openslx.virtualization.configuration.machine.QemuMetaDataUtils;
+import org.openslx.virtualization.configuration.transformation.TransformationException;
+import org.openslx.virtualization.configuration.transformation.TransformationSpecific;
 
-public class FilterSpecificQemuSerialDevices extends FilterSpecific<Domain, CommandLineArgs, LibvirtHypervisorQemu>
+public class TransformationSpecificQemuSerialDevices extends TransformationSpecific<Domain, CommandLineArgs, LibvirtHypervisorQemu>
 {
 	private static final String FILTER_NAME = "Serial devices";
 
-	public FilterSpecificQemuSerialDevices( LibvirtHypervisorQemu hypervisor )
+	public TransformationSpecificQemuSerialDevices( LibvirtHypervisorQemu hypervisor )
 	{
-		super( FilterSpecificQemuSerialDevices.FILTER_NAME, hypervisor );
+		super( TransformationSpecificQemuSerialDevices.FILTER_NAME, hypervisor );
 	}
 
 	private ArrayList<Serial> getSerialDevDevices( Domain config )
@@ -30,7 +30,7 @@ public class FilterSpecificQemuSerialDevices extends FilterSpecific<Domain, Comm
 		return devices.stream().filter( byDeviceTypeDev ).collect( Collectors.toCollection( ArrayList::new ) );
 	}
 
-	private void filterSerialDevice( Domain config, String fileName, int index ) throws FilterException
+	private void filterSerialDevice( Domain config, String fileName, int index ) throws TransformationException
 	{
 		final ArrayList<Serial> devices = this.getSerialDevDevices( config );
 		final Serial device = QemuMetaDataUtils.getArrayIndex( devices, index );
@@ -56,7 +56,7 @@ public class FilterSpecificQemuSerialDevices extends FilterSpecific<Domain, Comm
 	}
 
 	@Override
-	public void filter( Domain config, CommandLineArgs args ) throws FilterException
+	public void transform( Domain config, CommandLineArgs args ) throws TransformationException
 	{
 		this.filterSerialDevice( config, args.getVmDeviceSerial0(), 0 );
 

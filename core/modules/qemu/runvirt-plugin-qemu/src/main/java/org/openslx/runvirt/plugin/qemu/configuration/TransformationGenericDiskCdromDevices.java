@@ -5,22 +5,22 @@ import java.util.ArrayList;
 import org.openslx.libvirt.domain.Domain;
 import org.openslx.libvirt.domain.device.Disk.StorageType;
 import org.openslx.libvirt.domain.device.DiskCdrom;
-import org.openslx.runvirt.configuration.FilterException;
-import org.openslx.runvirt.configuration.FilterGeneric;
 import org.openslx.runvirt.plugin.qemu.cmdln.CommandLineArgs;
-import org.openslx.vm.QemuMetaData;
-import org.openslx.vm.QemuMetaDataUtils;
+import org.openslx.virtualization.configuration.machine.QemuMetaData;
+import org.openslx.virtualization.configuration.machine.QemuMetaDataUtils;
+import org.openslx.virtualization.configuration.transformation.TransformationException;
+import org.openslx.virtualization.configuration.transformation.TransformationGeneric;
 
-public class FilterGenericDiskCdromDevices extends FilterGeneric<Domain, CommandLineArgs>
+public class TransformationGenericDiskCdromDevices extends TransformationGeneric<Domain, CommandLineArgs>
 {
 	private static final String FILTER_NAME = "Disk CDROM devices";
 
-	public FilterGenericDiskCdromDevices()
+	public TransformationGenericDiskCdromDevices()
 	{
-		super( FilterGenericDiskCdromDevices.FILTER_NAME );
+		super( TransformationGenericDiskCdromDevices.FILTER_NAME );
 	}
 
-	private void filterDiskCdromDevice( Domain config, String fileName, int index ) throws FilterException
+	private void filterDiskCdromDevice( Domain config, String fileName, int index ) throws TransformationException
 	{
 		final ArrayList<DiskCdrom> devices = config.getDiskCdromDevices();
 		final DiskCdrom disk = QemuMetaDataUtils.getArrayIndex( devices, index );
@@ -40,7 +40,7 @@ public class FilterGenericDiskCdromDevices extends FilterGeneric<Domain, Command
 	}
 
 	@Override
-	public void filter( Domain config, CommandLineArgs args ) throws FilterException
+	public void transform( Domain config, CommandLineArgs args ) throws TransformationException
 	{
 		this.filterDiskCdromDevice( config, args.getVmDiskFileNameCdrom0(), 0 );
 		this.filterDiskCdromDevice( config, args.getVmDiskFileNameCdrom1(), 1 );

@@ -5,21 +5,21 @@ import java.util.ArrayList;
 import org.openslx.libvirt.domain.Domain;
 import org.openslx.libvirt.domain.device.Parallel;
 import org.openslx.libvirt.domain.device.Parallel.Type;
-import org.openslx.runvirt.configuration.FilterException;
-import org.openslx.runvirt.configuration.FilterGeneric;
 import org.openslx.runvirt.plugin.qemu.cmdln.CommandLineArgs;
-import org.openslx.vm.QemuMetaDataUtils;
+import org.openslx.virtualization.configuration.machine.QemuMetaDataUtils;
+import org.openslx.virtualization.configuration.transformation.TransformationException;
+import org.openslx.virtualization.configuration.transformation.TransformationGeneric;
 
-public class FilterGenericParallelDevices extends FilterGeneric<Domain, CommandLineArgs>
+public class TransformationGenericParallelDevices extends TransformationGeneric<Domain, CommandLineArgs>
 {
 	private static final String FILTER_NAME = "Parallel devices";
 
-	public FilterGenericParallelDevices()
+	public TransformationGenericParallelDevices()
 	{
-		super( FilterGenericParallelDevices.FILTER_NAME );
+		super( TransformationGenericParallelDevices.FILTER_NAME );
 	}
 
-	private void filterParallelDevice( Domain config, String fileName, int index ) throws FilterException
+	private void filterParallelDevice( Domain config, String fileName, int index ) throws TransformationException
 	{
 		final ArrayList<Parallel> devices = config.getParallelDevices();
 		final Parallel device = QemuMetaDataUtils.getArrayIndex( devices, index );
@@ -45,7 +45,7 @@ public class FilterGenericParallelDevices extends FilterGeneric<Domain, CommandL
 	}
 
 	@Override
-	public void filter( Domain config, CommandLineArgs args ) throws FilterException
+	public void transform( Domain config, CommandLineArgs args ) throws TransformationException
 	{
 		this.filterParallelDevice( config, args.getVmDeviceSerial0(), 0 );
 

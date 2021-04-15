@@ -4,21 +4,21 @@ import java.util.ArrayList;
 
 import org.openslx.libvirt.domain.Domain;
 import org.openslx.libvirt.domain.device.Interface;
-import org.openslx.runvirt.configuration.FilterException;
-import org.openslx.runvirt.configuration.FilterGeneric;
 import org.openslx.runvirt.plugin.qemu.cmdln.CommandLineArgs;
-import org.openslx.vm.QemuMetaDataUtils;
+import org.openslx.virtualization.configuration.machine.QemuMetaDataUtils;
+import org.openslx.virtualization.configuration.transformation.TransformationException;
+import org.openslx.virtualization.configuration.transformation.TransformationGeneric;
 
-public class FilterGenericInterfaceDevices extends FilterGeneric<Domain, CommandLineArgs>
+public class TransformationGenericInterfaceDevices extends TransformationGeneric<Domain, CommandLineArgs>
 {
 	private static final String FILTER_NAME = "Network interface devices";
 
-	public FilterGenericInterfaceDevices()
+	public TransformationGenericInterfaceDevices()
 	{
-		super( FilterGenericInterfaceDevices.FILTER_NAME );
+		super( TransformationGenericInterfaceDevices.FILTER_NAME );
 	}
 
-	private void filterInterfaceDevice( Domain config, String macAddress, int index ) throws FilterException
+	private void filterInterfaceDevice( Domain config, String macAddress, int index ) throws TransformationException
 	{
 		final ArrayList<Interface> devices = config.getInterfaceDevices();
 		final Interface device = QemuMetaDataUtils.getArrayIndex( devices, index );
@@ -35,7 +35,7 @@ public class FilterGenericInterfaceDevices extends FilterGeneric<Domain, Command
 	}
 
 	@Override
-	public void filter( Domain config, CommandLineArgs args ) throws FilterException
+	public void transform( Domain config, CommandLineArgs args ) throws TransformationException
 	{
 		this.filterInterfaceDevice( config, args.getVmMacAddress0(), 0 );
 

@@ -5,21 +5,21 @@ import java.util.ArrayList;
 import org.openslx.libvirt.domain.Domain;
 import org.openslx.libvirt.domain.device.Disk.StorageType;
 import org.openslx.libvirt.domain.device.DiskFloppy;
-import org.openslx.runvirt.configuration.FilterException;
-import org.openslx.runvirt.configuration.FilterGeneric;
 import org.openslx.runvirt.plugin.qemu.cmdln.CommandLineArgs;
-import org.openslx.vm.QemuMetaDataUtils;
+import org.openslx.virtualization.configuration.machine.QemuMetaDataUtils;
+import org.openslx.virtualization.configuration.transformation.TransformationException;
+import org.openslx.virtualization.configuration.transformation.TransformationGeneric;
 
-public class FilterGenericDiskFloppyDevices extends FilterGeneric<Domain, CommandLineArgs>
+public class TransformationGenericDiskFloppyDevices extends TransformationGeneric<Domain, CommandLineArgs>
 {
 	private static final String FILTER_NAME = "Disk floppy devices";
 
-	public FilterGenericDiskFloppyDevices()
+	public TransformationGenericDiskFloppyDevices()
 	{
-		super( FilterGenericDiskFloppyDevices.FILTER_NAME );
+		super( TransformationGenericDiskFloppyDevices.FILTER_NAME );
 	}
 
-	private void filterDiskFloppyDevice( Domain config, String fileName, int index ) throws FilterException
+	private void filterDiskFloppyDevice( Domain config, String fileName, int index ) throws TransformationException
 	{
 		final ArrayList<DiskFloppy> devices = config.getDiskFloppyDevices();
 		final DiskFloppy disk = QemuMetaDataUtils.getArrayIndex( devices, index );
@@ -36,7 +36,7 @@ public class FilterGenericDiskFloppyDevices extends FilterGeneric<Domain, Comman
 	}
 
 	@Override
-	public void filter( Domain config, CommandLineArgs args ) throws FilterException
+	public void transform( Domain config, CommandLineArgs args ) throws TransformationException
 	{
 		this.filterDiskFloppyDevice( config, args.getVmDiskFileNameFloppy0(), 0 );
 		this.filterDiskFloppyDevice( config, args.getVmDiskFileNameFloppy1(), 1 );

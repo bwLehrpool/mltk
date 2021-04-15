@@ -9,16 +9,16 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.openslx.libvirt.domain.Domain;
 import org.openslx.libvirt.domain.DomainUtils;
-import org.openslx.runvirt.configuration.FilterException;
 import org.openslx.runvirt.plugin.qemu.cmdln.CommandLineArgs;
+import org.openslx.virtualization.configuration.transformation.TransformationException;
 
 public class FilterGenericMemoryTest
 {
 	@Test
 	@DisplayName( "Test filtering of VM memory configuration" )
-	public void testFilterGenericMemory() throws FilterException
+	public void testFilterGenericMemory() throws TransformationException
 	{
-		final FilterGenericMemory filter = new FilterGenericMemory();
+		final TransformationGenericMemory filter = new TransformationGenericMemory();
 		final Domain config = FilterTestUtils.getDefaultDomain();
 		final CommandLineArgs args = FilterTestUtils.getDefaultCmdLnArgs();
 
@@ -27,7 +27,7 @@ public class FilterGenericMemoryTest
 		assertNotEquals( defaultMemory.toString(), config.getMemory().toString() );
 		assertNotEquals( defaultMemory.toString(), config.getCurrentMemory().toString() );
 
-		filter.filter( config, args );
+		filter.transform( config, args );
 
 		assertEquals( defaultMemory.toString(), config.getMemory().toString() );
 		assertEquals( defaultMemory.toString(), config.getCurrentMemory().toString() );
