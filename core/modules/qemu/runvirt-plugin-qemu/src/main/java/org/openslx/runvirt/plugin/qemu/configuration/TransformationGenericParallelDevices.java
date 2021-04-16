@@ -6,7 +6,7 @@ import org.openslx.libvirt.domain.Domain;
 import org.openslx.libvirt.domain.device.Parallel;
 import org.openslx.libvirt.domain.device.Parallel.Type;
 import org.openslx.runvirt.plugin.qemu.cmdln.CommandLineArgs;
-import org.openslx.virtualization.configuration.machine.QemuMetaDataUtils;
+import org.openslx.virtualization.configuration.VirtualizationConfigurationQemuUtils;
 import org.openslx.virtualization.configuration.transformation.TransformationException;
 import org.openslx.virtualization.configuration.transformation.TransformationGeneric;
 
@@ -22,7 +22,7 @@ public class TransformationGenericParallelDevices extends TransformationGeneric<
 	private void filterParallelDevice( Domain config, String fileName, int index ) throws TransformationException
 	{
 		final ArrayList<Parallel> devices = config.getParallelDevices();
-		final Parallel device = QemuMetaDataUtils.getArrayIndex( devices, index );
+		final Parallel device = VirtualizationConfigurationQemuUtils.getArrayIndex( devices, index );
 
 		if ( device == null ) {
 			// check if device file name is specified

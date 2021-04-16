@@ -6,8 +6,8 @@ import org.openslx.libvirt.domain.Domain;
 import org.openslx.libvirt.domain.device.Disk.StorageType;
 import org.openslx.libvirt.domain.device.DiskCdrom;
 import org.openslx.runvirt.plugin.qemu.cmdln.CommandLineArgs;
-import org.openslx.virtualization.configuration.machine.QemuMetaData;
-import org.openslx.virtualization.configuration.machine.QemuMetaDataUtils;
+import org.openslx.virtualization.configuration.VirtualizationConfigurationQemu;
+import org.openslx.virtualization.configuration.VirtualizationConfigurationQemuUtils;
 import org.openslx.virtualization.configuration.transformation.TransformationException;
 import org.openslx.virtualization.configuration.transformation.TransformationGeneric;
 
@@ -23,12 +23,12 @@ public class TransformationGenericDiskCdromDevices extends TransformationGeneric
 	private void filterDiskCdromDevice( Domain config, String fileName, int index ) throws TransformationException
 	{
 		final ArrayList<DiskCdrom> devices = config.getDiskCdromDevices();
-		final DiskCdrom disk = QemuMetaDataUtils.getArrayIndex( devices, index );
+		final DiskCdrom disk = VirtualizationConfigurationQemuUtils.getArrayIndex( devices, index );
 
 		if ( disk != null ) {
 			if ( fileName == null ) {
 				// do not remove disk CDROM drive, but set local physical drive as input source
-				disk.setStorage( StorageType.BLOCK, QemuMetaData.CDROM_DEFAULT_PHYSICAL_DRIVE );
+				disk.setStorage( StorageType.BLOCK, VirtualizationConfigurationQemu.CDROM_DEFAULT_PHYSICAL_DRIVE );
 			} else if ( fileName.equals( "" ) ) {
 				// remove storage source if empty string is specified to emulate an empty CDROM drive
 				disk.removeStorage();

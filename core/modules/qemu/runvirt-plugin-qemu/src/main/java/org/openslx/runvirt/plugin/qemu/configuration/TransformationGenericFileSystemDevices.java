@@ -7,7 +7,7 @@ import org.openslx.libvirt.domain.device.FileSystem;
 import org.openslx.libvirt.domain.device.FileSystem.AccessMode;
 import org.openslx.libvirt.domain.device.FileSystem.Type;
 import org.openslx.runvirt.plugin.qemu.cmdln.CommandLineArgs;
-import org.openslx.virtualization.configuration.machine.QemuMetaDataUtils;
+import org.openslx.virtualization.configuration.VirtualizationConfigurationQemuUtils;
 import org.openslx.virtualization.configuration.transformation.TransformationException;
 import org.openslx.virtualization.configuration.transformation.TransformationGeneric;
 
@@ -23,7 +23,7 @@ public class TransformationGenericFileSystemDevices extends TransformationGeneri
 	private void filterFileSystemDevice( Domain config, String source, String target, int index ) throws TransformationException
 	{
 		final ArrayList<FileSystem> devices = config.getFileSystemDevices();
-		final FileSystem fileSystem = QemuMetaDataUtils.getArrayIndex( devices, index );
+		final FileSystem fileSystem = VirtualizationConfigurationQemuUtils.getArrayIndex( devices, index );
 
 		if ( fileSystem == null ) {
 			// check if file system device source directory is specified

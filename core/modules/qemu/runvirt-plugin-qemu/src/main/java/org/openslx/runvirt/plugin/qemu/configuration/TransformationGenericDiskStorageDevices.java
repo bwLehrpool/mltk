@@ -6,7 +6,7 @@ import org.openslx.libvirt.domain.Domain;
 import org.openslx.libvirt.domain.device.Disk.StorageType;
 import org.openslx.libvirt.domain.device.DiskStorage;
 import org.openslx.runvirt.plugin.qemu.cmdln.CommandLineArgs;
-import org.openslx.virtualization.configuration.machine.QemuMetaDataUtils;
+import org.openslx.virtualization.configuration.VirtualizationConfigurationQemuUtils;
 import org.openslx.virtualization.configuration.transformation.TransformationException;
 import org.openslx.virtualization.configuration.transformation.TransformationGeneric;
 
@@ -22,7 +22,7 @@ public class TransformationGenericDiskStorageDevices extends TransformationGener
 	private void filterDiskStorageDevice( Domain config, String fileName, int index ) throws TransformationException
 	{
 		final ArrayList<DiskStorage> devices = config.getDiskStorageDevices();
-		final DiskStorage disk = QemuMetaDataUtils.getArrayIndex( devices, index );
+		final DiskStorage disk = VirtualizationConfigurationQemuUtils.getArrayIndex( devices, index );
 
 		if ( disk != null ) {
 			if ( fileName == null ) {

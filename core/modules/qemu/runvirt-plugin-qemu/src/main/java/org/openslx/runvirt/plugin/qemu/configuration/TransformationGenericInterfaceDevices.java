@@ -5,7 +5,7 @@ import java.util.ArrayList;
 import org.openslx.libvirt.domain.Domain;
 import org.openslx.libvirt.domain.device.Interface;
 import org.openslx.runvirt.plugin.qemu.cmdln.CommandLineArgs;
-import org.openslx.virtualization.configuration.machine.QemuMetaDataUtils;
+import org.openslx.virtualization.configuration.VirtualizationConfigurationQemuUtils;
 import org.openslx.virtualization.configuration.transformation.TransformationException;
 import org.openslx.virtualization.configuration.transformation.TransformationGeneric;
 
@@ -21,7 +21,7 @@ public class TransformationGenericInterfaceDevices extends TransformationGeneric
 	private void filterInterfaceDevice( Domain config, String macAddress, int index ) throws TransformationException
 	{
 		final ArrayList<Interface> devices = config.getInterfaceDevices();
-		final Interface device = QemuMetaDataUtils.getArrayIndex( devices, index );
+		final Interface device = VirtualizationConfigurationQemuUtils.getArrayIndex( devices, index );
 
 		if ( device != null ) {
 			if ( macAddress == null ) {
