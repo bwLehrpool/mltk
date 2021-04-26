@@ -116,7 +116,7 @@ function mount_share()
 		ERR=$?                          # ERR merken wg. Links aus USERSHAREDIR
 		if [ "$ERR" -eq 1 ]; then
 			logger "openslx sharemapper: Could not mount ${USERSHAREDIR} even using user credentials; giving up."
-			echo "Konnte Laufwerk ${SHAREPATH} nicht einhängen." >> "$USERLOGFILE"
+			echo "Konnte Laufwerk ${SHAREPATH} nicht einhängen. mount.cifs / mount.davfs installiert?" >> "$USERLOGFILE"
 		fi
 		unset USER
 		unset PASSWD
