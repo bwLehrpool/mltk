@@ -69,6 +69,19 @@ function mounter()
 				done
 				[ "$AUSGANG" -eq 0 ]    && logger "openslx sharemapper: ${SHAREPATH} mounted to ${MOUNTDIR} (cifs $VERSION)."
 				;;
+			dav)    AUSGANG=0
+				x=2
+				while ! echo -e "${USER}\n${PASSWD}" | mount $MOUNTPARAM "$MOUNTOPTS" "$SHAREPATH" "$MOUNTDIR" 2>/dev/null 1>&2; do
+					logger "openslx sharemapper: could not mount ${SHAREPATH} to ${MOUNTDIR}, waited another $x seconds, retrying."
+					sleep x
+					if [ "$x" -gt 4 ]; then
+						AUSGANG=1
+						logger "openslx sharemapper: timeout, could not mount ${SHAREPATH} to ${MOUNTDIR}. mount.davfs installed?"
+						break
+					fi
+					let x=x+2
+				done
+				;;
 			*)	logger "openslx sharemapper: unknown mounter ${MOUNTER}!"
 				;;
 		esac

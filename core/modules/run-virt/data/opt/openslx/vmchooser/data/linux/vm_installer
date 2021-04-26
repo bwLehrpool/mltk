@@ -75,7 +75,6 @@ case $(${PS} --pid 1 -o comm h) in
 			[Unit]
 			Description=openSLX umount utility
 			Before=shutdown.target 
-			Requires=${SERVICEDISKMOUNT}
 			DefaultDependencies=no
 	
 			[Service]
@@ -88,9 +87,16 @@ case $(${PS} --pid 1 -o comm h) in
 	
 		[ ! -d "$SERVICEDIR"/"${TARGET}".wants ]	&& mkdir "$SERVICEDIR"/"${TARGET}".wants 2>/dev/null
 		[ ! -d "$SERVICEDIR"/shutdown.target.wants ]	&& mkdir "$SERVICEDIR"/shutdown.target.wants 2>/dev/null
-	
+		# some distr. eg. Suse seem to want these:
+		# [ ! -d "$SERVICEDIR"/reboot.target.wants ]	&& mkdir "$SERVICEDIR"/reboot.target.wants 2>/dev/null
+		# [ ! -d "$SERVICEDIR"/halt.target.wants ]	&& mkdir "$SERVICEDIR"/halt.target.wants 2>/dev/null
+
 		ln -s "${SERVICEDIR}"/"${SERVICEUTIL}" "$SERVICEDIR"/"${TARGET}".wants/"${SERVICEUTIL}"
 		ln -s "${SERVICEDIR}"/"${SERVICEUMOUNT}" "$SERVICEDIR"/shutdown.target.wants/"${SERVICEUMOUNT}"
+		# ln -s "${SERVICEDIR}"/"${SERVICEUMOUNT}" "$SERVICEDIR"/reboot.target.wants/"${SERVICEUMOUNT}"
+		# ln -s "${SERVICEDIR}"/"${SERVICEUMOUNT}" "$SERVICEDIR"/halt.target.wants/"${SERVICEUMOUNT}"
+
+		
 	
 		echo "openslx praeinstaller: doing systemd reload."
 		systemctl daemon-reload

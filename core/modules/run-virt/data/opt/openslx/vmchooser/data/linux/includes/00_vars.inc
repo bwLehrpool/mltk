@@ -34,6 +34,8 @@ MOUNTCIFSPRAE="-v -t cifs -o "
 MOUNTCIFSOPTS="uid=$(id --user "$LOCALUSER"),gid=$(id --group "$LOCALUSER"),forceuid,forcegid,file_mode=0700,dir_mode=0700,nobrl,noacl"
 MOUNTNFSPRAE="-v -t nfs4 -o "
 MOUNTNFSOPTS="rw,nosuid,nodev,nolock,intr,hard,sloppy"
+MOUNTDAVPRAE="-t davfs -o "
+MOUNTDAVOPTS="uid=$(id --user "$LOCALUSER"),gid=$(id --group "$LOCALUSER")"
 
 NATADDR=$(head -n 1 "$CONFIGFILE" | cut -f 1 -d$'\t')
 PORT=$(head -n 1 "$CONFIGFILE" | cut -f 2 -d$'\t')

@@ -9,7 +9,12 @@ function mount_shares()
 		SHAREPASS=$(echo "${ROHSHARES[CONFIGROW]}" | cut -f 5 -d$'\t')		# User-PW, bei Userhome nicht vorhanden
 
 		# Sharetyp bestimmen:
-		if [ "${SHAREPATH:0:2}" == '\\' ]  || [ "${SHAREPATH:0:2}" == '//' ]; then
+		if [ "${SHAREPATH:0:4}" == 'http' ]; then
+			SHAREPATH="${SHAREPATH//\\//}"          # shouldn't be needed, but who knows what windows users do...
+			MOUNTER=dav
+			MOUNTPARAM="$MOUNTDAVPRAE"
+			MOUNTOPTS="$MOUNTDAVOPTS"
+		elif [ "${SHAREPATH:0:2}" == '\\' ]  || [ "${SHAREPATH:0:2}" == '//' ]; then
 			USER=$(echo "$SHAREUSER"|cut -d '\' -f 2)
 			SHAREPATH="${SHAREPATH//\\//}"					# '\' --> `/` :-)
 			MOUNTER=cifs
