@@ -158,6 +158,7 @@ patch_aufs() {
 		git clone "git://aufs.git.sourceforge.net/gitroot/aufs/${AUFS}-standalone.git" || perror "Cloning ${AUFS} failed."
 	else
 		git clone "git://github.com/sfjro/${AUFS}-standalone.git" || perror "Cloning ${AUFS} failed."
+		#git clone "git://github.com/bnied/${AUFS}-standalone.git" || perror "Cloning ${AUFS} failed."
 	fi
 	# get the needed version
 	cde "${MODULE_WORK_DIR}/${AUFS}-standalone"
@@ -167,16 +168,26 @@ patch_aufs() {
 	if [ -z "$major" ] || [ -z "$minor" ]; then
 		perror "REQUIRED_KERNEL not in properly set, this should not happen!"
 	fi
-	local NEEDED_BRANCH="aufs${major}.${minor}"
-	local testvar
-	while [ "${patch}" -gt 0 ]; do
-		for testvar in "${branches[@]}"; do
-			if [ "$testvar" = "${NEEDED_BRANCH}.${patch}" ] || [ "$testvar" = "${NEEDED_BRANCH}.${patch}+" ]; then
-				NEEDED_BRANCH="$testvar"
-				break 2
-			fi
+	local testvar outer NEEDED_BRANCH
+	while (( minor >= 0 )); do
+		NEEDED_BRANCH="aufs${major}.${minor}"
+		outer=false
+		while (( patch > 0 )); do
+			for testvar in "${branches[@]}"; do
+				if [ "$testvar" = "${NEEDED_BRANCH}.${patch}" ] || [ "$testvar" = "${NEEDED_BRANCH}.${patch}+" ]; then
+					NEEDED_BRANCH="$testvar"
+					break 3
+				elif [ "$testvar" = "${NEEDED_BRANCH}" ]; then
+					outer=true
+				fi
+			done
+			(( patch-- ))
 		done
-		patch=$(( patch - 1 ))
+		$outer && break
+		if (( patch == 0 )); then
+			patch=500
+			(( minor-- ))
+		fi
 	done
 	pinfo "Getting branch origin/$NEEDED_BRANCH"
 	git checkout "origin/$NEEDED_BRANCH" || git checkout "origin/${AUFS}.x-rcN" || perror "Could not checkout needed branch."
