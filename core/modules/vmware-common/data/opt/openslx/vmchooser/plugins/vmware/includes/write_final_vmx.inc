@@ -136,6 +136,20 @@ setup_serial() {
 # CPU and RAM
 setup_vcpu_ram() {
 	#writelog "numvcpus = ${CPU_CORES} - maxvcpus=${HOST_CORE_COUNT}"
+	if (( VM_HW_VERSION < 18 && CPU_CORES > 16 )); then
+		writelog "Limiting VM to 16 cores since hwVersion < 18"
+		CPU_CORES=16
+	elif (( CPU_CORES > 32 )); then
+		writelog "Limiting VM to 32 cores since it's the current maximum VMware supports"
+		CPU_CORES=32
+	fi
+	if (( VM_HW_VERSION < 18 && VM_MEM > 65536 )); then
+		writelog "Limiting VM to 64GB since hwVersion < 18"
+		VM_MEM=65536
+	elif (( VM_MEM > 131072 )); then
+		writelog "Limiting VM to 128GB since it's the current maximum VMware supports"
+		VM_MEM=131072
+	fi
 	cat >> "${TMPCONFIG}" <<-HEREEND
 	numvcpus = "$CPU_CORES"
 	cpuid.coresPerSocket = "$VM_CORES_PER_SOCKET"
@@ -264,13 +278,6 @@ setup_graphics() {
 }
 
 finalize_hardware() {
-	# Apply $maxhardwareversion to final VMX
-	if notempty VM_HW_VERSION && [ "$VM_HW_VERSION" -gt "$maxhardwareversion" ]; then
-		writelog "Hardware version capped to $maxhardwareversion (was $VM_HW_VERSION)"
-		sed -i 's/^virtualHW\.version.*$/virtualHW.version = "'$maxhardwareversion'"/I' "${TMPCONFIG}"
-		VM_HW_VERSION="$maxhardwareversion"
-	fi
-
 	# Enable nested virtualization if not specified in remote vmx
 	if [ -e "/run/hwinfo" ] && ! grep -qi '^vhv\.enable' "${TMPCONFIG}" \
 			&& detect_cpu_flag "ept" "npt" \
@@ -294,6 +301,13 @@ finalize_hardware() {
 
 ## MAIN ##
 write_final_vmx() {
+	# Apply $maxhardwareversion to final VMX
+	if notempty VM_HW_VERSION && [ "$VM_HW_VERSION" -gt "$maxhardwareversion" ]; then
+		writelog "Hardware version capped to $maxhardwareversion (was $VM_HW_VERSION)"
+		sed -i 's/^virtualHW\.version.*$/virtualHW.version = "'$maxhardwareversion'"/I' "${TMPCONFIG}"
+		VM_HW_VERSION="$maxhardwareversion"
+	fi
+
 	replace_placeholders
 	setup_ethernet
 	setup_optical_drives
