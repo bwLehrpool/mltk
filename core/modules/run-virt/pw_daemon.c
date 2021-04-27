@@ -149,7 +149,10 @@ static int mode_daemon(const uid_t uidNumber)
 	const char *envuser = getenv("USERNAME");
 	volatile char *envpass = getenv("PASSWORD");
 	const char *pwsocket = getenv("PWSOCKET");
+	const char *localstr = getenv("LOCAL_PW");
+	int allowLocal = localstr != NULL && atoi(localstr);
 	gid_t gidNumber = 65534;
+
 	memset(&addr, 0, sizeof(addr));
 	memset(&sig, 0, sizeof(sig));
 	if (envuser == NULL) {
