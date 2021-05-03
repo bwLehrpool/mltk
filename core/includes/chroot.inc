@@ -7,7 +7,7 @@
 # See https://www.gnu.org/licenses/old-licenses/gpl-2.0-standalone.html
 #
 # If you have any feedback please consult https://bwlehrpool.de and
-# send your feedback to bwlehrpool@hs-offenburg.de.
+# send your feedback to support@bwlehrpool.de.
 #
 # General information about bwLehrpool can be found at https://bwlehrpool.de
 #

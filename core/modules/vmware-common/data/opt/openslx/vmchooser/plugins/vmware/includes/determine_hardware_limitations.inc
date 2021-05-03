@@ -67,7 +67,7 @@ set_vm_hardware_limits() {
 		;;
 		winnet*64|win*2003*64|windowsnet*64)
 			VM_OS_TYPE="winnetstandard-64"
-			MAXMEM="8000"
+			MAXMEM="16000"
 			MAXCORES="8"
 		;;
 		winnet*|win*2003*|windowsnet*)
@@ -97,18 +97,18 @@ set_vm_hardware_limits() {
 		;;
 		windows7-64)
 			VM_OS_TYPE="windows7-64"
-			MAXMEM="32000"
+			MAXMEM="64000"
 			MAXCORES="8"
 		;;
 		windows8-64)
 			VM_OS_TYPE="windows8-64"
-			MAXMEM="32000"
-			MAXCORES="8"
+			MAXMEM="128000"
+			MAXCORES="256"
 		;;
 		windows9-64)
 			VM_OS_TYPE="windows9-64"
-			MAXMEM="64000"
-			MAXCORES="8"
+			MAXMEM="512000"
+			MAXCORES="256"
 		;;
 		winvista)
 			VM_OS_TYPE="winvista"
@@ -121,22 +121,20 @@ set_vm_hardware_limits() {
 			MAXCORES="4"
 		;;
 		windows8)
-			VM_OS_TYPE="windows8"
 			MAXMEM="8000"
-			MAXCORES="4"
+			MAXCORES="32"
 		;;
 		windows9)
-			VM_OS_TYPE="windows9"
 			MAXMEM="8000"
-			MAXCORES="4"
+			MAXCORES="32"
 		;;
 		win*64)
-			MAXMEM="16000"
-			MAXCORES="4"
+			MAXMEM="32000"
+			MAXCORES="32"
 		;;
 		win*)
 			MAXMEM="8000"
-			MAXCORES="1"
+			MAXCORES="32"
 		;;
 		dos|msdos*|ms-dos*)
 			VM_OS_TYPE="dos"
@@ -147,25 +145,24 @@ set_vm_hardware_limits() {
 		macos*64)
 			VM_OS_TYPE="freebsd-64"
 			MAXMEM="4000"
-			MAXCORES="2"
+			MAXCORES="8"
 		;;
 		macos*)
 			VM_OS_TYPE="freebsd"
 			MAXMEM="4000"
-			MAXCORES="1"
+			MAXCORES="4"
 		;;
 		beos*)
 			VM_OS_TYPE="other"
 			SHARED_FOLDERS="FALSE"
+			MAXCORES="16"
 		;;
 		# Unknown guestOS setting in .xml - this encompasses linux too,
 		# as there is a multitude of different distributions. Perhaps further
 		# action will be needed if this leads to problems with exotic OSs.
 		*64)
-			VM_OS_TYPE="other-64"
-			# SHARED_FOLDERS="FALSE"
 			MAXMEM="123456"
-			MAXCORES="4"
+			MAXCORES="64"
 		;;
 		*)
 			VM_OS_TYPE="other"
@@ -177,7 +174,10 @@ set_vm_hardware_limits() {
 
 	declare -g CPU_CORES="${HW_THREADS:-1}"
 	declare -rg HOST_CORE_COUNT="$CPU_CORES"
-	[ "$CPU_CORES" -gt "$MAXCORES" ] && CPU_CORES="$MAXCORES"
+	if (( CPU_CORES > MAXCORES )); then
+		writelog "Limiting vCPU count from $CPU_CORES to $MAXCORES because of guest OS"
+		CPU_CORES="$MAXCORES"
+	fi
 	
 	# It currently makes no sense to set the virtual number of cores
 	# to a different value than the virtual number of cores per virtual CPU.

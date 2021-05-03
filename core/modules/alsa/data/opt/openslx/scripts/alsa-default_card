@@ -3,8 +3,8 @@
 PROC="/proc/asound/pcm"
 
 if [ ! -r "$PROC" ]; then
-	echo "'${PROC}' not found or not readable."
-	exit 1
+	echo "'${PROC}' not found or not readable. Not setting default sound card."
+	exit 0
 fi
 
 if [ -w "/etc" ]; then

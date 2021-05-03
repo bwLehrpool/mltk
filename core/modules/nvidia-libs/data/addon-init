@@ -1,6 +1,6 @@
 #!/bin/ash
 
-[ -e "/opt/openslx/etc/nvidia.whiteout" ] || exit 66
+[ -e "/opt/openslx/etc/nvidia.whiteout" ] || exit 0
 
 while read line; do
 	rm -f -- "$line"
