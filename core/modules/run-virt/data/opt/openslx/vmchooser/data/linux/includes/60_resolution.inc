@@ -11,11 +11,24 @@ get_xauthfile()
 	logger "openslx resolution utility: XAUTHFILE found."
 }
 
+kill_resprogs() {
+	for i in $KILLRESPROGS; do
+		if [ -n "$(ps aux|grep $i|grep -v grep)" ]; then
+			logger "openslx resolution utility: Interfering program $i detecting, trying to kill."
+			killall $i
+			ERR=$?
+			if [ $ERR -ne 0 ]; then
+				logger "openslx resolution utility: couldn't kill interfering program $i."
+			fi
+		fi
+	done
+}
 
 check_resolution() {
 	ACTRES=$(DISPLAY="${DISPLAY}" XAUTHORITY="${XAUTHORITY}" xrandr|grep '*'|tr -s " "|cut -f 2 -d " ")
 	if [ "$ACTRES" != "$RESOLUTION" ]; then
 		logger "openslx resolution utility: resolution changed; re-changing."
+		kill_resprogs
 		DISPLAY="${DISPLAY}" XAUTHORITY="${XAUTHORITY}" xrandr --output ${AUSGABE} --mode ${RESOLUTION}
 	else
 		logger "openslx resolution utility: resolution unchanged."

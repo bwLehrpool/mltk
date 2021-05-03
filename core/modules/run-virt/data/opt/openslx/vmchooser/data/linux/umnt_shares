@@ -17,13 +17,11 @@ case "$REMAPMODE" in
 		exit 0
 		;;
 	1)	logger "openslx sharemapper: umounter: remapMode 1 (native mode) detected."
-		umount_shares
-		umount_home
+		umount_all
 		postliminaries_native
 		;;
 	2)	logger "openslx sharemapper: umounter: remapMode 2 (fallback mode) detected."
-		umount_shares
-		umount_home
+		umount_all
 		postliminaries_native
 		exit 0
 		;;

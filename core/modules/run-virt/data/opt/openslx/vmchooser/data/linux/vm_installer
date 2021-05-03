@@ -95,8 +95,6 @@ case $(${PS} --pid 1 -o comm h) in
 		ln -s "${SERVICEDIR}"/"${SERVICEUMOUNT}" "$SERVICEDIR"/shutdown.target.wants/"${SERVICEUMOUNT}"
 		# ln -s "${SERVICEDIR}"/"${SERVICEUMOUNT}" "$SERVICEDIR"/reboot.target.wants/"${SERVICEUMOUNT}"
 		# ln -s "${SERVICEDIR}"/"${SERVICEUMOUNT}" "$SERVICEDIR"/halt.target.wants/"${SERVICEUMOUNT}"
-
-		
 	
 		echo "openslx praeinstaller: doing systemd reload."
 		systemctl daemon-reload

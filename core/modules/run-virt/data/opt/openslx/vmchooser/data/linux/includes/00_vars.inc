@@ -6,7 +6,7 @@ SLXCONFIGFILE="$DISKMOUNTDIR"/openslx.ini
 CONFIGFILE="$DISKMOUNTDIR"/shares.dat
 LOGINUSER=$(grep '^username=' "$SLXCONFIGFILE" | cut -d '=' -f 2)
 
-##### User related#################
+##### User related #################
 LOCALUSER=student
 USERHOME=/home/"$LOCALUSER"
 USERHOMEDIR=/home/"$LOCALUSER"/PERSISTENT
@@ -57,5 +57,7 @@ SCRIPTEXT=$(grep scriptExt "$DISKMOUNTDIR/openslx.ini" | cut -f 2 -d "=")
 MUTESOUND=$(grep muteSound "$DISKMOUNTDIR/openslx.ini" | cut -f 2 -d "=")
 SOUNDVOL="100%"
 
+##### Programs interfering with resolution setting #####
+KILLRESPROGS="kscreen_backend_launcher"
 
 ### Variablen Ende ################################
