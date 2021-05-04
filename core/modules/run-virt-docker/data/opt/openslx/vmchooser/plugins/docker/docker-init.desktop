@@ -1,0 +1,12 @@
+[Desktop Entry]
+Version=1.0
+Encoding=UTF-8
+Name=docker-init
+Type=Application
+Exec=
+Icon=
+Terminal=true
+StartupNotify=true
+Hidden=false
+GenericName=
+GenericName[en_US]=

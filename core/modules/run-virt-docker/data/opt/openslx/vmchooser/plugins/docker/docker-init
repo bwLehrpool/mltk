@@ -1,0 +1,74 @@
+#!/bin/bash
+
+USER_CONTAINER_CONFIG=""
+
+echo "+ source user_config $USER_CONTAINER_CONFIG"
+source $USER_CONTAINER_CONFIG
+
+load_image () {
+
+	IMAGE_SIZE=$(stat --printf="%s" $VM_DISKFILE_RO)
+	# check file size of VM_DISKFILE_RO is equals to 4096 = 4kB (because of padding)
+	if [[ $IMAGE_SIZE -eq 4096 ]]; then 
+		echo "+ build container image with build_context"
+		echo "+ docker build --tag $CONTAINER_IMAGE_NAME $CONTAINER_BUILD_CONTEXT"
+		docker build --tag $CONTAINER_IMAGE_NAME $CONTAINER_BUILD_CONTEXT
+	else
+		# In this case a pre build container image (tar archive from "docker save ...") 
+		# will be loaded into the local docker daemon. 
+		echo "+ load container image"
+		# create TMP_FILE for image
+		local TMP_FILE=$(mktemp)
+		# write currently existing image ids into TMP_FILE
+		cp $VM_DISKFILE_RO $TMP_FILE
+		# recieve the RepoTag form the manifest.json inside the tar
+		local REPO_TAG=$(tar -axf $TMP_FILE manifest.json -O | jq -r '.[].RepoTags[0]')
+		# load image from tar file
+		docker load --input $TMP_FILE
+		# rename image 
+		docker tag "$REPO_TAG" "$CONTAINER_IMAGE_NAME"
+		rm -f -- "$TMP_FILE"
+	fi
+	retval=$?
+	return $retval
+}
+
+main () 
+{
+	# TODO only check by image name could be bad, images whith a same name could exist
+
+	# check if the container_image_name already loaded in docker daemon
+	if [[ -z $(docker images $CONTAINER_IMAGE_NAME -q) ]]; then
+		echo "+ Image unknown by docker daemon ..."
+		load_image
+
+		if [[ "$retval" != "0" ]]; then
+			echo "...could not build/load container image!...giving up..."
+			return -1
+		fi
+	fi
+
+	if [[ -n "$(docker ps -aq)" ]]; then
+		echo "+ cleanup running container"
+		docker rm --force $(docker ps -aq) > /dev/null
+	fi
+
+	echo "+ start container..."
+	echo "+ docker run $CONTAINER_RUN_OPTIONS $CONTAINER_BIND_MOUNT_STRING $CONTAINER_IMAGE_NAME"
+	docker run $CONTAINER_RUN_OPTIONS $CONTAINER_BIND_MOUNT_STRING $CONTAINER_IMAGE_NAME
+
+	if [[ "$?" != "0" ]]; then
+		echo "...container start failed!...giving up..."
+		return -1
+	fi
+	
+	if [[ -n $RUNSCRIPT ]]; then
+		echo "+ execute user runscript"
+		/bin/bash $RUNSCRIPT
+	fi 
+}
+
+main 
+
+# keeping terminal open
+bash

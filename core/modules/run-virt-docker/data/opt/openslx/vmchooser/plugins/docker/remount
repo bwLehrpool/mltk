@@ -1,0 +1,10 @@
+#!/bin/bash
+#
+
+source "$HOME/.bwlp-user-conf"
+
+writelog "+ start mounting"
+$(safesource "${DOCKER_INCLUDE_DIR}/gio_mount_netshare.inc")
+
+writelog "+ create bind mount string"
+$(safesource "${DOCKER_INCLUDE_DIR}/init_bind_mount.inc")

@@ -1,0 +1,21 @@
+#!/bin/bash
+# this configfile holds env vars for user context
+
+# Functions (writelog(), cleanexit(), safesource())
+source /opt/openslx/vmchooser/run-virt-includes/vmchooser_runvirt_functions.inc
+
+# do not use writelog in this context
+function writelog () {
+    echo $1
+}
+
+export DOCKER_PLUGIN_DIR=""
+export DOCKER_INCLUDE_DIR=""
+export TMPDIR=""
+export RUNSCRIPT=""
+
+export VM_DISKFILE_RO=""
+
+export CONTAINER_BUILD_CONTEXT=""
+export CONTAINER_IMAGE_NAME=""
+export CONTAINER_RUN_OPTIONS=""

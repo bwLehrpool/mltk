@@ -1,0 +1,59 @@
+#!/bin/bash
+###############################################################################
+# -----------------------------------------------------------------------------
+#
+# Copyright (c) 2009..2018 bwLehrpool-Projektteam
+#
+# This program/file is free software distributed under the GPL version 2.
+# See https://www.gnu.org/licenses/old-licenses/gpl-2.0-standalone.html
+#
+# If you have any feedback please consult https://bwlehrpool.de and
+# send your feedback to bwlehrpool@hs-offenburg.de.
+#
+# General information about bwLehrpool can be found at https://bwlehrpool.de
+#
+# -----------------------------------------------------------------------------
+# run-virt.include
+#    - qemu/kvm plugin for vmchooser run-virt
+################################################################################
+
+# BASH_SOURCE[0] contains the file being sourced, namely this one
+declare -rg DOCKER_PLUGIN_DIR="$(dirname "${BASH_SOURCE[0]}")"
+declare -rg DOCKER_INCLUDE_DIR="${DOCKER_PLUGIN_DIR}/includes"
+
+# TODO make this part of the metadata coming from the server
+# TBD: "firewall printer usb slxfloppy sound netshares"
+declare -rg PLUGIN_FEATURES=""
+
+run_plugin() {
+
+	# VMX == bwlp-container-info.tar.gz
+	writelog "+ unpacking container ressources"
+	tar -xzvf "$TMPCONFIG" --directory "$CONFDIR"
+	
+	# VARS
+	# location of scripts and config files which will be used in desktop 
+	export USER_CONTAINER_CONTEXT="$HOME/.local/docker"
+	# config file which will be filed with vars in the follwing process
+	export USER_CONTAINER_CONFIG="$USER_CONTAINER_CONTEXT/.bwlp-user-conf"
+	# dictonary which maps a drive letter to a directory
+	declare -Ag NETSHARE_DIR
+
+	# apply "allow_root" option to gvfsd-fuse, so docker can bind mount gvfs network shares
+	writelog "+ gio_allow_root_fix.inc"
+	$( safesource "${DOCKER_INCLUDE_DIR}/gio_allow_root_fix.inc" )
+
+	# mount netshares from CONFDIR/netshares
+	writelog "+ gio_mount_netshare.inc"
+	$( safesource "${DOCKER_INCLUDE_DIR}/gio_mount_netshare.inc" )
+
+	writelog "+ init user container context"
+	$( safesource "${DOCKER_INCLUDE_DIR}/init_user_context.inc" )
+	
+	# init bind mount option for container
+	writelog "+ init_bind_mount.inc"
+	$( safesource "${DOCKER_INCLUDE_DIR}/init_bind_mount.inc" )
+
+	# HACK: using the modified version of the wrapper script
+	declare -rg VIRTCMD="startxfce4"
+}
