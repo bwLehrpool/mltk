@@ -10,3 +10,7 @@ Restart=always
 RestartSec=3
 TimeoutStopSec=10
 LimitNOFILE=65536
+LimitNICE=-2
+IOSchedulingClass=best-effort
+IOSchedulingPriority=2
+OOMScoreAdjust=-100
