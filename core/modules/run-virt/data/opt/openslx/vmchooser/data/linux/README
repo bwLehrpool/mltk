@@ -8,13 +8,14 @@ check the usual log files, of course).
 
 These programs are needed:
 
-awk, cat, chmod, chown, cut, cvt, find, grep, head, hexdump, ln, logger,
-mkdir, mount, mount.cifs, mv, ping, printf, ps, rmdir, sed, sleep, su,
-systemctl, timeout, unlink, xdg-user-dir, xrandr, xterm.
+awk, cat, chmod, chown, cut, cvt, find, fusermount, grep, head, hexdump, 
+ln, logger, mkdir, mount, mount.cifs, mv, ping, printf, ps, rmdir, sed, 
+sleep, su, systemctl, timeout, unlink, xdg-user-dir, xrandr, xterm.
 
-Two likely candidates are in particular mount.cifs and xdg-user-dir. Do 
-detect missing binaries it is helpful to start the script openslx with root 
-permissions by hand and check for "…not found" messages.
+Some likely candidates are in particular mount.cifs, mount.davfs and 
+xdg-user-dir. To detect missing binaries it is helpful to start the script 
+openslx in the virtual machine with root permissions by hand and check for 
+"... not found" messages.
 
 
 Log file entries:
@@ -25,11 +26,13 @@ distinguished by a preceding 'openslx'; the entries are further itemised by:
 'openslx utility script': openslx main script,
 'openslx sharemapper': utility to mount network shares,
 'openslx resolution utility': utility to set monitor resolution.
+'openslx umounter': utility for unmounting previously script-mounted network 
+                    drives at shutdown. (Ann.: This is important at userspace
+                    mounted (fusermount) webdav shares, as it else may lead 
+                    to waiting time at shutdown of the virtual machine.)
 
 
 Included scripts:
-
-This package consists of following scripts:
 
 vm_installer: 	This script is to be started once in a local, permanent (so 
 		not within the pool system environment) virtual machine. It 
@@ -43,6 +46,7 @@ openslx:	The script openslx will be started via systemd service written
 
 umnt_shares:	(before shutdown.target): Unmounts given network shares at 
 		virtual machine shutdown.
+
 
 resolution_standalone: Standalone version of resolution sctipt. Needs no 
 		preliminary work done by systemd or vm_runtime. It has to be 

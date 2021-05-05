@@ -8,15 +8,15 @@ Binaries in der genutzen virtuellen Maschine enthalten sind.
 
 Folgende Programme werden benötigt:
 
-awk, cat, chmod, chown, cut, cvt, find, grep, head, hexdump, ln, logger, 
-mkdir, mount, mount.cifs, mv, ping, printf, ps, rmdir, sed, sleep, su, 
-systemctl, timeout, unlink, xdg-user-dir, xrandr, xterm.
+awk, cat, chmod, chown, cut, cvt, find, fusermount, grep, head, hexdump, 
+ln, logger, mkdir, mount, mount.cifs, mv, ping, printf, ps, rmdir, sed, 
+sleep, su, systemctl, timeout, unlink, xdg-user-dir, xrandr, xterm.
 
-Als mitunter fehlend haben sich insbesondere mount.cifs (wenn SMB-Laufwerke 
-nicht eingebunden werden und xdg-user-dir (wenn keine Icons auf dem Desktop 
-erscheinen) erwiesen. Zur Ermittlung eventuell fehlender binaries ist 
-hilfreich, das Skript openslx mit root-Rechten von Hand zu starten und auf 
-"…not found" u.ä. zu achten.
+Als mitunter fehlend haben sich insbesondere mount.cifs, mount.davfs (wenn 
+SMB- bzw. Webdav-Laufwerke nicht eingebunden werden) und xdg-user-dir 
+(wenn keine Icons auf dem Desktop erscheinen) erwiesen. Zur Ermittlung 
+eventuell fehlender binaries ist hilfreich, das Skript openslx mit root-
+Rechten von Hand zu starten und auf "…not found" u.ä. zu achten.
 
 
 Logeinträge:
@@ -28,14 +28,20 @@ die Einträge sind zudem wie folgt aufgeschlüsselt:
 'openslx utility script': openslx-Hauptskript
 'openslx sharemapper': Dienstskript zum Einhängen der Netzlaufwerke,
 'openslx resolution utility': Dienstskript zur Bildschirmauflösung.
+'openslx umounter': Dienstskript zum Unmounten eingehängter Netzlauf-
+                    werke bei Shutdown. (Anmerkung: besonders bei per 
+                    Userspace über fusermount eingehängten Webdav-
+                    laufwerken wichtig, da es sonst zu Wartezeiten
+                    beim Shutdown der VM kommen kann.)
 
 
 Enthaltene Skripte:
 
 vm_installer:	Dieses Skript einmalig in einer lokalen, permanenten (also 
 		nicht innerhalb des Poolsystems) Virtuellen Maschine ausführen. 
-		Es schreibt zwei systemd-Servicedateien und verlinkt diese,
-		um beim Systemstart folgende Skripte zu starten:
+		Eine vorherige Installation sollte erkannt und korrigiert
+		werden. Es schreibt zwei systemd-Servicedateien und verlinkt 
+		diese, um beim Systemstart folgende Skripte zu starten:
 
 openslx:	Das Skript openslx wird von einem durch vm_installer 
 		erzeugten systemd-Dienst gestartet. Es ruft die Funktionen 
@@ -51,8 +57,8 @@ resolution_standalone: Einzelstehende Version des resolution-Skriptes, die
 		Einbindung innerhalb der VM (Xsetup/Xreset) muss daher 
 		selbst gesorgt werden.
 
-		Anmerkung: Dieses Skript wird nur unstetig gewartet, die 
-		Nutzung von openslx wird daher empfohlen.
+		Anmerkung: Dieses Skript wird nicht mehr bzw. nur unstetig 
+		gewartet, die Nutzung von openslx wird daher sehr mpfohlen.
 
 
 Veraltet als Einzelskripte:
