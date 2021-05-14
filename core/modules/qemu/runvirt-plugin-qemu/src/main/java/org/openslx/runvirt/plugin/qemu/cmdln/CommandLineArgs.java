@@ -194,8 +194,14 @@ public class CommandLineArgs
 	 */
 	public int getVmNumCpus()
 	{
-		final String numCpus = this.getArgument( CmdLnOption.VM_NCPUS );
-		return Integer.parseInt( numCpus );
+		final String numCpuArg = this.getArgument( CmdLnOption.VM_NCPUS );
+		int numCpus = 0;
+
+		if ( numCpuArg != null ) {
+			numCpus = Integer.parseInt( numCpuArg );
+		}
+
+		return numCpus;
 	}
 
 	/**

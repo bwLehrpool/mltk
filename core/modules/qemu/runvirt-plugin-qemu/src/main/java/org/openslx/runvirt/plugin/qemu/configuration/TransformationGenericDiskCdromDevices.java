@@ -11,16 +11,51 @@ import org.openslx.virtualization.configuration.VirtualizationConfigurationQemuU
 import org.openslx.virtualization.configuration.transformation.TransformationException;
 import org.openslx.virtualization.configuration.transformation.TransformationGeneric;
 
+/**
+ * Generic CDROM drive transformation for Libvirt/QEMU virtualization configurations.
+ * 
+ * @author Manuel Bentele
+ * @version 1.0
+ */
 public class TransformationGenericDiskCdromDevices extends TransformationGeneric<Domain, CommandLineArgs>
 {
-	private static final String FILTER_NAME = "Disk CDROM devices";
+	/**
+	 * Name of the configuration transformation.
+	 */
+	private static final String NAME = "Disk CDROM devices";
 
+	/**
+	 * Creates a new generic CDROM drive transformation for Libvirt/QEMU virtualization
+	 * configurations.
+	 */
 	public TransformationGenericDiskCdromDevices()
 	{
-		super( TransformationGenericDiskCdromDevices.FILTER_NAME );
+		super( TransformationGenericDiskCdromDevices.NAME );
 	}
 
-	private void filterDiskCdromDevice( Domain config, String fileName, int index ) throws TransformationException
+	/**
+	 * Validates a virtualization configuration and input arguments for this transformation.
+	 * 
+	 * @param config virtualization configuration for the validation.
+	 * @param args input arguments for the validation.
+	 * @throws TransformationException validation has failed.
+	 */
+	private void validateInputs( Domain config, CommandLineArgs args ) throws TransformationException
+	{
+		if ( config == null || args == null ) {
+			throw new TransformationException( "Virtualization configuration or input arguments are missing!" );
+		}
+	}
+
+	/**
+	 * Transforms a CDROM drive in a virtualization configuration selected by its {@code index}.
+	 * 
+	 * @param config virtualization configuration for the transformation.
+	 * @param fileName name of the image file for the CDROM drive.
+	 * @param index number of the CDROM drive in the virtualization configuration that is selected.
+	 * @throws TransformationException transformation has failed.
+	 */
+	private void transformDiskCdromDevice( Domain config, String fileName, int index ) throws TransformationException
 	{
 		final ArrayList<DiskCdrom> devices = config.getDiskCdromDevices();
 		final DiskCdrom disk = VirtualizationConfigurationQemuUtils.getArrayIndex( devices, index );
@@ -42,8 +77,12 @@ public class TransformationGenericDiskCdromDevices extends TransformationGeneric
 	@Override
 	public void transform( Domain config, CommandLineArgs args ) throws TransformationException
 	{
-		this.filterDiskCdromDevice( config, args.getVmDiskFileNameCdrom0(), 0 );
-		this.filterDiskCdromDevice( config, args.getVmDiskFileNameCdrom1(), 1 );
+		// validate configuration and input arguments
+		this.validateInputs( config, args );
+
+		// alter CDROM drives
+		this.transformDiskCdromDevice( config, args.getVmDiskFileNameCdrom0(), 0 );
+		this.transformDiskCdromDevice( config, args.getVmDiskFileNameCdrom1(), 1 );
 
 		// remove all additional disk CDROM devices
 		final ArrayList<DiskCdrom> devices = config.getDiskCdromDevices();

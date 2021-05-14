@@ -8,16 +8,47 @@ import org.openslx.libvirt.capabilities.Capabilities;
 import org.openslx.libvirt.xml.LibvirtXmlDocumentException;
 import org.openslx.libvirt.xml.LibvirtXmlSerializationException;
 import org.openslx.libvirt.xml.LibvirtXmlValidationException;
+import org.openslx.virtualization.Version;
 
+/**
+ * Representation of a Libvirt hypervisor backend (e.g. QEMU or VMware).
+ * <p>
+ * The representation allows to connect to a running Libvirt service and query the host system's
+ * capabilities or manage virtual machines.
+ * 
+ * @implNote This class is the abstract representation to implement various Libvirt hypervisor
+ *           backends using inheritance.
+ * 
+ * @author Manuel Bentele
+ * @version 1.0
+ */
 public abstract class LibvirtHypervisor implements Closeable
 {
+	/**
+	 * Connection to a Libvirt hypervisor backend.
+	 */
 	protected Connect hypervisor = null;
 
+	/**
+	 * Creates a new Libvirt hypervisor backend specified by an URI and connects to the specified
+	 * backend.
+	 * 
+	 * @param connectionUri URI of a specific Libvirt hypervisor backend.
+	 * @throws LibvirtHypervisorException failed to connect to the specified Libvirt hypervisor
+	 *            backend.
+	 */
 	public LibvirtHypervisor( String connectionUri ) throws LibvirtHypervisorException
 	{
 		this.connect( connectionUri );
 	}
 
+	/**
+	 * Connects to the Libvirt hypervisor backend specified by an URI.
+	 * 
+	 * @param connectionUri URI of a specific Libvirt hypervisor backend.
+	 * @throws LibvirtHypervisorException failed to connect to the specified Libvirt hypervisor
+	 *            backend.
+	 */
 	protected void connect( String connectionUri ) throws LibvirtHypervisorException
 	{
 		try {
@@ -27,6 +58,13 @@ public abstract class LibvirtHypervisor implements Closeable
 		}
 	}
 
+	/**
+	 * Returns the queried Libvirt hypervisor's host system capabilities.
+	 * 
+	 * @return queried Libvirt hypervisor's host system capabilities.
+	 * @throws LibvirtHypervisorException failed to query and return the Libvirt hypervisor's host
+	 *            system capabilities.
+	 */
 	public Capabilities getCapabilites() throws LibvirtHypervisorException
 	{
 		Capabilities hypervisorCapabilities = null;
@@ -42,20 +80,41 @@ public abstract class LibvirtHypervisor implements Closeable
 		return hypervisorCapabilities;
 	}
 
-	public int getVersion() throws LibvirtHypervisorException
+	/**
+	 * Returns the version of the Libvirt hypervisor backend.
+	 * 
+	 * @return version of the Libvirt hypervisor backend.
+	 * @throws LibvirtHypervisorException failed to get the version of the Libvirt hypervisor
+	 *            backend.
+	 */
+	public Version getVersion() throws LibvirtHypervisorException
 	{
-		int hypervisorVersion = 0;
+		long hypervisorVersionRaw = 0;
+		Version hypervisorVersion = null;
 
 		try {
-			final long hypervisorVersionLong = this.hypervisor.getVersion();
-			hypervisorVersion = Long.valueOf( hypervisorVersionLong ).intValue();
+			hypervisorVersionRaw = this.hypervisor.getVersion();
 		} catch ( LibvirtException e ) {
 			throw new LibvirtHypervisorException( e.getLocalizedMessage() );
+		}
+
+		if ( hypervisorVersionRaw > 0 ) {
+			final short major = Long.valueOf( hypervisorVersionRaw / Long.valueOf( 1000000 ) ).shortValue();
+			hypervisorVersionRaw %= Long.valueOf( 1000000 );
+			final short minor = Long.valueOf( hypervisorVersionRaw / Long.valueOf( 1000 ) ).shortValue();
+			hypervisorVersion = new Version( major, minor );
 		}
 
 		return hypervisorVersion;
 	}
 
+	/**
+	 * Register a virtual machine by the Libvirt hypervisor based on a virtualization configuration.
+	 * 
+	 * @param vmConfiguration virtualization configuration for the virtual machine.
+	 * @return instance of the registered and defined virtual machine.
+	 * @throws LibvirtHypervisorException failed to register and define virtual machine.
+	 */
 	public LibvirtVirtualMachine registerVm( org.openslx.libvirt.domain.Domain vmConfiguration )
 			throws LibvirtHypervisorException
 	{
@@ -71,6 +130,13 @@ public abstract class LibvirtHypervisor implements Closeable
 		return new LibvirtVirtualMachine( libvirtDomain );
 	}
 
+	/**
+	 * Deregisters an already registered virtual machine by the Libvirt hypervisor.
+	 * 
+	 * @param vm virtual machine that should be deregistered
+	 * @throws LibvirtHypervisorException failed to deregister virtual machine by the Libvirt hypervisor.
+	 * @throws LibvirtVirtualMachineException failed to check and stop the virtual machine. 
+	 */
 	public void deregisterVm( LibvirtVirtualMachine vm )
 			throws LibvirtHypervisorException, LibvirtVirtualMachineException
 	{

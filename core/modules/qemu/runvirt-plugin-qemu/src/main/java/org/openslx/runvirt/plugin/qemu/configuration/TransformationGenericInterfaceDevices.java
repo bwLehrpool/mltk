@@ -9,16 +9,52 @@ import org.openslx.virtualization.configuration.VirtualizationConfigurationQemuU
 import org.openslx.virtualization.configuration.transformation.TransformationException;
 import org.openslx.virtualization.configuration.transformation.TransformationGeneric;
 
+/**
+ * Generic network interface transformation for Libvirt/QEMU virtualization configurations.
+ * 
+ * @author Manuel Bentele
+ * @version 1.0
+ */
 public class TransformationGenericInterfaceDevices extends TransformationGeneric<Domain, CommandLineArgs>
 {
-	private static final String FILTER_NAME = "Network interface devices";
+	/**
+	 * Name of the configuration transformation.
+	 */
+	private static final String NAME = "Network interface devices";
 
+	/**
+	 * Creates a new network interface transformation for Libvirt/QEMU virtualization configurations.
+	 */
 	public TransformationGenericInterfaceDevices()
 	{
-		super( TransformationGenericInterfaceDevices.FILTER_NAME );
+		super( TransformationGenericInterfaceDevices.NAME );
 	}
 
-	private void filterInterfaceDevice( Domain config, String macAddress, int index ) throws TransformationException
+	/**
+	 * Validates a virtualization configuration and input arguments for this transformation.
+	 * 
+	 * @param config virtualization configuration for the validation.
+	 * @param args input arguments for the validation.
+	 * @throws TransformationException validation has failed.
+	 */
+	private void validateInputs( Domain config, CommandLineArgs args ) throws TransformationException
+	{
+		if ( config == null || args == null ) {
+			throw new TransformationException( "Virtualization configuration or input arguments are missing!" );
+		}
+	}
+
+	/**
+	 * Transforms a network interface in a virtualization configuration selected by its
+	 * {@code index}.
+	 * 
+	 * @param config virtualization configuration for the transformation.
+	 * @param macAddress MAC address for the network interface.
+	 * @param index number of the network interface in the virtualization configuration that is
+	 *           selected.
+	 * @throws TransformationException transformation has failed.
+	 */
+	private void transformInterfaceDevice( Domain config, String macAddress, int index ) throws TransformationException
 	{
 		final ArrayList<Interface> devices = config.getInterfaceDevices();
 		final Interface device = VirtualizationConfigurationQemuUtils.getArrayIndex( devices, index );
@@ -37,7 +73,11 @@ public class TransformationGenericInterfaceDevices extends TransformationGeneric
 	@Override
 	public void transform( Domain config, CommandLineArgs args ) throws TransformationException
 	{
-		this.filterInterfaceDevice( config, args.getVmMacAddress0(), 0 );
+		// validate configuration and input arguments
+		this.validateInputs( config, args );
+
+		// alter network interface
+		this.transformInterfaceDevice( config, args.getVmMacAddress0(), 0 );
 
 		// remove all additional disk storage devices
 		final ArrayList<Interface> devices = config.getInterfaceDevices();

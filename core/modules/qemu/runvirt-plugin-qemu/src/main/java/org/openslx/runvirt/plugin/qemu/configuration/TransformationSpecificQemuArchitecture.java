@@ -15,18 +15,59 @@ import org.openslx.runvirt.virtualization.LibvirtHypervisorException;
 import org.openslx.virtualization.configuration.transformation.TransformationException;
 import org.openslx.virtualization.configuration.transformation.TransformationSpecific;
 
-public class TransformationSpecificQemuArchitecture extends TransformationSpecific<Domain, CommandLineArgs, LibvirtHypervisorQemu>
+/**
+ * Specific architecture transformation for Libvirt/QEMU virtualization configurations.
+ * 
+ * @author Manuel Bentele
+ * @version 1.0
+ */
+public class TransformationSpecificQemuArchitecture
+		extends TransformationSpecific<Domain, CommandLineArgs, LibvirtHypervisorQemu>
 {
-	private static final String FILTER_NAME = "QEMU Architecture [CPU architecture, machine type, ...]";
+	/**
+	 * Name of the configuration transformation.
+	 */
+	private static final String NAME = "QEMU Architecture [CPU architecture, machine type, ...]";
 
-	// used as instance of an singelton, always use getCapabilities to retrieve caps instance
+	/**
+	 * Capabilities of the Libvirt/QEMU hypervisor.
+	 * 
+	 * @implNote This field is used as an instance of a singelton. Please always use
+	 *           {@link #getCapabilities()} to retrieve the {@code capabilities} instance.
+	 */
 	private Capabilities capabilities = null;
 
+	/**
+	 * Creates a new architecture transformation for Libvirt/QEMU virtualization configurations.
+	 * 
+	 * @param hypervisor Libvirt/QEMU hypervisor.
+	 */
 	public TransformationSpecificQemuArchitecture( LibvirtHypervisorQemu hypervisor )
 	{
-		super( TransformationSpecificQemuArchitecture.FILTER_NAME, hypervisor );
+		super( TransformationSpecificQemuArchitecture.NAME, hypervisor );
 	}
 
+	/**
+	 * Validates a virtualization configuration and input arguments for this transformation.
+	 * 
+	 * @param config virtualization configuration for the validation.
+	 * @param args input arguments for the validation.
+	 * @throws TransformationException validation has failed.
+	 */
+	private void validateInputs( Domain config, CommandLineArgs args ) throws TransformationException
+	{
+		if ( config == null ) {
+			throw new TransformationException( "Virtualization configuration is missing!" );
+		}
+	}
+
+	/**
+	 * Queries and returns the capabilities of the Libvirt/QEMU hypervisor.
+	 * 
+	 * @return capabilities of the Libvirt/QEMU hypervisor.
+	 * @throws TransformationException failed to query and return the capabilities of the
+	 *            Libvirt/QEMU hypervisor.
+	 */
 	private Capabilities getCapabilities() throws TransformationException
 	{
 		// retrieve capabilities from QEMU hypervisor only once
@@ -43,6 +84,14 @@ public class TransformationSpecificQemuArchitecture extends TransformationSpecif
 		return this.capabilities;
 	}
 
+	/**
+	 * Returns a guest capability of the hypervisor's host system based on a given target
+	 * architecture name.
+	 * 
+	 * @param architectureName target architecture of the guest that is returned
+	 * @return guest capability of the hypervisor's host system with target architecture name.
+	 * @throws TransformationException failed to return guest capability of the hypervisor's host.
+	 */
 	private Guest getTargetGuestFromArchName( String architectureName ) throws TransformationException
 	{
 		final List<Guest> guests = this.getCapabilities().getGuests();
@@ -63,6 +112,16 @@ public class TransformationSpecificQemuArchitecture extends TransformationSpecif
 		return targetGuest;
 	}
 
+	/**
+	 * Returns the target machine description of a host system's guest capability based on a given
+	 * target machine name.
+	 * 
+	 * @param guest guest capability of a host system.
+	 * @param machineName name of the machine description.
+	 * @return target machine description of a host system's guest capability.
+	 * @throws TransformationException failed to return the target machine description of a host
+	 *            system's guest capabilities.
+	 */
 	private Machine getTargetMachineFromGuest( Guest guest, String machineName ) throws TransformationException
 	{
 		final List<Machine> machines = guest.getArchMachines();
@@ -82,6 +141,15 @@ public class TransformationSpecificQemuArchitecture extends TransformationSpecif
 		return targetMachine;
 	}
 
+	/**
+	 * Returns the canonical names of a target machine description of a host system's guest
+	 * capability.
+	 * 
+	 * @param guest guest capability of a host system.
+	 * @return canonical names of a target machine description of a host system's guest capability.
+	 * @throws TransformationException failed to return the canonical names of a target machine
+	 *            description of a host system's guest capability
+	 */
 	private List<String> getCanonicalNamesFromTargetMachines( Guest guest ) throws TransformationException
 	{
 		final List<Machine> machines = guest.getArchMachines();
@@ -100,6 +168,9 @@ public class TransformationSpecificQemuArchitecture extends TransformationSpecif
 	@Override
 	public void transform( Domain config, CommandLineArgs args ) throws TransformationException
 	{
+		// validate configuration and input arguments
+		this.validateInputs( config, args );
+
 		// get source architecture, machine- and OS type
 		final String sourceArchitectureName = config.getOsArch();
 		final String sourceMachine = config.getOsMachine();

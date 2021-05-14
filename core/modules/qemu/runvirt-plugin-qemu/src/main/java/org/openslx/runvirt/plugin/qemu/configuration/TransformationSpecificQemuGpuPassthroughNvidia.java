@@ -2,28 +2,33 @@ package org.openslx.runvirt.plugin.qemu.configuration;
 
 import org.openslx.libvirt.domain.Domain;
 import org.openslx.runvirt.plugin.qemu.cmdln.CommandLineArgs;
+import org.openslx.runvirt.plugin.qemu.virtualization.LibvirtHypervisorQemu;
 import org.openslx.virtualization.configuration.transformation.TransformationException;
-import org.openslx.virtualization.configuration.transformation.TransformationGeneric;
+import org.openslx.virtualization.configuration.transformation.TransformationSpecific;
 
 /**
- * Generic UUID transformation for Libvirt/QEMU virtualization configurations.
+ * Specific Nvidia GPU passthrough transformation for Libvirt/QEMU virtualization configurations.
  * 
  * @author Manuel Bentele
  * @version 1.0
  */
-public class TransformationGenericUuid extends TransformationGeneric<Domain, CommandLineArgs>
+public class TransformationSpecificQemuGpuPassthroughNvidia
+		extends TransformationSpecific<Domain, CommandLineArgs, LibvirtHypervisorQemu>
 {
 	/**
 	 * Name of the configuration transformation.
 	 */
-	private static final String NAME = "UUID";
+	private static final String NAME = "QEMU GPU passthrough [Nvidia]";
 
 	/**
-	 * Creates a new UUID transformation for Libvirt/QEMU virtualization configurations.
+	 * Creates a new Nvidia GPU passthrough transformation for Libvirt/QEMU virtualization
+	 * configurations.
+	 * 
+	 * @param hypervisor Libvirt/QEMU hypervisor.
 	 */
-	public TransformationGenericUuid()
+	public TransformationSpecificQemuGpuPassthroughNvidia( LibvirtHypervisorQemu hypervisor )
 	{
-		super( TransformationGenericUuid.NAME );
+		super( TransformationSpecificQemuGpuPassthroughNvidia.NAME, hypervisor );
 	}
 
 	/**
@@ -37,8 +42,6 @@ public class TransformationGenericUuid extends TransformationGeneric<Domain, Com
 	{
 		if ( config == null || args == null ) {
 			throw new TransformationException( "Virtualization configuration or input arguments are missing!" );
-		} else if ( args.getVmUuid() == null || args.getVmUuid().isEmpty() ) {
-			throw new TransformationException( "UUID is not specified!" );
 		}
 	}
 
@@ -48,6 +51,9 @@ public class TransformationGenericUuid extends TransformationGeneric<Domain, Com
 		// validate configuration and input arguments
 		this.validateInputs( config, args );
 
-		config.setUuid( args.getVmUuid() );
+		// check if IOMMU support is available on the host
+
+		// TODO: implement Nvidia hypervisor shadowing
+		// call this filter at the end, since -> override of software graphics to 'none' necessary
 	}
 }
