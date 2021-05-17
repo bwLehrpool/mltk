@@ -1,6 +1,8 @@
 package org.openslx.runvirt.virtualization;
 
 import java.io.Closeable;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.libvirt.Connect;
 import org.libvirt.LibvirtException;
@@ -30,6 +32,11 @@ public abstract class LibvirtHypervisor implements Closeable
 	protected Connect hypervisor = null;
 
 	/**
+	 * List of registered machines on the Libvirt hypervisor backend.
+	 */
+	private List<LibvirtVirtualMachine> machines;
+
+	/**
 	 * Creates a new Libvirt hypervisor backend specified by an URI and connects to the specified
 	 * backend.
 	 * 
@@ -40,6 +47,7 @@ public abstract class LibvirtHypervisor implements Closeable
 	public LibvirtHypervisor( String connectionUri ) throws LibvirtHypervisorException
 	{
 		this.connect( connectionUri );
+		this.machines = new ArrayList<LibvirtVirtualMachine>();
 	}
 
 	/**
@@ -147,7 +155,10 @@ public abstract class LibvirtHypervisor implements Closeable
 			throw new LibvirtHypervisorException( e.getLocalizedMessage() );
 		}
 
-		return new LibvirtVirtualMachine( internalConfiguration, vmConfiguration );
+		final LibvirtVirtualMachine vm = new LibvirtVirtualMachine( internalConfiguration, vmConfiguration );
+		this.machines.add( vm );
+
+		return vm;
 	}
 
 	/**
@@ -172,11 +183,23 @@ public abstract class LibvirtHypervisor implements Closeable
 		} catch ( LibvirtException e ) {
 			throw new LibvirtHypervisorException( e.getLocalizedMessage() );
 		}
+
+		this.machines.remove( vm );
 	}
 
 	@Override
 	public void close()
 	{
+		// deregister all VMs defined on the hypervisor
+		for ( LibvirtVirtualMachine vm : this.machines ) {
+			try {
+				this.deregisterVm( vm );
+			} catch ( LibvirtHypervisorException | LibvirtVirtualMachineException e ) {
+				e.printStackTrace();
+			}
+		}
+
+		// close connection to the hypervisor
 		try {
 			this.hypervisor.close();
 		} catch ( LibvirtException e ) {

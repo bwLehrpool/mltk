@@ -178,11 +178,6 @@ public class App
 			vm.start();
 		} catch ( LibvirtVirtualMachineException e ) {
 			LOGGER.error( "Failed to start defined VM: " + e.getLocalizedMessage() );
-			try {
-				hypervisor.deregisterVm( vm );
-			} catch ( LibvirtHypervisorException | LibvirtVirtualMachineException e1 ) {
-				LOGGER.error( "Failed to undefine VM in error state after failed start of VM: " + e.getLocalizedMessage() );
-			}
 			hypervisor.close();
 			System.exit( 7 );
 		}
@@ -193,11 +188,6 @@ public class App
 			vmViewer.display();
 		} catch ( ViewerException e ) {
 			LOGGER.error( "Failed to display VM: " + e.getLocalizedMessage() );
-			try {
-				hypervisor.deregisterVm( vm );
-			} catch ( LibvirtHypervisorException | LibvirtVirtualMachineException e1 ) {
-				LOGGER.error( "Failed to undefine VM in error state after failed display: " + e.getLocalizedMessage() );
-			}
 			hypervisor.close();
 			System.exit( 8 );
 		}
@@ -208,6 +198,7 @@ public class App
 		} catch ( LibvirtHypervisorException | LibvirtVirtualMachineException e ) {
 			LOGGER.error( "Failed to undefine VM: " + e.getLocalizedMessage() );
 			hypervisor.close();
+			System.exit( 9 );
 		}
 
 		// close connection to hypervisor
