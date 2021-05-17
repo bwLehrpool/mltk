@@ -59,6 +59,26 @@ public abstract class LibvirtHypervisor implements Closeable
 	}
 
 	/**
+	 * Returns the URI of the connection to the Libvirt hypervisor backend.
+	 * 
+	 * @return URI of the connection to the hypervisor.
+	 * @throws LibvirtHypervisorException failed to return the connection URI of the Libvirt
+	 *            hypervisor backend.
+	 */
+	public String getConnectionUri() throws LibvirtHypervisorException
+	{
+		String connectionUri = null;
+
+		try {
+			connectionUri = this.hypervisor.getURI();
+		} catch ( LibvirtException e ) {
+			throw new LibvirtHypervisorException( e.getLocalizedMessage() );
+		}
+
+		return connectionUri;
+	}
+
+	/**
 	 * Returns the queried Libvirt hypervisor's host system capabilities.
 	 * 
 	 * @return queried Libvirt hypervisor's host system capabilities.
@@ -119,23 +139,24 @@ public abstract class LibvirtHypervisor implements Closeable
 			throws LibvirtHypervisorException
 	{
 		final String xmlVmConfiguration = vmConfiguration.toString();
-		org.libvirt.Domain libvirtDomain = null;
+		org.libvirt.Domain internalConfiguration = null;
 
 		try {
-			libvirtDomain = this.hypervisor.domainDefineXML( xmlVmConfiguration );
+			internalConfiguration = this.hypervisor.domainDefineXML( xmlVmConfiguration );
 		} catch ( LibvirtException e ) {
 			throw new LibvirtHypervisorException( e.getLocalizedMessage() );
 		}
 
-		return new LibvirtVirtualMachine( libvirtDomain );
+		return new LibvirtVirtualMachine( internalConfiguration, vmConfiguration );
 	}
 
 	/**
 	 * Deregisters an already registered virtual machine by the Libvirt hypervisor.
 	 * 
 	 * @param vm virtual machine that should be deregistered
-	 * @throws LibvirtHypervisorException failed to deregister virtual machine by the Libvirt hypervisor.
-	 * @throws LibvirtVirtualMachineException failed to check and stop the virtual machine. 
+	 * @throws LibvirtHypervisorException failed to deregister virtual machine by the Libvirt
+	 *            hypervisor.
+	 * @throws LibvirtVirtualMachineException failed to check and stop the virtual machine.
 	 */
 	public void deregisterVm( LibvirtVirtualMachine vm )
 			throws LibvirtHypervisorException, LibvirtVirtualMachineException

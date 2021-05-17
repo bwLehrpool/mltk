@@ -12,18 +12,37 @@ import org.libvirt.LibvirtException;
 public class LibvirtVirtualMachine
 {
 	/**
-	 * Libvirt virtualization configuration of the virtual machine.
+	 * Internal Libvirt virtualization configuration of the virtual machine.
 	 */
 	private Domain domain;
 
 	/**
+	 * Libvirt virtualization configuration of the virtual machine.
+	 */
+	private org.openslx.libvirt.domain.Domain configuration;
+
+	/**
 	 * Creates a new Libvirt virtual machine specified by a virtualization configuration.
 	 * 
-	 * @param vm Libvirt virtualization configuration to specify the Libvirt virtual machine.
+	 * @param internalConfiguration internal Libvirt virtualization configuration to specify the
+	 *           Libvirt virtual machine.
+	 * @param configuration Libvirt virtualization configuration to specify the Libvirt virtual
+	 *           machine.
 	 */
-	LibvirtVirtualMachine( Domain vm )
+	LibvirtVirtualMachine( Domain internalConfiguration, org.openslx.libvirt.domain.Domain configuration )
 	{
-		this.domain = vm;
+		this.domain = internalConfiguration;
+		this.configuration = configuration;
+	}
+
+	/**
+	 * Returns the internal Libvirt virtualization configuration of the Libvirt virtual machine.
+	 * 
+	 * @return internal Libvirt virtualization configuration of the Libvirt virtual machine.
+	 */
+	Domain getLibvirtDomain()
+	{
+		return this.domain;
 	}
 
 	/**
@@ -31,9 +50,9 @@ public class LibvirtVirtualMachine
 	 * 
 	 * @return Libvirt virtualization configuration of the Libvirt virtual machine.
 	 */
-	public Domain getLibvirtDomain()
+	public org.openslx.libvirt.domain.Domain getConfiguration()
 	{
-		return this.domain;
+		return this.configuration;
 	}
 
 	/**

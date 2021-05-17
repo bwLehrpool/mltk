@@ -27,6 +27,9 @@ import org.openslx.runvirt.plugin.qemu.configuration.TransformationSpecificQemuA
 import org.openslx.runvirt.plugin.qemu.configuration.TransformationSpecificQemuGpuPassthroughNvidia;
 import org.openslx.runvirt.plugin.qemu.virtualization.LibvirtHypervisorQemu;
 import org.openslx.runvirt.plugin.qemu.virtualization.LibvirtHypervisorQemu.QemuSessionType;
+import org.openslx.runvirt.viewer.Viewer;
+import org.openslx.runvirt.viewer.ViewerException;
+import org.openslx.runvirt.viewer.ViewerVirtViewer;
 import org.openslx.runvirt.virtualization.LibvirtHypervisor;
 import org.openslx.runvirt.virtualization.LibvirtHypervisorException;
 import org.openslx.runvirt.virtualization.LibvirtVirtualMachine;
@@ -160,7 +163,7 @@ public class App
 			}
 		}
 
-		// define QEMU VM from finalized configuration
+		// define Libvirt VM from finalized configuration
 		LibvirtVirtualMachine vm = null;
 		try {
 			vm = hypervisor.registerVm( config );
@@ -170,6 +173,7 @@ public class App
 			System.exit( 6 );
 		}
 
+		// start defined Libvirt VM
 		try {
 			vm.start();
 		} catch ( LibvirtVirtualMachineException e ) {
@@ -177,13 +181,36 @@ public class App
 			try {
 				hypervisor.deregisterVm( vm );
 			} catch ( LibvirtHypervisorException | LibvirtVirtualMachineException e1 ) {
-				LOGGER.error( "Failed to undefine VM: " + e.getLocalizedMessage() );
+				LOGGER.error( "Failed to undefine VM in error state after failed start of VM: " + e.getLocalizedMessage() );
 			}
 			hypervisor.close();
 			System.exit( 7 );
 		}
 
-		// close connection and let VM be running
+		// display Libvirt VM with a specific viewer on the screen
+		final Viewer vmViewer = new ViewerVirtViewer( vm, hypervisor );
+		try {
+			vmViewer.display();
+		} catch ( ViewerException e ) {
+			LOGGER.error( "Failed to display VM: " + e.getLocalizedMessage() );
+			try {
+				hypervisor.deregisterVm( vm );
+			} catch ( LibvirtHypervisorException | LibvirtVirtualMachineException e1 ) {
+				LOGGER.error( "Failed to undefine VM in error state after failed display: " + e.getLocalizedMessage() );
+			}
+			hypervisor.close();
+			System.exit( 8 );
+		}
+
+		// undefine VM after usage
+		try {
+			hypervisor.deregisterVm( vm );
+		} catch ( LibvirtHypervisorException | LibvirtVirtualMachineException e ) {
+			LOGGER.error( "Failed to undefine VM: " + e.getLocalizedMessage() );
+			hypervisor.close();
+		}
+
+		// close connection to hypervisor
 		hypervisor.close();
 
 		// return with successful exit code
