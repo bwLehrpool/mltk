@@ -29,6 +29,7 @@ import org.openslx.runvirt.plugin.qemu.virtualization.LibvirtHypervisorQemu;
 import org.openslx.runvirt.plugin.qemu.virtualization.LibvirtHypervisorQemu.QemuSessionType;
 import org.openslx.runvirt.viewer.Viewer;
 import org.openslx.runvirt.viewer.ViewerException;
+import org.openslx.runvirt.viewer.ViewerVirtManager;
 import org.openslx.runvirt.viewer.ViewerVirtViewer;
 import org.openslx.runvirt.virtualization.LibvirtHypervisor;
 import org.openslx.runvirt.virtualization.LibvirtHypervisorException;
@@ -182,8 +183,17 @@ public class App
 			System.exit( 7 );
 		}
 
-		// display Libvirt VM with a specific viewer on the screen
-		final Viewer vmViewer = new ViewerVirtViewer( vm, hypervisor );
+		// create specific viewer to display Libvirt VM
+		final Viewer vmViewer;
+		if ( cmdLn.isDebugEnabled() ) {
+			// create specific Virtual Machine Manager viewer if debug mode is enabled
+			vmViewer = new ViewerVirtManager( vm, hypervisor );
+		} else {
+			// create Virtual Viewer if debug mode is disabled
+			vmViewer = new ViewerVirtViewer( vm, hypervisor );
+		}
+
+		// display Libvirt VM with the specific viewer on the screen
 		try {
 			vmViewer.display();
 		} catch ( ViewerException e ) {

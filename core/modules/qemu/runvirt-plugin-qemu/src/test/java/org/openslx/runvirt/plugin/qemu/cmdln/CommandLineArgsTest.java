@@ -1,6 +1,7 @@
 package org.openslx.runvirt.plugin.qemu.cmdln;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -16,6 +17,8 @@ public class CommandLineArgsTest
 	public static final String CMDLN_PREFIX_OPTION_SHORT = "-";
 	public static final String CMDLN_PREFIX_OPTION_LONG  = "--";
 
+	private static final String CMDLN_TEST_DEBUG_OFF   = "false";
+	private static final String CMDLN_TEST_DEBUG_ON    = "true";
 	private static final String CMDLN_TEST_NAME        = "test";
 	private static final String CMDLN_TEST_FILENAME    = System.getProperty( "user.dir" ) + File.separator + CMDLN_TEST_NAME;
 	private static final String CMDLN_TEST_UUID        = "c9570672-cbae-4cbd-801a-881b281b8d79";
@@ -67,6 +70,70 @@ public class CommandLineArgsTest
 		CommandLineArgs cmdLn = new CommandLineArgs( args );
 
 		assertTrue( cmdLn.isHelpAquired() );
+	}
+
+	@Test
+	@DisplayName( "Test the parsing of the enabled debug command line option (short version)" )
+	public void testCmdlnOptionDebugEnabledShort() throws CommandLineArgsException
+	{
+		final String[] args = {
+				CMDLN_PREFIX_OPTION_SHORT + CmdLnOption.DEBUG.getShortOption(),
+				CMDLN_TEST_DEBUG_ON
+		};
+
+		CommandLineArgs cmdLn = new CommandLineArgs( args );
+
+		assertTrue( cmdLn.isDebugEnabled() );
+	}
+
+	@Test
+	@DisplayName( "Test the parsing of the enabled debug command line option (long version)" )
+	public void testCmdlnOptionDebugEnabledLong() throws CommandLineArgsException
+	{
+		final String[] args = {
+				CMDLN_PREFIX_OPTION_LONG + CmdLnOption.DEBUG.getLongOption(),
+				CMDLN_TEST_DEBUG_ON
+		};
+
+		CommandLineArgs cmdLn = new CommandLineArgs( args );
+
+		assertTrue( cmdLn.isDebugEnabled() );
+	}
+
+	@Test
+	@DisplayName( "Test the parsing of the disabled debug command line option (short version)" )
+	public void testCmdlnOptionDebugDisabledShort() throws CommandLineArgsException
+	{
+		final String[] argsDebugOff = {
+				CMDLN_PREFIX_OPTION_SHORT + CmdLnOption.DEBUG.getShortOption(),
+				CMDLN_TEST_DEBUG_OFF
+		};
+
+		final String[] argsDebugMissing = {};
+
+		CommandLineArgs cmdLnDebugOff = new CommandLineArgs( argsDebugOff );
+		CommandLineArgs cmdLnDebugMissing = new CommandLineArgs( argsDebugMissing );
+
+		assertFalse( cmdLnDebugOff.isDebugEnabled() );
+		assertFalse( cmdLnDebugMissing.isDebugEnabled() );
+	}
+
+	@Test
+	@DisplayName( "Test the parsing of the disabled debug command line option (long version)" )
+	public void testCmdlnOptionDebugDisabledLong() throws CommandLineArgsException
+	{
+		final String[] argsDebugOff = {
+				CMDLN_PREFIX_OPTION_LONG + CmdLnOption.DEBUG.getLongOption(),
+				CMDLN_TEST_DEBUG_OFF
+		};
+
+		final String[] argsDebugMissing = {};
+
+		CommandLineArgs cmdLnDebugOff = new CommandLineArgs( argsDebugOff );
+		CommandLineArgs cmdLnDebugMissing = new CommandLineArgs( argsDebugMissing );
+
+		assertFalse( cmdLnDebugOff.isDebugEnabled() );
+		assertFalse( cmdLnDebugMissing.isDebugEnabled() );
 	}
 
 	@Test

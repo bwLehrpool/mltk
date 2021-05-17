@@ -128,6 +128,17 @@ public class CommandLineArgs
 	}
 
 	/**
+	 * Returns the state of the command line option {@link CmdLnOption#DEBUG}.
+	 * 
+	 * @return state of the command line option {@link CmdLnOption#DEBUG}.
+	 */
+	public boolean isDebugEnabled()
+	{
+		final String debugArg = this.getArgument( CmdLnOption.DEBUG );
+		return ( "true".equals( debugArg ) ) ? true : false;
+	}
+
+	/**
 	 * Returns the argument of the command line option {@link CmdLnOption#VM_CFGINP}.
 	 * 
 	 * @return argument of the command line option {@link CmdLnOption#VM_CFGINP}.
@@ -344,6 +355,7 @@ public class CommandLineArgs
 	{
 		// @formatter:off
 		HELP        ( 'h', "help",        false, "" ),
+		DEBUG       ( 'b', "debug",       true,  "Enable or disable debug mode" ),
 		VM_CFGINP   ( 'i', "vmcfginp",    true,  "File name of an existing and filtered Libvirt domain XML configuration file" ),
 		VM_CFGOUT   ( 'o', "vmcfgout",    true,  "File name to output a finalized Libvirt domain XML configuration file" ),
 		VM_NAME     ( 'n', "vmname",      true,  "Name for the virtual machine" ),

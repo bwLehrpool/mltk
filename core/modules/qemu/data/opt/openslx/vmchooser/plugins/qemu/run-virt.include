@@ -29,6 +29,7 @@ run_plugin() {
 	# call the Libvirt Java tool to finalize configuration and start VM
 	declare -rg VIRTCMD="java -jar /opt/openslx/share/java/runvirt-plugin-qemu.jar"
 
+	isset DEBUG             && VIRTCMDOPTS+=( "-debug"       "${DEBUG}" )
 	isset VM_CLEANNAME      && VIRTCMDOPTS+=( "-vmname"      "${VM_CLEANNAME}" )
 	isset VM_DISPLAYNAME    && VIRTCMDOPTS+=( "-vmdsplname"  "${VM_DISPLAYNAME}" )
 	isset VM_OS_TYPE        && VIRTCMDOPTS+=( "-vmos"        "${VM_OS_TYPE}" )
