@@ -12,3 +12,4 @@
 # Ignore IntelliJ Project Files
 /.idea
 *.iml
+/bin/
