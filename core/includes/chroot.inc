@@ -120,6 +120,10 @@ chroot_prepare_mounts() {
 
 	#  mount pseudo-filesystems
 	for DIR in $CHROOT_BINDMOUNTS; do
+		if ! [ -d "$DIR" ]; then
+			pwarning "Skipping bind mount of inexistant directory: $DIR"
+			continue
+		fi
 		mount -o bind "${DIR}" "${CHROOT_MOUNTDIR}/${DIR}" \
 			|| perror "Could not bind mount '$DIR' into CHROOT_MOUNTDIR/DIR '$CHROOT_MOUNTDIR/$DIR'."
 	done
