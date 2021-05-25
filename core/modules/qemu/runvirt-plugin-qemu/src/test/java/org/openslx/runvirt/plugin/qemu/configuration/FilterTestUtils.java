@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.fail;
 import org.openslx.libvirt.domain.Domain;
 import org.openslx.libvirt.xml.LibvirtXmlDocumentException;
 import org.openslx.libvirt.xml.LibvirtXmlSerializationException;
+import org.openslx.libvirt.xml.LibvirtXmlTestResources;
 import org.openslx.libvirt.xml.LibvirtXmlValidationException;
 import org.openslx.runvirt.plugin.qemu.cmdln.CommandLineArgs;
 import org.openslx.runvirt.plugin.qemu.cmdln.CommandLineArgs.CmdLnOption;
@@ -101,7 +102,8 @@ public class FilterTestUtils
 		Domain domain = null;
 
 		try {
-			domain = new Domain( FilterTestResources.getLibvirtXmlFile( "qemu-kvm_default-ubuntu-20-04-vm_filtered.xml" ) );
+			domain = new Domain( LibvirtXmlTestResources
+					.getLibvirtXmlStream( "qemu-kvm_default-ubuntu-20-04-vm_transform-non-persistent.xml" ) );
 		} catch ( LibvirtXmlDocumentException | LibvirtXmlSerializationException | LibvirtXmlValidationException e ) {
 			fail( "Cannot prepare requested Libvirt domain XML file from the resources folder: "
 					+ e.getLocalizedMessage() );
