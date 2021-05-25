@@ -12,16 +12,16 @@ import org.openslx.virtualization.configuration.transformation.TransformationExc
 public class TransformationGenericUuidTest
 {
 	@Test
-	@DisplayName( "Test filtering of VM UUID configuration" )
-	public void testFilterGenericUuid() throws TransformationException
+	@DisplayName( "Test transformation of VM UUID configuration" )
+	public void testTransformationGenericUuid() throws TransformationException
 	{
-		final TransformationGenericUuid filter = new TransformationGenericUuid();
+		final TransformationGenericUuid transformation = new TransformationGenericUuid();
 		final Domain config = TransformationTestUtils.getDefaultDomain();
 		final CommandLineArgs args = TransformationTestUtils.getDefaultCmdLnArgs();
 
 		assertNotEquals( TransformationTestUtils.DEFAULT_VM_UUID, config.getUuid() );
 
-		filter.transform( config, args );
+		transformation.transform( config, args );
 
 		assertEquals( TransformationTestUtils.DEFAULT_VM_UUID, config.getUuid() );
 	}

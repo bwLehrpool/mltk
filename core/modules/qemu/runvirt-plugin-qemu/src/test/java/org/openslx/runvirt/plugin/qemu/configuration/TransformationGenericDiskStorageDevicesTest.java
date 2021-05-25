@@ -16,40 +16,42 @@ import org.openslx.virtualization.configuration.transformation.TransformationExc
 public class TransformationGenericDiskStorageDevicesTest
 {
 	@Test
-	@DisplayName( "Test filtering of VM disk storage devices configuration with specified input data" )
-	public void testFilterGenericDiskStorageDevices() throws TransformationException
+	@DisplayName( "Test transformation of VM disk storage devices configuration with specified input data" )
+	public void testTransformationGenericDiskStorageDevices() throws TransformationException
 	{
-		final TransformationGenericDiskStorageDevices filter = new TransformationGenericDiskStorageDevices();
+		final TransformationGenericDiskStorageDevices transformation = new TransformationGenericDiskStorageDevices();
 		final Domain config = TransformationTestUtils.getDefaultDomain();
 		final CommandLineArgs args = TransformationTestUtils.getDefaultCmdLnArgs();
 
-		final ArrayList<DiskStorage> devicesBeforeFiltering = config.getDiskStorageDevices();
-		assertEquals( 1, devicesBeforeFiltering.size() );
-		assertNotEquals( StorageType.FILE, devicesBeforeFiltering.get( 0 ).getStorageType() );
-		assertNotEquals( TransformationTestUtils.DEFAULT_VM_HDD0, devicesBeforeFiltering.get( 0 ).getStorageSource() );
+		final ArrayList<DiskStorage> devicesBeforeTransformation = config.getDiskStorageDevices();
+		assertEquals( 1, devicesBeforeTransformation.size() );
+		final DiskStorage diskDeviceBeforeTransformation = devicesBeforeTransformation.get( 0 );
+		assertNotEquals( StorageType.FILE, diskDeviceBeforeTransformation.getStorageType() );
+		assertNotEquals( TransformationTestUtils.DEFAULT_VM_HDD0, diskDeviceBeforeTransformation.getStorageSource() );
 
-		filter.transform( config, args );
+		transformation.transform( config, args );
 
-		final ArrayList<DiskStorage> devicesAfterFiltering = config.getDiskStorageDevices();
-		assertEquals( 1, devicesAfterFiltering.size() );
-		assertEquals( StorageType.FILE, devicesAfterFiltering.get( 0 ).getStorageType() );
-		assertEquals( TransformationTestUtils.DEFAULT_VM_HDD0, devicesAfterFiltering.get( 0 ).getStorageSource() );
+		final ArrayList<DiskStorage> devicesAfterTransformation = config.getDiskStorageDevices();
+		assertEquals( 1, devicesAfterTransformation.size() );
+		final DiskStorage diskDeviceAfterTransformation = devicesAfterTransformation.get( 0 );
+		assertEquals( StorageType.FILE, diskDeviceAfterTransformation.getStorageType() );
+		assertEquals( TransformationTestUtils.DEFAULT_VM_HDD0, diskDeviceAfterTransformation.getStorageSource() );
 	}
 
 	@Test
-	@DisplayName( "Test filtering of VM disk storage devices configuration with unspecified input data" )
-	public void testFilterGenericDiskStorageDevicesNoData() throws TransformationException
+	@DisplayName( "Test transformation of VM disk storage devices configuration with unspecified input data" )
+	public void testTransformationGenericDiskStorageDevicesNoData() throws TransformationException
 	{
-		final TransformationGenericDiskStorageDevices filter = new TransformationGenericDiskStorageDevices();
+		final TransformationGenericDiskStorageDevices transformation = new TransformationGenericDiskStorageDevices();
 		final Domain config = TransformationTestUtils.getDefaultDomain();
 		final CommandLineArgs args = TransformationTestUtils.getEmptyCmdLnArgs();
 
-		final ArrayList<DiskStorage> devicesBeforeFiltering = config.getDiskStorageDevices();
-		assertEquals( 1, devicesBeforeFiltering.size() );
+		final ArrayList<DiskStorage> devicesBeforeTransformation = config.getDiskStorageDevices();
+		assertEquals( 1, devicesBeforeTransformation.size() );
 
-		filter.transform( config, args );
+		transformation.transform( config, args );
 
-		final ArrayList<DiskStorage> devicesAfterFiltering = config.getDiskStorageDevices();
-		assertEquals( 0, devicesAfterFiltering.size() );
+		final ArrayList<DiskStorage> devicesAfterTransformation = config.getDiskStorageDevices();
+		assertEquals( 0, devicesAfterTransformation.size() );
 	}
 }

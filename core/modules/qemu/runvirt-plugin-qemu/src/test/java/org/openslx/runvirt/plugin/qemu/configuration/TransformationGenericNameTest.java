@@ -12,17 +12,17 @@ import org.openslx.virtualization.configuration.transformation.TransformationExc
 public class TransformationGenericNameTest
 {
 	@Test
-	@DisplayName( "Test filtering of VM (display) name configuration" )
-	public void testFilterGenericName() throws TransformationException
+	@DisplayName( "Test transformation of VM (display) name configuration" )
+	public void testTransformationGenericName() throws TransformationException
 	{
-		final TransformationGenericName filter = new TransformationGenericName();
+		final TransformationGenericName transformation = new TransformationGenericName();
 		final Domain config = TransformationTestUtils.getDefaultDomain();
 		final CommandLineArgs args = TransformationTestUtils.getDefaultCmdLnArgs();
 
 		assertNotEquals( TransformationTestUtils.DEFAULT_VM_NAME, config.getName() );
 		assertNotEquals( TransformationTestUtils.DEFAULT_VM_DSPLNAME, config.getTitle() );
 
-		filter.transform( config, args );
+		transformation.transform( config, args );
 
 		assertEquals( TransformationTestUtils.DEFAULT_VM_NAME, config.getName() );
 		assertEquals( TransformationTestUtils.DEFAULT_VM_DSPLNAME, config.getTitle() );

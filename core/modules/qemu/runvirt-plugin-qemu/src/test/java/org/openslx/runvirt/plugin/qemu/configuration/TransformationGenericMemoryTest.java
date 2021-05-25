@@ -15,10 +15,10 @@ import org.openslx.virtualization.configuration.transformation.TransformationExc
 public class TransformationGenericMemoryTest
 {
 	@Test
-	@DisplayName( "Test filtering of VM memory configuration" )
-	public void testFilterGenericMemory() throws TransformationException
+	@DisplayName( "Test transformation of VM memory configuration" )
+	public void testTransformationGenericMemory() throws TransformationException
 	{
-		final TransformationGenericMemory filter = new TransformationGenericMemory();
+		final TransformationGenericMemory transformation = new TransformationGenericMemory();
 		final Domain config = TransformationTestUtils.getDefaultDomain();
 		final CommandLineArgs args = TransformationTestUtils.getDefaultCmdLnArgs();
 
@@ -27,7 +27,7 @@ public class TransformationGenericMemoryTest
 		assertNotEquals( defaultMemory.toString(), config.getMemory().toString() );
 		assertNotEquals( defaultMemory.toString(), config.getCurrentMemory().toString() );
 
-		filter.transform( config, args );
+		transformation.transform( config, args );
 
 		assertEquals( defaultMemory.toString(), config.getMemory().toString() );
 		assertEquals( defaultMemory.toString(), config.getCurrentMemory().toString() );

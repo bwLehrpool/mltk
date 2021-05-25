@@ -14,10 +14,10 @@ import org.openslx.virtualization.configuration.transformation.TransformationExc
 public class TransformationGenericCpuTest
 {
 	@Test
-	@DisplayName( "Test filtering of VM CPU configuration" )
-	public void testFilterGenericCpu() throws TransformationException
+	@DisplayName( "Test transformation of VM CPU configuration" )
+	public void testTransformationGenericCpu() throws TransformationException
 	{
-		final TransformationGenericCpu filter = new TransformationGenericCpu();
+		final TransformationGenericCpu transformation = new TransformationGenericCpu();
 		final Domain config = TransformationTestUtils.getDefaultDomain();
 		final CommandLineArgs args = TransformationTestUtils.getDefaultCmdLnArgs();
 
@@ -25,7 +25,7 @@ public class TransformationGenericCpuTest
 		assertNotEquals( CpuMode.HOST_PASSTHROUGH, config.getCpuMode() );
 		assertEquals( CpuCheck.PARTIAL, config.getCpuCheck() );
 
-		filter.transform( config, args );
+		transformation.transform( config, args );
 
 		assertEquals( Integer.parseInt( TransformationTestUtils.DEFAULT_VM_NCPUS ), config.getVCpu() );
 		assertEquals( CpuMode.HOST_PASSTHROUGH, config.getCpuMode() );
