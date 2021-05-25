@@ -9,22 +9,22 @@ import org.openslx.libvirt.domain.Domain;
 import org.openslx.runvirt.plugin.qemu.cmdln.CommandLineArgs;
 import org.openslx.virtualization.configuration.transformation.TransformationException;
 
-public class FilterGenericNameTest
+public class TransformationGenericNameTest
 {
 	@Test
 	@DisplayName( "Test filtering of VM (display) name configuration" )
 	public void testFilterGenericName() throws TransformationException
 	{
 		final TransformationGenericName filter = new TransformationGenericName();
-		final Domain config = FilterTestUtils.getDefaultDomain();
-		final CommandLineArgs args = FilterTestUtils.getDefaultCmdLnArgs();
+		final Domain config = TransformationTestUtils.getDefaultDomain();
+		final CommandLineArgs args = TransformationTestUtils.getDefaultCmdLnArgs();
 
-		assertNotEquals( FilterTestUtils.DEFAULT_VM_NAME, config.getName() );
-		assertNotEquals( FilterTestUtils.DEFAULT_VM_DSPLNAME, config.getTitle() );
+		assertNotEquals( TransformationTestUtils.DEFAULT_VM_NAME, config.getName() );
+		assertNotEquals( TransformationTestUtils.DEFAULT_VM_DSPLNAME, config.getTitle() );
 
 		filter.transform( config, args );
 
-		assertEquals( FilterTestUtils.DEFAULT_VM_NAME, config.getName() );
-		assertEquals( FilterTestUtils.DEFAULT_VM_DSPLNAME, config.getTitle() );
+		assertEquals( TransformationTestUtils.DEFAULT_VM_NAME, config.getName() );
+		assertEquals( TransformationTestUtils.DEFAULT_VM_DSPLNAME, config.getTitle() );
 	}
 }

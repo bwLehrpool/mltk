@@ -12,7 +12,7 @@ import org.openslx.runvirt.plugin.qemu.cmdln.CommandLineArgs.CmdLnOption;
 import org.openslx.runvirt.plugin.qemu.cmdln.CommandLineArgsException;
 import org.openslx.runvirt.plugin.qemu.cmdln.CommandLineArgsTest;
 
-public class FilterTestUtils
+public class TransformationTestUtils
 {
 	// @formatter:off
 	public static final String DEFAULT_VM_NAME      = "archlinux";
@@ -37,41 +37,41 @@ public class FilterTestUtils
 
 	private static final String[] DEFAULT_CMDLN_ARGS = {
 			CommandLineArgsTest.CMDLN_PREFIX_OPTION_LONG + CmdLnOption.VM_NAME.getLongOption(),
-			FilterTestUtils.DEFAULT_VM_NAME,
+			TransformationTestUtils.DEFAULT_VM_NAME,
 			CommandLineArgsTest.CMDLN_PREFIX_OPTION_LONG + CmdLnOption.VM_UUID.getLongOption(),
-			FilterTestUtils.DEFAULT_VM_UUID,
+			TransformationTestUtils.DEFAULT_VM_UUID,
 			CommandLineArgsTest.CMDLN_PREFIX_OPTION_LONG + CmdLnOption.VM_DSPLNAME.getLongOption(),
-			FilterTestUtils.DEFAULT_VM_DSPLNAME,
+			TransformationTestUtils.DEFAULT_VM_DSPLNAME,
 			CommandLineArgsTest.CMDLN_PREFIX_OPTION_LONG + CmdLnOption.VM_OS.getLongOption(),
-			FilterTestUtils.DEFAULT_VM_OS,
+			TransformationTestUtils.DEFAULT_VM_OS,
 			CommandLineArgsTest.CMDLN_PREFIX_OPTION_LONG + CmdLnOption.VM_NCPUS.getLongOption(),
-			FilterTestUtils.DEFAULT_VM_NCPUS,
+			TransformationTestUtils.DEFAULT_VM_NCPUS,
 			CommandLineArgsTest.CMDLN_PREFIX_OPTION_LONG + CmdLnOption.VM_MEM.getLongOption(),
-			FilterTestUtils.DEFAULT_VM_MEM,
+			TransformationTestUtils.DEFAULT_VM_MEM,
 			CommandLineArgsTest.CMDLN_PREFIX_OPTION_LONG + CmdLnOption.VM_HDD0.getLongOption(),
-			FilterTestUtils.DEFAULT_VM_HDD0,
+			TransformationTestUtils.DEFAULT_VM_HDD0,
 			CommandLineArgsTest.CMDLN_PREFIX_OPTION_LONG + CmdLnOption.VM_FLOPPY0.getLongOption(),
-			FilterTestUtils.DEFAULT_VM_FLOPPY0,
+			TransformationTestUtils.DEFAULT_VM_FLOPPY0,
 			CommandLineArgsTest.CMDLN_PREFIX_OPTION_LONG + CmdLnOption.VM_FLOPPY1.getLongOption(),
-			FilterTestUtils.DEFAULT_VM_FLOPPY1,
+			TransformationTestUtils.DEFAULT_VM_FLOPPY1,
 			CommandLineArgsTest.CMDLN_PREFIX_OPTION_LONG + CmdLnOption.VM_CDROM0.getLongOption(),
-			FilterTestUtils.DEFAULT_VM_CDROM0,
+			TransformationTestUtils.DEFAULT_VM_CDROM0,
 			CommandLineArgsTest.CMDLN_PREFIX_OPTION_LONG + CmdLnOption.VM_CDROM1.getLongOption(),
-			FilterTestUtils.DEFAULT_VM_CDROM1,
+			TransformationTestUtils.DEFAULT_VM_CDROM1,
 			CommandLineArgsTest.CMDLN_PREFIX_OPTION_LONG + CmdLnOption.VM_PARALLEL0.getLongOption(),
-			FilterTestUtils.DEFAULT_VM_PARALLEL0,
+			TransformationTestUtils.DEFAULT_VM_PARALLEL0,
 			CommandLineArgsTest.CMDLN_PREFIX_OPTION_LONG + CmdLnOption.VM_SERIAL0.getLongOption(),
-			FilterTestUtils.DEFAULT_VM_SERIAL0,
+			TransformationTestUtils.DEFAULT_VM_SERIAL0,
 			CommandLineArgsTest.CMDLN_PREFIX_OPTION_LONG + CmdLnOption.VM_MAC0.getLongOption(),
-			FilterTestUtils.DEFAULT_VM_MAC0,
+			TransformationTestUtils.DEFAULT_VM_MAC0,
 			CommandLineArgsTest.CMDLN_PREFIX_OPTION_LONG + CmdLnOption.VM_FSSRC0.getLongOption(),
-			FilterTestUtils.DEFAULT_VM_FSSRC0,
+			TransformationTestUtils.DEFAULT_VM_FSSRC0,
 			CommandLineArgsTest.CMDLN_PREFIX_OPTION_LONG + CmdLnOption.VM_FSTGT0.getLongOption(),
-			FilterTestUtils.DEFAULT_VM_FSTGT0,
+			TransformationTestUtils.DEFAULT_VM_FSTGT0,
 			CommandLineArgsTest.CMDLN_PREFIX_OPTION_LONG + CmdLnOption.VM_FSSRC1.getLongOption(),
-			FilterTestUtils.DEFAULT_VM_FSSRC1,
+			TransformationTestUtils.DEFAULT_VM_FSSRC1,
 			CommandLineArgsTest.CMDLN_PREFIX_OPTION_LONG + CmdLnOption.VM_FSTGT1.getLongOption(),
-			FilterTestUtils.DEFAULT_VM_FSTGT1
+			TransformationTestUtils.DEFAULT_VM_FSTGT1
 	};
 
 	private static CommandLineArgs getCmdLnArgs( String[] args )
@@ -89,12 +89,12 @@ public class FilterTestUtils
 
 	public static CommandLineArgs getDefaultCmdLnArgs()
 	{
-		return FilterTestUtils.getCmdLnArgs( FilterTestUtils.DEFAULT_CMDLN_ARGS );
+		return TransformationTestUtils.getCmdLnArgs( TransformationTestUtils.DEFAULT_CMDLN_ARGS );
 	}
 
 	public static CommandLineArgs getEmptyCmdLnArgs()
 	{
-		return FilterTestUtils.getCmdLnArgs( new String[] {} );
+		return TransformationTestUtils.getCmdLnArgs( new String[] {} );
 	}
 
 	public static Domain getDefaultDomain()
