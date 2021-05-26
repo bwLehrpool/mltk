@@ -3,10 +3,10 @@ package org.openslx.runvirt.plugin.qemu.configuration;
 import java.util.ArrayList;
 
 import org.openslx.libvirt.domain.Domain;
+import org.openslx.libvirt.domain.device.Disk.BusType;
 import org.openslx.libvirt.domain.device.Disk.StorageType;
 import org.openslx.libvirt.domain.device.DiskCdrom;
 import org.openslx.runvirt.plugin.qemu.cmdln.CommandLineArgs;
-import org.openslx.virtualization.configuration.VirtualizationConfigurationQemu;
 import org.openslx.virtualization.configuration.VirtualizationConfigurationQemuUtils;
 import org.openslx.virtualization.configuration.transformation.TransformationException;
 import org.openslx.virtualization.configuration.transformation.TransformationGeneric;
@@ -60,11 +60,28 @@ public class TransformationGenericDiskCdromDevices extends TransformationGeneric
 		final ArrayList<DiskCdrom> devices = config.getDiskCdromDevices();
 		final DiskCdrom disk = VirtualizationConfigurationQemuUtils.getArrayIndex( devices, index );
 
-		if ( disk != null ) {
+		if ( disk == null ) {
+			if ( fileName != null ) {
+				// CDROM drive does not exist, so create new CDROM drive
+				final DiskCdrom newDisk = config.addDiskCdromDevice();
+				newDisk.setBusType( BusType.SATA );
+				String targetDevName = VirtualizationConfigurationQemuUtils.createAlphabeticalDeviceName( "sd", index );
+				newDisk.setTargetDevice( targetDevName );
+
+				if ( fileName.isEmpty() ) {
+					// remove storage source if empty string is specified to emulate an empty CDROM drive
+					newDisk.removeStorage();
+				} else {
+					// set disk image file as storage source of the disk CDROM drive
+					newDisk.setStorage( StorageType.FILE, fileName );
+				}
+			}
+		} else {
+			// CDROM drive exists, so update existing CDROM drive
 			if ( fileName == null ) {
-				// do not remove disk CDROM drive, but set local physical drive as input source
-				disk.setStorage( StorageType.BLOCK, VirtualizationConfigurationQemu.CDROM_DEFAULT_PHYSICAL_DRIVE );
-			} else if ( fileName.equals( "" ) ) {
+				// remove disk storage device if disk image file name is not set
+				disk.remove();
+			} else if ( fileName.isEmpty() ) {
 				// remove storage source if empty string is specified to emulate an empty CDROM drive
 				disk.removeStorage();
 			} else {

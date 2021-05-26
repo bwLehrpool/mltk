@@ -3,6 +3,7 @@ package org.openslx.runvirt.plugin.qemu.configuration;
 import java.util.ArrayList;
 
 import org.openslx.libvirt.domain.Domain;
+import org.openslx.libvirt.domain.device.Disk.BusType;
 import org.openslx.libvirt.domain.device.Disk.StorageType;
 import org.openslx.libvirt.domain.device.DiskFloppy;
 import org.openslx.runvirt.plugin.qemu.cmdln.CommandLineArgs;
@@ -58,12 +59,27 @@ public class TransformationGenericDiskFloppyDevices extends TransformationGeneri
 		final ArrayList<DiskFloppy> devices = config.getDiskFloppyDevices();
 		final DiskFloppy disk = VirtualizationConfigurationQemuUtils.getArrayIndex( devices, index );
 
-		if ( disk != null ) {
+		if ( disk == null ) {
+			if ( fileName != null ) {
+				// floppy device does not exist, so create new floppy device
+				final DiskFloppy newDisk = config.addDiskFloppyDevice();
+				newDisk.setBusType( BusType.FDC );
+				String targetDevName = VirtualizationConfigurationQemuUtils.createAlphabeticalDeviceName( "fd", index );
+				newDisk.setTargetDevice( targetDevName );
+
+				if ( fileName.isEmpty() ) {
+					newDisk.removeStorage();
+				} else {
+					newDisk.setStorage( StorageType.FILE, fileName );
+				}
+			}
+		} else {
+			// floppy device exists, so update existing floppy device
 			if ( fileName == null ) {
-				// remove disk floppy device if disk image file name is not set
 				disk.remove();
+			} else if ( fileName.isEmpty() ) {
+				disk.removeStorage();
 			} else {
-				// set image file of disk storage if disk floppy device is available
 				disk.setStorage( StorageType.FILE, fileName );
 			}
 		}

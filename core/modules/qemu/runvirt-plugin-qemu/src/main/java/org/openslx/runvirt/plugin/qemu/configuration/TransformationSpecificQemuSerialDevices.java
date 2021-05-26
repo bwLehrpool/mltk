@@ -81,14 +81,14 @@ public class TransformationSpecificQemuSerialDevices
 
 		if ( device == null ) {
 			// check if device file name is specified
-			if ( fileName != null ) {
+			if ( fileName != null && !fileName.isEmpty() ) {
 				// serial port device is not available, so create new serial port device
 				final Serial newDevice = config.addSerialDevice();
 				newDevice.setType( Type.DEV );
 				newDevice.setSource( fileName );
 			}
 		} else {
-			if ( fileName == null ) {
+			if ( fileName == null || fileName.isEmpty() ) {
 				// remove serial port device if device file name is not set
 				device.remove();
 			} else {

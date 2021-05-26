@@ -4,7 +4,11 @@ import java.util.ArrayList;
 
 import org.openslx.libvirt.domain.Domain;
 import org.openslx.libvirt.domain.device.Interface;
+import org.openslx.libvirt.domain.device.InterfaceBridge;
+import org.openslx.libvirt.domain.device.Interface.Model;
+import org.openslx.libvirt.domain.device.Interface.Type;
 import org.openslx.runvirt.plugin.qemu.cmdln.CommandLineArgs;
+import org.openslx.virtualization.configuration.VirtualizationConfigurationQemu;
 import org.openslx.virtualization.configuration.VirtualizationConfigurationQemuUtils;
 import org.openslx.virtualization.configuration.transformation.TransformationException;
 import org.openslx.virtualization.configuration.transformation.TransformationGeneric;
@@ -59,8 +63,17 @@ public class TransformationGenericInterfaceDevices extends TransformationGeneric
 		final ArrayList<Interface> devices = config.getInterfaceDevices();
 		final Interface device = VirtualizationConfigurationQemuUtils.getArrayIndex( devices, index );
 
-		if ( device != null ) {
-			if ( macAddress == null ) {
+		if ( device == null ) {
+			if ( macAddress != null && !macAddress.isEmpty() ) {
+				// create network interface if it does not exists
+				final InterfaceBridge newDevice = config.addInterfaceBridgeDevice();
+				newDevice.setType( Type.BRIDGE );
+				newDevice.setModel( Model.VIRTIO );
+				newDevice.setMacAddress( macAddress );
+				newDevice.setSource( VirtualizationConfigurationQemu.NETWORK_BRIDGE_NAT_DEFAULT );
+			}
+		} else {
+			if ( macAddress == null || macAddress.isEmpty() ) {
 				// remove network interface device if MAC address is not set
 				device.remove();
 			} else {

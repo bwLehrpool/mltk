@@ -2,6 +2,7 @@ package org.openslx.runvirt.plugin.qemu.configuration;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -30,5 +31,16 @@ public class TransformationGenericCpuTest
 		assertEquals( Integer.parseInt( TransformationTestUtils.DEFAULT_VM_NCPUS ), config.getVCpu() );
 		assertEquals( CpuMode.HOST_PASSTHROUGH, config.getCpuMode() );
 		assertEquals( CpuCheck.PARTIAL, config.getCpuCheck() );
+	}
+
+	@Test
+	@DisplayName( "Test transformation of VM CPU configuration with unspecified input data" )
+	public void testTransformationGenericCpuNoData() throws TransformationException
+	{
+		final TransformationGenericCpu transformation = new TransformationGenericCpu();
+		final Domain config = TransformationTestUtils.getDefaultDomain();
+		final CommandLineArgs args = TransformationTestUtils.getEmptyCmdLnArgs();
+
+		assertThrows( TransformationException.class, () -> transformation.transform( config, args ) );
 	}
 }

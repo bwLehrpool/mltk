@@ -373,7 +373,7 @@ public class CommandLineArgs
 		VM_SERIAL0  ( 'q', "vmserial0",   true,  "Device for the first serial port interface" ),
 		VM_MAC0     ( 'a', "vmmac0",      true,  "MAC address for the first network interface" ),
 		VM_FSSRC0   ( 't', "vmfssrc0",    true,  "Source directory for first file system passthrough (shared folder)" ),
-		VM_FSTGT0   ( 'u', "vmfstgt0",    true,  "Target directory for first file system passthrough (shared folder)" ),
+		VM_FSTGT0   ( 'e', "vmfstgt0",    true,  "Target directory for first file system passthrough (shared folder)" ),
 		VM_FSSRC1   ( 'v', "vmfssrc1",    true,  "Source directory for second file system passthrough (shared folder)" ),
 		VM_FSTGT1   ( 'w', "vmfstgt1",    true,  "Target directory for second file system passthrough (shared folder)" );
 		// @formatter:on

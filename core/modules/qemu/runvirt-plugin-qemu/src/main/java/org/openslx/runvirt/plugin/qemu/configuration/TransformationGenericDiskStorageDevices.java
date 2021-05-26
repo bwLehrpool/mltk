@@ -3,7 +3,9 @@ package org.openslx.runvirt.plugin.qemu.configuration;
 import java.util.ArrayList;
 
 import org.openslx.libvirt.domain.Domain;
+import org.openslx.libvirt.domain.device.Disk.BusType;
 import org.openslx.libvirt.domain.device.Disk.StorageType;
+import org.openslx.libvirt.domain.device.DiskFloppy;
 import org.openslx.libvirt.domain.device.DiskStorage;
 import org.openslx.runvirt.plugin.qemu.cmdln.CommandLineArgs;
 import org.openslx.virtualization.configuration.VirtualizationConfigurationQemuUtils;
@@ -61,8 +63,18 @@ public class TransformationGenericDiskStorageDevices extends TransformationGener
 		final ArrayList<DiskStorage> devices = config.getDiskStorageDevices();
 		final DiskStorage disk = VirtualizationConfigurationQemuUtils.getArrayIndex( devices, index );
 
-		if ( disk != null ) {
-			if ( fileName == null ) {
+		if ( disk == null ) {
+			if ( fileName != null && !fileName.isEmpty() ) {
+				// storage device does not exist, so create new storage device
+				final DiskFloppy newDisk = config.addDiskFloppyDevice();
+				newDisk.setBusType( BusType.VIRTIO );
+				String targetDevName = VirtualizationConfigurationQemuUtils.createAlphabeticalDeviceName( "vd", index );
+				newDisk.setTargetDevice( targetDevName );
+				newDisk.setStorage( StorageType.FILE, fileName );
+			}
+		} else {
+			// storage device exists, so update existing storage device
+			if ( fileName == null || fileName.isEmpty() ) {
 				// remove disk storage device if disk image file name is not set
 				disk.remove();
 			} else {

@@ -66,7 +66,7 @@ public class TransformationGenericFileSystemDevices extends TransformationGeneri
 
 		if ( fileSystem == null ) {
 			// check if file system device source directory is specified
-			if ( source != null && target != null ) {
+			if ( source != null && !source.isEmpty() && target != null && !target.isEmpty() ) {
 				// file system device does not exist, so create new file system device
 				final FileSystem newFileSystem = config.addFileSystemDevice();
 				newFileSystem.setType( Type.MOUNT );
@@ -75,7 +75,7 @@ public class TransformationGenericFileSystemDevices extends TransformationGeneri
 				newFileSystem.setTarget( target );
 			}
 		} else {
-			if ( source == null || target == null ) {
+			if ( source == null || source.isEmpty() || target == null || target.isEmpty() ) {
 				// remove file system device since device source or target is not specified
 				fileSystem.remove();
 			} else {
@@ -100,7 +100,7 @@ public class TransformationGenericFileSystemDevices extends TransformationGeneri
 
 		// remove all additional file system devices
 		final ArrayList<FileSystem> devices = config.getFileSystemDevices();
-		for ( int i = 1; i < devices.size(); i++ ) {
+		for ( int i = 2; i < devices.size(); i++ ) {
 			devices.get( i ).remove();
 		}
 	}

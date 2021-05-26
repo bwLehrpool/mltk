@@ -2,6 +2,7 @@ package org.openslx.runvirt.plugin.qemu.configuration;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.math.BigInteger;
 
@@ -31,5 +32,16 @@ public class TransformationGenericMemoryTest
 
 		assertEquals( defaultMemory.toString(), config.getMemory().toString() );
 		assertEquals( defaultMemory.toString(), config.getCurrentMemory().toString() );
+	}
+
+	@Test
+	@DisplayName( "Test transformation of VM memory configuration with unspecified input data" )
+	public void testTransformationGenericMemoryNoData() throws TransformationException
+	{
+		final TransformationGenericMemory transformation = new TransformationGenericMemory();
+		final Domain config = TransformationTestUtils.getDefaultDomain();
+		final CommandLineArgs args = TransformationTestUtils.getEmptyCmdLnArgs();
+
+		assertThrows( TransformationException.class, () -> transformation.transform( config, args ) );
 	}
 }

@@ -68,7 +68,7 @@ public class TransformationGenericParallelDevices extends TransformationGeneric<
 				newDevice.setSource( fileName );
 			}
 		} else {
-			if ( fileName == null ) {
+			if ( fileName == null || fileName.isEmpty() ) {
 				// remove device since device file is not specified
 				device.remove();
 			} else {

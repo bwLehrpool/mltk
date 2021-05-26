@@ -42,9 +42,9 @@ public class TransformationSpecificQemuArchitecture
 	 * 
 	 * @param hypervisor Libvirt/QEMU hypervisor.
 	 */
-	public TransformationSpecificQemuArchitecture( LibvirtHypervisorQemu hypervisor )
+	public TransformationSpecificQemuArchitecture( LibvirtHypervisorQemu virtualizer )
 	{
-		super( TransformationSpecificQemuArchitecture.NAME, hypervisor );
+		super( TransformationSpecificQemuArchitecture.NAME, virtualizer );
 	}
 
 	/**
@@ -68,7 +68,7 @@ public class TransformationSpecificQemuArchitecture
 	 * @throws TransformationException failed to query and return the capabilities of the
 	 *            Libvirt/QEMU hypervisor.
 	 */
-	private Capabilities getCapabilities() throws TransformationException
+	protected Capabilities getCapabilities() throws TransformationException
 	{
 		// retrieve capabilities from QEMU hypervisor only once
 		if ( this.capabilities == null ) {
