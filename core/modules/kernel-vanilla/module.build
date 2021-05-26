@@ -52,7 +52,6 @@ fetch_source() {
 		git apply < "$patch" || perror "Could not apply $patch"
 		echo "$patch" >> "patches-done"
 	done
-	sed -i 's/batch_add(&cmds, 0xffff0000);/batch_add(\&cmds, 0xffff0000 | ((IS_IVB_GT1(i915) || IS_VALLEYVIEW(i915)) ? HIZ_RAW_STALL_OPT_DISABLE : 0));/' "drivers/gpu/drm/i915/gt/gen7_renderclear.c" || pwarning "Could not patch Ivybridge/Baytrail graphics."
 	cd -
 	# remember the current kernel version
 	echo "${SYSTEM_KERNEL_LONG}" > ksrc/KVERSION
