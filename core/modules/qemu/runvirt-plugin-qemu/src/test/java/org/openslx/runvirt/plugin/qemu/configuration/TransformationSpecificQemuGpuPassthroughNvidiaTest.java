@@ -1,5 +1,6 @@
 package org.openslx.runvirt.plugin.qemu.configuration;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
@@ -94,6 +95,8 @@ public class TransformationSpecificQemuGpuPassthroughNvidiaTest
 		for ( final Video videoDevice : videoDevices ) {
 			assertEquals( Video.Model.NONE, videoDevice.getModel() );
 		}
+
+		assertDoesNotThrow( () -> config.validateXml() );
 	}
 
 	@Test
@@ -125,5 +128,7 @@ public class TransformationSpecificQemuGpuPassthroughNvidiaTest
 		for ( final Video videoDevice : videoDevices ) {
 			assertNotEquals( Video.Model.NONE, videoDevice.getModel() );
 		}
+
+		assertDoesNotThrow( () -> config.validateXml() );
 	}
 }

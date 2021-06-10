@@ -1,5 +1,6 @@
 package org.openslx.runvirt.plugin.qemu.configuration;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.util.ArrayList;
@@ -37,6 +38,8 @@ public class TransformationGenericInterfaceDevicesTest
 		assertEquals( TransformationTestUtils.DEFAULT_VM_MAC0, interfaceAfterTransformation.getMacAddress() );
 		assertEquals( VirtualizationConfigurationQemu.NETWORK_BRIDGE_NAT_DEFAULT,
 				interfaceAfterTransformation.getSource() );
+
+		assertDoesNotThrow( () -> config.validateXml() );
 	}
 
 	@Test
@@ -54,5 +57,7 @@ public class TransformationGenericInterfaceDevicesTest
 
 		final ArrayList<Interface> devicesAfterTransformation = config.getInterfaceDevices();
 		assertEquals( 0, devicesAfterTransformation.size() );
+
+		assertDoesNotThrow( () -> config.validateXml() );
 	}
 }

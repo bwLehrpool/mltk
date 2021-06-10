@@ -1,5 +1,6 @@
 package org.openslx.runvirt.plugin.qemu.configuration;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
@@ -39,6 +40,8 @@ public class TransformationGenericDiskCdromDevicesTest
 		assertEquals( TransformationTestUtils.DEFAULT_VM_CDROM0, cdromDevice1AfterTransformation.getStorageSource() );
 		assertEquals( StorageType.FILE, cdromDevice2AfterTransformation.getStorageType() );
 		assertEquals( TransformationTestUtils.DEFAULT_VM_CDROM1, cdromDevice2AfterTransformation.getStorageSource() );
+
+		assertDoesNotThrow( () -> config.validateXml() );
 	}
 
 	@Test
@@ -56,5 +59,7 @@ public class TransformationGenericDiskCdromDevicesTest
 
 		final ArrayList<DiskCdrom> devicesAfterTransformation = config.getDiskCdromDevices();
 		assertEquals( 0, devicesAfterTransformation.size() );
+
+		assertDoesNotThrow( () -> config.validateXml() );
 	}
 }

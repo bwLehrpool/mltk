@@ -1,5 +1,6 @@
 package org.openslx.runvirt.plugin.qemu.configuration;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -32,6 +33,8 @@ public class TransformationGenericMemoryTest
 
 		assertEquals( defaultMemory.toString(), config.getMemory().toString() );
 		assertEquals( defaultMemory.toString(), config.getCurrentMemory().toString() );
+
+		assertDoesNotThrow( () -> config.validateXml() );
 	}
 
 	@Test

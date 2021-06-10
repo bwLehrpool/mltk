@@ -1,5 +1,6 @@
 package org.openslx.runvirt.plugin.qemu.configuration;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -27,6 +28,8 @@ public class TransformationGenericNameTest
 
 		assertEquals( TransformationTestUtils.DEFAULT_VM_NAME, config.getName() );
 		assertEquals( TransformationTestUtils.DEFAULT_VM_DSPLNAME, config.getTitle() );
+
+		assertDoesNotThrow( () -> config.validateXml() );
 	}
 
 	@Test

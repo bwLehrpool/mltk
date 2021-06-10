@@ -1,5 +1,6 @@
 package org.openslx.runvirt.plugin.qemu.configuration;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.util.ArrayList;
@@ -44,6 +45,8 @@ public class TransformationSpecificQemuSerialDevicesTest
 		final Serial serialDevice2AfterTransformation = devicesAfterTransformation.get( 1 );
 		assertEquals( Type.DEV, serialDevice2AfterTransformation.getType() );
 		assertEquals( TransformationTestUtils.DEFAULT_VM_SERIAL0, serialDevice2AfterTransformation.getSource() );
+
+		assertDoesNotThrow( () -> config.validateXml() );
 	}
 
 	@Test
@@ -65,5 +68,7 @@ public class TransformationSpecificQemuSerialDevicesTest
 		assertEquals( 1, devicesAfterTransformation.size() );
 		final Serial serialDeviceAfterTransformation = devicesBeforeTransformation.get( 0 );
 		assertEquals( Type.PTY, serialDeviceAfterTransformation.getType() );
+
+		assertDoesNotThrow( () -> config.validateXml() );
 	}
 }

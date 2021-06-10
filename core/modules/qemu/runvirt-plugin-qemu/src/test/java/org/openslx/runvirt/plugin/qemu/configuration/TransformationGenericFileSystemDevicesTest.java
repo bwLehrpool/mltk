@@ -1,5 +1,6 @@
 package org.openslx.runvirt.plugin.qemu.configuration;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.util.ArrayList;
@@ -40,6 +41,8 @@ public class TransformationGenericFileSystemDevicesTest
 		assertEquals( AccessMode.MAPPED, fs2AfterTransformation.getAccessMode() );
 		assertEquals( TransformationTestUtils.DEFAULT_VM_FSSRC1, fs2AfterTransformation.getSource() );
 		assertEquals( TransformationTestUtils.DEFAULT_VM_FSTGT1, fs2AfterTransformation.getTarget() );
+
+		assertDoesNotThrow( () -> config.validateXml() );
 	}
 
 	@Test
@@ -57,5 +60,7 @@ public class TransformationGenericFileSystemDevicesTest
 
 		final ArrayList<FileSystem> devicesAfterTransformation = config.getFileSystemDevices();
 		assertEquals( 0, devicesAfterTransformation.size() );
+
+		assertDoesNotThrow( () -> config.validateXml() );
 	}
 }

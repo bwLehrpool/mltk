@@ -1,5 +1,6 @@
 package org.openslx.runvirt.plugin.qemu.configuration;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.util.ArrayList;
@@ -32,6 +33,8 @@ public class TransformationGenericParallelDevicesTest
 		final Parallel parallelDeviceAfterTransformation = devicesAfterTransformation.get( 0 );
 		assertEquals( Type.DEV, parallelDeviceAfterTransformation.getType() );
 		assertEquals( TransformationTestUtils.DEFAULT_VM_PARALLEL0, parallelDeviceAfterTransformation.getSource() );
+
+		assertDoesNotThrow( () -> config.validateXml() );
 	}
 
 	@Test
@@ -49,5 +52,7 @@ public class TransformationGenericParallelDevicesTest
 
 		final ArrayList<Parallel> devicesAfterTransformation = config.getParallelDevices();
 		assertEquals( 0, devicesAfterTransformation.size() );
+
+		assertDoesNotThrow( () -> config.validateXml() );
 	}
 }

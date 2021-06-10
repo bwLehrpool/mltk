@@ -1,5 +1,6 @@
 package org.openslx.runvirt.plugin.qemu.configuration;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -31,6 +32,8 @@ public class TransformationGenericCpuTest
 		assertEquals( Integer.parseInt( TransformationTestUtils.DEFAULT_VM_NCPUS ), config.getVCpu() );
 		assertEquals( CpuMode.HOST_PASSTHROUGH, config.getCpuMode() );
 		assertEquals( CpuCheck.PARTIAL, config.getCpuCheck() );
+
+		assertDoesNotThrow( () -> config.validateXml() );
 	}
 
 	@Test

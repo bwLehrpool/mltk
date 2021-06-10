@@ -1,5 +1,6 @@
 package org.openslx.runvirt.plugin.qemu.configuration;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
@@ -36,6 +37,8 @@ public class TransformationGenericDiskStorageDevicesTest
 		final DiskStorage diskDeviceAfterTransformation = devicesAfterTransformation.get( 0 );
 		assertEquals( StorageType.FILE, diskDeviceAfterTransformation.getStorageType() );
 		assertEquals( TransformationTestUtils.DEFAULT_VM_HDD0, diskDeviceAfterTransformation.getStorageSource() );
+
+		assertDoesNotThrow( () -> config.validateXml() );
 	}
 
 	@Test
@@ -53,5 +56,7 @@ public class TransformationGenericDiskStorageDevicesTest
 
 		final ArrayList<DiskStorage> devicesAfterTransformation = config.getDiskStorageDevices();
 		assertEquals( 0, devicesAfterTransformation.size() );
+
+		assertDoesNotThrow( () -> config.validateXml() );
 	}
 }

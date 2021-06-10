@@ -1,5 +1,6 @@
 package org.openslx.runvirt.plugin.qemu.configuration;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -25,6 +26,8 @@ public class TransformationGenericUuidTest
 		transformation.transform( config, args );
 
 		assertEquals( TransformationTestUtils.DEFAULT_VM_UUID, config.getUuid() );
+
+		assertDoesNotThrow( () -> config.validateXml() );
 	}
 
 	@Test

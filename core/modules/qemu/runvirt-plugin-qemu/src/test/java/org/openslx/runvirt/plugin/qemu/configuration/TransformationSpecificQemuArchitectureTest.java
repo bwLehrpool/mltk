@@ -1,5 +1,6 @@
 package org.openslx.runvirt.plugin.qemu.configuration;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.fail;
@@ -66,6 +67,8 @@ public class TransformationSpecificQemuArchitectureTest
 		assertEquals( "x86_64", config.getOsArch() );
 		assertEquals( "pc-q35-5.1", config.getOsMachine() );
 		assertEquals( OsType.HVM, config.getOsType() );
+
+		assertDoesNotThrow( () -> config.validateXml() );
 	}
 
 	@Test

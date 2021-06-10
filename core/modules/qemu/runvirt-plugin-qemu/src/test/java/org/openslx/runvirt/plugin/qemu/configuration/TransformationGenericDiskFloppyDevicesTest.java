@@ -1,5 +1,6 @@
 package org.openslx.runvirt.plugin.qemu.configuration;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
@@ -40,6 +41,8 @@ public class TransformationGenericDiskFloppyDevicesTest
 		assertEquals( TransformationTestUtils.DEFAULT_VM_FLOPPY0, floppyDevice1AfterTransformation.getStorageSource() );
 		assertEquals( StorageType.FILE, floppyDevice2AfterTransformation.getStorageType() );
 		assertEquals( TransformationTestUtils.DEFAULT_VM_FLOPPY1, floppyDevice2AfterTransformation.getStorageSource() );
+
+		assertDoesNotThrow( () -> config.validateXml() );
 	}
 
 	@Test
@@ -57,5 +60,7 @@ public class TransformationGenericDiskFloppyDevicesTest
 
 		final ArrayList<DiskFloppy> devicesAfterTransformation = config.getDiskFloppyDevices();
 		assertEquals( 0, devicesAfterTransformation.size() );
+
+		assertDoesNotThrow( () -> config.validateXml() );
 	}
 }
