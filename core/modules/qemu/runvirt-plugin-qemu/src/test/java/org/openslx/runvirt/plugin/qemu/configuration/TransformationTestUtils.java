@@ -33,6 +33,9 @@ public class TransformationTestUtils
 	public static final String DEFAULT_VM_FSTGT0    = "folder0";
 	public static final String DEFAULT_VM_FSSRC1    = "/mnt/shared/folder1";
 	public static final String DEFAULT_VM_FSTGT1    = "folder1";
+	public static final String DEFAULT_VM_GPU0_DESC = "10de:1d01";
+	public static final String DEFAULT_VM_GPU0_ADDR = "0000:00:02.0";
+	public static final String DEFAULT_VM_NVGPUIDS0 = DEFAULT_VM_GPU0_DESC + "," + DEFAULT_VM_GPU0_ADDR;
 	// @formatter:on
 
 	private static final String[] DEFAULT_CMDLN_ARGS = {
@@ -71,7 +74,9 @@ public class TransformationTestUtils
 			CommandLineArgsTest.CMDLN_PREFIX_OPTION_LONG + CmdLnOption.VM_FSSRC1.getLongOption(),
 			TransformationTestUtils.DEFAULT_VM_FSSRC1,
 			CommandLineArgsTest.CMDLN_PREFIX_OPTION_LONG + CmdLnOption.VM_FSTGT1.getLongOption(),
-			TransformationTestUtils.DEFAULT_VM_FSTGT1
+			TransformationTestUtils.DEFAULT_VM_FSTGT1,
+			CommandLineArgsTest.CMDLN_PREFIX_OPTION_LONG + CmdLnOption.VM_NVGPUIDS0.getLongOption(),
+			TransformationTestUtils.DEFAULT_VM_NVGPUIDS0
 	};
 
 	private static CommandLineArgs getCmdLnArgs( String[] args )

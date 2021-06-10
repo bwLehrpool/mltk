@@ -1,6 +1,7 @@
 package org.openslx.runvirt.plugin.qemu;
 
 import java.io.File;
+import java.util.Arrays;
 
 import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.LogManager;
@@ -29,6 +30,7 @@ import org.openslx.runvirt.plugin.qemu.virtualization.LibvirtHypervisorQemu;
 import org.openslx.runvirt.plugin.qemu.virtualization.LibvirtHypervisorQemu.QemuSessionType;
 import org.openslx.runvirt.viewer.Viewer;
 import org.openslx.runvirt.viewer.ViewerException;
+import org.openslx.runvirt.viewer.ViewerLookingGlassClient;
 import org.openslx.runvirt.viewer.ViewerVirtManager;
 import org.openslx.runvirt.viewer.ViewerVirtViewer;
 import org.openslx.runvirt.virtualization.LibvirtHypervisor;
@@ -185,12 +187,18 @@ public class App
 
 		// create specific viewer to display Libvirt VM
 		final Viewer vmViewer;
-		if ( cmdLn.isDebugEnabled() ) {
-			// create specific Virtual Machine Manager viewer if debug mode is enabled
-			vmViewer = new ViewerVirtManager( vm, hypervisor );
+		if ( cmdLn.isNvidiaGpuPassthroughEnabled() ) {
+			// viewer for GPU passthrough (framebuffer access) is required
+			vmViewer = new ViewerLookingGlassClient( vm, hypervisor, cmdLn.isDebugEnabled() );
 		} else {
-			// create Virtual Viewer if debug mode is disabled
-			vmViewer = new ViewerVirtViewer( vm, hypervisor );
+			// viewer for non-GPU passthrough (no framebuffer access) is required
+			if ( cmdLn.isDebugEnabled() ) {
+				// create specific Virtual Machine Manager viewer if debug mode is enabled
+				vmViewer = new ViewerVirtManager( vm, hypervisor );
+			} else {
+				// create Virtual Viewer if debug mode is disabled
+				vmViewer = new ViewerVirtViewer( vm, hypervisor );
+			}
 		}
 
 		// display Libvirt VM with the specific viewer on the screen
@@ -258,16 +266,20 @@ public class App
 
 		for ( CmdLnOption option : CmdLnOption.values() ) {
 			final String paddedLongOption = String.format( "%-" + longOptionLengthMax + "s", option.getLongOption() );
-			final String longOptionArgument;
+			String[] longOptionArguments;
 
 			// only request and log argument if option has an command line argument
-			if ( option.hasArgument() ) {
-				longOptionArgument = cmdLn.getArgument( option );
+			if ( option.getNumArguments() > 0 ) {
+				longOptionArguments = cmdLn.getArguments( option );
+
+				if ( longOptionArguments == null ) {
+					longOptionArguments = new String[] { "no argument specified" };
+				}
 			} else {
-				longOptionArgument = new String( "[option has no argument]" );
+				longOptionArguments = new String[] { "option has no argument" };
 			}
 
-			LOGGER.debug( "\t" + paddedLongOption + ": " + longOptionArgument );
+			LOGGER.debug( "\t" + paddedLongOption + ": " + Arrays.toString( longOptionArguments ) );
 		}
 	}
 }

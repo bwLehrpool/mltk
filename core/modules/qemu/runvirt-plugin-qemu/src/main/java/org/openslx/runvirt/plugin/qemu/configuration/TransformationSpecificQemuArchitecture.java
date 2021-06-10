@@ -30,14 +30,6 @@ public class TransformationSpecificQemuArchitecture
 	private static final String NAME = "QEMU Architecture [CPU architecture, machine type, ...]";
 
 	/**
-	 * Capabilities of the Libvirt/QEMU hypervisor.
-	 * 
-	 * @implNote This field is used as an instance of a singelton. Please always use
-	 *           {@link #getCapabilities()} to retrieve the {@code capabilities} instance.
-	 */
-	private Capabilities capabilities = null;
-
-	/**
 	 * Creates a new architecture transformation for Libvirt/QEMU virtualization configurations.
 	 * 
 	 * @param hypervisor Libvirt/QEMU hypervisor.
@@ -70,18 +62,17 @@ public class TransformationSpecificQemuArchitecture
 	 */
 	protected Capabilities getCapabilities() throws TransformationException
 	{
-		// retrieve capabilities from QEMU hypervisor only once
-		if ( this.capabilities == null ) {
-			try {
-				this.capabilities = this.getVirtualizer().getCapabilites();
-			} catch ( LibvirtHypervisorException e ) {
-				final String errorMsg = new String(
-						"Failed to get host capabilities from QEMU virtualizer: " + e.getLocalizedMessage() );
-				throw new TransformationException( errorMsg );
-			}
+		final Capabilities capabilities;
+
+		try {
+			capabilities = this.getVirtualizer().getCapabilites();
+		} catch ( LibvirtHypervisorException e ) {
+			final String errorMsg = new String(
+					"Failed to retrieve host capabilities from QEMU virtualizer: " + e.getLocalizedMessage() );
+			throw new TransformationException( errorMsg );
 		}
 
-		return this.capabilities;
+		return capabilities;
 	}
 
 	/**

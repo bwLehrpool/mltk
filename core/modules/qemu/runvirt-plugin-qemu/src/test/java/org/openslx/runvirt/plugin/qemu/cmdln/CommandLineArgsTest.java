@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.File;
+import java.util.List;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -28,6 +29,8 @@ public class CommandLineArgsTest
 	private static final String CMDLN_TEST_PARPORT     = "/dev/parport0";
 	private static final String CMDLN_TEST_SERPORT     = "/dev/ttyS0";
 	private static final String CMDLN_TEST_MAC         = "02:42:8e:77:1b:e6";
+	private static final String CMDLN_TEST_NVGPU_DESC  = "10de:0ff9";
+	private static final String CMDLN_TEST_NVGPU_ADDR  = "0000:00:01.0";
 	// @formatter:on
 
 	@Test
@@ -694,5 +697,56 @@ public class CommandLineArgsTest
 		CommandLineArgs cmdLn = new CommandLineArgs( args );
 
 		assertEquals( CMDLN_TEST_NAME, cmdLn.getVmFsTgt1() );
+	}
+
+	@Test
+	@DisplayName( "Test the parsing of NVIDIA PCI IDs command line option for the first GPU passthrough (short version)" )
+	public void testCmdlnOptionVmNvGpuIds0Short() throws CommandLineArgsException
+	{
+		final String[] args = {
+				CMDLN_PREFIX_OPTION_SHORT + CmdLnOption.VM_NVGPUIDS0.getShortOption(),
+				CMDLN_TEST_NVGPU_DESC, CMDLN_TEST_NVGPU_ADDR
+		};
+
+		CommandLineArgs cmdLn = new CommandLineArgs( args );
+
+		final List<String> nvidiaGpuIds = cmdLn.getVmNvGpuIds0();
+		assertEquals( 2, nvidiaGpuIds.size() );
+		assertEquals( CMDLN_TEST_NVGPU_DESC, nvidiaGpuIds.get( 0 ) );
+		assertEquals( CMDLN_TEST_NVGPU_ADDR, nvidiaGpuIds.get( 1 ) );
+	}
+
+	@Test
+	@DisplayName( "Test the parsing of NVIDIA PCI IDs command line option for the first GPU passthrough (long version)" )
+	public void testCmdlnOptionVmNvGpuIds0Long() throws CommandLineArgsException
+	{
+		final String[] args = {
+				CMDLN_PREFIX_OPTION_LONG + CmdLnOption.VM_NVGPUIDS0.getLongOption(),
+				CMDLN_TEST_NVGPU_DESC, CMDLN_TEST_NVGPU_ADDR
+		};
+
+		CommandLineArgs cmdLn = new CommandLineArgs( args );
+
+		final List<String> nvidiaGpuIds = cmdLn.getVmNvGpuIds0();
+		assertEquals( 2, nvidiaGpuIds.size() );
+		assertEquals( CMDLN_TEST_NVGPU_DESC, nvidiaGpuIds.get( 0 ) );
+		assertEquals( CMDLN_TEST_NVGPU_ADDR, nvidiaGpuIds.get( 1 ) );
+	}
+
+	@Test
+	@DisplayName( "Test whether a NVIDIA GPU passthrough is enabled" )
+	public void testIsNvidiaGpuPassthroughEnabled() throws CommandLineArgsException
+	{
+		final String[] args1 = {
+				CMDLN_PREFIX_OPTION_LONG + CmdLnOption.VM_NVGPUIDS0.getLongOption(),
+				CMDLN_TEST_NVGPU_DESC, CMDLN_TEST_NVGPU_ADDR
+		};
+		final String[] args2 = {};
+
+		CommandLineArgs cmdLn1 = new CommandLineArgs( args1 );
+		CommandLineArgs cmdLn2 = new CommandLineArgs( args2 );
+
+		assertTrue( cmdLn1.isNvidiaGpuPassthroughEnabled() );
+		assertFalse( cmdLn2.isNvidiaGpuPassthroughEnabled() );
 	}
 }

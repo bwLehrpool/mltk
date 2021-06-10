@@ -1,9 +1,14 @@
 package org.openslx.runvirt.plugin.qemu.cmdln;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.HelpFormatter;
+import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 
@@ -71,8 +76,14 @@ public class CommandLineArgs
 	private void createCmdLnOptions()
 	{
 		for ( CmdLnOption option : CmdLnOption.values() ) {
-			this.cmdLnOptions.addOption( option.getShortOption(), option.getLongOption(), option.hasArgument(),
-					option.getDescription() );
+			final Option cmdlnOption;
+
+			final boolean hasArg = ( option.getNumArguments() > 0 ) ? true : false;
+			cmdlnOption = new Option( option.getShortOption(), option.getLongOption(), hasArg, option.getDescription() );
+			cmdlnOption.setValueSeparator( ',' );
+			cmdlnOption.setArgs( option.getNumArguments() );
+
+			this.cmdLnOptions.addOption( cmdlnOption );
 		}
 	}
 
@@ -115,6 +126,17 @@ public class CommandLineArgs
 	public String getArgument( CmdLnOption cmdLnOption )
 	{
 		return this.cmdLn.getOptionValue( cmdLnOption.getShortOption() );
+	}
+
+	/**
+	 * Returns the parsed arguments of the specified command line option.
+	 * 
+	 * @param cmdLnOption command line option for that the parsed arguments should be returned.
+	 * @return parsed argument of the command line option.
+	 */
+	public String[] getArguments( CmdLnOption cmdLnOption )
+	{
+		return this.cmdLn.getOptionValues( cmdLnOption.getShortOption() );
 	}
 
 	/**
@@ -346,6 +368,35 @@ public class CommandLineArgs
 	}
 
 	/**
+	 * Returns the argument of the command line option {@link CmdLnOption#VM_NVGPUIDS0}.
+	 * 
+	 * @return argument of the command line option {@link CmdLnOption#VM_NVGPUIDS0}.
+	 */
+	public List<String> getVmNvGpuIds0()
+	{
+		final String[] nvidiaPciIdsRaw = this.getArguments( CmdLnOption.VM_NVGPUIDS0 );
+		final ArrayList<String> nvidiaPciIds;
+
+		if ( nvidiaPciIdsRaw == null || nvidiaPciIdsRaw.length <= 0 ) {
+			nvidiaPciIds = new ArrayList<String>();
+		} else {
+			nvidiaPciIds = new ArrayList<String>( Arrays.asList( nvidiaPciIdsRaw ) );
+		}
+
+		return nvidiaPciIds;
+	}
+
+	/**
+	 * Returns the state whether a passthrough of a NVIDIA GPU is required.
+	 * 
+	 * @return state whether a passthrough of a NVIDIA GPU is required.
+	 */
+	public boolean isNvidiaGpuPassthroughEnabled()
+	{
+		return this.getVmNvGpuIds0().size() > 0;
+	}
+
+	/**
 	 * Command line options for the run-virt QEMU plugin (command line tool).
 	 * 
 	 * @author Manuel Bentele
@@ -354,28 +405,31 @@ public class CommandLineArgs
 	public enum CmdLnOption
 	{
 		// @formatter:off
-		HELP        ( 'h', "help",        false, "" ),
-		DEBUG       ( 'b', "debug",       true,  "Enable or disable debug mode" ),
-		VM_CFGINP   ( 'i', "vmcfginp",    true,  "File name of an existing and filtered Libvirt domain XML configuration file" ),
-		VM_CFGOUT   ( 'o', "vmcfgout",    true,  "File name to output a finalized Libvirt domain XML configuration file" ),
-		VM_NAME     ( 'n', "vmname",      true,  "Name for the virtual machine" ),
-		VM_UUID     ( 'u', "vmuuid",      true,  "UUID for the virtual machine" ),
-		VM_DSPLNAME ( 'd', "vmdsplname",  true,  "Display name for the virtual machine" ),
-		VM_OS       ( 's', "vmos",        true,  "Operating system running in the virtual machine" ),
-		VM_NCPUS    ( 'c', "vmncpus",     true,  "Number of virtual CPUs for the virtual machine" ),
-		VM_MEM      ( 'm', "vmmem",       true,  "Amount of memory for the virtual machine" ),
-		VM_HDD0     ( 'r', "vmhdd0",      true,  "Disk image for the first HDD device" ),
-		VM_FLOPPY0  ( 'f', "vmfloppy0",   true,  "Disk image for the first floppy drive" ),
-		VM_FLOPPY1  ( 'g', "vmfloppy1",   true,  "Disk image for the second floppy drive" ),
-		VM_CDROM0   ( 'k', "vmcdrom0",    true,  "Disk image for the first CDROM drive" ),
-		VM_CDROM1   ( 'l', "vmcdrom1",    true,  "Disk image for the second CDROM drive" ),
-		VM_PARALLEL0( 'p', "vmparallel0", true,  "Device for the first parallel port interface" ),
-		VM_SERIAL0  ( 'q', "vmserial0",   true,  "Device for the first serial port interface" ),
-		VM_MAC0     ( 'a', "vmmac0",      true,  "MAC address for the first network interface" ),
-		VM_FSSRC0   ( 't', "vmfssrc0",    true,  "Source directory for first file system passthrough (shared folder)" ),
-		VM_FSTGT0   ( 'e', "vmfstgt0",    true,  "Target directory for first file system passthrough (shared folder)" ),
-		VM_FSSRC1   ( 'v', "vmfssrc1",    true,  "Source directory for second file system passthrough (shared folder)" ),
-		VM_FSTGT1   ( 'w', "vmfstgt1",    true,  "Target directory for second file system passthrough (shared folder)" );
+		HELP        ( 'h', "help",        0, "" ),
+		DEBUG       ( 'b', "debug",       1, "Enable or disable debug mode" ),
+		VM_CFGINP   ( 'i', "vmcfginp",    1, "File name of an existing and filtered Libvirt domain XML configuration file" ),
+		VM_CFGOUT   ( 'o', "vmcfgout",    1, "File name to output a finalized Libvirt domain XML configuration file" ),
+		VM_NAME     ( 'n', "vmname",      1, "Name for the virtual machine" ),
+		VM_UUID     ( 'u', "vmuuid",      1, "UUID for the virtual machine" ),
+		VM_DSPLNAME ( 'd', "vmdsplname",  1, "Display name for the virtual machine" ),
+		VM_OS       ( 's', "vmos",        1, "Operating system running in the virtual machine" ),
+		VM_NCPUS    ( 'c', "vmncpus",     1, "Number of virtual CPUs for the virtual machine" ),
+		VM_MEM      ( 'm', "vmmem",       1, "Amount of memory for the virtual machine" ),
+		VM_HDD0     ( 'r', "vmhdd0",      1, "Disk image for the first HDD device" ),
+		VM_FLOPPY0  ( 'f', "vmfloppy0",   1, "Disk image for the first floppy drive" ),
+		VM_FLOPPY1  ( 'g', "vmfloppy1",   1, "Disk image for the second floppy drive" ),
+		VM_CDROM0   ( 'k', "vmcdrom0",    1, "Disk image for the first CDROM drive" ),
+		VM_CDROM1   ( 'l', "vmcdrom1",    1, "Disk image for the second CDROM drive" ),
+		VM_PARALLEL0( 'p', "vmparallel0", 1, "Device for the first parallel port interface" ),
+		VM_SERIAL0  ( 'q', "vmserial0",   1, "Device for the first serial port interface" ),
+		VM_MAC0     ( 'a', "vmmac0",      1, "MAC address for the first network interface" ),
+		VM_FSSRC0   ( 't', "vmfssrc0",    1, "Source directory for first file system passthrough (shared folder)" ),
+		VM_FSTGT0   ( 'e', "vmfstgt0",    1, "Target directory for first file system passthrough (shared folder)" ),
+		VM_FSSRC1   ( 'v', "vmfssrc1",    1, "Source directory for second file system passthrough (shared folder)" ),
+		VM_FSTGT1   ( 'w', "vmfstgt1",    1, "Target directory for second file system passthrough (shared folder)" ),
+		VM_NVGPUIDS0( 'y', "vmnvgpuids0", 2, "PCI device description and address for passthrough of the first Nvidia GPU. " +
+		                                     "The argument follow the pattern: " +
+				                               "\"<VENDOR ID>:<PRODUCT ID>,<PCI DOMAIN>:<PCI DEVICE>:<PCI DEVICE>.<PCI FUNCTION>\"" );
 		// @formatter:on
 
 		/**
@@ -389,9 +443,9 @@ public class CommandLineArgs
 		private final String longOption;
 
 		/**
-		 * Stores the presence of an argument for the command line option.
+		 * Stores the number of arguments for the command line option.
 		 */
-		private final boolean hasArgument;
+		private final int numArguments;
 
 		/**
 		 * Stores the textual description of the command line option.
@@ -403,14 +457,14 @@ public class CommandLineArgs
 		 * 
 		 * @param shortOption {@link Character} for the short command line option.
 		 * @param longOption {@link String} for the long command line option.
-		 * @param hasArgument presence of an argument for the command line option.
+		 * @param numArguments number of arguments for the command line option.
 		 * @param description textual description of the command line option.
 		 */
-		CmdLnOption( char shortOption, String longOption, boolean hasArgument, String description )
+		CmdLnOption( char shortOption, String longOption, int numArguments, String description )
 		{
 			this.shortOption = shortOption;
 			this.longOption = longOption;
-			this.hasArgument = hasArgument;
+			this.numArguments = numArguments;
 			this.description = description;
 		}
 
@@ -435,13 +489,13 @@ public class CommandLineArgs
 		}
 
 		/**
-		 * Returns the presence of an argument for the command line option.
+		 * Returns the number of arguments for the command line option.
 		 * 
-		 * @return presence of an argument for the command line option.
+		 * @return number of arguments for the command line option.
 		 */
-		public boolean hasArgument()
+		public int getNumArguments()
 		{
-			return this.hasArgument;
+			return this.numArguments;
 		}
 
 		/**
