@@ -24,13 +24,17 @@ if [ "$UID" != "0" ]; then
 	exit 1
 fi
 
-for URL in $URLS; do
-	if [ "$URL" = "end" ]; then
-		echo "Kann den Debug-Report-Server in Freiburg nicht erreichen. :-(" >&2
-		exit 1
-	fi
-	curl -L -H "Expect:" -f -s -S --connect-timeout 5 "$URL" > /dev/null && break
-done
+if [ "$1" = "--local" ]; then
+	localReport=true
+else
+	for URL in $URLS; do
+		if [ "$URL" = "end" ]; then
+			echo "Kann den Debug-Report-Server in Freiburg nicht erreichen. :-(" >&2
+			exit 1
+		fi
+		curl -L -H "Expect:" -f -s -S --connect-timeout 5 "$URL" > /dev/null && break
+	done
+fi
 
 rm -rf /tmp/debug-report
 mkdir -p /tmp/debug-report/{static/proc,generated}
@@ -143,6 +147,14 @@ echo "..fertig!"
 
 cd /tmp
 rm -f -- error-report.tar.gz
+
+if [ "$localReport" = "true" ]; then
+	dirname="debug-report-$(date +"%Y-%m-%d_%H-%M-%S")"
+	mv debug-report "$dirname"
+	echo "Fehlerbericht wird NICHT versendet und liegt unter: $(pwd)/$dirname"
+	exit
+fi
+
 echo -n "Packe Fehlerbericht ein..."
 if ! tar czf error-report.tar.gz debug-report; then
 	echo "Fehler beim Packen des Berichts!" >&2
