@@ -127,6 +127,9 @@ echo -n "."
 fdisk -l -u > "generated/fdisk-out" 2> "generated/fdisk-err"
 echo -n "."
 
+blkid > "generated/blkid-out" 2> "generated/blkid-err"
+echo -n "."
+
 ls -al /dev /dev/disk/* &> "generated/ls-dev-and-disks"
 echo -n "."
 
