@@ -1,8 +1,6 @@
 #!/bin/bash
 
 REQUIRED_INSTALLED_PACKAGES="
-	qemu
-	qemu-kvm
 	maven
 	openjdk-8-jdk-headless
 "

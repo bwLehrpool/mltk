@@ -9,12 +9,6 @@ fetch_source() {
 }
 
 build() {
-	# copy mandatory system packages
-	COPYLIST="list_dpkg_output"
-	[ -e "${COPYLIST}" ] && rm "${COPYLIST}"
-	list_packet_files >> "${COPYLIST}"
-	tarcopy "$(cat "${COPYLIST}" | sort -u)" "${MODULE_BUILD_DIR}"
-
 	# build qemu runvirt plugin
 	local build_dir="${MODULE_WORK_DIR}/src/runvirt-plugin-qemu"
 	mvn -f "${build_dir}" clean package || perror "Could not build runvirt-plugin-qemu with Maven!"
