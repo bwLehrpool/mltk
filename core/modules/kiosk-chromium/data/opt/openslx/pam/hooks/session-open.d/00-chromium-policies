@@ -18,6 +18,7 @@ create_chromium_policies() {
 		"BackgroundModeEnabled": false,
 		"BookmarkBarEnabled": $bookmarkbar,
 		"DefaultBrowserSettingEnabled": true,
+		"DeviceAutoUpdateDisabled": true,
 		"DownloadRestrictions": 3,
 		"HomepageLocation": "$SLX_BROWSER_URL",
 		"NewTabPageLocation": "$SLX_BROWSER_URL",
