@@ -1,9 +1,0 @@
-[Unit]
-Description=Sets up the virtual box environment
-Requires=run-virt-env.service
-After=run-virt-env.service
-
-[Service]
-Type=oneshot
-RemainAfterExit=yes
-ExecStart=/opt/openslx/scripts/systemd-qemukvm_env start

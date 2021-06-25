@@ -1,0 +1,6 @@
+#!/bin/ash
+
+# register and start libvirt services
+systemctl daemon-reload
+systemctl start libvirtd.service
+systemctl start libvirt-guests.service

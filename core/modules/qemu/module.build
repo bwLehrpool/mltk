@@ -1,0 +1,26 @@
+#!/bin/bash
+
+fetch_source() {
+	# copy qemu runvirt plugin source to working directory
+	local src_dir="${MODULE_DIR}/runvirt-plugin-qemu"
+	local dst_dir="${MODULE_WORK_DIR}/src"
+	mkdir -p "${dst_dir}" || perror "Could not create source folder for qemu runvirt plugin!"
+	cp -r "${src_dir}" "${dst_dir}" || perror "Could not copy source files for qemu runvirt plugin!"
+}
+
+build() {
+	# build qemu runvirt plugin
+	local build_dir="${MODULE_WORK_DIR}/src/runvirt-plugin-qemu"
+	mvn -f "${build_dir}" clean package || perror "Could not build runvirt-plugin-qemu with Maven!"
+
+	# install qemu runvirt plugin
+	local build_artifact_filename="runvirt-plugin-qemu-1.0-SNAPSHOT.jar"
+	local install_dir="${MODULE_BUILD_DIR}/opt/openslx/share/java"
+	local install_filename="runvirt-plugin-qemu.jar"
+	mkdir -p "${install_dir}"
+	cp "${build_dir}/target/${build_artifact_filename}" "${install_dir}/${install_filename}" || perror "Could not install runvirt-plugin-qemu!"
+}
+
+post_copy() {
+	:
+}

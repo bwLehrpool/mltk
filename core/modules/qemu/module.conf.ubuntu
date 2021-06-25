@@ -1,0 +1,17 @@
+#!/bin/bash
+
+REQUIRED_INSTALLED_PACKAGES="
+	maven
+	openjdk-8-jdk-headless
+"
+
+REQUIRED_CONTENT_PACKAGES="
+	qemu
+	qemu-kvm
+	qemu-system-common
+	qemu-system-arm
+	qemu-system-x86
+	qemu-utils
+	seabios
+	ovmf
+"

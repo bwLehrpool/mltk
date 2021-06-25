@@ -1,0 +1,13 @@
+#!/bin/bash
+
+fetch_source() {
+	:
+}
+
+build() {
+	:
+}
+
+post_copy() {
+	:
+}

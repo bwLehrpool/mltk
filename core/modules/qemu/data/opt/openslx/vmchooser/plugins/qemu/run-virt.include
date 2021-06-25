@@ -1,0 +1,53 @@
+# -----------------------------------------------------------------------------
+#
+# Copyright (c) 2009..2021 bwLehrpool-Projektteam
+#
+# This program/file is free software distributed under the GPL version 2.
+# See https://www.gnu.org/licenses/old-licenses/gpl-2.0-standalone.html
+#
+# If you have any feedback please consult https://bwlehrpool.de and
+# send your feedback to bwlehrpool@hs-offenburg.de.
+#
+# General information about bwLehrpool can be found at https://bwlehrpool.de
+#
+# -----------------------------------------------------------------------------
+# run-virt.include
+#    - qemu plugin for vmchooser run-virt
+################################################################################
+
+# BASH_SOURCE[0] contains the file being sourced, namely this one
+declare -rg QEMU_PLUGIN_DIR="$(dirname "${BASH_SOURCE[0]}")"
+declare -rg QEMU_INCLUDE_DIR="${QEMU_PLUGIN_DIR}/includes"
+
+# Define which features the QEMU plugin supports
+declare -rg PLUGIN_FEATURES="firewall printer usb slxfloppy sound netshares"
+
+run_plugin() {
+	# write finalized config to temporary folder for debugging purposes
+	local vm_final_run_file="/tmp/qemu-last-config.xml"
+
+	# call the Libvirt Java tool to finalize configuration and start VM
+	declare -rg VIRTCMD="java -jar /opt/openslx/share/java/runvirt-plugin-qemu.jar"
+
+	isset DEBUG             && VIRTCMDOPTS+=( "-debug"       "${DEBUG}" )
+	isset VM_CLEANNAME      && VIRTCMDOPTS+=( "-vmname"      "${VM_CLEANNAME}" )
+	isset VM_DISPLAYNAME    && VIRTCMDOPTS+=( "-vmdsplname"  "${VM_DISPLAYNAME}" )
+	isset VM_OS_TYPE        && VIRTCMDOPTS+=( "-vmos"        "${VM_OS_TYPE}" )
+	isset VM_RUN_FILE       && VIRTCMDOPTS+=( "-vmcfginp"    "${VM_RUN_FILE}" )
+	isset vm_final_run_file && VIRTCMDOPTS+=( "-vmcfgout"    "${vm_final_run_file}" )
+	isset IMGUUID           && VIRTCMDOPTS+=( "-vmuuid"      "${IMGUUID}" )
+	isset CPU_CORES         && VIRTCMDOPTS+=( "-vmncpus"     "${CPU_CORES}" )
+	isset VM_MEM            && VIRTCMDOPTS+=( "-vmmem"       "${VM_MEM}" )
+	isset VM_MAC_ADDR       && VIRTCMDOPTS+=( "-vmmac0"      "${VM_MAC_ADDR}" )
+	isset VM_DISKFILE_RO    && VIRTCMDOPTS+=( "-vmhdd0"      "${VM_DISKFILE_RO}" )
+	isset FLOPPY_0          && VIRTCMDOPTS+=( "-vmfloppy0"   "${FLOPPY_0}" )
+	isset SLX_FLOPPY_IMG    && VIRTCMDOPTS+=( "-vmfloppy1"   "${SLX_FLOPPY_IMG}" )
+	isset CDROM_0           && VIRTCMDOPTS+=( "-vmcdrom0"    "${CDROM_0}" )
+	isset CDROM_1           && VIRTCMDOPTS+=( "-vmcdrom1"    "${CDROM_1}" )
+	isset SERIAL0           && VIRTCMDOPTS+=( "-vmserial0"   "${SERIAL0}" )
+	isset PARALLEL0         && VIRTCMDOPTS+=( "-vmparallel0" "${PARALLEL0}" )
+	isset HOME_SHARE_PATH   && VIRTCMDOPTS+=( "-vmfssrc0"    "${HOME_SHARE_PATH}" )
+	isset HOME_SHARE_NAME   && VIRTCMDOPTS+=( "-vmfstgt0"    "${HOME_SHARE_NAME}" )
+	isset COMMON_SHARE_PATH && VIRTCMDOPTS+=( "-vmfssrc1"    "${COMMON_SHARE_PATH}" )
+	isset COMMON_SHARE_NAME && VIRTCMDOPTS+=( "-vmfstgt1"    "${COMMON_SHARE_NAME}" )
+}
