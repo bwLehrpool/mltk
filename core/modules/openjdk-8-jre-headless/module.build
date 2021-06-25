@@ -5,11 +5,7 @@ fetch_source() {
 }
 
 build() {
-	# copy mandatory system packages
-	COPYLIST="list_dpkg_output"
-	[ -e "${COPYLIST}" ] && rm "${COPYLIST}"
-	list_packet_files >> "${COPYLIST}"
-	tarcopy "$(cat "${COPYLIST}" | sort -u)" "${MODULE_BUILD_DIR}"
+	:
 }
 
 post_copy() {
