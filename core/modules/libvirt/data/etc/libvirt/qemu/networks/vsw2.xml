@@ -2,4 +2,5 @@
   <name>vsw2</name>
   <forward mode='bridge'/>
   <bridge name='vsw2'/>
+  <dns enable="no"/>
 </network>

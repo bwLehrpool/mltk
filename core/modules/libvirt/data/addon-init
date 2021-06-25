@@ -76,7 +76,8 @@ if ! getent passwd libvirt-dnsmasq >/dev/null; then
 fi
 
 #
-# register and start libvirt service
+# register and start libvirt services
 #
 systemctl daemon-reload
 systemctl start libvirtd.service
+systemctl start libvirt-guests.service

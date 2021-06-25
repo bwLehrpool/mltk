@@ -3,10 +3,12 @@ REQUIRED_INSTALLED_PACKAGES="
 	libvirt-daemon-system
 	libvirt-daemon
 	libvirt-clients
+	ebtables
 "
 
 REQUIRED_CONTENT_PACKAGES="
 	libvirt-daemon-system
 	libvirt-daemon
 	libvirt-clients
+	ebtables
 "

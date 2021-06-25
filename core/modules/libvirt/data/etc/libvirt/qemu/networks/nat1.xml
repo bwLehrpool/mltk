@@ -2,4 +2,5 @@
   <name>nat1</name>
   <forward mode='bridge'/>
   <bridge name='nat1'/>
+  <dns enable="no"/>
 </network>

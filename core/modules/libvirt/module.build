@@ -4,16 +4,11 @@ fetch_source() {
 }
 
 build() {
-	COPYLIST="list_dpkg_output"
-	[ -e "${COPYLIST}" ] && rm "${COPYLIST}"
-	list_packet_files >> "${COPYLIST}"
-	tarcopy "$(cat "${COPYLIST}" | sort -u)" "${MODULE_BUILD_DIR}"
+	:
 }
 
 post_copy() {
-	#
 	# remove default network configuration
-	#
 	rm "${MODULE_BUILD_DIR}/etc/libvirt/qemu/networks/default.xml"
 	rm "${MODULE_BUILD_DIR}/etc/libvirt/qemu/networks/autostart/default.xml"
 }

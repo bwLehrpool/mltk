@@ -1,8 +1,0 @@
-#!/bin/bash
-REQUIRED_INSTALLED_PACKAGES="
-	libvirt-bin
-"
-
-REQUIRED_CONTENT_PACKAGES="
-	libvirt-bin
-"
