@@ -4,6 +4,7 @@ REQUIRED_INSTALLED_PACKAGES="
 	libvirt-daemon
 	libvirt-clients
 	ebtables
+	dnsmasq
 "
 
 REQUIRED_CONTENT_PACKAGES="
@@ -11,4 +12,5 @@ REQUIRED_CONTENT_PACKAGES="
 	libvirt-daemon
 	libvirt-clients
 	ebtables
+	dnsmasq
 "
