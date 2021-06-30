@@ -47,8 +47,11 @@ run_plugin() {
 	notempty CDROM_1           && VIRTCMDOPTS+=( "-vmcdrom1"    "${CDROM_1}" )
 	notempty SERIAL0           && VIRTCMDOPTS+=( "-vmserial0"   "${SERIAL0}" )
 	notempty PARALLEL0         && VIRTCMDOPTS+=( "-vmparallel0" "${PARALLEL0}" )
-	notempty HOME_SHARE_PATH   && VIRTCMDOPTS+=( "-vmfssrc0"    "${HOME_SHARE_PATH}" )
-	notempty HOME_SHARE_NAME   && VIRTCMDOPTS+=( "-vmfstgt0"    "${HOME_SHARE_NAME}" )
-	notempty COMMON_SHARE_PATH && VIRTCMDOPTS+=( "-vmfssrc1"    "${COMMON_SHARE_PATH}" )
-	notempty COMMON_SHARE_NAME && VIRTCMDOPTS+=( "-vmfstgt1"    "${COMMON_SHARE_NAME}" )
+
+	if [ "${SHARE_REMAP_MODE}" -gt 1 ]; then
+		notempty HOME_SHARE_PATH   && VIRTCMDOPTS+=( "-vmfssrc0"    "${HOME_SHARE_PATH}" )
+		notempty HOME_SHARE_NAME   && VIRTCMDOPTS+=( "-vmfstgt0"    "${HOME_SHARE_NAME}" )
+		notempty COMMON_SHARE_PATH && VIRTCMDOPTS+=( "-vmfssrc1"    "${COMMON_SHARE_PATH}" )
+		notempty COMMON_SHARE_NAME && VIRTCMDOPTS+=( "-vmfstgt1"    "${COMMON_SHARE_NAME}" )
+	fi
 }
