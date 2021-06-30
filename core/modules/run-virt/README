@@ -35,6 +35,13 @@ from $VMCHOOSER_DIR/plugins/$PLUGIN_ID/*
 Absolute path to the main run-virt script. Should usually be
 /opt/openslx/vmchooser/vmchooser-run_virt
 
+# $SHARE_REMAP_MODE
+How to map network shares into guest
+0 = disabled
+1 = mount normally in guest (openslx.exe)
+2 = mount normally in gues, but fall back to shared folders if it fails
+3 = use shared folders feature of virtualizer
+
 # $SRC_IMG_ABSOLUTE
 Absolute path to the VMs HDD image. When using DNBD3, which requires
 $SRC_IMG_RELATIVE to be set, this file might not actually exist.
