@@ -28,7 +28,7 @@ run_plugin() {
 
 	# call the Libvirt Java tool to finalize configuration and start VM
 	declare -rg VIRTCMD="java"
-	VIRTCMDOPTS=( "-jar" "/opt/openslx/share/java/runvirt-plugin-qemu.jar" )
+	VIRTCMDOPTS=( "-jar" "/opt/openslx/vmchooser/plugins/qemu/runvirt-plugin-qemu.jar" )
 
 	notempty DEBUG             && VIRTCMDOPTS+=( "-debug"       "${DEBUG}" )
 	notempty VM_CLEANNAME      && VIRTCMDOPTS+=( "-vmname"      "${VM_CLEANNAME}" )
