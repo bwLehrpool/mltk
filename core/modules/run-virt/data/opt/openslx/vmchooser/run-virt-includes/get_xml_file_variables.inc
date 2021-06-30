@@ -49,7 +49,7 @@ parse_xml() {
 	readonly VM_DISPLAYNAME
 
 	# Define VM_CLEANNAME since VM_DISPLAYNAME can be long and contain weird characters
-	declare -rg VM_CLEANNAME=$(echo "${VM_DISPLAYNAME:0:32}" | sed -r 's/[^0-9a-zA-Z_-\.]+/_/g')
+	declare -rg VM_CLEANNAME=$(echo "${VM_DISPLAYNAME:0:32}" | sed -r 's/[^0-9a-zA-Z_\-\.]+/_/g')
 
 	# image is for the following virtual machine
 	declare -rg PLUGIN_ID=$(get_xml "virtualmachine")
