@@ -18,6 +18,12 @@ mount, startup scripts, ...
 Set to either "true" or "false" so it can simply be used like this:
 if $DEBUG; then ....
 
+# $HW_CORES
+Number of physical CPU cores of host machine.
+
+# $HW_THREADS
+Number of logical CPUs (SMT) of host machine.
+
 # $IMGUUID
 The UUID of this VM/lecture, extracted from the passed $XMLFILE.
 Used to fetch meta data for the VM, like vmx, netrules, netshares, etc.
