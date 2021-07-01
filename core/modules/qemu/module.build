@@ -14,7 +14,7 @@ build() {
 	mvn -f "${build_dir}" clean package || perror "Could not build runvirt-plugin-qemu with Maven!"
 
 	# install qemu runvirt plugin
-	local build_artifact_filename="runvirt-plugin-qemu-1.0-SNAPSHOT.jar"
+	local build_artifact_filename="runvirt-plugin-qemu-1.0-SNAPSHOT-jar-with-dependencies.jar"
 	local install_dir="${MODULE_BUILD_DIR}/opt/openslx/vmchooser/plugins/qemu"
 	local install_filename="runvirt-plugin-qemu.jar"
 	mkdir -p "${install_dir}"
