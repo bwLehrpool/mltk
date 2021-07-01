@@ -113,7 +113,8 @@ public class App
 		try {
 			final File xmlInputFile = new File( xmlInputFileName );
 			config = new Domain( xmlInputFile );
-		} catch ( LibvirtXmlDocumentException | LibvirtXmlSerializationException | LibvirtXmlValidationException e ) {
+		} catch ( NullPointerException | LibvirtXmlDocumentException | LibvirtXmlSerializationException
+				| LibvirtXmlValidationException e ) {
 			LOGGER.error( "Failed to read VM input configuration file: " + e.getLocalizedMessage() );
 			hypervisor.close();
 			System.exit( 3 );
@@ -159,7 +160,7 @@ public class App
 			try {
 				final File xmlOutputFile = new File( xmlOutputFileName );
 				config.toXml( xmlOutputFile );
-			} catch ( LibvirtXmlSerializationException e ) {
+			} catch ( NullPointerException | LibvirtXmlSerializationException e ) {
 				LOGGER.error( "Failed to write VM output configuration file: " + e.getLocalizedMessage() );
 				hypervisor.close();
 				System.exit( 5 );
