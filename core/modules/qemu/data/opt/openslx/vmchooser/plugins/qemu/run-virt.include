@@ -23,6 +23,18 @@ declare -rg QEMU_INCLUDE_DIR="${QEMU_PLUGIN_DIR}/includes"
 declare -rg PLUGIN_FEATURES="firewall printer usb slxfloppy sound netshares"
 
 run_plugin() {
+	# setup RW image access for operation
+	local vm_diskfile
+	if notempty VM_DISKFILE_RO; then
+		# create copy-on-write layer for readonly image
+		vm_diskfile="${TMPDIR}/$(basename ${VM_DISKFILE_RO}).cow.qcow2"
+		local vm_diskfile_type="$(qemu-img info --output=json ${VM_DISKFILE_RO} | jq -r '.format')"
+		qemu-img create -F "${vm_diskfile_type}" -b "${VM_DISKFILE_RO}" -f qcow2 "${vm_diskfile}"
+	elif notempty VM_DISKFILE_RW; then
+		# use supplied RW disk image from run-virt
+		vm_diskfile="${VM_DISKFILE_RW}"
+	fi
+
 	# write finalized config to temporary folder for debugging purposes
 	local vm_final_run_file="/tmp/qemu-last-config.xml"
 
@@ -34,14 +46,14 @@ run_plugin() {
 	notempty VM_CLEANNAME      && VIRTCMDOPTS+=( "-vmname"      "${VM_CLEANNAME}" )
 	notempty VM_DISPLAYNAME    && VIRTCMDOPTS+=( "-vmdsplname"  "${VM_DISPLAYNAME}" )
 	notempty VM_OS_TYPE        && VIRTCMDOPTS+=( "-vmos"        "${VM_OS_TYPE}" )
-	notempty VM_RUN_FILE       && VIRTCMDOPTS+=( "-vmcfginp"    "${VM_RUN_FILE}" )
+	notempty TMPCONFIG         && VIRTCMDOPTS+=( "-vmcfginp"    "${TMPCONFIG}" )
 	notempty vm_final_run_file && VIRTCMDOPTS+=( "-vmcfgout"    "${vm_final_run_file}" )
 	notempty IMGUUID           && VIRTCMDOPTS+=( "-vmuuid"      "${IMGUUID}" )
-	notempty CPU_CORES         && VIRTCMDOPTS+=( "-vmncpus"     "${CPU_CORES}" )
+	notempty HW_CORES          && VIRTCMDOPTS+=( "-vmncpus"     "${HW_CORES}" )
 	notempty VM_MEM            && VIRTCMDOPTS+=( "-vmmem"       "${VM_MEM}" )
 	notempty VM_MAC_ADDR       && VIRTCMDOPTS+=( "-vmmac0"      "${VM_MAC_ADDR}" )
-	notempty VM_DISKFILE_RO    && VIRTCMDOPTS+=( "-vmhdd0"      "${VM_DISKFILE_RO}" )
-	notempty FLOPPY_0          && VIRTCMDOPTS+=( "-vmfloppy0"   "${FLOPPY_0}" )
+	notempty vm_diskfile       && VIRTCMDOPTS+=( "-vmhdd0"      "${vm_diskfile}" )
+	                              VIRTCMDOPTS+=( "-vmfloppy0"   "${FLOPPY_0}" )
 	notempty SLX_FLOPPY_IMG    && VIRTCMDOPTS+=( "-vmfloppy1"   "${SLX_FLOPPY_IMG}" )
 	notempty CDROM_0           && VIRTCMDOPTS+=( "-vmcdrom0"    "${CDROM_0}" )
 	notempty CDROM_1           && VIRTCMDOPTS+=( "-vmcdrom1"    "${CDROM_1}" )
