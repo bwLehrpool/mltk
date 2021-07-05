@@ -22,5 +22,10 @@ build() {
 }
 
 post_copy() {
-	:
+	# change access rights of the qemu bridge helper config
+	chown root:kvm /etc/qemu/bridge.conf
+	chmod 0664 /etc/qemu/bridge.conf
+
+	# set UID to avoid operation not permitted errors
+	chmod u+s /usr/lib/qemu/qemu-bridge-helper
 }
