@@ -90,8 +90,8 @@ public class ViewerVirtViewer extends Viewer
 		}
 
 		// execute viewer process with arguments:
-		// "virt-viewer --full-screen --reconnect --wait --attach --connect=<URI> --domain-name -- <DOMAIN-UUID>"
-		ViewerUtils.executeViewer( ViewerVirtViewer.NAME, new String[] { "--full-screen", "--reconnect", "--wait",
+		// "virt-viewer --full-screen --wait --attach --connect=<URI> --domain-name -- <DOMAIN-UUID>"
+		ViewerUtils.executeViewer( ViewerVirtViewer.NAME, new String[] { "--full-screen", "--wait",
 				"--attach", "--connect=" + connectionUri, "--uuid", "--", machineUuid } );
 	}
 }
