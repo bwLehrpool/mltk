@@ -35,8 +35,10 @@ run_plugin() {
 		vm_diskfile="${VM_DISKFILE_RW}"
 	fi
 
-	# write finalized config to temporary folder for debugging purposes
-	local vm_final_run_file="/tmp/qemu-last-config.xml"
+	# write finalized config in debug mode to temporary folder for debugging purposes
+	if [ "${DEBUG}" = "true" ]; then
+		local vm_final_config="/tmp/qemu-last-config.xml"
+	fi
 
 	# call the Libvirt Java tool to finalize configuration and start VM
 	declare -rg VIRTCMD="java"
@@ -47,7 +49,7 @@ run_plugin() {
 	notempty VM_DISPLAYNAME    && VIRTCMDOPTS+=( "-vmdsplname"  "${VM_DISPLAYNAME}" )
 	notempty VM_OS_TYPE        && VIRTCMDOPTS+=( "-vmos"        "${VM_OS_TYPE}" )
 	notempty TMPCONFIG         && VIRTCMDOPTS+=( "-vmcfginp"    "${TMPCONFIG}" )
-	notempty vm_final_run_file && VIRTCMDOPTS+=( "-vmcfgout"    "${vm_final_run_file}" )
+	notempty vm_final_config   && VIRTCMDOPTS+=( "-vmcfgout"    "${vm_final_config}" )
 	notempty IMGUUID           && VIRTCMDOPTS+=( "-vmuuid"      "${IMGUUID}" )
 	notempty HW_CORES          && VIRTCMDOPTS+=( "-vmncpus"     "${HW_CORES}" )
 	notempty VM_MEM            && VIRTCMDOPTS+=( "-vmmem"       "${VM_MEM}" )
