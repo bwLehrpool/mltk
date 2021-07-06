@@ -15,7 +15,7 @@ build() {
 
 	# install qemu runvirt plugin
 	local build_artifact_filename="runvirt-plugin-qemu-1.0-SNAPSHOT-jar-with-dependencies.jar"
-	local install_dir="${MODULE_BUILD_DIR}/opt/openslx/vmchooser/plugins/qemu"
+	local install_dir="${MODULE_BUILD_DIR}/opt/openslx/vmchooser/plugins/qemukvm"
 	local install_filename="runvirt-plugin-qemu.jar"
 	mkdir -p "${install_dir}"
 	cp "${build_dir}/target/${build_artifact_filename}" "${install_dir}/${install_filename}" || perror "Could not install runvirt-plugin-qemu!"
