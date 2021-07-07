@@ -52,22 +52,12 @@
 # -----------------------------------------------------------------------------
 #
 CORE_DIR="${ROOT_DIR}/core"
-OVERLAY_DIR="${ROOT_DIR}/overlay"
 EXPORT_DIR="/export/build"
 [ -z "$REMOTE_EXPORT_DIR" ] || EXPORT_DIR=$REMOTE_EXPORT_DIR
 
 initial_checks () {
 	get_kernel_version
 	detect_distribution
-}
-
-# WTF!?
-set_target_dir () {
-	if [ -d "${OVERLAY_DIR}/targets/${TARGET}" ]; then
-		TARGET_DIR="${OVERLAY_DIR}/targets/${TARGET}"
-	elif [ -d "${CORE_DIR}/targets/${TARGET}" ]; then
-		TARGET_DIR="${CORE_DIR}/targets/${TARGET}"
-	fi
 }
 
 #
@@ -295,7 +285,7 @@ generate_target() {
 
 	TARGET="$1"
 	shift
-	set_target_dir
+	TARGET_DIR="${CORE_DIR}/targets/${TARGET}"
 	if [[ "$TARGET" == *@* ]]; then
 		VARNAME="${TARGET#*@}"
 		TARGET="${TARGET%@*}"
