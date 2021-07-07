@@ -63,14 +63,52 @@ initial_checks () {
 	detect_distribution
 }
 
+unset_required_vars () {
+	for VARNAME in ${!REQUIRED_*}; do
+		unset $VARNAME
+	done
+}
+
+# Install all the packages from all selected modules in current target
+install_all_packages () {
+	local module file config
+	declare -A packages dupcheck
+	packages=()
+	for module in "${!MODULE_PATHS[@]}"; do
+		unset_required_vars
+		config="${MODULE_PATHS["$module"]}/module.conf"
+		for file in $SYS_VERSIONS; do
+			if [ -e "${config}.${file}" ]; then
+				validate_config "${config}.${file}"
+				. "${config}.${file}"
+				break
+			fi
+		done
+		dupcheck=()
+		for file in $REQUIRED_INSTALLED_PACKAGES; do
+			[ -n "${dupcheck["$file"]}" ] && continue
+			packages["$file"]+=" $module"
+			dupcheck["$file"]=1
+		done
+		for file in $REQUIRED_CONTENT_PACKAGES; do
+			[ "${file:0:1}" = "@" ] && continue
+			[ -n "${dupcheck["$file"]}" ] && continue
+			packages["$file"]+=" $module"
+			dupcheck["$file"]=1
+		done
+	done
+	pinfo "Making sure required packages are installed..."
+	pdebug "List: ${!packages[*]}"
+	install_packages "${!packages[@]}"
+	unset_required_vars
+}
+
 #
 # generic function to read the config file of the current $MODULE
 #
 read_config () {
 	# unset previous variables from other config files
-	for VARNAME in ${!REQUIRED_*}; do
-		unset $VARNAME
-	done
+	unset_required_vars
 
 	local MODULE_CONFIG="${MODULE_DIR}/module.conf"
 
@@ -313,6 +351,7 @@ generate_target() {
 	shift
 	TARGET_DIR="$( readlink -f "${TARGETS_BASEDIR}/${TARGET}" )"
 	scan_target "$TARGET_DIR"
+	install_all_packages
 	if [[ "$TARGET" == *@* ]]; then
 		VARNAME="${TARGET#*@}"
 		TARGET="${TARGET%@*}"
@@ -451,10 +490,7 @@ process_module() {
 	pdebug "## Reading .build of $MODULE"
 	. "${CORE_DIR}/includes/clean_module_funcs.inc" # Clean all hooks, in case the module doesn't define them all
 	read_build # Read all the hooks from the module
-	# Install module's dependencies
-	pdebug "## Installing dependencies"
 	cd "${MODULE_DIR}" || perror "cd to '${MODULE_DIR}' failed."
-	install_dependencies
 	# update kernel version variables before running a module, as the last one might have been the kernel...
 	get_kernel_version
 	# Execute load-hook before anything else
