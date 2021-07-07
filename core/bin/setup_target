@@ -51,8 +51,11 @@
 #	as these will be determined automaticly by the helper function 'get_dynamic_dependencies'
 # -----------------------------------------------------------------------------
 #
-CORE_DIR="${ROOT_DIR}/core"
-EXPORT_DIR="/export/build"
+# Map modules from their names to path - contains all modules of current target
+declare -A MODULE_PATHS
+declare -rg CORE_DIR="${ROOT_DIR}/core"
+declare -rg TARGETS_BASEDIR="$( readlink -f "${CORE_DIR}/targets" )"
+declare -rg EXPORT_DIR="/export/build"
 [ -z "$REMOTE_EXPORT_DIR" ] || EXPORT_DIR=$REMOTE_EXPORT_DIR
 
 initial_checks () {
@@ -272,6 +275,29 @@ prepare_usr_split () {
 	fi
 }
 
+# Recursively get all modules in the current target
+scan_target() {
+	local dir item base real
+	dir="$1"
+	[ -d "$1" ] || perror "scan_target: $dir is not a directory"
+	for item in "$dir/"*; do
+		[ -L "$item" ] || continue
+		base="$( basename "$item" )"
+		real="$( readlink -f "$item" )"
+		if [ -s "$item/module.conf" ]; then
+			if [ -n "${MODULE_PATHS["$base"]}" ] \
+					&& [ "${MODULE_PATHS["$base"]}" != "$real" ]; then
+				perror "$base exists in multiple sub-targets and links to different modules\n1: $real\n2: ${MODULE_PATHS["$base"]}"
+			fi
+			MODULE_PATHS["$base"]="$real"
+		elif [ "${real#$TARGETS_BASEDIR}" != "$real" ]; then
+			scan_target "$real"
+		else
+			perror "Unknown link in target '$dir': '$base' is '$real', neither target nor module"
+		fi
+	done
+}
+
 #
 #
 # main public function. Requires the TARGET to be given as argument.
@@ -285,7 +311,8 @@ generate_target() {
 
 	TARGET="$1"
 	shift
-	TARGET_DIR="${CORE_DIR}/targets/${TARGET}"
+	TARGET_DIR="$( readlink -f "${TARGETS_BASEDIR}/${TARGET}" )"
+	scan_target "$TARGET_DIR"
 	if [[ "$TARGET" == *@* ]]; then
 		VARNAME="${TARGET#*@}"
 		TARGET="${TARGET%@*}"
@@ -302,6 +329,7 @@ generate_target() {
 generate_target_real() {
 	# Keep track of processed modules so we don't
 	# build a module multiple times when following dependencies
+	local item
 	local PROCESSED_MODULES=
 	[ -e "${ROOT_DIR}/var/log/${TARGET}.size" ] && . "${ROOT_DIR}/var/log/${TARGET}.size" || echo "declare -A BUILD_SIZE" >> "${ROOT_DIR}/var/log/${TARGET}.size"
 
@@ -316,15 +344,19 @@ generate_target_real() {
 
 	# if no arguments assume all.
 	if [ "x$1" = "x" -o "x$1" = "xall" ]; then
-		MODULES=$( ls "${TARGET_DIR}" )
+		MODULES="${!MODULE_PATHS[@]}"
 		set -- $MODULES
 	else
 		# tools = arguments given
-		MODULES=$@
+		MODULES="$@"
 	fi
 
 	pinfo "Activated modules in '${TARGET}':"
 	pinfo "\t$(echo ${MODULES})"
+
+	for item in $MODULES; do
+		[ -n "${MODULE_PATHS["$item"]}" ] || perror "Module $item not found in target"
+	done
 
 	# copy basic libs
 	pinfo "Copying libc and ld-linux used by ${SHELL}"
@@ -357,7 +389,7 @@ process_module() {
 	[[ "$PROCESSED_MODULES" == *"!${MODULE}!"* ]] && return # Already processed this module
 	# Set up dirs ans variables
 	PROCESSED_MODULES="${PROCESSED_MODULES}!${MODULE}!"
-	local MODULE_DIR="${TARGET_DIR}/${MODULE}"
+	local MODULE_DIR="${MODULE_PATHS["${MODULE}"]}"
 	local MODULE_WORK_DIR="${ROOT_DIR}/tmp/work/${MODULE}"
 	local MODULE_BUILD_DIR="${MODULE_WORK_DIR}/build"
 	local TOOL_STR="[${MODULE}]"
@@ -490,43 +522,43 @@ post_process_target() {
 }
 
 clean_modules() {
-
+	local module
 	TARGET=$1
 	shift
-	# TODO: what was the idea of target path? presumably something to do with the 'overlays' folder?
-	#TARGET_DIR="$(target_path ${TARGET})"
-	TARGET_DIR="${CORE_DIR}/targets/${TARGET}"
+	TARGET_DIR="$( readlink -f "${TARGETS_BASEDIR}/${TARGET}" )"
+	scan_target "$TARGET_DIR"
 	TARGET_BUILD_DIR="${ROOT_DIR}/var/builds/${TARGET}"
 	[ -d $TARGET_DIR ] || perror "Given target directory does not exist: $TARGET_DIR"
 
 	if [ "x$1" = "x" -o "x$1" = "xall" ]; then
-		if [ -e "${ROOT_DIR}/var/log/${TARGET}.size" ]; then
-			rm "${ROOT_DIR}/var/log/${TARGET}.size" || perror "Could not delete var/log/${TARGET}.size"
-		fi
+		rm -f -- "${ROOT_DIR}/var/log/${TARGET}.size" || perror "Could not delete var/log/${TARGET}.size"
 		if [[ "$TARGET" == *@* ]]; then
 			rm -rf -- "${TARGET_BUILD_DIR%@*}"@* || perror "Could not delete target build dirs for $TARGET"
 		else
 			rm -rf -- "${TARGET_BUILD_DIR}" || perror "Could not delete target build dir for $TARGET"
 		fi
 		# exclude kernel on "all"
-		set -- $(ls "${TARGET_DIR}" | grep -vE "^kernel$")
+		unset 'MODULE_PATHS[kernel]'
+		set -- "${!MODULE_PATHS[@]}"
 	fi
-	cd "$TARGET_DIR"
 
-	while (( "$#" )); do
-		clean_module "${TARGET}:$1"
-		shift
+	for module in "$@"; do
+		[ -n "${MODULE_PATHS["$module"]}" ] || perror "Target does not contain module '$module'"
+	done
+	cd "$TARGET_DIR"
+	for module in "$@"; do
+		clean_module "${TARGET}:${module}"
 	done
 	cd - &> /dev/null
 }
 
 clean_module() {
 	[ -z "$1" ] && perror "No module given on clean_module()"
-    pinfo "## clean_module $1"
+	pinfo "## clean_module $1"
 
-	local TARGET=${1%:*}
+	local TARGET=${1%%:*}
 	local MODULE=${1#*:}
-	local MODULE_DIR="${CORE_DIR}/targets/${TARGET}/${MODULE}"
+	local MODULE_DIR="${MODULE_PATHS["${MODULE}"]}"
 	local MODULE_WORK_DIR="${ROOT_DIR}/tmp/work/${MODULE}"
 
 	if ! [ -d "$MODULE_DIR" ]; then
@@ -582,14 +614,14 @@ calc_size() {
 	[ ! -z "${BUILD_SIZE[$MODULE]}" ] && local OLD_MODULE_SIZE=${BUILD_SIZE[$MODULE]} || local OLD_MODULE_SIZE=0
 	local diff=$((CURRENT_BUILD_SIZE-TARGET_BUILD_SIZE+OLD_MODULE_SIZE))
 
-	if [ -z "${BUILD_SIZE[$MODULE]}" ]; then 
+	if [ -z "${BUILD_SIZE[$MODULE]}" ]; then
 		echo "BUILD_SIZE[$MODULE]=${diff}" >> "${ROOT_DIR}/var/log/${TARGET}.size"
 	else
 		sed -i "s/^BUILD_SIZE\[${MODULE}\]=.*$/BUILD_SIZE\[${MODULE}\]=${diff}/g" "${ROOT_DIR}/var/log/${TARGET}.size"
 	fi
-	
-	MODULE_BUILD_SIZE=$(echo $diff | awk '{ sum=$1; hum[1024^3]="GB"; hum[1024^2]="MB"; hum[1024]="KB"; 
-					for (x=1024^3; x>=1024; x/=1024){ 
+
+	MODULE_BUILD_SIZE=$(echo $diff | awk '{ sum=$1; hum[1024^3]="GB"; hum[1024^2]="MB"; hum[1024]="KB";
+					for (x=1024^3; x>=1024; x/=1024){
 						if (sum>=x) { printf "%.2f %s\n",sum/x,hum[x]; break }
 					}
 				}')
