@@ -185,9 +185,6 @@ post_copy() {
 		"$guid" "${TARGET_BUILD_DIR}/usr/share/icons/hicolor/"
 	done
 
-	# fix vmware-usbarbitrator bug
-	date +'%Y.%m.%d' >"${TARGET_BUILD_DIR}/etc/arch-release"
-
 	mkdir -p "$TARGET_BUILD_DIR/lib/modules/vmware/"
 	cp "${MODULE_BUILD_DIR}/lib/modules/$TARGET_KERNEL_LONG/vmplayer/"* "$TARGET_BUILD_DIR/lib/modules/vmware/" || perror "Could not cp vmware modules to target!"
 

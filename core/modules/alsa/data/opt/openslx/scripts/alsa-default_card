@@ -2,7 +2,12 @@
 
 PROC="/proc/asound/pcm"
 
-if [ ! -r "$PROC" ]; then
+i=0
+while (( ++i < 10 )); do
+	[ -r "$PROC" ] && break
+	sleep 1
+done
+if ! [ -r "$PROC" ]; then
 	echo "'${PROC}' not found or not readable. Not setting default sound card."
 	exit 0
 fi

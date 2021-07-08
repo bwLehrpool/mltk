@@ -13,6 +13,7 @@ post_copy() {
 		local DIST=$(lsb_release -si)
 		if [ -n "$DIST" ]; then
 			[ -z "$CFG_DISTLOGO_URL" ] && CFG_DISTLOGO_URL='http://mltk-services.ruf.uni-freiburg.de/distro_logo.php?distro='
+			mkdir -p "$TARGET_BUILD_DIR/etc"
 			wget -t 3 -T 3 -O "$TARGET_BUILD_DIR/etc/distro.png" "${CFG_DISTLOGO_URL}${DIST}"
 			if [ ! -s "$TARGET_BUILD_DIR/etc/distro.png" ]; then
 				rm -f "$TARGET_BUILD_DIR/etc/distro.png"

@@ -13,7 +13,7 @@ mv -n "$SRCDIR"/* "$DESTDIR"
 
 cd "$SRCDIR"
 for i in "$DESTDIR"/*; do
-        ln -s "$PRINTPWGUI" $(basename "$i")
+        ln -sf "$PRINTPWGUI" $(basename "$i")
 done
 
 exit 0

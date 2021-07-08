@@ -1,8 +1,9 @@
 [Unit]
 Description=Sets up the virtualization environment
 Before=graphical.target system-check.service
-Wants=network-dns.target system-check.service
-After=network-dns.target
+After=systemd-tmpfiles-setup.service bridge-additional-nics.service
+Wants=systemd-tmpfiles-setup.service system-check.service bridge-additional-nics.service
+DefaultDependencies=no
 
 [Service]
 Type=oneshot

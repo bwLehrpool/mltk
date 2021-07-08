@@ -53,15 +53,15 @@ kexec_load() {
 		if ! dl_long "${base}/boot/ipxe?type=bash&entryid=$ipxeId&uuid=$(cat /etc/system-uuid)" > "${tempdir}/bootentry"; then
 			echo "Could not download iPXE menu entry, falling back..."
 		else
-			local ip="$( ip addr show dev br0 | awk '{ if ($1 == "inet") { print $2; exit 0 }}' )"
-			local gateway="$( ip route show dev br0 | awk '{ if ($1 == "default") {print $3; exit 0 }}' )"
+			local ip="$( ip addr show dev $SLX_PXE_NETIF | awk '{ if ($1 == "inet") { print $2; exit 0 }}' )"
+			local gateway="$( ip route show dev $SLX_PXE_NETIF | awk '{ if ($1 == "default") {print $3; exit 0 }}' )"
 			local dns="${SLX_DNS// /,}"
 			local hostname="${SLX_HOSTNAME}"
 			local domain="${SLX_NET_DOMAIN}"
 			local dnssl="${SLX_NET_SEARCH// /,}"
 			local mac="${SLX_PXE_MAC}"
 			local ntpsrv="${SLX_NTP_SERVER// /,}"
-			[ -z "$mac" ] && mac="$( ip addr show dev br0 | awk '{ if ($1 == "link/ether") { print $2; exit 0 }}' )"
+			[ -z "$mac" ] && mac="$( ip addr show dev $SLX_PXE_NETIF | awk '{ if ($1 == "link/ether") { print $2; exit 0 }}' )"
 			. "${tempdir}/bootentry"
 			if [ -z "$kernel" ]; then
 				echo "iPXE boot entry is missing kernel, falling back..."

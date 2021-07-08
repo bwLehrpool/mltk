@@ -46,6 +46,13 @@ get_gid_for_user()
 	echo ${_GID}
 }
 
+get_gid_for_group() {
+	[ $# -ne 1 ] && perror "get_gid_for_group fail. want 1 argument."
+	[ -z "${_GROUP}" ] && perror "group file not set."
+	local _GID=$(grep -E "^$1:[^:]*:[0-9]+:" "${_GROUP}" | head -1 | awk -F ':' '{print $3}')
+	echo ${_GID}
+}
+
 # Echo group name of given gid, nothing if non-existent
 get_group_for_gid()
 {
@@ -78,26 +85,42 @@ generate_gid()
 	echo ${_GID}
 }
 
+add_system_user() {
+	SYSTEM_ENTITY="yes" add_user $@
+}
+
 add_user() {
 	[ -z "${TARGET_BUILD_DIR}" ] && perror "add_user: TARGET_BUILD_DIR not set"
-	if [ -z "${USER}" -a $# -eq 0 ]
-	then
+	if [ -z "${USER}" -a $# -eq 0 ]; then
 		pwarning " ** add_user usage **"
 		pwarning "add_user <username>"
 		pwarning "OR"
 		pwarning "USER=<username> [GROUP=<groupname>] [USERID=<userid>] [GROUPID=<groupid>] [USERHOME=<homedir>] [USERSHELL=<shell>] [PASSWORD=<pass>] add_user"
 		perror "Aborting, please fix your script."
 	fi
-	local _PASSWD=${TARGET_BUILD_DIR}/etc/passwd
-	local _GROUP=${TARGET_BUILD_DIR}/etc/group
-	local _SHADOW=${TARGET_BUILD_DIR}/etc/shadow
-	init_users_and_groups
-	[ ! -f "${_PASSWD}" ] && perror "add_user: password file does not exist in target system. (build base first)"
-	[ ! -f "${_GROUP}" ] && perror "add_user: group file does not exist in target system. (build base first)"
-	[ ! -f "${_SHADOW}" ] && perror "add_user: shadow file does not exist in target system. (build base first)"
-	if [ "x$1" != "x" ]
-	then
-		local USER=$1
+
+	# In install mode, only work on the system's files directly and do *not* copy to TARGET_BUILD_DIR
+	declare -a _USERADD_OPTS
+	if [ "$REMOTE_LOCAL_INSTALL" -eq 0 ]; then
+		# regular mltk mode, copy the current user-related files to TARGET_BUILD_DIR
+		local _PASSWD="${TARGET_BUILD_DIR}/etc/passwd"
+		local _GROUP="${TARGET_BUILD_DIR}/etc/group"
+		local _SHADOW="${TARGET_BUILD_DIR}/etc/shadow"
+		init_users_and_groups
+		[ ! -f "${_PASSWD}" ] && perror "add_user: password file does not exist in target system. (build base first)"
+		[ ! -f "${_GROUP}" ] && perror "add_user: group file does not exist in target system. (build base first)"
+		[ ! -f "${_SHADOW}" ] && perror "add_user: shadow file does not exist in target system. (build base first)"
+
+		# also add the --root options
+		_USERADD_OPTS+=("--root" "$TARGET_BUILD_DIR")
+	else
+		local _PASSWD="/etc/passwd"
+		local _GROUP="/etc/group"
+		local _SHADOW="/etc/shadow"
+	fi
+
+	if [ "x$1" != "x" ]; then
+		local USER="$1"
 		local GROUP=""
 		local USERID=""
 		local GROUPID=""
@@ -105,105 +128,101 @@ add_user() {
 		local USERSHELL=""
 		local PASSWORD=""
 	fi
+
 	USER=$(trim "$USER")
 	if ! [[ $USER =~ $NAME_REGEX ]]; then
 		perror "Invalid username: $USER"
 	fi
-	[ -z "$GROUPID" ] && local GROUPID=$(get_gid_for_user "${USER}")
-	[ -z "$GROUP" -a -n "$GROUPID" ] && local GROUP=$(get_group_for_gid "${GROUPID}")
-	[ -z "$GROUP" ] && local GROUP=$USER
-	GROUP=$(trim "$GROUP")
-	if ! [[ $GROUP =~ $NAME_REGEX ]]; then
-		perror "Invalid group: $GROUP"
+
+	[ -z "$USERID" ] && local USERID="$(generate_uid "${USER}")"
+	[ -z "$USERID" ] && perror "add_user: could not generate a user id for $USER"
+	[ -n "$USERID" ] && _USERADD_OPTS+=("--uid" "$USERID")
+	if [ -z "$GROUP" ]; then
+		[ -z "$GROUPID" ] && local GROUPID=$(get_gid_for_user "${USER}")
+		[ -n "$GROUPID" ] && local GROUP=$(get_group_for_gid "${GROUPID}")
+		[ -z "$GROUP" ] && local GROUP="$USER"
 	fi
-	[ "x$USERID" = "x" ] && local USERID=$(generate_uid "${USER}")
-	USERID=$(trim "$USERID")
-	[ "$USERID" -lt "0" -o "$USERID" -gt "65535" ] && perror "Invalid userid: $USERID"
-	[ -z "$GROUPID" ] && local GROUPID=$(generate_gid "${GROUP}" "${USERID}")
-	GROUPID=$(trim "$GROUPID")
-	[ "$GROUPID" -lt "0" -o "$GROUPID" -gt "65535" ] && perror "Invalid groupid: $GROUPID"
-	# all required variables have been set
-	# does the desired username already exist? if so, check if UID matches, otherwise bail out
-	local _UID=$(grep -E "^${USER}:[^:]*:[0-9]+:" "${_PASSWD}" | head -1 | awk -F ':' '{print $3}')
-	[ -n "${_UID}" ] && [ "x${_UID}" != "x${USERID}" ] && perror "User ${USER}(${USERID}) already exists with UID ${_UID}"
-	# do the same for the group
-	local _GID=$(grep -E "^${GROUP}:[^:]*:[0-9]+:" "${_GROUP}" | head -1 | awk -F ':' '{print $3}')
-	[ -n "${_GID}" ] && [ "x${_GID}" != "x${GROUPID}" ] && perror "Group ${GROUP}(${GROUPID}) already exists with GID ${_GID}"
-	# if user already exists, check if he is in another group than the one requested. if so, bail out
-	# (TODO: don't bail out and add user to the new group)
-	if [ ! -z "${_UID}" ]
-	then
-		local _EXGID=$(grep -E "^${USER}:[^:]*:[0-9]+:" "${_PASSWD}" | head -1 | awk -F ':' '{print $4}')
-		[ "x${GROUPID}" != "x${_EXGID}" ] && perror "Requested GID $GROUPID differs from existing GID $_EXGID"
+
+	if [ -n "$GROUP" ]; then
+		GROUP=$(trim "$GROUP")
+		if ! [[ $GROUP =~ $NAME_REGEX ]]; then
+			perror "Invalid group: $GROUP"
+		fi
+		# swallow stdout output since only user id is expected to be echo'ed
+		add_group "$GROUP" "$GROUPID" >/dev/null 2>&1
+		_USERADD_OPTS+=("--no-user-group" "--gid" "$GROUP")
 	fi
-	# if user does not exist, try to add it
-	if [ -z "${_UID}" ]
-	then
-		local _TEST=$(grep -E "^[^:]+:[^:]*:${USERID}:" "${_PASSWD}")
-		[ -n "${_TEST}" ] && perror "Cannot add $USER - desired UID $USERID already in use."
-	fi
-	if [ -z "${_GID}" ]
-	then
-		local _TEST=$(grep -E "^[^:]+:[^:]*:${GROUPID}:" "${_GROUP}")
-		[ -n "${_TEST}" ] && perror "Cannot add $GROUP - desired GID $GROUPID already in use."
-	fi
-	[ -z "${USERHOME}" ] && local USERHOME=/nonexistent
-	[ -z "${USERSHELL}" ] && local USERSHELL=/bin/false
-	# create password
-	if [ -z "${PASSWORD}" ]
-	then
-		local PASSWORD='*'
+
+	if [ -z "${USERHOME}" ]; then
+		local USERHOME=/nonexistent
 	else
+		_USERADD_OPTS+=("--create-home")
+		# make sure the parent directory exists
+		if [ "$REMOTE_LOCAL_INSTALL" -eq 0 ]; then
+			_udir="${TARGET_BUILD_DIR}/${USERHOME}"
+		else
+			_udir="$USERHOME"
+		fi
+		mkdir -p "${_udir%/*}"
+
+	fi
+	_USERADD_OPTS+=("--home-dir" "$USERHOME")
+
+	[ -z "${USERSHELL}" ] && local USERSHELL=/bin/false
+	_USERADD_OPTS+=("--shell" "$USERSHELL")
+
+	# create password
+	if [ -n "${PASSWORD}" ]; then
 		pdebug "Hashing password '$PASSWORD' for '$USER'"
 		local PW=$(mkpasswd -m sha-512 "${PASSWORD}")
 		[ -z "${PW}" ] && PW=$(openssl passwd -1 "${PASSWORD}")
 		[ -z "${PW}" ] && perror "Error generating hashed password for $USER"
 		PASSWORD=$PW
 	fi
-	# add user, or replace password
-	if [ -z "${_UID}" ]; then
-		# create user
-		echo "${USER}:x:${USERID}:${GROUPID}:${USER}:${USERHOME}:${USERSHELL}" >> "${_PASSWD}"
-		echo "${USER}:${PASSWORD}:15555:0:99999:7:::" >> "${_SHADOW}"
-		pinfo "Created user $USER"
-	elif [ "$PASSWORD" != "*" ]; then
-		# update user's password
-		sed -i -r "s#^${USER}:[^:]*:(.*)\$"'#'"${USER}:${PASSWORD}:\1#g" "${_SHADOW}"
-		pinfo "Updated password of $USER"
-	fi
-	[ -z "${_GID}" ] && pinfo "Created group $GROUP" && echo "${GROUP}:x:${GROUPID}:" >> "${_GROUP}"
+	_USERADD_OPTS+=("--password" "${PASSWORD:-*}")
+
+	[ -n "$SYSTEM_ENTITY" ] && _USERADD_OPTS+=("--system")
+	# everything is ready, run useradd
+	useradd "${_USERADD_OPTS[@]}" "$USER" >/dev/null 2>&1
+	local ret=$?
+	[ "$ret" -ne 0 -a "$ret" -ne 9 ] && perror "add_user: useradd failed for: ${_USERADD_OPTS[@]} $USER"
 	echo "${USERID}"
+}
+
+add_system_group() {
+	SYSTEM_ENTITY="yes" add_group $@
 }
 
 add_group () {
 	[ $# -lt 1 ] && perror "add_group called without argument."
 	[ -z "${TARGET_BUILD_DIR}" ] && perror "add_group: TARGET_BUILD_DIR not set"
-	local _PASSWD=${TARGET_BUILD_DIR}/etc/passwd
-	local _GROUP=${TARGET_BUILD_DIR}/etc/group
-	local _SHADOW=${TARGET_BUILD_DIR}/etc/shadow
-	init_users_and_groups
-	[ ! -f "${_GROUP}" ] && perror "add_user: group file does not exist in target system. (build base first)"
+	declare -a _GROUPADD_OPTS
+	if [ "$REMOTE_LOCAL_INSTALL" -eq 0 ]; then
+		# regular mltk mode, copy the current user-related files to TARGET_BUILD_DIR
+		local _PASSWD=${TARGET_BUILD_DIR}/etc/passwd
+		local _GROUP=${TARGET_BUILD_DIR}/etc/group
+		init_users_and_groups
+		[ ! -f "${_PASSWD}" ] && perror "add_user: passwd file does not exist in target system. (build base first)"
+		[ ! -f "${_GROUP}" ] && perror "add_user: group file does not exist in target system. (build base first)"
+
+		# also add the --root options
+		_GROUPADD_OPTS+=("--root" "$TARGET_BUILD_DIR")
+	else
+		local _PASSWD=/etc/passwd
+		local _GROUP=/etc/group
+	fi
 	local GROUP=$1
-	local GROUPID="-"
-	if ! [[ $GROUP =~ $NAME_REGEX ]]; then
-		perror "Invalid group: $GROUP"
-	fi
-	[ $# -ge 2 ] && [ ! -z "$2" ] && GROUPID=$2
-	local _GID=$(grep -E "^${GROUP}:[^:]*:[0-9]+:" "${_GROUP}" | head -1 | awk -F ':' '{print $3}')
-	[ "x${_GID}" != "x" ] && [ "x$GROUPID" = "x-" -o "x$GROUPID" = "x${_GID}" ] && echo "${_GID}" && return # nothing to do, already exists
-	[ "x${_GID}" != "x" ] && perror "Group $GROUP already exists with GID ${_GID}, but creation was requested with GID $GROUPID"
-	if [ "x$GROUPID" = "x-" ]; then
-		local _UID=$(grep -E "^${GROUP}:[^:]*:[0-9]+:" "${_PASSWD}" | head -1 | awk -F ':' '{print $3}')
-		[ -z "${_UID}" ] && _UID=100
-		GROUPID=$(generate_gid "$GROUP" "${_UID}")
-	fi
-	if ! [[ $GROUPID =~ [0-9]+ ]]; then
-		perror "add_group: GROUPID not numeric (is '$GROUPID')"
-	fi
-	echo "${GROUP}:x:${GROUPID}:" >> "${_GROUP}"
-	pinfo "Created group $GROUP"
+	local GROUPID=""
+	[[ $GROUP =~ $NAME_REGEX ]] || perror "Invalid group: $GROUP"
+	[ $# -ge 2 ] && [ -n "$2" ] && _GROUPADD_OPTS+=("--gid" "$2")
+	[ -n "$SYSTEM_ENTITY" ] && _GROUPADD_OPTS+=("--system")
+	groupadd "${_GROUPADD_OPTS[@]}" "$GROUP" >/dev/null 2>&1
+	local ret=$?
+	[ "$ret" -ne 0 -a "$ret" -ne 9 ] && perror "add_group: groupadd failed: ${_GROUPADD_OPTS[@]}"
+	[ -z "$GROUPID" ] && local GROUPID="$(get_gid_for_group "$GROUP")"
 	echo "${GROUPID}"
 }
+
 
 init_users_and_groups() {
 	[ -z "$TARGET_BUILD_DIR" -o "$TARGET_BUILD_DIR" == "/" ] && perror "Almost wrecked your local passwd, group and shadow file. phew."
@@ -236,5 +255,8 @@ init_users_and_groups() {
 	mv "${PASSWD}.tmp" "${PASSWD}"
 	# generate fresh shadow file
 	awk -F ':' '{print $1":*:15555:0:99999:7:::"}' "${PASSWD}" > "${SHADOW}"
+	# all user-related tools that support "--root" option require nss libs in the
+	# chroot target, thus we need to copy the libs over there.
+	tarcopy "$(find /lib /lib64 /usr/lib /usr/lib64 -maxdepth 4 -name "libnss_files*")" "$TARGET_BUILD_DIR"
 }
 

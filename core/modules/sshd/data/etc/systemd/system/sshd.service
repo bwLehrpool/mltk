@@ -1,5 +1,7 @@
 [Unit]
 Description=OpenSSH Daemon
+Requires=systemd-tmpfiles-setup.service
+After=systemd-tmpfiles-setup.service
 
 [Service]
 ExecStart=/usr/sbin/sshd -D

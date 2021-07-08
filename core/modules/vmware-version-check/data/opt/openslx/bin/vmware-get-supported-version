@@ -2,6 +2,9 @@
 # This script checks whether given VMware version supports the CPU:
 # * Intel: check for "VMX Unrestricted Guest" CPU flag
 # * AMD:   check if CPU family is Bulldozer or newer
+#
+# It can be called inside a dracut context and tries to do
+# chroot magic to call/load the required tools.
 
 VIRTTYPE="$( grep -m1 '^flags\s*:' /proc/cpuinfo | grep -woF -e svm -e vmx )"
 

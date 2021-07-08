@@ -1,10 +1,13 @@
 #!/bin/bash
 REQUIRED_CONTENT_PACKAGES="
+	chromium-browser
+	chromium-browser-l10n
+	fonts-noto-color-emoji
 	jq
 	xbindkeys
 	libnss3-tools
 "
-REQUIRED_INSTALLED_PACKAGES="$REQUIRED_CONTENT_PACKAGES"
+REQUIRED_INSTALLED_PACKAGES=""
 REQUIRED_BINARIES=""
 REQUIRED_LIBRARIES=""
 REQUIRED_DIRECTORIES=""

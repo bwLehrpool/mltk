@@ -1,0 +1,19 @@
+#!/bin/bash
+
+# the vmware helper needs the kmod msr and the tool rdmsr,
+# /dev, /sys and /proc to properly detect the CPU info.
+
+bindmount=("/dev" "/proc" "/sys")
+
+for bm in "${bindmount[@]}"; do
+	mount --bind "$bm" "${NEWROOT}/${bm}"
+done
+
+export PATH="$PATH:/opt/openslx/sbin:/opt/openslx/bin"
+version="$(chroot "$NEWROOT" vmware-get-supported-version)"
+
+for bm in "${bindmount[@]}"; do
+	umount "${NEWROOT}/${bm}"
+done
+
+[ -n "$version" ] && [ "$version" = "new" ]

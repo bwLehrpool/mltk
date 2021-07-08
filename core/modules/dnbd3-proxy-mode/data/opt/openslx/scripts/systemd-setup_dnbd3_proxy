@@ -283,6 +283,24 @@ if [ -n "$islocal" ]; then
 	adduser dnbd3 fuse
 	# Start service, is not symlinked when not in proxy mode
 	systemctl --no-block start dnbd3-proxy.service
+	if [ -d /dev/dnbd0 ] && [ "$( cat /sys/block/dnbd0/net/rid )" -gt 0 ]; then
+		# give it some time to start
+		usleep 500000
+		# add the server
+		if ! dnbd3-client -A "127.0.0.1:$DNBD3_PORT" -d /dev/dnbd0; then
+			echo "Cannot add localhost to dnbd0" >&2
+		else
+			for i in 1 2 3 4 5 ""; do
+				echo | busybox timeout 1 busybox nc 127.0.0.1 "$DNBD3_PORT" && break
+				echo "port wait fail #$i"
+				[ -z "$i" ] && break
+				sleep 1
+			done
+			if ! dnbd3-client -s "127.0.0.1:$DNBD3_PORT" -d /dev/dnbd0; then
+				echo "Cannot switch dnbd0 to localhost" >&2
+			fi
+		fi
+	fi
 fi
 
 exit 0

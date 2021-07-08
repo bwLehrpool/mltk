@@ -20,6 +20,6 @@ build () {
 }
 
 post_copy() {
-	add_user redsocks
+	add_system_user redsocks
 }
 

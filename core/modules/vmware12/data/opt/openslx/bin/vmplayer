@@ -9,7 +9,10 @@ PROG=$(basename $0)
 
 # various hacks to help vmplayer find its own libs -.-
 export VMWARE_USE_SHIPPED_LIBS=force
-export LD_LIBRARY_PATH=$( find /usr/lib/vmware/lib/ -maxdepth 1 -mindepth 1 -type d | awk 'BEGIN{p=""}{p=p$0":"}END{print p}' )
+export LD_LIBRARY_PATH=$( \
+	find /usr/lib/vmware/lib/ -maxdepth 1 -mindepth 1 -type d \
+	| grep -v libfontconfig \
+	| awk 'BEGIN{p=""}{p=p$0":"}END{print p}' )
 
 exec "$PREFIX/lib/wrapper-gtk24.sh" \
      "$PREFIX/lib" \

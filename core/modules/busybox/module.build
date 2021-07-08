@@ -34,8 +34,14 @@ build() {
 	pinfo "Running make (if this hangs, check for unset options, ie. when you increased the REQUIRED_BRANCH)"
 	make || perror "failed."
 	pinfo "Running make install"
-	make CONFIG_PREFIX="$MODULE_BUILD_DIR" install || perror "failed"
-	rm -f "$MODULE_BUILD_DIR/bin/mount" "$MODULE_BUILD_DIR/bin/umount" "$MODULE_BUILD_DIR/bin/bash"
+	local INSTALL_PREFIX
+	if [ -n "$REMOTE_LOCAL_INSTALL" ]; then
+		INSTALL_PREFIX="${MODULE_BUILD_DIR}/opt/openslx"
+	else
+		INSTALL_PREFIX="${MODULE_BUILD_DIR}"
+	fi
+	make CONFIG_PREFIX="${INSTALL_PREFIX}" install || perror "failed"
+	rm -f "${INSTALL_PREFIX}/bin/mount" "${INSTALL_PREFIX}/bin/umount" "${INSTALL_PREFIX}/bin/bash"
 }
 
 post_copy() {

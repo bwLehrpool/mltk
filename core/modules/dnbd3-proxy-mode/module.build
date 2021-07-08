@@ -8,6 +8,6 @@ build() {
 }
 
 post_copy() {
-	add_group "dnbd3"
-	USER="dnbd3" GROUP="dnbd3" add_user
+	add_system_group "dnbd3"
+	USER="dnbd3" GROUP="dnbd3" add_system_user
 }

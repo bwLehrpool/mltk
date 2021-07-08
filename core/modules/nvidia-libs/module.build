@@ -9,3 +9,11 @@ module_load() {
 	MODULE_BUILD_DIR="$SRC"
 }
 
+post_copy() {
+	# generate addon-required for this version
+	cat <<-EOF > "${TARGET_BUILD_DIR}/addon-required"
+		#!/bin/ash
+		[ "\$( cat /sys/module/nvidia/version )" = "$VERSION" ]
+	EOF
+	chmod +x "${TARGET_BUILD_DIR}/addon-required"
+}

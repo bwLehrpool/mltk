@@ -1,7 +1,0 @@
-[Unit]
-Description=Enable kexec-reboot via ctrl-alt-del
-DefaultDependencies=no
-
-[Service]
-Type=oneshot
-ExecStart=/bin/sh -c "rm -f /etc/systemd/system/ctrl-alt-del.target; systemctl enable kexec.target; exit 0"

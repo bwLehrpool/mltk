@@ -552,13 +552,65 @@ process_module() {
 post_process_target() {
 	local TOOL_STR="$TOOL_STR post_process_target:"
 
-	# figure out all relevant ld-paths
-	pinfo "Running ldconfig"
-	cp -r -L /etc/ld.so.conf* "${TARGET_BUILD_DIR}/etc/"
-	ldconfig -v -r "${TARGET_BUILD_DIR}"
+	if [ -z "$REMOTE_LOCAL_INSTALL" ]; then
+		# traditional minilinux approach
+		# figure out all relevant ld-paths
+		pinfo "Running ldconfig"
+		cp -r -L /etc/ld.so.conf* "${TARGET_BUILD_DIR}/etc/"
+		ldconfig -v -r "${TARGET_BUILD_DIR}"
 
-	# run depmod to generate the final modules.* files
-	depmod -b "${TARGET_BUILD_DIR}" -a "${TARGET_KERNEL_LONG}"
+		# run depmod to generate the final modules.* files
+		depmod -b "${TARGET_BUILD_DIR}" -a "${TARGET_KERNEL_LONG}"
+		return 0
+	fi
+
+	# Installer mode
+	local RSYNC_DEST RSYNC_EXCLUDE_LIST entry filelist target_file system_file
+	# default dest and exclude list for non-addons
+	RSYNC_DEST='/'
+	RSYNC_EXCLUDE_LIST="$( mktemp )"
+	# always exclude ld.so.cache, we handle that separately
+	echo 'etc/ld.so*' > "$RSYNC_EXCLUDE_LIST"
+	echo 'autoexec.bat' >> "$RSYNC_EXCLUDE_LIST"
+	if [ -e "${TARGET_DIR}/.addon" ]; then
+		# This is an addon, don't sync to / but to dedicated directory
+		RSYNC_DEST="/opt/openslx/addons/${TARGET_BUILD_DIR##*/}"
+		pinfo "Target is an addon, preparing install to '${RSYNC_DEST}'."
+		mkdir -p "${RSYNC_DEST}" || perror "Failed to mkdir '${RSYNC_DEST}'."
+		RSYNC_OPTS+=( "--delete" "--delete-excluded" )
+		cde "$TARGET_BUILD_DIR"
+		readarray -t -d '' filelist < <( find . -not -type d -print0 )
+		for entry in "${filelist[@]}"; do
+			# diff them to be sure they are the same?
+			system_file="${entry:1}"
+			target_file="${entry:2}"
+			if [ -e "$system_file" ] && cmp "$system_file" "$target_file"; then
+				echo "$target_file" >> "$RSYNC_EXCLUDE_LIST"
+			fi
+		done
+		cd - &> /dev/null
+		pinfo "Calling ldconfig on overlay'ed ${TARGET_BUILD_DIR##*/}..."
+		chroot_run "${TARGET_BUILD_DIR}" <<< "ldconfig"
+		if [ -f "${TARGET_BUILD_DIR}/etc/ld.so.cache" ]; then
+			mkdir -p "${TARGET_BUILD_DIR}/opt/openslx/etc"
+			mv -f -- "${TARGET_BUILD_DIR}/etc/ld.so.cache" \
+				"${TARGET_BUILD_DIR}/opt/openslx/etc/${TARGET_BUILD_DIR##*/}.ld.so.cache"
+			pinfo "... generated cache at '${TARGET_BUILD_DIR}/opt/openslx/etc/${TARGET_BUILD_DIR##*/}.ld.so.cache'."
+		fi
+	fi
+	pinfo "Rsyncing local build of '${TARGET_BUILD_DIR}' to '${RSYNC_DEST}'..."
+	rsync -aAXv "${RSYNC_OPTS[@]}" \
+		--exclude-from="${RSYNC_EXCLUDE_LIST}" \
+		"${TARGET_BUILD_DIR}/" "${RSYNC_DEST}" || \
+			perror "Failed to rsync, your system is probably trashed ;-("
+
+	[ "$REMOTE_DEBUG" -eq 0 ] && rm -f -- "$RSYNC_EXCLUDE_LIST"
+
+	# finish by running ldconfig for the running system (when processing non-addons).
+	if [ ! -e "${TARGET_DIR}/.addon" ]; then
+		ldconfig -v
+		depmod -a "${TARGET_KERNEL_LONG}"
+	fi
 }
 
 clean_modules() {

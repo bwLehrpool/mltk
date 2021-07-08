@@ -38,5 +38,5 @@ build() {
 }
 
 post_copy() {
-	:
+	add_system_group "fuse"
 }

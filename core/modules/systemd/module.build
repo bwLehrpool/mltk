@@ -96,7 +96,7 @@ build () {
 }
 
 post_copy() {
-	add_user "kvm"
-	add_user "systemd-journal-upload"
+	add_system_user "kvm"
+	add_system_user "systemd-journal-upload"
 }
 

@@ -1,0 +1,15 @@
+#!/bin/ash
+#
+# This hook evaluates the SLX_VM_SOUND configuration option
+# and mutes the sound via ALSA if appropriate. This will only
+# take effect in non-virtual sessions (determined by the
+# env variable SESSION_TYPE given by vmchooser).
+
+if [ "$SESSION_TYPE" = "XSESSION" ]; then
+	. /opt/openslx/config
+	
+	if [ "$SLX_VM_SOUND" = "DEFAULT_MUTED" -o "$SLX_VM_SOUND" = "FORCE_MUTED" ]; then
+		amixer set Master mute
+	fi
+fi
+: # fake success to not trigger slxlog

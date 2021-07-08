@@ -195,6 +195,12 @@ getips () {
 }
 
 # read the DNS configuration and configure the udhcpd
+getresolvconf() {
+	awk -vattr="$1"  '$1 == attr {for (i=2; i<=NF; i++) printf "%s ",$i}' /etc/resolv.conf
+}
+[ -z "${SLX_DNS}" ] && SLX_DNS="$( getresolvconf nameserver )"
+[ -z "${SLX_NET_DOMAIN}" ] && SLX_NET_DOMAIN="$( getresolvconf domain )"
+[ -z "${SLX_NET_SEARCH}" ] && SLX_NET_SEARCH="$( getresolvconf search )"
 [ -z "${SLX_DNS}" ] && SLX_DNS="8.8.8.8 8.8.4.4"
 [ -z "${SLX_NET_DOMAIN}" ] && SLX_NET_DOMAIN="$FALLBACK_DOMAIN"
 [ -z "${SLX_NET_SEARCH}" ] && SLX_NET_SEARCH="$FALLBACK_DOMAIN"
