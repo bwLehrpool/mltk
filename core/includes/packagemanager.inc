@@ -94,7 +94,7 @@ filter_installed_packages() {
 			existing["$i"]=1
 		done
 		for i in "$@"; do
-			[ -n "${existing["${i}"]}" ] || [ -n "${existing["${i}:${AMD64_X86}"]}" ] || echo "$i"
+			[ -n "${existing["${i}"]}" ] || [ -n "${existing["${i}:${PLATFORM_DPKG}"]}" ] || echo "$i"
 		done
 	elif [ "$PACKET_HANDLER" == "rpm" ]; then
 		for i in "$@"; do
