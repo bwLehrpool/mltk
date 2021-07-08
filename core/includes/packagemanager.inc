@@ -83,6 +83,30 @@ list_packet_files() {
 }
 
 #
+# Pass list of packages, returns filtered list, with packages removed
+# that are already installed
+#
+filter_installed_packages() {
+	local i
+	if [ "$PACKET_HANDLER" == "dpkg" ]; then
+		declare -A existing
+		for i in $( dpkg -l "$@" 2> /dev/null | awk '$1 == "ii" {print $2}' ); do
+			existing["$i"]=1
+		done
+		for i in "$@"; do
+			[ -n "${existing["${i}"]}" ] || [ -n "${existing["${i}:${AMD64_X86}"]}" ] || echo "$i"
+		done
+	elif [ "$PACKET_HANDLER" == "rpm" ]; then
+		for i in "$@"; do
+			rpm --quiet -q "$i" &> /dev/null || echo "$i"
+		done
+	else
+		pwarning "'Don't know how to determine installation status of packages for $PACKET_HANDLER"
+		echo "$@"
+	fi
+}
+
+#
 # install individual package depending on package manager
 #
 install_packages() {

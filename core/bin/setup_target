@@ -72,6 +72,7 @@ unset_required_vars () {
 # Install all the packages from all selected modules in current target
 install_all_packages () {
 	local module file config
+	declare -a missing
 	declare -A packages dupcheck
 	packages=()
 	for module in "${!MODULE_PATHS[@]}"; do
@@ -97,9 +98,12 @@ install_all_packages () {
 			dupcheck["$file"]=1
 		done
 	done
-	pinfo "Making sure required packages are installed..."
-	pdebug "List: ${!packages[*]}"
-	install_packages "${!packages[@]}"
+	missing=( $( filter_installed_packages "${!packages[@]}" ) )
+	if [ "${#missing[@]}" -gt 0 ]; then
+		pinfo "Making sure required packages are installed..."
+		pinfo "Potentially missing: ${missing[*]}"
+		install_packages "${missing[@]}"
+	fi
 	unset_required_vars
 }
 
