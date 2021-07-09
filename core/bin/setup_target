@@ -435,11 +435,11 @@ process_module() {
 	local MODULE_WORK_DIR="${ROOT_DIR}/tmp/work/${MODULE}"
 	local MODULE_BUILD_DIR="${MODULE_WORK_DIR}/build"
 	local TOOL_STR="[${MODULE}]"
-	local SOURCE_FLAG="$MODULE_BUILD_DIR/meta/fetched_source.flag"
-	local BUILD_FLAG="$MODULE_BUILD_DIR/meta/build_complete.flag"
-	local AUTOCLONE_FILE="$MODULE_BUILD_DIR/meta/repos"
+	local SOURCE_FLAG="${MODULE_WORK_DIR}/meta/fetched_source.flag"
+	local BUILD_FLAG="${MODULE_WORK_DIR}/meta/build_complete.flag"
+	local AUTOCLONE_FILE="${MODULE_WORK_DIR}/meta/repos"
 	local MD5FILE="${TARGET_BUILD_DIR}/opt/openslx/.mltk/${MODULE}.md5"
-	mkdir -p "${TARGET_BUILD_DIR}/opt/openslx/.mltk" "$MODULE_WORK_DIR/meta"
+	mkdir -p "${TARGET_BUILD_DIR}/opt/openslx/.mltk" "${MODULE_WORK_DIR}/meta"
 	if [ ! -d "${MODULE_DIR}" ]; then
 		if [ -z "$DEPOF" ]; then
 			perror "Module directory for '$MODULE' not found in ${TARGET_DIR}"
