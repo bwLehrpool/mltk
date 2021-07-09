@@ -13,9 +13,7 @@ build() {
 
 	# NO MAKE INSTALL: Copy to build dir, since there are no shared libs linked in
 	mkdir -p "${MODULE_BUILD_DIR}/usr/sbin"
-	cp "${MODULE_WORK_DIR}/src/dmidecode" "${MODULE_BUILD_DIR}/usr/sbin/" || perror "Could not copy dmidecode binary to ${MODULE_BUILD_DIR}"
-
-	cd - &>/dev/null
+	cp "dmidecode" "${MODULE_BUILD_DIR}/usr/sbin/" || perror "Could not copy dmidecode binary to ${MODULE_BUILD_DIR}"
 }
 
 post_copy() {
