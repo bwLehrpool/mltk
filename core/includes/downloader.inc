@@ -145,7 +145,9 @@ autoclone () {
 				git -C "$dstdir/$dst" checkout "$checkout" || perror "Could not checkout $checkout from $url"
 			fi
 		fi
-		[ -n "$AUTOCLONE_FILE" ] && echo "$( git rev-parse --abbrev-ref HEAD ) $( git rev-parse --short HEAD )" >> "$AUTOCLONE_FILE"
+		[ -n "$AUTOCLONE_FILE" ] \
+			&& echo "$( git -C "$dstdir/$dst" rev-parse --abbrev-ref HEAD ) $( git -C "$dstdir/$dst" rev-parse --short HEAD )" \
+			>> "$AUTOCLONE_FILE"
 	done
 	return 0
 }
