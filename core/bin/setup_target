@@ -435,10 +435,11 @@ process_module() {
 	local MODULE_WORK_DIR="${ROOT_DIR}/tmp/work/${MODULE}"
 	local MODULE_BUILD_DIR="${MODULE_WORK_DIR}/build"
 	local TOOL_STR="[${MODULE}]"
-	local SOURCE_FLAG="$MODULE_BUILD_DIR/fetched_source.flag"
-	local BUILD_FLAG="$MODULE_BUILD_DIR/build_complete.flag"
+	local SOURCE_FLAG="$MODULE_BUILD_DIR/meta/fetched_source.flag"
+	local BUILD_FLAG="$MODULE_BUILD_DIR/meta/build_complete.flag"
+	local AUTOCLONE_FILE="$MODULE_BUILD_DIR/meta/repos"
 	local MD5FILE="${TARGET_BUILD_DIR}/opt/openslx/.mltk/${MODULE}.md5"
-	mkdir -p "${TARGET_BUILD_DIR}/opt/openslx/.mltk"
+	mkdir -p "${TARGET_BUILD_DIR}/opt/openslx/.mltk" "$MODULE_WORK_DIR/meta"
 	if [ ! -d "${MODULE_DIR}" ]; then
 		if [ -z "$DEPOF" ]; then
 			perror "Module directory for '$MODULE' not found in ${TARGET_DIR}"
@@ -447,7 +448,7 @@ process_module() {
 		return
 	fi
 	mkdir -p "${MODULE_WORK_DIR}"
-	cd "${MODULE_DIR}" || perror "Module work dir '${MODULE_DIR}' seems to exist, but cd to it failed."
+	cde "${MODULE_DIR}"
 	# Simple check for modified .build / .config, in which case we'll run a module clean first
 	if [ -f "$MD5FILE" ]; then
 		if ! md5sum --check "$MD5FILE"; then
@@ -478,7 +479,7 @@ process_module() {
 			process_module --dep-of "${MODULE}${DEPOF}" "$DEP"
 		done
 		# Read old config again, as it got overwritten by the deps
-		cd "${MODULE_WORK_DIR}" || perror "Tool dir '${MODULE_WORK_DIR}' seems to exist, but cd to it failed (after building deps)."
+		cde "${MODULE_WORK_DIR}"
 		read_config
 	fi
 	[ -n "$DEPOF" ] && local DEPOF_STR="(dependency of${DEPOF})"
@@ -487,22 +488,23 @@ process_module() {
 	pdebug "## Reading .build of $MODULE"
 	. "${CORE_DIR}/includes/clean_module_funcs.inc" # Clean all hooks, in case the module doesn't define them all
 	read_build # Read all the hooks from the module
-	cd "${MODULE_DIR}" || perror "cd to '${MODULE_DIR}' failed."
+	cde "${MODULE_DIR}"
 	# update kernel version variables before running a module, as the last one might have been the kernel...
 	get_kernel_version
 	# Execute load-hook before anything else
 	module_load
-	cd "${MODULE_WORK_DIR}" || perror "cd to '${MODULE_WORK_DIR}' failed."
+	cde "${MODULE_WORK_DIR}"
 	# Fetch source code
 	if [ ! -e "$SOURCE_FLAG" ]; then
 		pinfo "## Fetching source"
+		rm -f -- "$AUTOCLONE_FILE"
 		fetch_source
 		touch "$SOURCE_FLAG" || pwarning "Error setting source-flag"
 	fi
 	# Build
 	if [ ! -e "$BUILD_FLAG" ]; then
 		pinfo "## Building"
-		cd "${MODULE_WORK_DIR}" || perror "cd to '${MODULE_WORK_DIR}' failed."
+		cde "${MODULE_WORK_DIR}"
 		build # calls perror if something fails, no need to do that here
 		strip_recursive "$MODULE_BUILD_DIR"
 		touch "$BUILD_FLAG" || pwarning "Error setting built-flag"
@@ -512,11 +514,11 @@ process_module() {
 	# Only copy stuff from system or build dir if md5s didn't change
 	if [ ! -f "$MD5FILE" ]; then
 		pinfo "## Copying files with dependencies"
-		cd "${MODULE_DIR}" || perror "cd to '${MODULE_DIR}' failed."
+		cde "${MODULE_DIR}"
 		copy_files_with_deps
 		if [ -n "$REQUIRED_SYSTEM_FILES" ]; then
 			pinfo "## Copying required system files" # REQUIRED_SYSTEM_FILES
-			cd "${MODULE_DIR}" || perror "cd to '${MODULE_DIR}' failed."
+			cde "${MODULE_DIR}"
 			copy_system_files
 		fi
 	fi
@@ -527,12 +529,13 @@ process_module() {
 	fi
 	# TODO: automatic copy of REQUIRED_CONTENT_PACKAGES
 	pinfo "## Post copy"
-	cd "${MODULE_DIR}" || perror "cd to '${MODULE_DIR}' failed."
+	cde "${MODULE_DIR}"
 	post_copy
 	# Write new md5 file if not existent yet
 	if [ ! -f "$MD5FILE" ]; then
 		md5sum "$MODULE_DIR/module".* > "$MD5FILE" || perror "Could not create $MD5FILE"
 	fi
+	[ -s "$AUTOCLONE_FILE" ] && cp "$AUTOCLONE_FILE" "${TARGET_BUILD_DIR}/opt/openslx/.mltk/${MODULE}.git"
 	# Sanity checks
 	[ -e "$TARGET_BUILD_DIR/var/run" -a ! -L "$TARGET_BUILD_DIR/var/run" ] && perror "Messup datected: $TARGET_BUILD_DIR/var/run exists and is not a symlink!"
 	[ -e "$TARGET_BUILD_DIR/var/lock" -a ! -L "$TARGET_BUILD_DIR/var/lock" ] && perror "Messup datected: $TARGET_BUILD_DIR/var/lock exists and is not a symlink!"
@@ -578,7 +581,6 @@ post_process_target() {
 				echo "$target_file" >> "$RSYNC_EXCLUDE_LIST"
 			fi
 		done
-		cd - &> /dev/null
 		pinfo "Calling ldconfig on overlay'ed ${TARGET_BUILD_DIR##*/}..."
 		chroot_run "${TARGET_BUILD_DIR}" <<< "ldconfig"
 		if [ -f "${TARGET_BUILD_DIR}/etc/ld.so.cache" ]; then
@@ -626,11 +628,10 @@ clean_modules() {
 	for module in "$@"; do
 		[ -n "${MODULE_PATHS["$module"]}" ] || perror "Target does not contain module '$module'"
 	done
-	cd "$TARGET_DIR"
+	cde "$TARGET_DIR"
 	for module in "$@"; do
 		clean_module "${TARGET}:${module}"
 	done
-	cd - &> /dev/null
 }
 
 clean_module() {
@@ -670,10 +671,9 @@ strip_recursive() {
 # copies static data files from <MODULE>/data/ to <TARGET_BUILD_DIR>
 copy_static_data() {
 	[ ! -d "${MODULE_DIR}/data" ] && pinfo "${MODULE} has no static 'data' directory." && return
-	cd "${MODULE_DIR}/data/" || perror "could not cd to '${MODULE_DIR}/data/'"
+	cde "${MODULE_DIR}/data/"
 	pinfo "tarcopy ${MODULE_DIR}/data/"
 	tarcopy "$(find . -type f -o -type l)" "${TARGET_BUILD_DIR}"
-	cd -
 }
 
 # Copies files with their absolute paths in $REQUIRED_SYSTEM_FILES to $TARGET_BUILD_DIR

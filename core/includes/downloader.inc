@@ -142,11 +142,10 @@ autoclone () {
 		else
 			git clone "$url" "$dstdir/$dst" || perror "Could not clone $url"
 			if [ -n "$checkout" ]; then
-				cd "$dstdir/$dst" || perror "cd error. check redbook."
-				git checkout "$checkout" || perror "Could not checkout $checkout from $url"
-				cd -
+				git -C "$dstdir/$dst" checkout "$checkout" || perror "Could not checkout $checkout from $url"
 			fi
 		fi
+		[ -n "$AUTOCLONE_FILE" ] && echo "$( git rev-parse --abbrev-ref HEAD ) $( git rev-parse --short HEAD )" >> "$AUTOCLONE_FILE"
 	done
 	return 0
 }
