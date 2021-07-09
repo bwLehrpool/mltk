@@ -59,6 +59,9 @@ if [ -n "$TEST" ]; then
 	exit 0
 fi
 
+# Enable WOL again, in case it got disabled
+/opt/openslx/scripts/cron-enable_wol
+
 if [ -n "$NEXT" ]; then
 	# Set -l and hope it does the right thing on DST
 	rtcwake -l -m no -t "$NEXT"

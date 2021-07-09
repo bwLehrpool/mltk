@@ -1,0 +1,5 @@
+SHELL=/bin/ash
+PATH=/usr/sbin:/usr/bin:/sbin:/bin:/opt/openslx/sbin:/opt/openslx/bin
+
+11 * 	* * * 	root 	/opt/openslx/scripts/cron-enable_wol
+@reboot 			root 	/opt/openslx/scripts/cron-enable_wol

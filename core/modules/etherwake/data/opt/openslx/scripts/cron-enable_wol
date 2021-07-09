@@ -1,0 +1,8 @@
+#!/bin/ash
+
+for i in eth0 boot0; do
+	[ -e "/sys/class/net/$i" ] || continue
+	ethtool -s "$i" wol g
+done
+
+exit 0
