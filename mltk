@@ -243,7 +243,8 @@ read_params() {
 	done
 
 	# exit if no command
-	if [ -z "$MODE_CLEAN" ] || [ -z "$MODE_BUILD" ] || [ -z "$MODE_EXPORT" ]; then
+	if [ -z "$MODE_CLEAN" ] && [ -z "$MODE_BUILD" ] && [ -z "$MODE_EXPORT" ]; then
+		pwarning "No action specified"
 		print_usage
 		exit 1
 	fi
