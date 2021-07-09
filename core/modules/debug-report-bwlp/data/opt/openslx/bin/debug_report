@@ -100,6 +100,7 @@ cp -r /var/log/Xorg.0.lo* \
 	static/ 2> /dev/null
 cp /proc/{cpu,mem}info /proc/{mtrr,interrupts} /proc/driver/nvidia/{params,registry} static/proc/ 2> /dev/null
 cp /run/openslx/*log* /run/openslx/dmsetup.state static/ 2> /dev/null
+cp -r /opt/openslx/.mltk static/ 2> /dev/null
 echo -n "."
 
 for tool in $TOOLS; do
