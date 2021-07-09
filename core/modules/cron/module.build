@@ -13,7 +13,7 @@ build() {
 
 	# NO MAKE INSTALL: Copy to build dir, since there are no shared libs linked in
 	mkdir -p "${MODULE_BUILD_DIR}/opt/openslx/sbin"
-	cp "${MODULE_WORK_DIR}/src/src/crond" "${MODULE_BUILD_DIR}/opt/openslx/sbin/" || perror "Could not copy crond binary to ${MODULE_BUILD_DIR}"
+	cp "crond" "${MODULE_BUILD_DIR}/opt/openslx/sbin/" || perror "Could not copy crond binary to ${MODULE_BUILD_DIR}"
 	cd - &>/dev/null
 }
 
