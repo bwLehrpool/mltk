@@ -1,16 +1,11 @@
 #!/bin/bash
 fetch_source() {
-	[ -d "${MODULE_WORK_DIR}/src/.git" ] && return 0
-	rm -rf -- "${MODULE_WORK_DIR}/src"
-	git clone "${REQUIRED_GIT}" "${MODULE_WORK_DIR}/src" || perror "Could not clone git to ${MODULE_WORK_DIR}/src"
-	cd "${MODULE_WORK_DIR}/src"
-	git checkout "${REQUIRED_COMMIT}" || perror "Could not switch to required commit"
-	cd - &>/dev/null
+	autoclone
 }
 
 build() {
 	# compilation
-	cde "${MODULE_WORK_DIR}/src"
+	cde "${MODULE_WORK_DIR}/src/cronie"
 	./autogen.sh || perror "Autogen failed"
 	./configure --disable-dependency-tracking --enable-syscrontab --prefix= --exec-prefix= --bindir=/opt/openslx/bin --sbindir=/opt/openslx/sbin || perror "configure failed"
 

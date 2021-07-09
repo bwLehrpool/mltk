@@ -2,10 +2,7 @@ fetch_source() {
 	[ -d "${MODULE_WORK_DIR}/src/.git" ] && return 0
 	rm -rf -- "${MODULE_WORK_DIR}/src"
 	download_untar "${REQUIRED_LIBSODIUM_URL}" "src/libsodium/"
-	git clone --depth 1 "${REQUIRED_GIT}" "${MODULE_WORK_DIR}/src/usbguard" || perror "Could not clone git to ${MODULE_WORK_DIR}/src/usbguard"
-	cd "${MODULE_WORK_DIR}/src/usbguard"
-	git checkout "${REQUIRED_COMMIT}" || perror "Could not switch to required commit"
-	cd - &>/dev/null
+	autoclone
 }
 
 build() {

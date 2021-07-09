@@ -1,15 +1,13 @@
 #!/bin/bash
 
 fetch_source() {
-	[ -d "${MODULE_WORK_DIR}/src/.git" ] && return 0
-	rm -rf -- "${MODULE_WORK_DIR}/src"
-	git clone "${REQUIRED_GIT}" "${MODULE_WORK_DIR}/src" || perror "Could not create ${MODULE_WORK_DIR}/src"
+	autoclone
 }
 
 build() {
 
 	# compilation
-	cde "${MODULE_WORK_DIR}/src"
+	cde "${MODULE_WORK_DIR}/src/dmidecode"
 
 	make || perror "Could not compile dmidecode using 'make'."
 

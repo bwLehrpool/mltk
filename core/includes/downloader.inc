@@ -110,6 +110,12 @@ download_if_empty() {
 	download "$SRC" "$DST"
 }
 
+# Clone the REQUIRED_GIT git repositories.
+# Syntax is:
+# <url>
+# <url>|branch
+# <url>||commit-ish
+# Second syntax is mostly for git servers that don't accept a non-branch when shallow-cloning
 autoclone () {
 	[ -z "$REQUIRED_GIT" ] && return 0
 	local url branch dst dstdir checkout

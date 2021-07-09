@@ -1,6 +1,6 @@
 #!/bin/bash
 fetch_source() {
-	git clone --depth 1 "$REQUIRED_GIT" "${MODULE_WORK_DIR}/src"
+	autoclone
 }
 
 build() {
@@ -10,7 +10,7 @@ build() {
 post_copy() {
 	(
 	set -o errexit
-	local SRCDIR="${MODULE_WORK_DIR}/src/"
+	local SRCDIR="${MODULE_WORK_DIR}/src/networkd-dispatcher"
 	# figure out where to put files
 	local conf_target="$(grep -oE 'EnvironmentFile=-?\S+' ${SRCDIR}/networkd-dispatcher.service)"
 	conf_target="${conf_target#*/}"

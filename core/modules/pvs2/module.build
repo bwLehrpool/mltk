@@ -1,11 +1,11 @@
 #!/bin/bash
 
 fetch_source() {
-	git clone "${REQUIRED_GIT}" "${MODULE_WORK_DIR}/src"
+	autoclone
 }
 
 build() {
-	local SRCDIR="${MODULE_WORK_DIR}/src/"
+	local SRCDIR="${MODULE_WORK_DIR}/src/pvs2"
 	local BUILDDIR="${SRCDIR}/build/"
 	local DESTDIR="${MODULE_BUILD_DIR}/opt/openslx/bin"
 

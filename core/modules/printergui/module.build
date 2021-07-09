@@ -1,18 +1,12 @@
 #!/bin/bash
 
 fetch_source() {
-	git clone "${REQUIRED_GIT}" "${MODULE_WORK_DIR}/src"
-	cd "${MODULE_WORK_DIR}/src"
-	git checkout "$REQUIRED_COMMIT"
-	cd - &>/dev/null
+	autoclone
 }
 
 build() {
-	local SRCDIR="${MODULE_WORK_DIR}/src/"
+	local SRCDIR="${MODULE_WORK_DIR}/src/printergui"
 	local DESTDIR="${MODULE_BUILD_DIR}/opt/openslx/cups"
-
-	# first activate qt 4
-	activate_qt 4
 
 	mkdir -p "$DESTDIR"
 	cde "$DESTDIR"

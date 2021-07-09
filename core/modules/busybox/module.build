@@ -1,10 +1,8 @@
 #!/bin/bash
 
 fetch_source() {
-	if ! [ -d "src/.git" ]; then
-		git clone --depth 1 "${REQUIRED_GIT}" --branch "$REQUIRED_BRANCH" src || perror "Could not clone busybox git"
-	fi
-	cde src
+	autoclone
+	cde src/busybox
 	# Needed for newer glibc
 	if ! grep -q 'OPT_SET.*clock_settime.*CLOCK_REALTIME' "coreutils/date.c"; then
 		git apply "${MODULE_DIR}/1_31_1-stime.patch" || perror "Could not apply stime patch for 1.31.1"
@@ -29,7 +27,7 @@ fetch_source() {
 
 build() {
 	cp "${MODULE_DIR}/openslx-busybox-config" "src/.config"
-	cde src
+	cde src/busybox
 	yes '' | make oldconfig
 	pinfo "Running make (if this hangs, check for unset options, ie. when you increased the REQUIRED_BRANCH)"
 	make || perror "failed."

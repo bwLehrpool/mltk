@@ -1,11 +1,11 @@
 #!/bin/bash
 
 fetch_source() {
-	git clone "${REQUIRED_GIT}" "${MODULE_WORK_DIR}/src"
+	autoclone
 }
 
 build() {
-	local SRCDIR="${MODULE_WORK_DIR}/src/"
+	local SRCDIR="${MODULE_WORK_DIR}/src/slxbrowser"
 
 	mkdir -p "${MODULE_BUILD_DIR}/${REQUIRED_PREFIX}"
 	cde "${MODULE_BUILD_DIR}/${REQUIRED_PREFIX}"

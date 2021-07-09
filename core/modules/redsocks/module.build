@@ -1,16 +1,8 @@
 #!/bin/bash
-#tool/distro specific functions for fetching, building and installing dependencies
-	
 
 fetch_source () {
-	mkdir -p src
-	cde src
-	if [ ! -d "redsocks" ]; then
-		git clone "$REQUIRED_GIT" "redsocks" || perror "Could not clone redoscks from github"
-	fi
-	cde redsocks
-	git checkout "$REQUIRED_REVISION" || perror "Could not checkout revision $REQUIRED_REVISION"
-}	
+	autoclone
+}
 
 build () {
 	cde "$MODULE_WORK_DIR/src/redsocks"
