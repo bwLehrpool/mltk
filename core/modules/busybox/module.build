@@ -26,7 +26,7 @@ fetch_source() {
 }
 
 build() {
-	cp "${MODULE_DIR}/openslx-busybox-config" "src/.config"
+	cp "${MODULE_DIR}/openslx-busybox-config" "src/busybox/.config" || perror "Cannot cp .config"
 	cde src/busybox
 	yes '' | make oldconfig
 	pinfo "Running make (if this hangs, check for unset options, ie. when you increased the REQUIRED_BRANCH)"
