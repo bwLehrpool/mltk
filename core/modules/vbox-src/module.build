@@ -28,7 +28,6 @@ build() {
 	[[ "${BASEVER: -1}" =~ ^[0-9]$ ]] || BASEVER="${BASEVER:0:-1}"
 	cd "${MODULE_WORK_DIR}/src/VirtualBox-${BASEVER}" || \
 		perror "Could not cd to '${MODULE_WORK_DIR}/src/VirtualBox-${BASEVER}'."
-	sed -i 's/VBOX_WITH_CLOUD_NET = 1/VBOX_WITH_CLOUD_NET =/g' "Config.kmk" || perror "Could not disable cloud networking."
 	local VBOX_BUILD_DIR="${MODULE_WORK_DIR}/src/VirtualBox-${BASEVER}/build"
 	mkdir -p "$VBOX_BUILD_DIR" || perror "Failed to mkdir '$VBOX_BUILD_DIR'."
 	./configure \
@@ -41,12 +40,15 @@ build() {
 			|| perror "'configure' failed."
 
 	(
+		# Limit job count - can easily OOM
+		num="$( awk '$1 == "MemTotal:" { print int(0.25 + $2 / (1024**2)) }' /proc/meminfo )"
+		(( num > CPU_CORES )) && num="$CPU_CORES"
 		# the configure script should have created a file called 'env.sh'
 		source "${VBOX_BUILD_DIR}/env.sh" || perror "Failed to source '${VBOX_BUILD_DIR}/env.sh'."
 		# copy the LocalConfig.kmk to the build dir to be more LSB-compliant
 		cp "${MODULE_DIR}/LocalConfig.kmk" "${VBOX_BUILD_DIR}" || \
 			perror "Failed to cp LocalConfig.kmk to build dir"
-		kmk all || perror "Failed to execute 'kmk'."
+		kmk -j "$num" all || perror "Failed to execute 'kmk'."
 
 		# check the generated build directory, use BUILD_PLATFORM_ARCH defined in env.sh
 		local VBOX_RELEASE_BUILD_DIR="${VBOX_BUILD_DIR}/linux.${BUILD_PLATFORM_ARCH}/release"
