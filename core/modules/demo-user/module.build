@@ -1,0 +1,13 @@
+#!/bin/bash
+fetch_source() {
+	:
+}
+
+build() {
+	:
+}
+
+post_copy() {
+	DEMO_ID="$(USER=demo PASSWORD= USERHOME=/home/demo USERSHELL=/bin/bash add_user)"
+	[ -n "$DEMO_ID" ] && pinfo "Created user demo"
+}
