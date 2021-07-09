@@ -107,11 +107,8 @@ post_copy() {
 
 	# setup root account
 	PASSWORD= USER=root add_user
-	DEMO_ID="$(USER=demo PASSWORD= USERHOME=/home/demo USERSHELL=/bin/bash add_user)"
 
 	mkdir -p "${TARGET_BUILD_DIR}/root"
-	mkdir -p "${TARGET_BUILD_DIR}/home/demo"
-	chown "$DEMO_ID:$DEMO_ID" "${TARGET_BUILD_DIR}/home/demo"
 	sed -i -r 's/^blacklist.*pcspkr/#&/g' "$TARGET_BUILD_DIR/etc/modprobe.d/blacklist.conf"
 
 	echo "minilinux-$(hostname)" > "${TARGET_BUILD_DIR}/etc/hostname"
