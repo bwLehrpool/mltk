@@ -1,0 +1,31 @@
+#!/bin/bash
+fetch_source() {
+	:
+}
+
+build() {
+	:
+}
+
+post_copy() {
+	# first copy kernel
+	copy_kernel
+
+	# now copy all the firmware and kernel modules
+	# to preserve the build environment, we copy instead of moving
+	mkdir -p "${TARGET_BUILD_DIR}/lib"
+	rsync -aAXv "${KERNEL_BASE_DIR}/lib/firmware" "${TARGET_BUILD_DIR}/lib" || \
+		perror "Failed to copy firmware to '${TARGET_BUILD_DIR}/lib'."
+	rsync -aAXv "${KERNEL_BASE_DIR}/lib/modules" "${TARGET_BUILD_DIR}/lib" || \
+		perror "Failed to copy kernel modules to '${TARGET_BUILD_DIR}/lib'."
+
+	# NOTE: if symlinks are present in ./lib/modules/<version>/kernel, they
+	# are likely pointing to mltk's kernel work dir, thus unusable in live
+	# systems. We just delete those for now.
+	for LINK in "${TARGET_BUILD_DIR}/lib/modules/${TARGET_KERNEL_LONG}/"{build,source}; do
+		if [ -h "${LINK}" ]; then
+			pinfo "Removing '${LINK}' as it won't point to a valid path on live systems."
+			unlink "${LINK}" || perror "Failed to unlink '${LINK}'."
+		fi
+	done
+}
