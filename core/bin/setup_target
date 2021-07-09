@@ -374,7 +374,6 @@ generate_target_real() {
 	# build a module multiple times when following dependencies
 	local item
 	local PROCESSED_MODULES=
-	[ -e "${ROOT_DIR}/var/log/${TARGET}.size" ] && . "${ROOT_DIR}/var/log/${TARGET}.size" || echo "declare -A BUILD_SIZE" >> "${ROOT_DIR}/var/log/${TARGET}.size"
 
 	[ -d "$TARGET_DIR" ] || perror "Given target directory does not exist: $TARGET_DIR"
 
@@ -484,12 +483,6 @@ process_module() {
 	fi
 	[ -n "$DEPOF" ] && local DEPOF_STR="(dependency of${DEPOF})"
 	pinfo ">>>>>>>>>>>>>>>>> Processing module [ $MODULE ] $DEPOF_STR"
-	# Update size of target build dir
-	if [ -d "${TARGET_BUILD_DIR}" ]; then
-		TARGET_BUILD_SIZE=$(du -bc "${TARGET_BUILD_DIR}" | awk 'END {print $1}')
-	else
-		TARGET_BUILD_SIZE=0
-	fi
 	# Source .build script of module
 	pdebug "## Reading .build of $MODULE"
 	. "${CORE_DIR}/includes/clean_module_funcs.inc" # Clean all hooks, in case the module doesn't define them all
@@ -544,9 +537,6 @@ process_module() {
 	[ -e "$TARGET_BUILD_DIR/var/run" -a ! -L "$TARGET_BUILD_DIR/var/run" ] && perror "Messup datected: $TARGET_BUILD_DIR/var/run exists and is not a symlink!"
 	[ -e "$TARGET_BUILD_DIR/var/lock" -a ! -L "$TARGET_BUILD_DIR/var/lock" ] && perror "Messup datected: $TARGET_BUILD_DIR/var/lock exists and is not a symlink!"
 	[ -n "$(ls -A "$TARGET_BUILD_DIR/run" 2>> /dev/null)" ] && perror "Messup detected: $TARGET_BUILD_DIR/run is not empty. You cannot place static files there, use /etc/tmpfiles.d instead!"
-	# set MODULE_BUILD_SIZE
-	calc_size
-	pinfo "Module completed. Total size: ${MODULE_BUILD_SIZE}"
 }
 
 post_process_target() {
@@ -623,7 +613,6 @@ clean_modules() {
 	[ -d $TARGET_DIR ] || perror "Given target directory does not exist: $TARGET_DIR"
 
 	if [ "x$1" = "x" -o "x$1" = "xall" ]; then
-		rm -f -- "${ROOT_DIR}/var/log/${TARGET}.size" || perror "Could not delete var/log/${TARGET}.size"
 		if [[ "$TARGET" == *@* ]]; then
 			rm -rf -- "${TARGET_BUILD_DIR%@*}"@* || perror "Could not delete target build dirs for $TARGET"
 		else
@@ -696,26 +685,5 @@ copy_system_files() {
 		list+=" $(get_link_chain "$file")"
 	done
 	tarcopy "$list" "$TARGET_BUILD_DIR"
-}
-
-# Tries to calculate the size of modules - doesn't seem to work all the time
-calc_size() {
-
-	local CURRENT_BUILD_SIZE=$(du -bc "${TARGET_BUILD_DIR}" | awk 'END {print $1}')
-
-	[ ! -z "${BUILD_SIZE[$MODULE]}" ] && local OLD_MODULE_SIZE=${BUILD_SIZE[$MODULE]} || local OLD_MODULE_SIZE=0
-	local diff=$((CURRENT_BUILD_SIZE-TARGET_BUILD_SIZE+OLD_MODULE_SIZE))
-
-	if [ -z "${BUILD_SIZE[$MODULE]}" ]; then
-		echo "BUILD_SIZE[$MODULE]=${diff}" >> "${ROOT_DIR}/var/log/${TARGET}.size"
-	else
-		sed -i "s/^BUILD_SIZE\[${MODULE}\]=.*$/BUILD_SIZE\[${MODULE}\]=${diff}/g" "${ROOT_DIR}/var/log/${TARGET}.size"
-	fi
-
-	MODULE_BUILD_SIZE=$(echo $diff | awk '{ sum=$1; hum[1024^3]="GB"; hum[1024^2]="MB"; hum[1024]="KB";
-					for (x=1024^3; x>=1024; x/=1024){
-						if (sum>=x) { printf "%.2f %s\n",sum/x,hum[x]; break }
-					}
-				}')
 }
 
