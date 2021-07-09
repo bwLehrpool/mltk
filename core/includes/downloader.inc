@@ -146,7 +146,7 @@ autoclone () {
 			fi
 		fi
 		[ -n "$AUTOCLONE_FILE" ] \
-			&& echo "$( git -C "$dstdir/$dst" rev-parse --abbrev-ref HEAD ) $( git -C "$dstdir/$dst" rev-parse --short HEAD )" \
+			&& echo "$dst: $( git -C "$dstdir/$dst" rev-parse --abbrev-ref HEAD ) $( git -C "$dstdir/$dst" rev-parse --short HEAD )" \
 			>> "$AUTOCLONE_FILE"
 	done
 	return 0
