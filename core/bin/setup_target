@@ -545,7 +545,7 @@ process_module() {
 post_process_target() {
 	local TOOL_STR="$TOOL_STR post_process_target:"
 
-	if [ -z "$REMOTE_LOCAL_INSTALL" ]; then
+	if [ -z "$MLTK_INSTALL" ]; then
 		# traditional minilinux approach
 		# figure out all relevant ld-paths
 		pinfo "Running ldconfig"
@@ -596,7 +596,7 @@ post_process_target() {
 		"${TARGET_BUILD_DIR}/" "${RSYNC_DEST}" || \
 			perror "Failed to rsync, your system is probably trashed ;-("
 
-	[ "$REMOTE_DEBUG" -eq 0 ] && rm -f -- "$RSYNC_EXCLUDE_LIST"
+	[ -z "$MLTK_DEBUG" ] && rm -f -- "$RSYNC_EXCLUDE_LIST"
 
 	# finish by running ldconfig for the running system (when processing non-addons).
 	if [ ! -e "${TARGET_DIR}/.addon" ]; then

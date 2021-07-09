@@ -23,7 +23,6 @@ declare -rg ARG0="$0"
 declare -rg SELF="$(readlink -f "$ARG0")"
 declare -rg ROOT_DIR="$(dirname "${SELF}")"
 declare -rg MLTK_PID="$$"
-declare -rg REMOTE_SETUP_TARGET="${ROOT_DIR}/core/bin/setup_target"
 
 
 # Make apt-get install non-interactive when it comes to postinstall questions
@@ -153,12 +152,10 @@ initial_checks() {
 	else
 		banner
 	fi
-
-	[ ! -e "${REMOTE_SETUP_TARGET}" ] && perror "Missing script core/bin/setup_target. Exiting."
 }
 
 read_params() {
-	local SUBMODE=""
+	local list_name=
 
 	# A target represents a set of modules to be build for a specific stage.
 	# i.e. a very basic stage31 target should includes:
@@ -193,27 +190,29 @@ read_params() {
 		if [[ "$PARAM" == -* ]]; then
 			case "$PARAM" in
 				-c)
-					SUBMODE="CLEAN"
+					list_name="REMOTE_LIST_CLEAN"
+					MODE_CLEAN=1
 					;;
 				-b)
-					SUBMODE="BUILD"
+					list_name="REMOTE_LIST_BUILD"
+					MODE_BUILD=1
 					;;
 				-d)
-					REMOTE_DEBUG=1
+					MLTK_DEBUG=1
 					continue
 					;;
 				-n)
-					if [ -z "$1" ]; then 
-						REMOTE_EXPORT_DIR=/export/build
+					if [ -z "$1" ]; then
+						REMOTE_EXPORT_DIR="/export/build"
 					else
 						REMOTE_EXPORT_DIR="/export/$1"
 						shift
 					fi
-					REMOTE_EXPORT="1"
+					MODE_EXPORT=1
 					continue
 					;;
 				-i)
-					REMOTE_LOCAL_INSTALL=1
+					MLTK_INSTALL=1
 					continue
 					;;
 				--force-sys-version)
@@ -231,40 +230,43 @@ read_params() {
 					exit 1
 					;;
 			esac
-			eval REMOTE_${SUBMODE}=1
 			continue
 		fi
 
 		# module name
-		[[ "$SUBMODE" != "CLEAN" && "$SUBMODE" != "BUILD" ]] && pwarning "Module name given, but no action specified (eg. build)" && print_usage && exit 1
-		eval "REMOTE_LIST_${SUBMODE}=\"\$REMOTE_LIST_${SUBMODE} \$PARAM\""
+		if [ -z "$list_name" ]; then
+			pwarning "Module name given, but no action specified (-b/-c)"
+			print_usage
+			exit 1
+		fi
+		declare "${list_name}=${!list_name} $PARAM"
 	done
 
 	# exit if no command
-	[[ "$REMOTE_CLEAN" == 0 && "$REMOTE_BUILD" == 0 && "$REMOTE_EXPORT" == 0 ]] && print_usage && exit 1
+	if [ -z "$MODE_CLEAN" ] || [ -z "$MODE_BUILD" ] || [ -z "$MODE_EXPORT" ]; then
+		print_usage
+		exit 1
+	fi
 }
 
 run() {
-	[[ $REMOTE_DEBUG == 1 ]] && unset_quiet || set_quiet
-	. "${REMOTE_SETUP_TARGET}" || perror "Cannot source ${REMOTE_SETUP_TARGET}"
-	[[ $REMOTE_CLEAN == 1 ]] && clean_modules $TARGET $REMOTE_LIST_CLEAN
-	[[ $REMOTE_BUILD == 1 ]] && generate_target $TARGET $REMOTE_LIST_BUILD
-	[[ $REMOTE_EXPORT == 1 ]] && export_builds
+	if [ -n "$MLTK_DEBUG" ]; then
+		unset_quiet
+	else
+		set_quiet
+	fi
+	. "${ROOT_DIR}/core/bin/setup_target"
+	[ -n "$MODE_CLEAN" ] && clean_modules $TARGET $REMOTE_LIST_CLEAN
+	[ -n "$MODE_BUILD" ] && generate_target $TARGET $REMOTE_LIST_BUILD
+	[ -n "$MODE_EXPORT" ] && export_builds
 }
 
-MLTK_DISTCC=
-MLTK_CCACHE=
-REMOTE_LOCAL_INSTALL=
-REMOTE_DEBUG="0"
-REMOTE_CLEAN="0"
-REMOTE_BUILD="0"
-REMOTE_EXPORT="0"
-REMOTE_LIST_CLEAN=""
-REMOTE_LIST_BUILD=""
-REMOTE_AUTOMATIC_BUILD=0
+unset MLTK_DISTCC MLTK_CCACHE MLTK_INSTALL MLTK_DEBUG MODE_CLEAN MODE_BUILD MODE_EXPORT
+REMOTE_LIST_CLEAN=
+REMOTE_LIST_BUILD=
 
 initial_checks
-read_params $@
+read_params "$@"
 init_helpers
 
 if [ -n "$data1" ] && [ -n "$data2" ]; then

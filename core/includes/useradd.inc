@@ -101,7 +101,7 @@ add_user() {
 
 	# In install mode, only work on the system's files directly and do *not* copy to TARGET_BUILD_DIR
 	declare -a _USERADD_OPTS
-	if [ -z "$REMOTE_LOCAL_INSTALL" ]; then
+	if [ -z "$MLTK_INSTALL" ]; then
 		# regular mltk mode, copy the current user-related files to TARGET_BUILD_DIR
 		local _PASSWD="${TARGET_BUILD_DIR}/etc/passwd"
 		local _GROUP="${TARGET_BUILD_DIR}/etc/group"
@@ -158,7 +158,7 @@ add_user() {
 	else
 		_USERADD_OPTS+=("--create-home")
 		# make sure the parent directory exists
-		if [ -z "$REMOTE_LOCAL_INSTALL" ]; then
+		if [ -z "$MLTK_INSTALL" ]; then
 			_udir="${TARGET_BUILD_DIR}/${USERHOME}"
 		else
 			_udir="$USERHOME"
@@ -197,7 +197,7 @@ add_group () {
 	[ $# -lt 1 ] && perror "add_group called without argument."
 	[ -z "${TARGET_BUILD_DIR}" ] && perror "add_group: TARGET_BUILD_DIR not set"
 	declare -a _GROUPADD_OPTS
-	if [ -z "$REMOTE_LOCAL_INSTALL" ]; then
+	if [ -z "$MLTK_INSTALL" ]; then
 		# regular mltk mode, copy the current user-related files to TARGET_BUILD_DIR
 		local _PASSWD=${TARGET_BUILD_DIR}/etc/passwd
 		local _GROUP=${TARGET_BUILD_DIR}/etc/group

@@ -34,7 +34,7 @@ fetch_source() {
 		rm -rf "./ksrc"
 		git clone --depth 1 "${REQUIRED_GIT}" -b "v${REQUIRED_KERNEL}"  ksrc || perror "Could not clone kernel git."
 	fi
-	if [ -z "$REMOTE_LOCAL_INSTALL" ]; then
+	if [ -z "$MLTK_INSTALL" ]; then
 		# check for aufs
 		local RSL="$( find ksrc/ -type d -name aufs )"
 		if [ -z "$RSL" ]; then
