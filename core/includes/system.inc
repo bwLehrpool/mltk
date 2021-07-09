@@ -34,7 +34,7 @@ __init () {
 	ver=${ver%%.*}
 	if [ -n "$ver" ]; then
 		# Enable ccache?
-		if which ccache &> /dev/null; then
+		if [ -n "$MLTK_CCACHE" ] && which ccache &> /dev/null; then
 			for cdir in "/usr/lib/ccache" "/lib/ccache" "/usr/local/ccache" ""; do
 				[ -d "$cdir" ] && break
 			done
@@ -49,28 +49,30 @@ __init () {
 			fi
 		fi
 		# Enable distcc?
-		testfile="/tmp/test.$$.${RANDOM}.c"
-		echo "int main() { return 0; }" > "$testfile"
-		DISTCC_FALLBACK=0 distcc "gcc-${ver}" -o "${testfile}.bin" -c "$testfile" &>/dev/null
-		ret=$?
-		if [ "$ret" = 0 ] && [ -f "${testfile}.bin" ]; then
-			if [[ "$CC$CXX" == */ccache* ]]; then
-				# Both
-				export CCACHE_PREFIX="distcc"
-				pinfo "Using distcc + ccache"
-			else
-				for cdir in "/usr/lib/distcc" "/lib/distcc" "/usr/local/distcc" ""; do
-					[ -d "$cdir" ] && break
-				done
-				if [ -n "$cdir" ]; then
-					export CC="$cdir/gcc-${ver}"
-					export CXX="$cdir/g++-${ver}"
+		if [ -n "$MLTK_DISTCC" ]; then
+			testfile="/tmp/test.$$.${RANDOM}.c"
+			echo "int main() { return 0; }" > "$testfile"
+			DISTCC_FALLBACK=0 distcc "gcc-${ver}" -o "${testfile}.bin" -c "$testfile" &>/dev/null
+			ret=$?
+			if [ "$ret" = 0 ] && [ -f "${testfile}.bin" ]; then
+				if [[ "$CC$CXX" == */ccache* ]]; then
+					# Both
+					export CCACHE_PREFIX="distcc"
+					pinfo "Using distcc + ccache"
+				else
+					for cdir in "/usr/lib/distcc" "/lib/distcc" "/usr/local/distcc" ""; do
+						[ -d "$cdir" ] && break
+					done
+					if [ -n "$cdir" ]; then
+						export CC="$cdir/gcc-${ver}"
+						export CXX="$cdir/g++-${ver}"
+					fi
+					pinfo "distcc detected"
 				fi
-				pinfo "distcc detected"
+				export MAKEFLAGS="-j40"
 			fi
-			export MAKEFLAGS="-j40"
+			rm -f -- "$testfile" "${testfile}.bin"
 		fi
-		rm -f -- "$testfile" "${testfile}.bin"
 	fi
 }
 

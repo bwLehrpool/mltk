@@ -37,6 +37,15 @@ qnd_exit() {
 	exit 1
 }
 
+# Support sourcing a "config" where you can set up stuff like 'export http_proxy=...'
+if [ -e "$ROOT_DIR/config" ]; then
+	data1="$( mktemp )"
+	data2="$( mktemp )"
+	declare -p > "$data1"
+	. "$ROOT_DIR/config"
+	declare -p > "$data2"
+fi
+
 # source all helper unit files that are found under helper/*.inc
 # or core/includes/*.inc
 # a helper unit may contain a function called "__init" which will be called
@@ -58,9 +67,6 @@ init_helpers () {
 		type -t "$SHORT" | grep -q '^function$' && "$SHORT"
 	done
 }
-
-# Support sourcing a "config" where you can set up stuff like 'export http_proxy=...'
-[ -e "$ROOT_DIR/config" ] && . "$ROOT_DIR/config"
 
 banner () {
 	echo -e "\033[38;5;202m\t           __   __   __    "
@@ -246,6 +252,8 @@ run() {
 	[[ $REMOTE_EXPORT == 1 ]] && export_builds
 }
 
+MLTK_DISTCC=
+MLTK_CCACHE=
 REMOTE_LOCAL_INSTALL=
 REMOTE_DEBUG="0"
 REMOTE_CLEAN="0"
@@ -258,6 +266,15 @@ REMOTE_AUTOMATIC_BUILD=0
 initial_checks
 read_params $@
 init_helpers
+
+if [ -n "$data1" ] && [ -n "$data2" ]; then
+	pinfo "Applied local config:"
+	while read -r line; do
+		pinfo "$line"
+	done < <( diff -U0 "$data1" "$data2" | grep -v -e '^+++ ' -e '^--- ' -e '^@@ ' -e ' BASH_' -e ' _="' )
+	rm -f -- "$data1" "$data2"
+	unset data1 data2
+fi
 
 check_devtools
 
