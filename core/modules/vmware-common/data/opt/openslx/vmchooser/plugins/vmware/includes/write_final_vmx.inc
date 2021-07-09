@@ -233,8 +233,10 @@ setup_vnc() {
 # Serial, parallel: Empty, nothing is being currently set. TODO later.
 
 setup_graphics() {
-	# Graphics, GPU: 3D will be enabled (even if vmware doesn't support the chip) if we whitelisted it.
-	if isset SLX_VMWARE_3D; then
+	# Graphics, GPU: 3D used to be enabled (even if vmware doesn't support the chip) if we whitelisted it.
+	# Now it does cause any troubles, so we always activate it. Keeping the code because who knows
+	# if we might need it again one day :)
+	if true || isset SLX_VMWARE_3D; then
 		writelog "FORCE3D set - overriding 3D in vmx file."
 		echo 'mks.gl.allowBlacklistedDrivers = "TRUE"'	>> "${TMPCONFIG}"
 #		# We override... play safe and cap the hwVersion to 10, since some i915 chips goofed up with 12
