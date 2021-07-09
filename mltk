@@ -239,7 +239,7 @@ read_params() {
 			print_usage
 			exit 1
 		fi
-		declare "${list_name}=${!list_name} $PARAM"
+		declare -g "${list_name}=${!list_name} $PARAM"
 	done
 
 	# exit if no command
