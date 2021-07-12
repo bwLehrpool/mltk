@@ -14,13 +14,15 @@
 #		through the environment variable EXTRA_PACKAGES
 
 list_content_packages() {
-	[ -z "$REQUIRED_CONTENT_PACKAGES" ] && pinfo "No required packages for $TOOL"  && return 1
+	if [ -z "$REQUIRED_CONTENT_PACKAGES" ]; then
+		pinfo "No required packages for $TOOL"
+		return 0
+	fi
 	[ $# -gt 2 ] && perror "'list_content_packages' accepts only 1 or no args. $# given."
 	local PACKAGE=""
 	for PACKAGE in $REQUIRED_CONTENT_PACKAGES $EXTRA_PACKAGES; do
-		list_content_package $1 $PACKAGE
+		list_content_package "$1" "$PACKAGE" || return 1
 	done
-
 }
 list_content_package() {
 	#[ -z "$EXTRA_PACKAGES" ] || pinfo "Listing additional packages: $EXTRA_PACKAGES"
@@ -41,8 +43,8 @@ list_content_package() {
 			;;
 	esac
 	local PACKAGE="$2"
-	local OPTIONAL="$(echo "$PACKAGE" | cut -c 1)"
-	[ "x$OPTIONAL" = "x@" ] && PACKAGE="$(echo "$PACKAGE" | cut -c 2-)"
+	local OPTIONAL="${PACKAGE:0:1}"
+	[ "$OPTIONAL" = "@" ] && PACKAGE="${PACKAGE:1}"
 	local FILES=""
 	if [ "$PACKET_HANDLER" = "dpkg" ]; then
 		PACKAGECOMMAND="dpkg -L"
@@ -66,14 +68,15 @@ list_content_package() {
 		pdebug "FILES: '$FILES'"
 		perror "dpkg/rpm exited with code '$LPRET' for required package ${PACKAGE}."
 	fi
-	[ "x$LPRET" != "x0" ] && pwarning "dpkg/rpm exited with code '$LPRET' for optional package ${PACKAGE}." && return
-	[ -z "$FILES" ] && pwarning "list_packet_files empty for packet ${PACKAGE}." && return
+	[ "x$LPRET" != "x0" ] && pwarning "dpkg/rpm exited with code '$LPRET' for optional package ${PACKAGE}." && return 0
+	[ -z "$FILES" ] && pwarning "list_packet_files empty for packet ${PACKAGE}." && return 0
 	pdebug "Packet $PACKAGE has $(echo $FILES | wc -w) files..."
 	for FILE in $FILES; do
 		if [ "$OP" "$FILE" ] || [ -h "$FILE" ]; then
 			echo "$FILE"
 		fi
 	done
+	return 0
 }
 #
 # Convenience function
