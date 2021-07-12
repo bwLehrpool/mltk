@@ -26,6 +26,7 @@ readonly MOUNT_POINT_45 PARTITION_FILE
 mkdir -p "/run/openslx"
 
 . /opt/openslx/config
+. /opt/openslx/bin/slx-tools
 
 declare -a TMPFILES
 gettmp () {
@@ -175,37 +176,9 @@ fi
 echo "Partitions:"
 cat "$PARTITION_FILE"
 
-# Get all partitions with given id (list of /dev/sdXX)
-# Works for MBR/DOS by looking at the type (1 byte)
-# and for GPT by looking for the label 'OpenSLX-ID$1'
-# in case an id was given, or just at the UUID if some
-# longer string was given
-# The output will be a list of matching devices,
-# sorted from largest to smallest
-get_all_with_id () {
-	local ID dev exp
-	exp=
-	while [ $# -gt 0 ]; do
-		ID=$1
-		shift
-		[ -z "$ID" ] && continue
-		[ ${#ID} -eq 1 ] && ID="0?$ID" # passed '7' as argument -- look for 0x7 or 0x07
-		if [ ${#ID} -le 3 ]; then
-			exp="$exp|ID_PART_ENTRY_(NAME=OpenSLX-ID|TYPE=0x)$ID"
-		else
-			exp="$exp|ID_PART_ENTRY_TYPE=$ID"
-		fi
-	done
-	exp=${exp:1}
-	#echo "Partition find is '$exp'" >&2
-	for dev in $(find /dev/ -type b); do
-		udevadm info --name="$dev" | grep -iqE "($exp)\$" && echo "$(blockdev --getsize64 "$dev") $dev"
-	done | sort -n -k1 -r | cut -d' ' -f2
-}
-
 # Check for standard swap partitions and make them available to the system
 HAVE_SWAP=no
-for PART_DEV in $(get_all_with_id "82" "0657fd6d-a4ab-43c4-84e5-0933c84b4f4f"); do
+for PART_DEV in $(dev_find_partitions "82" "0657fd6d-a4ab-43c4-84e5-0933c84b4f4f"); do
 	if swapon "$PART_DEV" -p 10; then
 		HAVE_SWAP=yes # low priority, in case we have zram swap, prefer that)
 		echo -e "$PART_DEV\tswap\t\tswap\t\tdefaults\t 0 0" >> "/etc/fstab"
@@ -216,7 +189,7 @@ done
 # space, thus no normal filesystem will be incidentally deleted or
 # corrupted
 HAVE_TEMP=no
-for PART_DEV in $(get_all_with_id "44" "87f86132-ff94-4987-b250-444444444444"); do
+for PART_DEV in $(dev_find_partitions "44" "87f86132-ff94-4987-b250-444444444444"); do
 	# check for supported filesystem and formatter
 	if format_disk "$PART_DEV"; then
 		mount_temp "${MOUNT_OPTIONS_SET_BY_FORMAT_DISK[@]}" "$PART_DEV" || continue
@@ -229,7 +202,7 @@ for PART_DEV in $(get_all_with_id "44" "87f86132-ff94-4987-b250-444444444444"); 
 done
 
 # Put detected linux partitions (83) into /etc/fstab with "noauto"
-for PART_DEV in $(get_all_with_id 83); do
+for PART_DEV in $(dev_find_partitions 83); do
 	mkdir -p "/media/${PART_DEV#/dev/*}"
 	echo -e "${PART_DEV}\t/media/${PART_DEV#/dev/*}\tauto\t\tnoauto,noexec\t 0 0" >> "/etc/fstab"
 done
@@ -238,7 +211,7 @@ done
 HAVE_PARTITION_45=no
 get_mount_options "ext4" mopts
 # try all the ID45 partitions until one succeeds, from large to small
-for PART_DEV in $(get_all_with_id "45" "87f86132-ff94-4987-b250-454545454545"); do
+for PART_DEV in $(dev_find_partitions "45" "87f86132-ff94-4987-b250-454545454545"); do
 	mkdir -p "$MOUNT_POINT_45"
 	# Let's see if this is an ext4 partition and if so, whether it has the proper size
 	# Any fixing should happen first
@@ -314,7 +287,7 @@ for PART_DEV in $(get_all_with_id "45" "87f86132-ff94-4987-b250-454545454545"); 
 done
 
 # and 46 to /media/devXX
-for PART_DEV in $(get_all_with_id "46"); do
+for PART_DEV in $(dev_find_partitions "46"); do
 	mkdir -p "/media/${PART_DEV#/dev/*}"
 	#mount -t auto ${PART_DEV} /mnt/media/${PART_DEV#/dev/*} \n\
 	#test -d /mnt/media/${PART_DEV#/dev/*}/home && \
