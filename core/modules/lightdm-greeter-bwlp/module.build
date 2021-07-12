@@ -21,11 +21,6 @@ build() {
 	mv "${BUILDDIR}/qt-lightdm-greeter" "${DESTDIR}"
 	mkdir -p "${MODULE_BUILD_DIR}/usr/share/xgreeters"
 	cp "${SRCDIR}/qt-lightdm-greeter.desktop" "${MODULE_BUILD_DIR}/usr/share/xgreeters"
-
-	COPYLIST="list_dpkg_output"
-	[ -e "$COPYLIST" ] && rm "$COPYLIST"
-	list_packet_files >> "$COPYLIST"
-	tarcopy "$(cat "$COPYLIST" | sort -u)" "${MODULE_BUILD_DIR}"
 }
 
 post_copy() {

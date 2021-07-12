@@ -8,8 +8,7 @@ fetch_source () {
 
 build () {
 	local COPYLIST="$MODULE_WORK_DIR/list_dpkg_output"
-	list_packet_files > "$COPYLIST"
-	[ -n "$REQUIRED_DIR_STRUCT" ] && find $REQUIRED_DIR_STRUCT -type d >> "$COPYLIST"
+	[ -n "$REQUIRED_DIR_STRUCT" ] && find $REQUIRED_DIR_STRUCT -type d > "$COPYLIST"
 	tarcopy "$(cat "${COPYLIST}" | sort -u)" "${MODULE_BUILD_DIR}"
 	mkdir -p "$MODULE_BUILD_DIR/var/lib/polkit"
 }

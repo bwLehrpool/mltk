@@ -8,10 +8,6 @@ fetch_source() {
 build() {
 	mkdir -p "$MODULE_BUILD_DIR/opt/openslx/bin"
 	gcc -o "$MODULE_BUILD_DIR/opt/openslx/bin/sslconnect" "$MODULE_DIR/sslconnect.c" -lssl -lcrypto -O3 || perror "Could not compile sslconnect.c"
-	local COPYLIST="$MODULE_BUILD_DIR/list_packet_files"
-	# TODO: Hack for SUSE: Ignore file (/var/lib/nfs/state) that does not exist :(
-	list_packet_files | grep -v '/var/lib/nfs/state' | sort -u > "$COPYLIST"
-	tarcopy "$(cat "$COPYLIST")" "${MODULE_BUILD_DIR}"
 
 	# build pam-script separatly since we use a source tarball
 

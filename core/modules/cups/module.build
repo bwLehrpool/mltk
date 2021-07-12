@@ -5,13 +5,7 @@ fetch_source() {
 }
 
 build() {
-	local COPYLIST file
-	COPYLIST="list_dpkg_output"
-	[ -e "$COPYLIST" ] && rm "$COPYLIST"
-
-	list_packet_files >> "$COPYLIST"
-	tarcopy "$(cat "$COPYLIST" | sort -u)" "${MODULE_BUILD_DIR}"
-
+	local file
 	# Move any disabled backends to the backend directory
 	mv -n -- "${MODULE_BUILD_DIR}/usr/lib/cups/backend-available/"* "${MODULE_BUILD_DIR}/usr/lib/cups/backend/"
 	rm -f -- "${MODULE_BUILD_DIR}/usr/lib/cups/backend-available/"*

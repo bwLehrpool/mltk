@@ -6,8 +6,8 @@ fetch_source() {
 
 build() {
 	local COPYLIST BIN_LOCATION DRM_MODULES FILE BIN MODNAME PCI_FILE ALIAS VENDOR DEVICE LIB
-	local COPYLIST="list_binaries_and_files"
-	[ -e "$COPYLIST" ] && rm -f "$COPYLIST"
+	COPYLIST="${MODULE_WORK_DIR}/list_binaries_and_files"
+	rm --f "$COPYLIST"
 	for BIN in $REQUIRED_BINARIES; do
 		local BIN_LOCATION=$(which "$BIN")
 		[ -z "$BIN_LOCATION" ] && perror "Cannot find $BIN"

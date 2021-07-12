@@ -7,10 +7,6 @@ fetch_source() {
 
 build() {
 	# copy REQUIRED_CONTENT_PACKAGES to mltk/tmp/work/<module>/build/
-	#COPYLIST="list_dpkg_output"
-	#[ -e "$COPYLIST" ] && rm "$COPYLIST"
-	#list_packet_files >> "$COPYLIST"
-	#tarcopy "$(cat "$COPYLIST" | sort -u)" "${MODULE_BUILD_DIR}"
 	# Compile libsodium
 	cd "${MODULE_WORK_DIR}/src/libsodium/${REQUIRED_LIBSODIUM_UNTAR_NAME}" || perror "Could not cd to '${MODULE_WORK_DIR}/src/libsodium'. Did download_untar in fetch_source work?"
 	./configure || perror "configure failed"

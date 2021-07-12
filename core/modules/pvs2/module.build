@@ -29,13 +29,8 @@ build() {
 		chmod +x "${MODULE_BUILD_DIR}/opt/openslx/pvs2"/*.sh \
 			|| perror "Could not set executable bit for external scripts."
 	fi
-
-	# needed for copying REQUIRED_CONTENT_PACKAGES to build/
-	COPYLIST="list_dpkg_output"
-	[ -e "$COPYLIST" ] && rm "$COPYLIST"
-	list_packet_files >> "$COPYLIST"
-	tarcopy "$(cat "$COPYLIST" | sort -u)" "${MODULE_BUILD_DIR}"
 }
+
 post_copy() {
 	:
 }

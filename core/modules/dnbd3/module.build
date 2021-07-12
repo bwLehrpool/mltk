@@ -30,11 +30,6 @@ build() {
 		|| perror "Could not create installation directory."
 	cp -f "fuse/dnbd3-fuse" "server/dnbd3-server" "$install_dir" \
 		|| perror "Could not copy components to installation directory."
-
-	COPYLIST="list_dpkg_output"
-	[ -e "$COPYLIST" ] && rm "$COPYLIST"
-	list_packet_files >> "$COPYLIST"
-	tarcopy "$(cat "$COPYLIST" | sort -u)" "${MODULE_BUILD_DIR}"
 }
 
 post_copy() {

@@ -15,12 +15,6 @@ fetch_source() {
 }
 
 build() {
-	COPYLIST="list_dpkg_output"
-	[ -e "$COPYLIST" ] && rm "$COPYLIST"
-
-	list_packet_files >> "$COPYLIST"
-	tarcopy "$(cat "$COPYLIST" | sort -u)" "${MODULE_BUILD_DIR}"
-
 	# copy udev rules to correct location
 	if [ -d "${MODULE_BUILD_DIR}/lib/udev" ]; then
 		cp -r "${MODULE_BUILD_DIR}/lib/udev" "${MODULE_BUILD_DIR}/usr/lib/"

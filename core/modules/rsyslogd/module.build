@@ -4,20 +4,14 @@ fetch_source() {
 }
 
 build() {
-	COPYLIST="list_dpkg_output"
-	[ -e "$COPYLIST" ] && rm "$COPYLIST"
-
-	list_packet_files >> "$COPYLIST"
-	tarcopy "$(cat "$COPYLIST" | sort -u)" "${MODULE_BUILD_DIR}"
-
-	return 0
+	:
 }
 
 post_copy() {
-
-
+	# TODO This is garbage: Assumes we use our own systemd, hard-coded path
+	# Fix this or get rid of rsyslogd
 	# pwd = module's build dir
-	mkdir -p "${TARGET_BUILD_DIR}"/var/spool/rsyslog
+	mkdir -p "${TARGET_BUILD_DIR}/var/spool/rsyslog"
 
 	local RSL="$(find /usr/lib/ /lib/ -name rsyslog.service | head -1)"
 	[ -z "$RSL" -o ! -e "$RSL" ] && perror "rsyslog.service not found on vorlage"

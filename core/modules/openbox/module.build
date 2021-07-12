@@ -4,15 +4,7 @@ fetch_source() {
 }
 
 build() {
-	COPYLIST="list_dpkg_output"
-	[ -e "$COPYLIST" ] && rm "$COPYLIST"
-
-	list_packet_files >> "$COPYLIST"
-	# FIXME: Hack: openSUSE's rpm -ql lilsts non-existant pango.modules, which makes
-	# tarcopy fail. We probably can't fix that, so remove it using grep....
-	tarcopy "$(cat "$COPYLIST" | grep -v 'pango\.modules$' | sort -u)" "${MODULE_BUILD_DIR}"
-
-	return 0
+	:
 }
 
 post_copy() {

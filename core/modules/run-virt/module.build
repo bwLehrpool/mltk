@@ -5,10 +5,6 @@ fetch_source () {
 }
 
 build () {
-	local COPYLIST="list_dpkg_output"
-	rm -f -- "$COPYLIST"
-	list_packet_files > "$COPYLIST"
-	tarcopy "$(cat "$COPYLIST" | sort -u)" "${MODULE_BUILD_DIR}"
 	# Compile pwdaemon
 	mkdir -p "${MODULE_BUILD_DIR}/opt/openslx/bin"
 	gcc -D_GNU_SOURCE -std=gnu99 -o "${MODULE_BUILD_DIR}/opt/openslx/bin/pwdaemon" -Os "${MODULE_DIR}/pw_daemon.c" || perror "Could not compile the pwdaemon"

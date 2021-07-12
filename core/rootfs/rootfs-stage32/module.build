@@ -5,15 +5,8 @@ fetch_source() {
 }
 
 build() {
-	if [ ! -z "$REQUIRED_CONTENT_PACKAGES" ]; then
-		local COPYLIST="list_dpkg_output"
-		[ -e "${COPYLIST}" ] && rm "${COPYLIST}"
-		list_packet_files >> "${COPYLIST}"
-		tarcopy "$(cat "${COPYLIST}" | sort -u)" "${MODULE_BUILD_DIR}"
-	fi
-
 	local FILELIST="list_binaries_and_files"
-	[ -e "${FILELIST}" ] && rm "${FILELIST}"
+	rm -f "${FILELIST}"
 
 	# Get ldconfig
 	mkdir -p "$MODULE_BUILD_DIR/sbin"

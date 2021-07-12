@@ -5,18 +5,14 @@ fetch_source() {
 }
 
 build() {
-	COPYLIST="list_dpkg_output"
-	[ -e "$COPYLIST" ] && rm "$COPYLIST"
-
-	list_packet_files >> "$COPYLIST"
-	tarcopy "$(cat "$COPYLIST" | sort -u)" "${MODULE_BUILD_DIR}"
-
 	# copy udev rules to correct location
-	[ -d "${MODULE_BUILD_DIR}/lib/udev" ] && mv "${MODULE_BUILD_DIR}/lib/udev" "${MODULE_BUILD_DIR}/usr/lib/"	
+	if [ -d "${TARGET_BUILD_DIR}/usr/lib/udev" ] && [ -d "${MODULE_BUILD_DIR}/lib/udev" ]; then
+		mv "${MODULE_BUILD_DIR}/lib/udev" "${MODULE_BUILD_DIR}/usr/lib/"
+	fi
 }
 
 post_copy() {
 	mkdir -p "${TARGET_BUILD_DIR}/etc/X11"
-	[ ! -e ${TARGET_BUILD_DIR}/etc/X11/X ] && ln -s /usr/bin/Xorg ${TARGET_BUILD_DIR}/etc/X11/X	
+	[ ! -e ${TARGET_BUILD_DIR}/etc/X11/X ] && ln -s /usr/bin/Xorg ${TARGET_BUILD_DIR}/etc/X11/X
 }
 

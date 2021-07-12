@@ -180,22 +180,22 @@ export_builds() {
 copy_files_with_deps () {
 
 	[ ! -d "$MODULE_BUILD_DIR" ] && pinfo "No build directory found, skipping dependency copying" && return 0
-	cd "$MODULE_BUILD_DIR"
+	cde "$MODULE_BUILD_DIR"
 
 	local COPYFILES_LIST="${TARGET_BUILD_DIR}/opt/openslx/.mltk/${MODULE}.copy_files_with_deps"
 	rm -f -- "${COPYFILES_LIST}"
 
 	# from REQUIRED_BINARIES - follow symlinks and ldd the file
 	[ ! -z "${REQUIRED_BINARIES}" ] && pinfo "Gathering required binaries from config file..."
-	local OPTIONAL
+	local OPTIONAL FILENAME
 	for FILENAME in ${REQUIRED_BINARIES}; do
-		if [[ "$FILENAME" == @* ]]; then
+		if [[ "${FILENAME:0:1}" == "@" ]]; then
 			OPTIONAL="yes"
-			FILENAME=$(echo "$FILENAME" | cut -c 2- )
+			FILENAME="${FILENAME:1}"
 		else
 			OPTIONAL="no"
 		fi
-		local FILE_CANDIDATES=$( find . -name "${FILENAME}" -a \( -type f -o -type l \) )
+		local FILE_CANDIDATES="$( find . -name "${FILENAME}" -a \( -type f -o -type l \) )"
 		local FINAL_LIST=""
 		# Check result of find
 		if [ "$(echo "$FILE_CANDIDATES" | wc -l)" -gt 1 ]; then
@@ -208,6 +208,12 @@ copy_files_with_deps () {
 			done
 			FINAL_LIST=$(trim "$FINAL_LIST")
 			if [ -z "$FINAL_LIST" ]; then
+				# Not found in build dir; if install mode, check if it's in the PKG_CONTENT_FILE
+				if [ -n "$MLTK_INSTALL" ]; then
+					# TODO: Might want to iterate over all the matches and check if at least one of them
+					# is +x
+					grep -q "/${FILENAME}\$" "$PKG_CONTENT_FILE" && continue
+				fi
 				perror "\tNo binary found for ${FILENAME}. None of the candidates ($FILE_CANDIDATES) is executable."
 			fi
 			if [[ "$FINAL_LIST" == *" "* ]]; then
@@ -217,12 +223,16 @@ copy_files_with_deps () {
 			fi
 		elif [ "$OPTIONAL" == "no" -a -z "$FILE_CANDIDATES" ]; then
 			# No candidate
+			# Same as above: accept existing file in /
+			if [ -n "$MLTK_INSTALL" ]; then
+				grep -q "/${FILENAME}\$" "$PKG_CONTENT_FILE" && continue
+			fi
 			perror "Could not find required binary $FILENAME"
 		else
 			# One candidate
-			local TESTFILE=$(readlink -f "$FILE_CANDIDATES")
-			if [ -f "$TESTFILE" -a -x "$TESTFILE" ]; then
-				FINAL_LIST=${FILE_CANDIDATES}
+			local TESTFILE="$( readlink -f "$FILE_CANDIDATES" )"
+			if [ -f "$TESTFILE" ] && [ -x "$TESTFILE" ]; then
+				FINAL_LIST="${FILE_CANDIDATES}"
 			elif [ "$OPTIONAL" = "no" ]; then
 				perror "No executable regular file found for '$FILENAME' (potential match was $(echo $FILE_CANDIDATES))"
 			fi
@@ -236,10 +246,16 @@ copy_files_with_deps () {
 
 	# from REQUIRED_LIBRARIES - like binaries, follow symlinks and ldd, but also expand the lib-name
 	# by looking for files named <libname>.so*
-	[ ! -z "$REQUIRED_LIBRARIES" ] && pinfo "Gathering required libraries from config file..."
+	[ -n "$REQUIRED_LIBRARIES" ] && pinfo "Gathering required libraries from config file..."
 	for LIB in $REQUIRED_LIBRARIES; do
 		FILE_CANDIDATES=$(find . -name "${LIB}.so*")
-		[ -z "$FILE_CANDIDATES" ] && perror "Cannot find required library $LIB"
+		if [ -z "$FILE_CANDIDATES" ]; then
+			if [ -n "$MLTK_INSTALL" ]; then
+				# TODO: Escape LIB and use a proper regex with -P
+				grep -qF "/${LIB}.so" "$PKG_CONTENT_FILE" && continue
+			fi
+			perror "Cannot find required library $LIB"
+		fi
 		for LOCATION in $FILE_CANDIDATES; do
 			pdebug "* $LOCATION"
 			get_link_chain "${MODULE_BUILD_DIR}/${LOCATION}" "${MODULE_BUILD_DIR}"  >> "${COPYFILES_LIST}"
@@ -275,6 +291,9 @@ copy_files_with_deps () {
 				continue
 			fi
 		fi
+		if [ -n "$MLTK_INSTALL" ] && ! [ -e "${MODULE_BUILD_DIR}/${ENTRY}" ]; then
+			[ -e "/${ENTRY}" ] && continue # OK for install mode... I think
+		fi
 		get_link_chain "${MODULE_BUILD_DIR}/${ENTRY}" "${MODULE_BUILD_DIR}" >> "${COPYFILES_LIST}"
 	done
 
@@ -286,7 +305,7 @@ copy_files_with_deps () {
 	fi
 	# unchanged?
 	local OLD="${COPYFILES_LIST}.old"
-	if [ -s "$OLD" ] && diff "$OLD" "$COPYFILES_LIST"; then
+	if [ -s "$OLD" ] && cmp "$OLD" "$COPYFILES_LIST"; then
 		return
 	fi
 	local CLISTCOUNT=$(cat "$COPYFILES_LIST" | wc -l)
@@ -439,6 +458,7 @@ process_module() {
 	local BUILD_FLAG="${MODULE_WORK_DIR}/meta/build_complete.flag"
 	local AUTOCLONE_FILE="${MODULE_WORK_DIR}/meta/repos"
 	local MD5FILE="${TARGET_BUILD_DIR}/opt/openslx/.mltk/${MODULE}.md5"
+	local PKG_CONTENT_FILE="${MODULE_WORK_DIR}/meta/list_package_contents"
 	mkdir -p "${TARGET_BUILD_DIR}/opt/openslx/.mltk" "${MODULE_WORK_DIR}/meta"
 	if [ ! -d "${MODULE_DIR}" ]; then
 		if [ -z "$DEPOF" ]; then
@@ -447,7 +467,6 @@ process_module() {
 		perror "Module directory for '$MODULE' not found in ${TARGET_DIR} (is a dependency of${DEPOF})"
 		return
 	fi
-	mkdir -p "${MODULE_WORK_DIR}"
 	cde "${MODULE_DIR}"
 	# Simple check for modified .build / .config, in which case we'll run a module clean first
 	if [ -f "$MD5FILE" ]; then
@@ -503,8 +522,14 @@ process_module() {
 	fi
 	# Build
 	if [ ! -e "$BUILD_FLAG" ]; then
-		pinfo "## Building"
+		list_packet_files > "$PKG_CONTENT_FILE" || perror "Could not write packet content list to $PKG_CONTENT_FILE"
+		# Copy all required packages' contents to build dir, but not in install mode
+		if [ -z "$MLTK_INSTALL" ]; then
+			pinfo "## Copying required packages to build dir"
+			tarcopy "$( sort -u "$PKG_CONTENT_FILE" )" "${MODULE_BUILD_DIR}"
+		fi
 		cde "${MODULE_WORK_DIR}"
+		pinfo "## Building"
 		build # calls perror if something fails, no need to do that here
 		strip_recursive "$MODULE_BUILD_DIR"
 		touch "$BUILD_FLAG" || pwarning "Error setting built-flag"
