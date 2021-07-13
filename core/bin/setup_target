@@ -269,16 +269,20 @@ copy_files_with_deps () {
 	local ENTRY=""
 	for ENTRY in ${REQUIRED_DIRECTORIES}; do
 		[[ "$ENTRY" == /* ]] || perror "All entries in REQUIRED_DIRECTORIES have to start with a slash '/', but $ENTRY does not!"
-		[ -e "$ENTRY" -a ! -d "$ENTRY" ] && perror "$ENTRY is not a directory"
+		[ -e "$ENTRY" -a ! -d "$ENTRY" ] && perror "$ENTRY is not a directory in base system"
 		pdebug "* $ENTRY"
-		ENTRY=".${ENTRY}"
-		echo "${ENTRY}" >> "${COPYFILES_LIST}"
-		for BIN in $(find "${ENTRY}" -type f -a \( -executable -o -name '*.so*' \) -a -not -name '*.a'); do
-			[ -f "$BIN" ] || continue
-			#pdebug "\tSearching libs for ${BIN}..."
-			get_link_chain "${MODULE_BUILD_DIR}/${BIN}" "${MODULE_BUILD_DIR}" >> "${COPYFILES_LIST}"
-			get_dynamic_dependencies -l "${MODULE_BUILD_DIR}" "${BIN}" >> "${COPYFILES_LIST}"
-		done
+		if [ -d ".${ENTRY}" ]; then
+			ENTRY=".${ENTRY}"
+			echo "${ENTRY}" >> "${COPYFILES_LIST}"
+			for BIN in $(find "${ENTRY}" -type f -a \( -executable -o -name '*.so*' \) -a -not -name '*.a'); do
+				[ -f "$BIN" ] || continue
+				#pdebug "\tSearching libs for ${BIN}..."
+				get_link_chain "${MODULE_BUILD_DIR}/${BIN}" "${MODULE_BUILD_DIR}" >> "${COPYFILES_LIST}"
+				get_dynamic_dependencies -l "${MODULE_BUILD_DIR}" "${BIN}" >> "${COPYFILES_LIST}"
+			done
+		elif [ -z "$MLTK_INSTALL" ] || ! [ -d "$ENTRY" ]; then
+			perror "Required directory $ENTRY not found"
+		fi
 	done
 
 	# from REQUIRED_FILES - these are assumed to be simple files, so only follow symlinks
