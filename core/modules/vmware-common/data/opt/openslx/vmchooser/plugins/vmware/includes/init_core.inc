@@ -17,11 +17,17 @@ vmw_cap_hw_version() {
 	[ "$1" -lt "$maxhardwareversion" ] && maxhardwareversion="$1"
 }
 
+# The '@' included in bwIDM usernames leads to player crashes when
+# local VM caching is active. It seems like the problems lies with the
+# folder name where vmware puts its runtime files.
+# As a workaround we just replace '@' with '-' for now.
+declare -rg VM_WORK_DIR="/tmp/virt/vmware/${USER//@/-}.$$"
+
 # Temporary disk space for logs, etc...
-declare -rg VM_REDO_DIR="/tmp/virt/vmware/${USER}.$$"
+declare -rg VM_REDO_DIR="$VM_WORK_DIR"
 
 # Dir for configs and vmem file
-declare -rg VM_CONF_DIR="/tmp/virt/vmware/${USER}.$$"
+declare -rg VM_CONF_DIR="$VM_WORK_DIR"
 
 # The VMX file of the starting VM
 declare -rg VM_RUN_FILE="${VM_CONF_DIR}/run-vmware.conf"
