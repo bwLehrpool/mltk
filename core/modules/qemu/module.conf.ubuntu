@@ -2,7 +2,7 @@
 
 REQUIRED_INSTALLED_PACKAGES="
 	maven
-	openjdk-8-jdk-headless
+	default-jdk-headless
 "
 
 REQUIRED_CONTENT_PACKAGES="

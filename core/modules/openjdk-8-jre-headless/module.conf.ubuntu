@@ -1,9 +1,5 @@
 #!/bin/bash
 
-REQUIRED_INSTALLED_PACKAGES="
-	openjdk-8-jre-headless
-"
-
 REQUIRED_CONTENT_PACKAGES="
-	openjdk-8-jre-headless
+	default-jre-headless
 "
