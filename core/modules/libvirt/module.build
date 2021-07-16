@@ -1,4 +1,16 @@
 #!/bin/bash
+
+module_init() {
+	local uid gid
+	# TODO theye functions suck, make thin wrappers around useradd et al.
+	gid="$( add_system_group "kvm" )"
+	uid="$( USER="libvirt-qemu" \
+		GROUPID="$gid" \
+		add_system_user )"
+	[ -z "$uid" ] && perror "Could not create libvirt-qemu user"
+	(( uid >= 1000 )) && perror "libvirt-qemu user has uid >= 1000"
+}
+
 fetch_source() {
 	:
 }
@@ -9,6 +21,8 @@ build() {
 
 post_copy() {
 	# remove default network configuration
+	# TODO: Some REQUIRED_DELETIONS var that handles this? This would not
+	# do the right thing in MiniLinux mode.
 	rm "/etc/libvirt/qemu/networks/default.xml"
 	rm "/etc/libvirt/qemu/networks/autostart/default.xml"
 }
