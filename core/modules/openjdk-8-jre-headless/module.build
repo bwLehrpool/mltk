@@ -10,5 +10,6 @@ build() {
 
 post_copy() {
 	# remove GNOME from accessibility.properties
-	sed -i 's/^\(assistive_technologies=.*\)$/#\1/g' /etc/java-8-openjdk/accessibility.properties
+	# Should be disabled by default in newer package releases, but better be safe
+	sed -i 's/^assistive_technologies=.*$/#&/g' /etc/java-*-openjdk/accessibility.properties
 }
