@@ -3,8 +3,7 @@ Description=DHCP Client for %i
 After=systemd-tmpfiles-setup.service
 
 [Service]
-Type=forking
-PIDFile=/run/udhcpc/udhcpc.%i.pid
-ExecStart=/opt/openslx/scripts/systemd-udhcpc++ %i
-ExecStopPost=/opt/openslx/bin/rm /run/udhcpc/udhcpc.%i.pid
+Type=simple
+ExecStart=/opt/openslx/scripts/systemd-udhcpc %i
+Restart=on-failure
 

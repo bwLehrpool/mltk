@@ -20,33 +20,55 @@
 
 . /opt/openslx/config
 
-primary="br0"
-[ -n "$SLX_BRIDGE" ] && primary="$SLX_BRIDGE"
+declare -rg primary="${SLX_BRIDGE:-br0}"
 
-RESOLV_CONF="/opt/openslx/resolv.conf"
-THIS_RESOLV="/run/network/${interface}.resolv"
+declare -rg RESOLV_CONF="/opt/openslx/resolv.conf"
+declare -rg THIS_RESOLV="/run/network/${interface}.resolv"
 
 rebuild_resolv_conf () {
 	# Don't do anything if the active resolv.conf is not ours
 	# Also this will not run resolvconf update.d... No idea if we should still do so...
 	[ -L "/etc/resolv.conf" ] || return 0
-	[ "x$(readlink "/etc/resolv.conf")" == "x${RESOLV_CONF}" ] || return 0
-	# Maybe make this smarter some time, if anyone is using clients that are on multiple networks at once etc...
-	# This is a little braindead but should work most of the time
-	# See man resolv.conf -> only the last "search" line is valid, thus we merge them
-	sort -u /run/network/*.resolv \
+	[ "$(readlink -f "/etc/resolv.conf")" = "${RESOLV_CONF}" ] || return 0
+	# Use extglob trickery to make sure br0/$primary stuff comes first
+	shopt -s extglob
+	# Then print them in a first-come-first-served manner.
+	# Print nameserver entries one per line, print only first domain value,
+	# group everything else together into one line.
+	# Skip domain entirely if any search lines are found.
+	cat "/tmp/$primary.resolv" /tmp/!("$primary").resolv \
 		| awk '{
-			if ( $1 == "search" )
-				search[++idx] = $2
-			else
+			if ( $1 ~ /^[a-z]+$/ ) {
+				for (i = 2; i <= NF; ++i) {
+					if (done[$1][$i])
+						continue
+					done[$1][$i] = 1
+					output[$1][++idx] = $i
+				}
+			} else {
 				print $0
 			}
-			END {
-				printf "%s", "search"
-				for (s in search)
-					printf " %s", search[s]
-			}' \
+		}
+		END {
+			for (s in output) {
+				if (s == "nameserver") {
+					for (t in output[s]) {
+						print s " " output[s][t]
+					}
+				} else if (s == "domain" && isarray(output["search"])) {
+				} else {
+					printf "%s", s
+					for (t in output[s]) {
+						printf " %s", output[s][t]
+						if (s == "domain")
+							break
+					}
+					print ""
+				}
+			}
+		}' \
 		> "$RESOLV_CONF" 2> /dev/null
+	shopt -u extglob
 
 	# add support for resolv.conf update scripts // see man(8) resolvconf
 	for s in /etc/resolvconf/update.d/*.sh; do
@@ -55,11 +77,11 @@ rebuild_resolv_conf () {
 }
 
 escape_search() {
-	echo "$@" | sed -e 's/[]\/()$*.^|[]/\\&/g'
+	sed -e 's/[]\/()$*.^|[]/\\&/g' <<<"$@"
 }
 
 escape_replace() {
-	echo "$@" | sed -e 's/[\/&]/\\&/g'
+	sed -e 's/[\/&]/\\&/g' <<<"$@"
 }
 
 check_env() {
@@ -143,17 +165,9 @@ case "$1" in
 			echo "nameserver $i" >> "${conf_file}"
 		done
 		
-		if [ -x "/sbin/resolvconf" ] && [ -L "/etc/resolv.conf" ] && [ -d "/etc/resolvconf/update.d" ]; then
-			# Automatic handling :-)
-			resolvconf --create-runtime-directories
-			resolvconf --enable-updates
-			< "$conf_file"  resolvconf -a "${interface}.udhcpc"
-			rm -- "$conf_file"
-		else
-			# Manual handling required :-(
-			mv -f "$conf_file" "$THIS_RESOLV"
-			rebuild_resolv_conf
-		fi
+		# Manual handling required :-(
+		mv -f "$conf_file" "$THIS_RESOLV"
+		rebuild_resolv_conf
 
 		
 		# Things that should only happen for the main interface that was used for booting
@@ -265,14 +279,9 @@ case "$1" in
 			sed -i "/^$(escape_search "$ip")(\s|$)/d" /etc/hosts
 		fi
 		
-		if [ -x /sbin/resolvconf ] && [ -L /etc/resolv.conf ] && [ -d /etc/resolvconf/update.d ]; then
-			# Automatic handling :-)
-			resolvconf -d "${interface}.udhcpc"
-		else
-			# Manual handling required :-(
-			rm -f -- "$THIS_RESOLV"
-			rebuild_resolv_conf
-		fi
+		# Manual handling required :-(
+		rm -f -- "$THIS_RESOLV"
+		rebuild_resolv_conf
 	;;
 	
 	leasefail)
