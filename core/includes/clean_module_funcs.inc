@@ -17,7 +17,15 @@ post_copy() {
 }
 
 # Called when this module is about to be handled, before fetching the source.
-module_load() {
+pre_exec() {
 	:
 }
 
+# Called when this module is active in a target. This is called for each module
+# once, before any other method is called, and before any packages are installed.
+# Note that is does not honor any dependency ordering of modules. Consider this as
+# being called in a random order. Also, this gets called on every run, there
+# is no flag to remember this has already been called in a previous run.
+module_init() {
+	:
+}

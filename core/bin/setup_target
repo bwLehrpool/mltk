@@ -52,7 +52,8 @@
 # -----------------------------------------------------------------------------
 #
 # Map modules from their names to path - contains all modules of current target
-declare -A MODULE_PATHS
+declare -Ag MODULE_PATHS=()
+declare -g PACKAGES_INSTALLED_FLAG=
 declare -rg CORE_DIR="${ROOT_DIR}/core"
 declare -rg TARGETS_BASEDIR="$( readlink -f "${CORE_DIR}/targets" )"
 declare -rg EXPORT_DIR="/export/build"
@@ -71,6 +72,8 @@ unset_required_vars () {
 
 # Install all the packages from all selected modules in current target
 install_all_packages () {
+	[ -n "$PACKAGES_INSTALLED_FLAG" ] && return 0
+	PACKAGES_INSTALLED_FLAG=1
 	local module file config
 	declare -a missing
 	declare -A packages dupcheck
@@ -378,7 +381,6 @@ generate_target() {
 	shift
 	TARGET_DIR="$( readlink -f "${TARGETS_BASEDIR}/${TARGET}" )"
 	scan_target "$TARGET_DIR"
-	install_all_packages
 	if [[ "$TARGET" == *@* ]]; then
 		VARNAME="${TARGET#*@}"
 		TARGET="${TARGET%@*}"
@@ -410,7 +412,6 @@ generate_target_real() {
 	# if no arguments assume all.
 	if [ "x$1" = "x" -o "x$1" = "xall" ]; then
 		MODULES="${!MODULE_PATHS[@]}"
-		set -- $MODULES
 	else
 		# tools = arguments given
 		MODULES="$@"
@@ -419,18 +420,27 @@ generate_target_real() {
 	pinfo "Activated modules in '${TARGET}':"
 	pinfo "\t$(echo ${MODULES})"
 
+	# Make sure all selected modules seem valid
 	for item in $MODULES; do
 		[ -n "${MODULE_PATHS["$item"]}" ] || perror "Module $item not found in target"
 	done
+
+	# Run load hook
+	for item in $MODULES; do
+		. "${CORE_DIR}/includes/clean_module_funcs.inc" # Clean all hooks, in case the module doesn't define them all
+		. "${MODULE_PATHS["$item"]}/module.build"
+		module_init
+	done
+
+	install_all_packages
 
 	# copy basic libs
 	pinfo "Copying libc and ld-linux used by ${SHELL}"
 	tarcopy "$(list_basic_libs)" "${TARGET_BUILD_DIR}"
 
 	# now iterate over given tools and copy them
-	while (( "$#" )); do
-		process_module "$1"
-		shift
+	for item in $MODULES; do
+		process_module "$item"
 	done
 
 	post_process_target
@@ -514,8 +524,8 @@ process_module() {
 	cde "${MODULE_DIR}"
 	# update kernel version variables before running a module, as the last one might have been the kernel...
 	get_kernel_version
-	# Execute load-hook before anything else
-	module_load
+	# Execute pre_exec before anything else
+	pre_exec
 	cde "${MODULE_WORK_DIR}"
 	# Fetch source code
 	if [ ! -e "$SOURCE_FLAG" ]; then

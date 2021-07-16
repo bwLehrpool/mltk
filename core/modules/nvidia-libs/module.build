@@ -1,6 +1,6 @@
 #!/bin/bash
 
-module_load() {
+pre_exec() {
 	[ -z "$VERSION" ] && perror "Not run from an @ target"
 	local SRC
 	SRC="${ROOT_DIR}/tmp/work/nvidia-common/build/$VERSION"

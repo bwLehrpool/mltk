@@ -1,6 +1,6 @@
 #!/bin/bash
 
-module_load() {
+pre_exec() {
 	[ -z "$NVIDIA_VERSIONS" ] && perror "No NVIDIA_VERSIONS set in config"
 	local version
 	for version in $NVIDIA_VERSIONS; do
