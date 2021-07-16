@@ -126,16 +126,16 @@ check_devtools() {
 		pinfo "For $SYS_DISTRIBUTION you probably need to run:"
 		case $SYS_DISTRIBUTION in
 			ubuntu | debian)
-				pinfo "apt install build-essential m4 pkg-config cmake automake autoconf binutils lsb-release wget rsync diffutils"
+				pinfo "apt install build-essential m4 pkg-config cmake automake autoconf binutils lsb-release wget rsync diffutils lsof"
 				pinfo "to install missing development tools."
 				;;
 			# FIXME: Don't know how precise this filter works so we might want to have a better matching ...
 			opensuse)
-				pinfo "zypper install gcc gcc-c++ make m4 binutils git module-init-tools patch pkg-config cmake lsb-release wget rsync diffutils"
+				pinfo "zypper install gcc gcc-c++ make m4 binutils git module-init-tools patch pkg-config cmake lsb-release wget rsync diffutils lsof"
 				pinfo "to install missing development tools."
 				;;
 			fedora | scientific | centos)
-				pinfo "yum install redhat-lsb gcc-c++ gcc make m4 binutils pkgconfig patch cmake lsb-release wget rsync diffutils"
+				pinfo "yum install redhat-lsb gcc-c++ gcc make m4 binutils pkgconfig patch cmake lsb-release wget rsync diffutils lsof"
 				;;
 			*)
 				perror "No installation help for $SYS_DISTRIBUTION available."
