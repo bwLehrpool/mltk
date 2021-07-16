@@ -27,8 +27,8 @@ generate_uid()
 		local _TRIES=0
 		while [ ${_TRIES} -lt 50 ]
 		do
-			_TRIES=$[ ${_TRIES} + 1 ]
-			_UID=$[ 5 + $RANDOM % 900 ]
+			_TRIES=$(( _TRIES + 1 ))
+			_UID=$(( 5 + RANDOM % 900 ))
 			local _TEST=$(grep -E "^[^:]+:[^:]*:${_UID}:" "${_PASSWD}")
 			[ "x${_TEST}" = "x" ] && break
 		done
@@ -43,14 +43,14 @@ get_gid_for_user()
 	[ $# -ne 1 ] && perror "get_gid_for_user fail. want 1 argument."
 	[ -z "${_PASSWD}" ] && perror "passwd file not set."
 	local _GID=$(grep -E "^$1:[^:]*:[^:]*:[0-9]+:" "${_PASSWD}" | head -1 | awk -F ':' '{print $4}')
-	echo ${_GID}
+	echo "${_GID}"
 }
 
 get_gid_for_group() {
 	[ $# -ne 1 ] && perror "get_gid_for_group fail. want 1 argument."
 	[ -z "${_GROUP}" ] && perror "group file not set."
 	local _GID=$(grep -E "^$1:[^:]*:[0-9]+:" "${_GROUP}" | head -1 | awk -F ':' '{print $3}')
-	echo ${_GID}
+	echo "${_GID}"
 }
 
 # Echo group name of given gid, nothing if non-existent
@@ -59,7 +59,7 @@ get_group_for_gid()
 	[ $# -ne 1 ] && perror "get_group_for_gid fail. want 1 argument."
 	[ -z "${_GROUP}" ] && perror "group file not set."
 	local _NAME=$(grep -E "^[^:]*:[^:]*:$1:" "${_GROUP}" | head -1 | awk -F ':' '{print $1}')
-	echo ${_NAME}
+	echo "${_NAME}"
 }
 
 # Generate a GID for a given GROUPNAME. Return existing GID if possible, generate new one otherwise
@@ -75,23 +75,23 @@ generate_gid()
 		_GID=$2 # try to use uid as gid if not taken yet
 		while [ ${_TRIES} -lt 50 ]
 		do
-			_TRIES=$[ ${_TRIES} + 1 ]
+			_TRIES=$(( _TRIES + 1 ))
 			local _TEST=$(grep -E "^[^:]+:[^:]*:${_GID}:" "${_GROUP}")
 			[ "x${_TEST}" = "x" ] && break
-			_GID=$[ 5 + $RANDOM % 900 ] # using uid as gid not possible, generate new one
+			_GID=$(( 5 + RANDOM % 900 )) # using uid as gid not possible, generate new one
 		done
-		[ ${_TRIES} -ge 50 ] && perror "Generating a GID failed."
+		(( _TRIES >= 50 )) && perror "Generating a GID failed."
 	fi
-	echo ${_GID}
+	echo "${_GID}"
 }
 
 add_system_user() {
-	SYSTEM_ENTITY="yes" add_user $@
+	SYSTEM_ENTITY="yes" add_user "$@"
 }
 
 add_user() {
 	[ -z "${TARGET_BUILD_DIR}" ] && perror "add_user: TARGET_BUILD_DIR not set"
-	if [ -z "${USER}" -a $# -eq 0 ]; then
+	if [ -z "${USER}" ] && [ $# -eq 0 ]; then
 		pwarning " ** add_user usage **"
 		pwarning "add_user <username>"
 		pwarning "OR"
@@ -136,7 +136,7 @@ add_user() {
 
 	[ -z "$USERID" ] && local USERID="$(generate_uid "${USER}")"
 	[ -z "$USERID" ] && perror "add_user: could not generate a user id for $USER"
-	[ -n "$USERID" ] && _USERADD_OPTS+=("--uid" "$USERID")
+	_USERADD_OPTS+=("--uid" "$USERID")
 	if [ -z "$GROUP" ]; then
 		[ -z "$GROUPID" ] && local GROUPID=$(get_gid_for_user "${USER}")
 		[ -n "$GROUPID" ] && local GROUP=$(get_group_for_gid "${GROUPID}")
@@ -185,12 +185,14 @@ add_user() {
 	# everything is ready, run useradd
 	useradd "${_USERADD_OPTS[@]}" "$USER" >/dev/null 2>&1
 	local ret=$?
-	[ "$ret" -ne 0 -a "$ret" -ne 9 ] && perror "add_user: useradd failed for: ${_USERADD_OPTS[@]} $USER"
+	# TODO: Is this correct? If the user exists, we should probably make sure it's the USERID
+	# that was requested, or if none was requested make sure system vs. user range matches!?
+	[ "$ret" -ne 0 ] && [ "$ret" -ne 9 ] && perror "add_user: useradd failed for: ${_USERADD_OPTS[*]} $USER"
 	echo "${USERID}"
 }
 
 add_system_group() {
-	SYSTEM_ENTITY="yes" add_group $@
+	SYSTEM_ENTITY="yes" add_group "$@"
 }
 
 add_group () {
@@ -218,19 +220,21 @@ add_group () {
 	[ -n "$SYSTEM_ENTITY" ] && _GROUPADD_OPTS+=("--system")
 	groupadd "${_GROUPADD_OPTS[@]}" "$GROUP" >/dev/null 2>&1
 	local ret=$?
-	[ "$ret" -ne 0 -a "$ret" -ne 9 ] && perror "add_group: groupadd failed: ${_GROUPADD_OPTS[@]}"
+	[ "$ret" -ne 0 ] && [ "$ret" -ne 9 ] && perror "add_group: groupadd failed: ${_GROUPADD_OPTS[*]}"
 	[ -z "$GROUPID" ] && local GROUPID="$(get_gid_for_group "$GROUP")"
 	echo "${GROUPID}"
 }
 
 
 init_users_and_groups() {
-	[ -z "$TARGET_BUILD_DIR" -o "$TARGET_BUILD_DIR" == "/" ] && perror "Almost wrecked your local passwd, group and shadow file. phew."
+	if [ -z "$TARGET_BUILD_DIR" ] || [ "$TARGET_BUILD_DIR" == "/" ]; then
+		perror "Almost wrecked your local passwd, group and shadow file. phew."
+	fi
 	local USER
 	local PASSWD="$TARGET_BUILD_DIR/etc/passwd"
 	local GROUP="$TARGET_BUILD_DIR/etc/group"
 	local SHADOW="$TARGET_BUILD_DIR/etc/shadow"
-	[ -s "${PASSWD}" -a -s "${GROUP}" -a -s "${SHADOW}" ] && return
+	[ -s "${PASSWD}" ] && [ -s "${GROUP}" ] && [ -s "${SHADOW}" ] && return
 	pinfo "Creating users and groups based on local system...."
 	mkdir -p "${PASSWD%/*}" || perror "Could not mkdir '${PASSWD%/*}'."
 	cp -a "/etc/passwd" "$PASSWD" || perror "Could not copy /etc/passwd"
