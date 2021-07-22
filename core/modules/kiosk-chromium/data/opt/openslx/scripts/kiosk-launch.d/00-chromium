@@ -81,6 +81,7 @@ if [ -n "$SLX_BROWSER_RELOAD_SECS" ] && [ "$SLX_BROWSER_RELOAD_SECS" -gt 0 ]; th
 	(
 	wid=
 	wpid=
+	activity=init
 	while true; do
 		if [ -z "$wid" ]; then
 			wid="$(xdotool search --onlyvisible --class browser)"
@@ -101,13 +102,24 @@ if [ -n "$SLX_BROWSER_RELOAD_SECS" ] && [ "$SLX_BROWSER_RELOAD_SECS" -gt 0 ]; th
 			exit 0
 		fi
 		current_idle="$(idle-daemon --send 'get :0' | grep -oP '(?<=idleSeconds=)[0-9]+')"
-		if [ "$current_idle" -ge "$SLX_BROWSER_RELOAD_SECS" ]; then
-			xdotool windowactivate "$wid"
-			xdotool key Alt+Home
-			sleep 10
-			continue
+		if (( current_idle >= SLX_BROWSER_RELOAD_SECS )); then
+			if [ "$activity" = "yes" ] && [ -n "$SLX_BROWSER_INTERACTIVE" ]; then
+				# activity was seen, interactive browser (UI) -> kill session
+				killall chromium-browser
+				loginctl terminate-user demo
+			else
+				xdotool windowactivate "$wid"
+				xdotool key Alt+Home
+				sleep 3
+				activity=init
+				continue
+			fi
+		elif [ "$activity" = "init" ]; then
+			activity=no
+		else
+			activity=yes
 		fi
-		sleep "$(( SLX_BROWSER_RELOAD_SECS - current_idle ))"
+		sleep "$(( 1 + SLX_BROWSER_RELOAD_SECS - current_idle ))"
 	done
 	) &
 fi
