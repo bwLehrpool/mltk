@@ -88,7 +88,7 @@ if [ -n "$SLX_BROWSER_RELOAD_SECS" ] && [ "$SLX_BROWSER_RELOAD_SECS" -gt 0 ]; th
 			readonly wid
 		fi
 		if [ -z "$wpid" ]; then
-			wpid="$(xprop -id "$wid" | awk -F= '$1 ~ /_NET_WM_PID\(CARDINAL\)/ {print $2}' | tr -d ' ')"
+			wpid="$( xprop -id "$wid" | awk '$1 == "_NET_WM_PID(CARDINAL)" {print $3}' )"
 			if [ -z "$wpid" ]; then
 				# logs to ~/.xsession-errors
 				echo "Failed to get the pid of chromium-browser via xprop..."
