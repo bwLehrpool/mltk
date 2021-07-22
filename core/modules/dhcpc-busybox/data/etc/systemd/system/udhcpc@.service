@@ -1,6 +1,7 @@
 [Unit]
 Description=DHCP Client for %i
 After=systemd-tmpfiles-setup.service
+Wants=network.target
 
 [Service]
 Type=simple
