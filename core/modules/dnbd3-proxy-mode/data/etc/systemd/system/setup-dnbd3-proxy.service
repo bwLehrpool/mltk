@@ -1,7 +1,7 @@
 [Unit]
 Description=DNBD3 proxy server config generator
-Wants=tmp.target
-After=tmp.target
+Wants=tmp.target persistent.target
+After=tmp.target persistent.target
 Before=getty.target update-etc_issue.service
 
 [Service]
