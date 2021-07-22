@@ -1,0 +1,10 @@
+[Unit]
+Description=Setup local disk partitions (persistent, swap)
+After=systemd-udev-settle.service systemd-udevd.service
+Wants=tmp.target
+DefaultDependencies=no
+
+[Service]
+Type=oneshot
+ExecStart=/opt/openslx/scripts/systemd-setup_partitions --persistent --swap --linux
+RemainAfterExit=yes

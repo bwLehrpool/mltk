@@ -1,0 +1,5 @@
+REQUIRED_INSTALLED_PACKAGES="
+	xfsprogs
+	e2fsprogs
+	dosfstools
+"

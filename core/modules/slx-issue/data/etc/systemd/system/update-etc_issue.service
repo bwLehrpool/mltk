@@ -1,6 +1,6 @@
 [Unit]
 Description=Update /etc/issue
-After=setup-partitions.service
+After=tmp.target
 Before=getty-pre.target getty.target shutdown.target
 DefaultDependencies=no
 

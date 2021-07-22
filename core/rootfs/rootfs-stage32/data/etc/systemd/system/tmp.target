@@ -1,5 +1,0 @@
-[Unit]
-Description=/tmp has been mounted
-Wants=setup-partitions.service
-After=setup-partitions.service
-

@@ -1,5 +1,5 @@
 [Unit]
-Description=Setup local disk partitions (tmp, swap)
+Description=Setup ID 44 /tmp
 DefaultDependencies=no
 Before=basic.target tmp.target
 After=systemd-udev-settle.service systemd-udevd.service
@@ -7,5 +7,5 @@ Wants=tmp.target systemd-udevd.service
 
 [Service]
 Type=oneshot
-ExecStart=/opt/openslx/scripts/systemd-setup_partitions
+ExecStart=/opt/openslx/scripts/systemd-setup_partitions --tmp
 RemainAfterExit=yes

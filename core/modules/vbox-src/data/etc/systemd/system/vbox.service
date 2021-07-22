@@ -1,7 +1,7 @@
 [Unit]
 Description=Sets up the virtual box environment
-Requires=run-virt-env.service setup-partitions.service network.target
-After=run-virt-env.service setup-partitions.service network.target
+Requires=run-virt-env.service network.target
+After=run-virt-env.service network.target tmp.target
 
 [Service]
 Type=oneshot
