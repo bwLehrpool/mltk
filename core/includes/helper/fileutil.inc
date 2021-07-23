@@ -25,7 +25,6 @@ tarcopy () {
 	[ ! -d "$TO" ] && { mkdir -p "$TO" || perror "could not create destination "$TO" for tar-copy."; } 
 	# TODO count files copied? would remove the need to do it everywhere :)
 	tar $IGNORE_ERROR -cpP $FROM | tar -xp -C "$TO" \
-		--transform 's,^/lib/udev/rules.d,/usr/lib/udev/rules.d,' \
 		2> /dev/null
 	local PS=(${PIPESTATUS[*]})
 	[ "x$IGNORE_ERROR" == "x" -a "x${PS[0]}" != "x0" ] && perror "packing-part of tar-copy from '$SHORT' to '$TO' failed. (${PS[0]})"

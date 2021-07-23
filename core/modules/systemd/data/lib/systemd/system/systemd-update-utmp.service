@@ -6,17 +6,16 @@
 #  (at your option) any later version.
 
 [Unit]
-Description=Remount Root and Kernel File Systems
-Documentation=man:systemd-remount-fs.service(8)
-Documentation=https://www.freedesktop.org/wiki/Software/systemd/APIFileSystems
+Description=Update UTMP about System Boot/Shutdown
+Documentation=man:systemd-update-utmp.service(8) man:utmp(5)
 DefaultDependencies=no
+RequiresMountsFor=/var/log/wtmp
 Conflicts=shutdown.target
-After=systemd-fsck-root.service
-Before=local-fs-pre.target local-fs.target shutdown.target
-Wants=local-fs-pre.target
-ConditionPathExists=/etc/fstab
+After=systemd-remount-fs.service systemd-tmpfiles-setup.service auditd.service
+Before=sysinit.target shutdown.target
 
 [Service]
 Type=oneshot
 RemainAfterExit=yes
-ExecStart=/usr/lib/systemd/systemd-remount-fs
+ExecStart=/lib/systemd/systemd-update-utmp reboot
+ExecStop=/lib/systemd/systemd-update-utmp shutdown

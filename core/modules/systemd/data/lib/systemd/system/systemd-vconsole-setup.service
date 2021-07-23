@@ -6,12 +6,15 @@
 #  (at your option) any later version.
 
 [Unit]
-Description=Hibernate
-Documentation=man:systemd-suspend.service(8)
+Description=Setup Virtual Console
+Documentation=man:systemd-vconsole-setup.service(8) man:vconsole.conf(5)
 DefaultDependencies=no
-Requires=sleep.target
-After=sleep.target
+Conflicts=shutdown.target
+After= 
+Before=sysinit.target shutdown.target
+ConditionPathExists=/dev/tty0
 
 [Service]
 Type=oneshot
-ExecStart=/usr/lib/systemd/systemd-sleep hibernate
+RemainAfterExit=yes
+ExecStart=/lib/systemd/systemd-vconsole-setup

@@ -226,3 +226,4 @@ for init in "/lib/systemd/systemd" "/usr/lib/systemd/systemd"; do
 	exec /sbin/switch_root -c /dev/console /mnt "$init" $SD_CMDLINE
 done
 
+drop_shell "Da is irgendwie kein systemd im neuen root..."

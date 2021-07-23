@@ -6,16 +6,16 @@
 #  (at your option) any later version.
 
 [Unit]
-Description=Update UTMP about System Boot/Shutdown
-Documentation=man:systemd-update-utmp.service(8) man:utmp(5)
+Description=Apply Kernel Variables
+Documentation=man:systemd-sysctl.service(8) man:sysctl.d(5)
 DefaultDependencies=no
-RequiresMountsFor=/var/log/wtmp
 Conflicts=shutdown.target
-After=systemd-remount-fs.service systemd-tmpfiles-setup.service auditd.service
+After=systemd-modules-load.service
 Before=sysinit.target shutdown.target
+ConditionPathIsReadWrite=/proc/sys/net/
 
 [Service]
 Type=oneshot
 RemainAfterExit=yes
-ExecStart=/usr/lib/systemd/systemd-update-utmp reboot
-ExecStop=/usr/lib/systemd/systemd-update-utmp shutdown
+ExecStart=/lib/systemd/systemd-sysctl
+TimeoutSec=90s

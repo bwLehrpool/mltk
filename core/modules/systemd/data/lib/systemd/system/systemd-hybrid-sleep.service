@@ -6,15 +6,12 @@
 #  (at your option) any later version.
 
 [Unit]
-Description=Setup Virtual Console
-Documentation=man:systemd-vconsole-setup.service(8) man:vconsole.conf(5)
+Description=Hybrid Suspend+Hibernate
+Documentation=man:systemd-suspend.service(8)
 DefaultDependencies=no
-Conflicts=shutdown.target
-After= 
-Before=sysinit.target shutdown.target
-ConditionPathExists=/dev/tty0
+Requires=sleep.target
+After=sleep.target
 
 [Service]
 Type=oneshot
-RemainAfterExit=yes
-ExecStart=/usr/lib/systemd/systemd-vconsole-setup
+ExecStart=/lib/systemd/systemd-sleep hybrid-sleep

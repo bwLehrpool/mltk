@@ -6,11 +6,12 @@
 #  (at your option) any later version.
 
 [Unit]
-Description=/dev/initctl Compatibility Daemon
-Documentation=man:systemd-initctl.service(8)
+Description=Hibernate
+Documentation=man:systemd-suspend.service(8)
 DefaultDependencies=no
+Requires=sleep.target
+After=sleep.target
 
 [Service]
-NotifyAccess=all
-ExecStart=/usr/lib/systemd/systemd-initctl
-SystemCallArchitectures=native
+Type=oneshot
+ExecStart=/lib/systemd/systemd-sleep hibernate

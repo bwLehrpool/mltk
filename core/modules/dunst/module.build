@@ -5,10 +5,7 @@ fetch_source() {
 }
 
 build() {
-	# copy udev rules to correct location
-	if [ -d "${TARGET_BUILD_DIR}/usr/lib/udev" ] && [ -d "${MODULE_BUILD_DIR}/lib/udev" ]; then
-		mv "${MODULE_BUILD_DIR}/lib/udev" "${MODULE_BUILD_DIR}/usr/lib/"
-	fi
+	:
 }
 
 post_copy() {

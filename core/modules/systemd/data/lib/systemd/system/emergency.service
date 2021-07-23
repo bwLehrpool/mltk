@@ -6,16 +6,22 @@
 #  (at your option) any later version.
 
 [Unit]
-Description=Update UTMP about System Runlevel Changes
-Documentation=man:systemd-update-utmp.service(8) man:utmp(5)
+Description=Emergency Shell
+Documentation=man:sulogin(8)
 DefaultDependencies=no
-RequiresMountsFor=/var/log/wtmp
 Conflicts=shutdown.target
-Requisite=systemd-update-utmp.service
-After=systemd-update-utmp.service
-After=runlevel1.target runlevel2.target runlevel3.target runlevel4.target runlevel5.target
+Conflicts=rescue.service
+Conflicts=syslog.socket
 Before=shutdown.target
 
 [Service]
-Type=oneshot
-ExecStart=/usr/lib/systemd/systemd-update-utmp runlevel
+Environment=HOME=/root
+WorkingDirectory=-/root
+ExecStart=-/lib/systemd/systemd-sulogin-shell emergency
+Type=idle
+StandardInput=tty-force
+StandardOutput=inherit
+StandardError=inherit
+KillMode=process
+IgnoreSIGPIPE=no
+SendSIGHUP=yes

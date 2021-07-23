@@ -20,7 +20,7 @@ case $(${PS} --pid 1 -o comm h) in
 		if [ -d /etc/systemd/system ]; then
 			SERVICEDIR=/etc/systemd/system/
 		else
-			SERVICEDIR=/usr/lib/systemd/system/
+			SERVICEDIR=/lib/systemd/system/
 		fi
 
 		if [ -L "${SERVICEDIR}/graphical.target.wants/${SERVICEMOUNT}" ] \
