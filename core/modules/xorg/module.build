@@ -16,13 +16,10 @@ fetch_source() {
 
 build() {
 	# copy udev rules to correct location
-	if [ -d "${MODULE_BUILD_DIR}/lib/udev" ]; then
-		cp -r "${MODULE_BUILD_DIR}/lib/udev" "${MODULE_BUILD_DIR}/usr/lib/"
-	fi
 	if [ -d "${MODULE_BUILD_DIR}/etc/udev" ]; then
-		cp -r "${MODULE_BUILD_DIR}/etc/udev" "${MODULE_BUILD_DIR}/usr/lib/"
+		cp -r "${MODULE_BUILD_DIR}/etc/udev" "${MODULE_BUILD_DIR}/lib/"
 	fi
-	rm -rf -- "${MODULE_BUILD_DIR}/lib/udev" "${MODULE_BUILD_DIR}/etc/udev"
+	rm -rf -- "${MODULE_BUILD_DIR}/etc/udev"
 
 	# This used to freeze/crashe X with certain gfx cards (radeon R240)
 	# /usr/lib/xorg/modules/libglamoregl.so

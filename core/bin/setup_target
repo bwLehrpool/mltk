@@ -538,7 +538,7 @@ process_module() {
 	if [ ! -e "$BUILD_FLAG" ]; then
 		list_packet_files > "$PKG_CONTENT_FILE" || perror "Could not write packet content list to $PKG_CONTENT_FILE"
 		# Copy all required packages' contents to build dir, but not in install mode
-		if [ -z "$MLTK_INSTALL" ]; then
+		if [ -z "$MLTK_INSTALL" ] && [ -s "$PKG_CONTENT_FILE" ]; then
 			pinfo "## Copying required packages to build dir"
 			tarcopy "$( sort -u "$PKG_CONTENT_FILE" )" "${MODULE_BUILD_DIR}"
 		fi

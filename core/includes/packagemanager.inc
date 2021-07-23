@@ -15,7 +15,7 @@
 
 list_content_packages() {
 	if [ -z "$REQUIRED_CONTENT_PACKAGES" ]; then
-		pinfo "No required packages for $TOOL"
+		pinfo "No required packages for $MODULE"
 		return 0
 	fi
 	[ $# -gt 2 ] && perror "'list_content_packages' accepts only 1 or no args. $# given."
