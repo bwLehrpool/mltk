@@ -25,18 +25,19 @@ declare -rg primary="${SLX_BRIDGE:-br0}"
 declare -rg RESOLV_CONF="/opt/openslx/resolv.conf"
 declare -rg THIS_RESOLV="/run/network/${interface}.resolv"
 
+shopt -s extglob
+
 rebuild_resolv_conf () {
 	# Don't do anything if the active resolv.conf is not ours
 	# Also this will not run resolvconf update.d... No idea if we should still do so...
 	[ -L "/etc/resolv.conf" ] || return 0
 	[ "$(readlink -f "/etc/resolv.conf")" = "${RESOLV_CONF}" ] || return 0
 	# Use extglob trickery to make sure br0/$primary stuff comes first
-	shopt -s extglob
 	# Then print them in a first-come-first-served manner.
 	# Print nameserver entries one per line, print only first domain value,
 	# group everything else together into one line.
 	# Skip domain entirely if any search lines are found.
-	cat "/tmp/$primary.resolv" /tmp/!("$primary").resolv \
+	cat "/run/network/$primary.resolv" /run/network/!("$primary").resolv \
 		| awk '{
 			if ( $1 ~ /^[a-z]+$/ ) {
 				for (i = 2; i <= NF; ++i) {
@@ -68,7 +69,6 @@ rebuild_resolv_conf () {
 			}
 		}' \
 		> "$RESOLV_CONF" 2> /dev/null
-	shopt -u extglob
 
 	# add support for resolv.conf update scripts // see man(8) resolvconf
 	for s in /etc/resolvconf/update.d/*.sh; do
