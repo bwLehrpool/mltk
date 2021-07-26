@@ -3,7 +3,7 @@
 PROC="/proc/asound/pcm"
 
 i=0
-while (( ++i < 10 )); do
+while [ "$(( ++i ))" -lt 10 ]; do
 	[ -r "$PROC" ] && break
 	sleep 1
 done
