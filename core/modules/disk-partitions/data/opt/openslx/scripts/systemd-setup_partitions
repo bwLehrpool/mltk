@@ -303,8 +303,6 @@ if [ -n "$DO_PERSISTENT" ]; then
 			mkdir -p "${MOUNT_POINT_45}/slx_lost+found"
 			mv -f -- "${MOUNT_POINT_45}/lost+found" "${MOUNT_POINT_45}/slx_lost+found/$(date +%s)_$$-$RANDOM"
 		fi
-		chmod 0700 "${MOUNT_POINT_45}/slx_lost+found"
-		chown 0:0 "${MOUNT_POINT_45}/slx_lost+found"
 		# fstab entry
 		echo -e "${PART_DEV}\t${MOUNT_POINT_45}\tauto\t\tnoauto\t\t 0 0" >> "/etc/fstab"
 		HAVE_PARTITION_45=yes
@@ -315,7 +313,9 @@ fi # /persistent
 # finally, prepare the data subdir on persistent part
 if [ "$HAVE_PARTITION_45" = "yes" ]; then
 	mkdir -p "$MOUNT_POINT_45/data"
-	chown root:root "$MOUNT_POINT_45" "$MOUNT_POINT_45/data"
+	chown 0:0  "${MOUNT_POINT_45}" "${MOUNT_POINT_45}/slx_lost+found" "${MOUNT_POINT_45}/data"
+	chmod 0700 "${MOUNT_POINT_45}/slx_lost+found"
+	chmod 0755 "${MOUNT_POINT_45}"
 	chmod a+rwxt "$MOUNT_POINT_45/data"
 elif [ -d "$MOUNT_POINT_45" ]; then
 	rm -f -- "$MOUNT_POINT_45"
