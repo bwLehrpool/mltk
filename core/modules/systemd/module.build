@@ -98,7 +98,7 @@ build () {
 }
 
 post_copy() {
-	useradd --system --inactive --no-create-home "kvm"
-	useradd --system --inactive --no-create-home  "systemd-journal-upload"
+	useradd --system --no-create-home "kvm"
+	useradd --system --no-create-home  "systemd-journal-upload"
 }
 

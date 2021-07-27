@@ -12,6 +12,6 @@ build () {
 }
 
 post_copy() {
-	useradd --system --no-create-home --inactive "redsocks"
+	useradd --system --no-create-home "redsocks"
 }
 

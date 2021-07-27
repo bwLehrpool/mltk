@@ -16,6 +16,6 @@ build () {
 post_copy() {
 	#Add Polkit User/Group/Shadow to Stage3.2, required on opensuse
 	pinfo "Adding polkitd user to target system..."
-	useradd --system --user-group --inactive --no-create-home "polkitd"
+	useradd --system --user-group --no-create-home "polkitd"
 }
 

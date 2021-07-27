@@ -8,5 +8,5 @@ build() {
 }
 
 post_copy() {
-	useradd --system --user-group --inactive --no-create-home "dnbd3"
+	useradd --system --user-group --no-create-home "dnbd3"
 }

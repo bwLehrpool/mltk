@@ -4,7 +4,7 @@ module_init() {
 	groupadd --system "kvm"
 	groupadd --system "libvirt-qemu"
 	useradd --gid "kvm" --groups "libvirt-qemu" --system \
-		--no-create-home --inactive --home-dir "/var/lib/libvirt" "libvirt-qemu"
+		--no-create-home --home-dir "/var/lib/libvirt" "libvirt-qemu"
 }
 
 fetch_source() {
