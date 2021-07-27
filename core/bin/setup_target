@@ -473,7 +473,6 @@ process_module() {
 	local AUTOCLONE_FILE="${MODULE_WORK_DIR}/meta/repos"
 	local MD5FILE="${TARGET_BUILD_DIR}/opt/openslx/.mltk/${MODULE}.md5"
 	local PKG_CONTENT_FILE="${MODULE_WORK_DIR}/meta/list_package_contents"
-	mkdir -p "${TARGET_BUILD_DIR}/opt/openslx/.mltk" "${MODULE_WORK_DIR}/meta"
 	if [ ! -d "${MODULE_DIR}" ]; then
 		if [ -z "$DEPOF" ]; then
 			perror "Module directory for '$MODULE' not found in ${TARGET_DIR}"
@@ -481,7 +480,6 @@ process_module() {
 		perror "Module directory for '$MODULE' not found in ${TARGET_DIR} (is a dependency of${DEPOF})"
 		return
 	fi
-	cde "${MODULE_DIR}"
 	# Simple check for modified .build / .config, in which case we'll run a module clean first
 	if [ -f "$MD5FILE" ]; then
 		if ! md5sum --check "$MD5FILE"; then
@@ -499,6 +497,8 @@ process_module() {
 			rm -f -- "$MD5FILE"
 		fi
 	fi
+	mkdir -p "${TARGET_BUILD_DIR}/opt/openslx/.mltk" "${MODULE_WORK_DIR}/meta"
+	cde "${MODULE_DIR}"
 	# Process module
 	pdebug "## Reading config of $MODULE"
 	read_config
