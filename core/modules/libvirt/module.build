@@ -1,14 +1,10 @@
 #!/bin/bash
 
 module_init() {
-	local uid gid
-	# TODO theye functions suck, make thin wrappers around useradd et al.
-	gid="$( add_system_group "kvm" )"
-	uid="$( USER="libvirt-qemu" \
-		GROUPID="$gid" \
-		add_system_user )"
-	[ -z "$uid" ] && perror "Could not create libvirt-qemu user"
-	(( uid >= 1000 )) && perror "libvirt-qemu user has uid >= 1000"
+	groupadd --system "kvm"
+	groupadd --system "libvirt-qemu"
+	useradd --gid "kvm" --groups "libvirt-qemu" --system \
+		--no-create-home --inactive --home-dir "/var/lib/libvirt" "libvirt-qemu"
 }
 
 fetch_source() {

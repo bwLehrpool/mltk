@@ -48,7 +48,7 @@ build () {
 	[ ! -e "./configure" ] && ./autogen.sh
 
 	./configure \
-		--prefix=/ \
+		--exec-prefix=/ \
 		--disable-manpages \
 		--enable-split-usr \
 		--sysconfdir="/etc" \
@@ -98,7 +98,7 @@ build () {
 }
 
 post_copy() {
-	add_system_user "kvm"
-	add_system_user "systemd-journal-upload"
+	useradd --system --inactive --no-create-home "kvm"
+	useradd --system --inactive --no-create-home  "systemd-journal-upload"
 }
 

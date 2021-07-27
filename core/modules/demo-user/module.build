@@ -8,6 +8,6 @@ build() {
 }
 
 post_copy() {
-	DEMO_ID="$(USER=demo PASSWORD= USERHOME=/home/demo USERSHELL=/bin/bash add_user)"
-	[ -n "$DEMO_ID" ] && pinfo "Created user demo"
+	useradd --system --user-group --shell /bin/bash --create-home --password "" demo
+	pinfo "Created user demo"
 }

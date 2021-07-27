@@ -9,8 +9,9 @@ build() {
 
 post_copy() {
 	mkdir -p "${TARGET_BUILD_DIR}/var/lib/lightdm"{,-data}
-	local LDMUID=$(add_system_user "lightdm")
-	local LDMGID=$(add_system_group "lightdm")
+	useradd --system --user-group --inactive --no-create-home "lightdm"
+	local LDMUID=$( getuid "lightdm" )
+	local LDMGID=$( getgid "lightdm" )
 	pinfo "lightdm user and group is $LDMUID $LDMGID"
 	chown -R "${LDMUID}:${LDMGID}" "${TARGET_BUILD_DIR}/var/lib/lightdm/" \
 		|| perror "chowning '${TARGET_BUILD_DIR}/var/lib/lightdm/' failed."

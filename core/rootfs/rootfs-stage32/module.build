@@ -90,16 +90,13 @@ post_copy() {
 	# link /etc/mtab, needed for systemd
 	[ ! -e "${TARGET_BUILD_DIR}/etc/mtab" ] && ln -s "/proc/self/mounts" "${TARGET_BUILD_DIR}/etc/mtab"
 
-	# passwd, group, shadow
-	init_users_and_groups
-
 	# quick fix for missing group in /etc/group
-	add_group "lock"
-	add_group "nogroup" 65534
-	USERID=65534 GROUPID=65534 add_user "nobody"
+	groupadd "lock"
+	groupadd --gid 65534 "nogroup"
+	useradd --uid 65534 --gid 65534 "nobody"
 
 	# setup root account
-	PASSWORD= USER=root add_user
+	useradd --password "" --uid 0 --gid 0 root
 
 	mkdir -p "${TARGET_BUILD_DIR}/root"
 	sed -i -r 's/^blacklist.*pcspkr/#&/g' "$TARGET_BUILD_DIR/etc/modprobe.d/blacklist.conf"
