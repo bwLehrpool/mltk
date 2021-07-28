@@ -22,6 +22,57 @@ declare -rg QEMU_INCLUDE_DIR="${QEMU_PLUGIN_DIR}/includes"
 # Define which features the QEMU plugin supports
 declare -rg PLUGIN_FEATURES="firewall printer usb slxfloppy sound netshares"
 
+# Function to parse an option's value from the kernel command line
+# Parameter 1: name of the kernel command line option
+# Return     : value of the kernel command line option
+function parse_kcl_option() {
+	grep -o "\b${1}=[^ ]*" /proc/cmdline | cut -d '=' -f 2
+}
+
+# Function to parse VFIO PCI-IDs from the kernel command line
+# Return     : PCI-IDs of the kernel command line as space separated string
+function parse_kcl_pci_ids() {
+	local passthrough_pci_ids="$(parse_kcl_option "vfio-pci.ids")"
+	echo "${passthrough_pci_ids}" | tr ',' ' '
+}
+
+# Function to get state of passthrough
+# Return     : 0 (true) if passthrough is enabled, otherwise 1 (false)
+function passthrough_enabled() {
+	local passthrough_iommu="$(parse_kcl_option "iommu")"
+	if [ "${passthrough_iommu}" == "pt" ]; then
+		return 0
+	else
+		return 1
+	fi
+}
+
+# Function to check validitiy of the passthrough configuration
+# Return     : 0 (true) if passthrough is configured properly, otherwise 1 (false)
+function passthrough_check() {
+	local passthrough_iommu_intel="$(parse_kcl_option "intel_iommu")"
+	local passthrough_iommu_amd="$(parse_kcl_option "amd_iommu")"
+	if [ "${passthrough_iommu_intel}" != "on" ] && [ "${passthrough_iommu_amd}" != "on" ]; then
+		return 1
+	else
+		return 0
+	fi
+}
+
+# Function to get PCI address of a PCI device specified by its vendor and product ID
+# Parameter 1: vendor and product ID with the following pattern: "<VENDOR ID>:<PRODUCT ID>"
+# Return     : PCI address of the specified PCI device of form "<PCI DOMAIN>:<PCI DEVICE>:<PCI DEVICE>.<PCI FUNCTION>"
+function passthrough_lookup_pci_address() {
+	local passthrough_pci_addresses="$(lspci -n -D -d "${1}" | cut -d ' ' -f 1)"
+	passthrough_pci_addresses=($(echo "${passthrough_pci_addresses}" | tr '\n' ' '))
+	if [ "${#passthrough_pci_addresses[@]}" -eq 1 ]; then
+		echo "${passthrough_pci_addresses[0]}"
+		return 0
+	else
+		return 1
+	fi
+}
+
 run_plugin() {
 	# setup RW image access for operation
 	local vm_diskfile
@@ -33,6 +84,29 @@ run_plugin() {
 	elif notempty VM_DISKFILE_RW; then
 		# use supplied RW disk image from run-virt
 		vm_diskfile="${VM_DISKFILE_RW}"
+	fi
+
+	# setup GPU passthrough if passthrough is enabled
+	if passthrough_enabled; then
+		# check if passthrough is configured properly
+		if ! passthrough_check; then
+			return 1;
+		fi
+
+		# parse PCI-IDs from the kernel command line
+		local passthrough_pci_ids=($(parse_kcl_pci_ids))
+
+		# lookup PCI address of each specified PCI-ID
+		local device_pci_address
+		local pt_gpu_pci_ids
+		for device_vendor_id in "${passthrough_pci_ids[@]}"; do
+			device_pci_address="$(passthrough_lookup_pci_address "${device_vendor_id}")"
+			if [ "${?}" -eq 0 ]; then
+				pt_gpu_pci_ids+=("${device_vendor_id},${device_pci_address}")
+			else
+				writelog "Failed to lookup PCI address for '${device_vendor_id}'"
+			fi
+		done
 	fi
 
 	# write finalized config in debug mode to temporary folder for debugging purposes
@@ -67,5 +141,11 @@ run_plugin() {
 		notempty HOME_SHARE_NAME   && VIRTCMDOPTS+=( "-vmfstgt0"    "${HOME_SHARE_NAME}" )
 		notempty COMMON_SHARE_PATH && VIRTCMDOPTS+=( "-vmfssrc1"    "${COMMON_SHARE_PATH}" )
 		notempty COMMON_SHARE_NAME && VIRTCMDOPTS+=( "-vmfstgt1"    "${COMMON_SHARE_NAME}" )
+	fi
+
+	if notempty pt_gpu_pci_ids; then
+		for pt_gpu_pci_id in "${pt_gpu_pci_ids[@]}"; do
+			VIRTCMDOPTS+=( "-vmnvgpuids0" "${pt_gpu_pci_id}" )
+		done
 	fi
 }
