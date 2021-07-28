@@ -1,0 +1,1 @@
+SUBSYSTEM=="vfio", OWNER="root", GROUP="libvirt-passthrough", MODE="0660"

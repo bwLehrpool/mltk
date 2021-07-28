@@ -3,7 +3,8 @@
 module_init() {
 	groupadd --system "kvm"
 	groupadd --system "libvirt-qemu"
-	useradd --gid "kvm" --groups "libvirt-qemu" --system \
+	groupadd --system "libvirt-passthrough"
+	useradd --gid "kvm" --groups "libvirt-qemu,libvirt-passthrough" --system \
 		--no-create-home --home-dir "/var/lib/libvirt" "libvirt-qemu"
 }
 
