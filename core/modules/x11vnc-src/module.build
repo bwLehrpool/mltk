@@ -1,0 +1,18 @@
+#!/bin/bash
+
+fetch_source() {
+	download_untar "$REQUIRED_DEB_URL" "src/"
+}
+
+build() {
+	cde "${MODULE_WORK_DIR}"/src/x11vnc-*
+	./configure --without-filetransfer --with-x11vnc \
+		--without-xrecord --without-xdamage --without-dpms \
+		--without-v4l --without-fbdev --without-macosx-native \
+		--without-avahi \
+		|| perror "Cannot configure x11vnc"
+	make || perror "make failed"
+	cde x11vnc
+	mkdir -p "${MODULE_BUILD_DIR}/usr/bin"
+	cp "x11vnc" "${MODULE_BUILD_DIR}/usr/bin/" || perror "cp fail"
+}
