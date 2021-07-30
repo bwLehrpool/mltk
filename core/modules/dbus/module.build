@@ -1,24 +1,13 @@
 #!/bin/bash
 
 fetch_source() {
-	echo "Extracting from running system..."
+	:
 }
 
 build() {
-	# Generate systemd files
-	mkdir -p "$MODULE_BUILD_DIR/etc/systemd/system/dbus.service.d"
 
 	# This is REQUIRED, otherwise the session daemon won't start (can be empty, but has to exist...)
 	mkdir -p "${MODULE_BUILD_DIR}/etc/dbus-1/session.d"
-
-	# We will either find the service file or generate it,
-	# thus we can already create the drop-in for uuidgen
-	UUIDGEN=$(find "$MODULE_BUILD_DIR" -name dbus-uuidgen -executable | head -n 1)
-	[ -z "$UUIDGEN" ] && perror "Could not determine dbus-uuidgen location"
-	cat <<-EOF > "$MODULE_BUILD_DIR/etc/systemd/system/dbus.service.d/uuidgen.conf"
-		[Service]
-		ExecStartPre=/${UUIDGEN#$MODULE_BUILD_DIR} --ensure
-	EOF
 }
 
 post_copy() {
