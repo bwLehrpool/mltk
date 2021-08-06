@@ -12,6 +12,7 @@ import org.openslx.libvirt.domain.Domain.Type;
 import org.openslx.runvirt.plugin.qemu.cmdln.CommandLineArgs;
 import org.openslx.runvirt.plugin.qemu.virtualization.LibvirtHypervisorQemu;
 import org.openslx.runvirt.virtualization.LibvirtHypervisorException;
+import org.openslx.virtualization.configuration.VirtualizationConfigurationQemuUtils;
 import org.openslx.virtualization.configuration.transformation.TransformationException;
 import org.openslx.virtualization.configuration.transformation.TransformationSpecific;
 
@@ -198,7 +199,9 @@ public class TransformationSpecificQemuArchitecture
 				// retrieve overwrite chipset name from canonical machine names
 				String sourceMachineOverwrite = null;
 				for ( String targetMachineCanonicalName : targetMachineCanonicalNames ) {
-					if ( sourceMachine.contains( targetMachineCanonicalName ) ) {
+					final String targetMachineName = VirtualizationConfigurationQemuUtils
+							.getOsMachineName( targetMachineCanonicalName );
+					if ( sourceMachine.contains( targetMachineName ) ) {
 						sourceMachineOverwrite = targetMachineCanonicalName;
 						break;
 					}

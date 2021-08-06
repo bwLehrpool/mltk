@@ -88,7 +88,7 @@ public class TransformationSpecificQemuArchitectureTest
 	}
 
 	@Test
-	@DisplayName( "Test transformation of VM architecture configuration if version is not supported (machine version too new)" )
+	@DisplayName( "Test transformation of VM architecture configuration if version is not supported (machine version too new) and conversion required" )
 	public void testTransformationSpecificQemuArchitectureMachineVersionDowngrade() throws TransformationException
 	{
 		final TransformationSpecificQemuArchitectureStub transformation;
@@ -100,6 +100,11 @@ public class TransformationSpecificQemuArchitectureTest
 		assertEquals( "pc-q35-5.1", config.getOsMachine() );
 		assertEquals( OsType.HVM, config.getOsType() );
 
-		assertThrows( TransformationException.class, () -> transformation.transform( config, null ) );
+		assertDoesNotThrow( () -> transformation.transform( config, null ) );
+
+		assertEquals( Type.KVM, config.getType() );
+		assertEquals( "x86_64", config.getOsArch() );
+		assertEquals( "pc-q35-4.2", config.getOsMachine() );
+		assertEquals( OsType.HVM, config.getOsType() );
 	}
 }
