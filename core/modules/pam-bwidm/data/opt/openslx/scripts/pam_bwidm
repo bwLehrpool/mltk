@@ -11,14 +11,14 @@ export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/o
 
 # grab the password from stdin asap, since there is no guarantee some tool just reads it
 unset USER_PASSWORD
-if [ "x$PAM_TYPE" == "xauth" ]; then
+if [ "x$PAM_TYPE" = "xauth" ]; then
 	read -r USER_PASSWORD > /dev/null 2>&1
 	readonly USER_PASSWORD
 	[ -z "$USER_PASSWORD" ] && echo "No password given." && exit 1
 fi
 
 # sanity check on PAM_USER: contains '@'?
-if [ -z "$PAM_USER" ] || [ "x${PAM_USER}" == "x${PAM_USER%@*}" ]; then
+if [ -z "$PAM_USER" ] || [ "x${PAM_USER}" = "x${PAM_USER%@*}" ]; then
 	# no @ contained, invalid username, abort
 	#echo "Invalid username '$PAM_USER'. Aborting."
 	exit 1
@@ -37,17 +37,28 @@ readonly TMPDIR
 
 # redirect stdout/stderr to temporary logfile
 readonly LOGFILE="$(mktemp -p "$TMPDIR")"
-# URL to query masterserver for IDPs
-readonly IDP_QUERY_URL="https://bwlp-masterserver.ruf.uni-freiburg.de/webif/pam.php"
-readonly IDP_QUERY_CACHE="/run/openslx/bwlp-idp"
+
+# Determine mode: ECP or Embedded Browser
+IDP_QUERY_URL="$( awk -F= '$1 ~ /^shib-url\s*$/ {print $2}' /etc/lightdm/qt-lightdm-greeter.conf.d/*.conf \
+	| tail -n 1 | xargs )" # TRIM
+
+if [ -n "$IDP_QUERY_URL" ]; then
+	mode=browser
+else
+	# URL to query masterserver for IDPs
+	IDP_QUERY_URL="https://bwlp-masterserver.ruf.uni-freiburg.de/webif/pam.php"
+	mode=ecp
+	readonly IDP_QUERY_CACHE="/run/openslx/bwlp-idp"
+fi
+readonly IDP_QUERY_URL mode
 
 # everything in a subshell in an effort to hide sensitive information
 # from this script's environment
 ###
-( #
+( # <-- subshell
 ###
 # redirect stdout and stderr to logfile
-exec > "${LOGFILE}" 2>&1
+#exec > "${LOGFILE}" 2>&1
 
 # check if we are allowed to run
 . /opt/openslx/config
@@ -84,32 +95,40 @@ if [ "x${SLX_BWIDM_AUTH}" = "xselective" ]; then
 	fi
 fi
 
-# The given username is valid. Now we get the list of IdPs from the bwlp masterserver
-# and try to find the user's organisation
+if [ "$mode" = "ecp" ]; then
+	# The given username is valid. Now we get the list of IdPs from the bwlp masterserver
+	# and try to find the user's organisation
+	mkdir -p /run/openslx
 
-mkdir -p /run/openslx
+	# check if we have a (non-zero bytes) cached copy of the list
+	if ! [ -s "${IDP_QUERY_CACHE}" ]; then
+		if ! [ -w "/run/openslx" ]; then
+			echo "No IDP info cached, cache path not writable for current user."
+			exit 7
+		fi
+		idpret="$(curl --retry 3 --retry-connrefused --retry-delay 1 --retry-max-time 15 -w "%{http_code}" -o "${IDP_QUERY_CACHE}" --connect-timeout 2 --max-time 6 "$IDP_QUERY_URL")"
+		if [ "${#idpret}" != 3 ] || [ "x${idpret:0:1}" != "x2" ]; then
+			echo "Could not download the list of identity providers from '$IDP_QUERY_URL'. Aborting."
+			rm -f -- "$IDP_QUERY_CACHE"
+			exit 7
+		fi
+	fi
+	# here we have the cache for sure, search for the given organisation's ECP URL
+	USER_ECP_URL="$(awk -v idp="${USER_ORGANISATION}" -F '=' '{if($1==idp) print $2}' < "$IDP_QUERY_CACHE")"
+	[ -z "$USER_ECP_URL" ] && echo "Could not determine ECP URL for '${USER_ORGANISATION}'" && exit 1
 
-# check if we have a (non-zero bytes) cached copy of the list
-if ! [ -s "${IDP_QUERY_CACHE}" ]; then
-	if ! [ -w "/run/openslx" ]; then
-		echo "No IDP info cached, cache path not writable for current user."
-		exit 7
+	# path to the SOAP envelope we are gonna need soon
+	readonly SOAP_ENVELOPE="/opt/openslx/bwidm_soap.xml"
+	if ! [ -f "${SOAP_ENVELOPE}" ]; then
+		echo "Failed to find the SOAP envelope at '${SOAP_ENVELOPE}'. Aborting."
+		exit 1
 	fi
-	idpret="$(curl --retry 3 --retry-connrefused --retry-delay 1 --retry-max-time 15 -w "%{http_code}" -o "${IDP_QUERY_CACHE}" --connect-timeout 2 --max-time 6 "$IDP_QUERY_URL")"
-	if [ "${#idpret}" != 3 ] || [ "x${idpret:0:1}" != "x2" ]; then
-		echo "Could not download the list of identity providers from '$IDP_QUERY_URL'. Aborting."
-		rm -f -- "$IDP_QUERY_CACHE"
-		exit 7
-	fi
-fi
-# here we have the cache for sure, search for the given organisation's ECP URL
-USER_ECP_URL="$(awk -v idp="${USER_ORGANISATION}" -F '=' '{if($1==idp) print $2}' < "$IDP_QUERY_CACHE")"
-[ -z "$USER_ECP_URL" ] && echo "Could not determine ECP URL for '${USER_ORGANISATION}'" && exit 1
+fi # ECP end
 
 # recap: here we have validated
 #	- username
 #	- organisation
-#	- ECP URL for that organisation
+#	- ECP URL for that organisation, if using ECP mode, otherwise this is a NOOP
 
 # now create the bwidm group: find the first free GID from 1000 "downwards" to 100
 BWIDM_GROUP="$(getent group bwidm)"
@@ -131,7 +150,7 @@ if [ -z "$BWIDM_GROUP" ]; then
 		exit 1
 	fi
 else
-	readonly BWIDM_GID="$(echo $BWIDM_GROUP | cut -d: -f3)"
+	readonly BWIDM_GID="$(printf "%s" "$BWIDM_GROUP" | cut -d: -f3)"
 fi
 if [ -z "$BWIDM_GID" ]; then
 	echo "Could not determine BWIDM-GID. Aborting."
@@ -139,17 +158,13 @@ if [ -z "$BWIDM_GID" ]; then
 fi
 readonly USER_GID="$BWIDM_GID"
 
-# path to the SOAP envelope we are gonna need soon
-readonly SOAP_ENVELOPE="/opt/openslx/bwidm_soap.xml"
-[ ! -f "${SOAP_ENVELOPE}" ] && echo "Failed to find the SOAP envelope at '${SOAP_ENVELOPE}'. Aborting." && exit 1
-
 auth_user() {
 	if [ "$1" = "--ignore-errors" ]; then
 		ignore_errors=1
 		shift
 	fi
 	if [ "$#" -ne 2 ]; then
-		echo "auth_user() requires 2 arguments, $# given: $@"
+		echo "auth_user() requires 2 arguments, $# given: $*"
 		exit 7
 	fi
 	# generate soap envelope
@@ -176,7 +191,7 @@ auth_user() {
 	echo "machine $HOST login $1 password *******************************" > "$NETRC"
 
 	# check for valid http return code
-	if ! [ "${#cret}" -ne 3 -o "${cret:0:1}" != "2" ]; then
+	if ! [ "${#cret}" -ne 3 ] || [ "${cret:0:1}" != "2" ]; then
 		# auth ok?
 		local saml_ns_prefix="urn:oasis:names:tc:SAML:2.0:status"
 		sed -ri 's,(</?)\w+:,\1,g' "$ret"
@@ -221,53 +236,87 @@ auth_user() {
 	exit 7
 }
 
-# now the pam-type specific part starts
-if [ "x$PAM_TYPE" == "xauth" ]; then
-	# set invariant parts of the requests
-	readonly HOST=$(echo "${USER_ECP_URL}" | awk -F '/' '{print $3}')
-	readonly CT='Content-Type: text/xml; charset=utf-8'
-	NETRC=$(mktemp -p "$TMPDIR")
-	[ -z "$NETRC" ] && NETRC="$TMPDIR/netrc_$$_${USER}_${RANDOM}.tmp"
-	touch "$NETRC"
-	chmod 0600 "$NETRC"
-
-	# Now we are ready to actually send the credentials to the IdP.
-	# To be sure that everything is working as expected, we will first auth
-	# with a wrong password and expect a failure. Note that we don't car
-	if auth_user --ignore-errors "$USER_USERNAME" "___invalid-INVALID++~"; then
-		echo "Purposely wrong authentication succeeded, that should not happen."
-		exit 7
-	fi
-
-	# auth failed as expected, proceed to auth user with the proper credentials
-	if auth_user "$USER_USERNAME" "$USER_PASSWORD"; then
-		# auth succeeded, create and map a local user to this bwIDM user
-		echo "Login for '$USER_USERNAME' on '$USER_ORGANISATION' succeeded."
-		gexp="$( printf "%s" "${PAM_USER}" | sed 's/[][$^\.*]/\\&/g' )" # Basic regexp
-		if ! grep -q "^${gexp}:" /etc/passwd; then
-			# create a random 6digit UID
-			LOOPS=0
-			while [ "$LOOPS" -lt 5 ]; do
-				USER_UID="$(( 100000 + $RANDOM ))"
-				# check existence of this UID, if its free, use it
-				getent passwd "$USER_UID" || break
-				let LOOPS++
-			done
-			if [ "$LOOPS" -eq 5 ]; then
-				# could not find an empty random 6-digit UID, so we will use demo's UID...
-				USER_UID="$(id -u demo)"
-				[ -z "$USER_UID" ] && echo "Could not use UID of 'demo' as a fallback, aborting..." && exit 1
-			fi
-
-			# we have a uid, gid, lets just create the local user now
-			echo "${PAM_USER}:x:${USER_UID}:${USER_GID}:${PAM_USER}:/home/${PAM_USER}:/bin/bash" >> /etc/passwd
+write_user_data() {
+	# auth succeeded, create and map a local user to this bwIDM user
+	echo "Login for '$USER_USERNAME' on '$USER_ORGANISATION' succeeded."
+	gexp="$( printf "%s" "${PAM_USER}" | sed 's/[][$^\.*]/\\&/g' )" # Basic regexp
+	if ! grep -q "^${gexp}:" /etc/passwd; then
+		# create a random 6digit UID
+		LOOPS=0
+		while [ "$LOOPS" -lt 5 ]; do
+			USER_UID="$(( 100000 + RANDOM % 100000 ))"
+			# check existence of this UID, if its free, use it
+			getent passwd "$USER_UID" || break
+			let LOOPS++
+		done
+		if [ "$LOOPS" -eq 5 ]; then
+			# could not find an empty random 6-digit UID, so we will use demo's UID...
+			USER_UID="$(id -u demo)"
+			[ -z "$USER_UID" ] && echo "Could not use UID of 'demo' as a fallback, aborting..." && exit 1
 		fi
-		exit 0
+
+		# we have a uid, gid, lets just create the local user now
+		echo "${PAM_USER}:x:${USER_UID}:${USER_GID}:${PAM_USER}:/home/${PAM_USER}:/bin/bash" >> /etc/passwd
+	fi
+	exit 0
+}
+
+# now the pam-type specific part starts
+if [ "x$PAM_TYPE" = "xauth" ]; then
+	##### Browser
+	if [ "$mode" = "browser" ]; then
+		token="${USER_PASSWORD#shib=}"
+		if [ "${#USER_PASSWORD}" -gt 18 ] && [ "${USER_PASSWORD}" != "$token" ]; then
+			nc="$(curl \
+				--silent \
+				--connect-timeout 5 \
+				--max-time 15 \
+				--data-urlencode "token=${token}" \
+				"${IDP_QUERY_URL}?action=verify"
+			)"
+			err="${nc#ERROR=}"
+			if [ "$err" != "$nc" ]; then
+				echo "Shibboleth auth error: $err"
+				exit 1
+			fi
+			user="${nc#USER=}"
+			if [ "$user" = "$nc" ]; then
+				echo "Invalid reply from SP"
+				exit 1
+			fi
+			if [ "$user" != "$PAM_USER" ]; then
+				echo "Shibboleth user mismatch: '$PAM_USER' != '$user'"
+				exit 1
+			fi
+			write_user_data
+		fi
+	else
+		##### ECP
+		# set invariant parts of the requests
+		readonly HOST=$(echo "${USER_ECP_URL}" | awk -F '/' '{print $3}')
+		readonly CT='Content-Type: text/xml; charset=utf-8'
+		NETRC=$(mktemp -p "$TMPDIR")
+		[ -z "$NETRC" ] && NETRC="$TMPDIR/netrc_$$_${USER}_${RANDOM}.tmp"
+		touch "$NETRC"
+		chmod 0600 "$NETRC"
+
+		# Now we are ready to actually send the credentials to the IdP.
+		# To be sure that everything is working as expected, we will first auth
+		# with a wrong password and expect a failure. Note that we don't car
+		if auth_user --ignore-errors "$USER_USERNAME" "___invalid-INVALID++~"; then
+			echo "Purposely wrong authentication succeeded, that should not happen."
+			exit 7
+		fi
+
+		# auth failed as expected, proceed to auth user with the proper credentials
+		if auth_user "$USER_USERNAME" "$USER_PASSWORD"; then
+			write_user_data
+		fi
 	fi
 	exit 1
 fi
 
-if [ "x$PAM_TYPE" == "xaccount" ]; then
+if [ "x$PAM_TYPE" = "xaccount" ]; then
 	# the sanity checks we did before reacting to PAM_TYPE is enough to validate
 	# the given username as a valid bwIDM username
 	# ('@' contained and IdP found in the idp list fetched from the masterserver)
@@ -279,11 +328,11 @@ fi
 echo "$0 called for unsupported PAM_TYPE '$PAM_TYPE'. Aborting."
 exit 1
 ###
-) #
+) # <-- subshell end
 # #
 ## main script
 mainret=$?
-if [ "x$mainret" == "x7" ]; then
+if [ "x$mainret" = "x7" ]; then
 	# exit code 7 is our marker to push the logfile to the sat
 	slxlog --delete "pam-bwidm" "Internal error during bwIDM authentication" "${LOGFILE}"
 	exit 1
