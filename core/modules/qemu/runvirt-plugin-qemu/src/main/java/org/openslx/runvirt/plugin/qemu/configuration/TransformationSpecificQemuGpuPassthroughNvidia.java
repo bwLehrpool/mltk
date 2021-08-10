@@ -37,6 +37,12 @@ public class TransformationSpecificQemuGpuPassthroughNvidia
 	private static final int NVIDIA_PCI_VENDOR_ID = 0x10de;
 
 	/**
+	 * Switch to turn patch for Nvidia GPU-Passthrough (enables Hyper-V enlightening) on or off to
+	 * avoid driver error code 43 in guest system.
+	 */
+	private static final boolean NVIDIA_PATCH = true;
+
+	/**
 	 * Vendor identifier of the Hyper-V enlightenment for hypervisor shadowing.
 	 */
 	public static final String HYPERV_VENDOR_ID = "62776c706277";
@@ -219,9 +225,11 @@ public class TransformationSpecificQemuGpuPassthroughNvidia
 			shmemDevice.setSize( TransformationSpecificQemuGpuPassthroughNvidia.calculateFramebufferSize() );
 
 			// enable hypervisor shadowing to avoid error code 43 of Nvidia drivers in virtual machines
-			config.setFeatureHypervVendorIdValue( TransformationSpecificQemuGpuPassthroughNvidia.HYPERV_VENDOR_ID );
-			config.setFeatureHypervVendorIdState( true );
-			config.setFeatureKvmHiddenState( true );
+			if ( TransformationSpecificQemuGpuPassthroughNvidia.NVIDIA_PATCH ) {
+				config.setFeatureHypervVendorIdValue( TransformationSpecificQemuGpuPassthroughNvidia.HYPERV_VENDOR_ID );
+				config.setFeatureHypervVendorIdState( true );
+				config.setFeatureKvmHiddenState( true );
+			}
 
 			// disable all software video devices by disable them
 			for ( Video videoDevice : config.getVideoDevices() ) {
