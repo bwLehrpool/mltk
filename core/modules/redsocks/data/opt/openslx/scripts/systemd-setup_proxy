@@ -29,14 +29,6 @@ fi
 [ "$PROXY" == "off" ] && echo "Proxy mode not required." && exit 0
 echo "Setting up transparent proxying via $SLX_PROXY_IP"
 
-## Do this in addition so proxy-aware programs can use it directly
-#mkdir -p /etc/profile.d
-#if [ "${SLX_PROXY_TYPE:0:5}" = "http-" ]; then
-#	echo "export http_proxy=http://${SLX_PROXY_IP}:${SLX_PROXY_PORT}/" > "/etc/profile.d/system-proxy.sh"
-#elif [ "${SLX_PROXY_TYPE:0:5}" = "socks" ]; then
-#	echo "export ALL_PROXY=${SLX_PROXY_TYPE}://${SLX_PROXY_IP}:${SLX_PROXY_PORT}/" > "/etc/profile.d/system-proxy.sh"
-#fi
-
 sed -i "s/%%PROXY_IP%%/$SLX_PROXY_IP/g;s/%%PROXY_PORT%%/$SLX_PROXY_PORT/g;s/%%PROXY_TYPE%%/$SLX_PROXY_TYPE/g" /etc/redsocks.conf
 
 mkdir -p /run/redsocks
@@ -77,8 +69,15 @@ if [ "${SLX_PROXY_TYPE:0:5}" = "http-" ]; then
 	#echo "iptables -t nat -A REDSOCKS -p tcp --dport 80 -j DNAT --to-destination ${SLX_PROXY_IP}:${SLX_PROXY_PORT}" >> "$tfile"
 	mkdir -p "/etc/profile.d" &> /dev/null
 	echo "export http_proxy='http://${SLX_PROXY_IP}:${SLX_PROXY_PORT}/'"
+	echo "export HTTP_PROXY='http://${SLX_PROXY_IP}:${SLX_PROXY_PORT}/'"
 	echo "export all_proxy='http://${SLX_PROXY_IP}:${SLX_PROXY_PORT}/'"
+	echo "export ALL_PROXY='http://${SLX_PROXY_IP}:${SLX_PROXY_PORT}/'"
 	echo -n "export no_proxy='${SLX_PXE_SERVER_IP}"
+	for ADDR in $SLX_PROXY_BLACKLIST; do
+		echo -n ", $ADDR"
+	done
+	echo "'"
+	echo -n "export NO_PROXY='${SLX_PXE_SERVER_IP}"
 	for ADDR in $SLX_PROXY_BLACKLIST; do
 		echo -n ", $ADDR"
 	done
