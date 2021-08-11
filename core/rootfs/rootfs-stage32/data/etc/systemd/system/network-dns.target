@@ -1,4 +1,0 @@
-[Unit]
-Description=DNS Server available
-ConditionPathExists=/run/network/dns-ready
-

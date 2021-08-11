@@ -24,6 +24,7 @@ declare -rg primary="${SLX_BRIDGE:-br0}"
 
 declare -rg RESOLV_CONF="/opt/openslx/resolv.conf"
 declare -rg THIS_RESOLV="/run/network/${interface}.resolv"
+declare -rg flag="/run/network/primary-dhcp.flag"
 
 shopt -s extglob
 
@@ -93,15 +94,6 @@ check_env() {
 		exit 1
 	fi
 }
-
-if [ ! -d /run ]; then
-	echo -n "Waiting for /run." >&2
-	while [ ! -d /run ]; do
-		echo -n "." >&2
-		usleep 500000
-	done
-	echo "" >&2
-fi
 
 mkdir -p "/run/network"
 
@@ -190,34 +182,31 @@ case "$1" in
 			fi
 			
 			# Only if network is not ready yet
-			if ! [ -e "/run/network/network-ready" ] || ! [ -e "/etc/hostname" ] || grep -q '^noname-' "/etc/hostname"; then
+			if ! [ -e "$flag" ]; then
 				# Update hostname
 				if [ -z "$dns_fqdn" ] && [ -n "$domain" ] && [ -n "$hostname" ]; then
 					# fallback to what the dhcp told us
 					dns_fqdn="${hostname}.${domain}"
 				fi
-				if [ -z "$dns_fqdn" ]; then
-					# only if there is no /etc/hostname, we fall back (far back, that is)
-					[ ! -s "/etc/hostname" ] && dns_fqdn="slx-client"
+				if [ -z "$dns_fqdn" ] && ! [ -s "/etc/hostname" ]; then
+					dns_fqdn="noname-${ip//./-}"
 				fi
 				# finally, if dns_fqdn was set to anything, apply it
 				if [ -n "$dns_fqdn" ]; then
 					dns_short="${dns_fqdn%%.*}"
 					echo "$dns_short" > "/proc/sys/kernel/hostname"
 					echo "$dns_short" > "/etc/hostname"
-					if grep '^SLX_HOSTNAME=' /opt/openslx/config 2>/dev/null; then
-						sed -i "s/^\(SLX_HOSTNAME=\).*$/\1'$dns_short'/" /opt/openslx/config
-					else
+					if [ -z "$SLX_HOSTNAME" ]; then
 						echo "# Config written by openslx-dhcp-script (1)" >> /opt/openslx/config
 						echo "SLX_HOSTNAME='$dns_short'" >> /opt/openslx/config
+					elif [ "$SLX_HOSTNAME" != "$dns_short" ]; then
+						sed -i "s/^\(SLX_HOSTNAME=\).*$/\1'$dns_short'/" /opt/openslx/config
 					fi
 				fi
 
 				# Update /etc/issue for proper spacing
 				/opt/openslx/scripts/openslx-create_issue
-				touch "/run/network/network-ready"
-				# Mark network target as reached
-				systemctl start network.target &
+				touch "$flag"
 			fi # end "network not ready yet"
 			# Remove any stray addresses; we expect the primary interface to only have one
 			# address supplied via DHCP. We do this after adding the new one, obviously.
@@ -253,18 +242,10 @@ case "$1" in
 		# Get rid of orphaned lines in /etc/hosts
 		sed -i -r '/^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+\s*$/d' /etc/hosts
 		
-		# "dns ready" target
-		if [ -n "$dns" ] && [ ! -e "/run/network/dns-ready" ]; then
-			touch "/run/network/dns-ready"
+		if [ -n "$dns" ] && [ -z "$SLX_DNS" ]; then
 			# Write to openslx-config
 			echo "# Config written by openslx-dhcp-script (2)" >> /opt/openslx/config
 			echo "SLX_DNS='$dns'" >> /opt/openslx/config
-			systemctl start network-dns.target &
-		fi
-		# "default route exists" target
-		if [ -n "$router" ] && [ ! -e "/run/network/gateway-ready" ]; then
-			touch "/run/network/gateway-ready"
-			systemctl start network-gateway.target &
 		fi
 	;;
 	

@@ -1,0 +1,21 @@
+#!/bin/ash
+
+# Wait until we have a nameserver in resolv.conf
+# and we have a gateway configured
+
+w=0
+while ! grep -q ^nameserver /etc/resolv.conf && [ "$w" -lt 10 ]; do
+	let w++
+	sleep 1
+done
+
+# We don't consider a missing nameserver fatal, but a missing gateway, if no proxy is set
+. /etc/profile
+while [ -z "$http_proxy" ] && [ -z "$ALL_PROXY" ] && ! ip route show | grep -q ^default; do
+	[ "$w" -gt 12 ] && exit 1 # Give up - not online
+	let w++
+	sleep 1
+	. /etc/profile
+done
+
+exit 0

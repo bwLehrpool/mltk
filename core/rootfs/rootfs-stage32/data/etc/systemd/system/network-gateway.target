@@ -1,4 +1,0 @@
-[Unit]
-Description=Default route configured
-ConditionPathExists=/run/network/gateway-ready
-

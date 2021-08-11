@@ -1,0 +1,7 @@
+[Unit]
+Description=Wait until we are online, ie. a gateway or proxy is configured
+Before=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/opt/openslx/scripts/systemd-wait_online
