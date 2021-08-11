@@ -102,18 +102,22 @@ public class TransformationTestUtils
 		return TransformationTestUtils.getCmdLnArgs( new String[] {} );
 	}
 
-	public static Domain getDefaultDomain()
+	public static Domain getDomain( String fileName )
 	{
 		Domain domain = null;
 
 		try {
-			domain = new Domain( LibvirtXmlTestResources
-					.getLibvirtXmlStream( "qemu-kvm_default-ubuntu-20-04-vm_transform-non-persistent.xml" ) );
+			domain = new Domain( LibvirtXmlTestResources.getLibvirtXmlStream( fileName ) );
 		} catch ( LibvirtXmlDocumentException | LibvirtXmlSerializationException | LibvirtXmlValidationException e ) {
 			fail( "Cannot prepare requested Libvirt domain XML file from the resources folder: "
 					+ e.getLocalizedMessage() );
 		}
 
 		return domain;
+	}
+
+	public static Domain getDefaultDomain()
+	{
+		return TransformationTestUtils.getDomain( "qemu-kvm_default-ubuntu-20-04-vm_transform-non-persistent.xml" );
 	}
 }
