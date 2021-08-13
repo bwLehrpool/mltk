@@ -16,15 +16,16 @@ load_image () {
 	else
 		# In this case a pre build container image (tar archive from "docker save ...") 
 		# will be loaded into the local docker daemon. 
-		echo "+ load container image"
-		# create TMP_FILE for image
+		echo "+ load container image... (please be patient)"
+		# create TMP_FILE for docker load output
 		local TMP_FILE=$(mktemp)
-		# write currently existing image ids into TMP_FILE
-		cp $VM_DISKFILE_RO $TMP_FILE
-		# recieve the RepoTag form the manifest.json inside the tar
-		local REPO_TAG=$(tar -axf $TMP_FILE manifest.json -O | jq -r '.[].RepoTags[0]')
+
+		# TODO no progress output for docker load
 		# load image from tar file
-		docker load --input $TMP_FILE
+		pv -cN "Image Transfer" < $VM_DISKFILE_RO | docker load -q > $TMP_FILE
+		echo "+ $(cat $TMP_FILE)"
+
+		local REPO_TAG=$(head -n 1 $TMP_FILE | cut -d" " -f3)
 		# rename image 
 		docker tag "$REPO_TAG" "$CONTAINER_IMAGE_NAME"
 		rm -f -- "$TMP_FILE"
@@ -35,8 +36,18 @@ load_image () {
 
 main () 
 {
-	# TODO only check by image name could be bad, images whith a same name could exist
 
+	if [[ -n $CONTAINER_REPO_NAME ]]; then
+		echo "pull container $CONTAINER_REPO_NAME"
+		docker pull $CONTAINER_REPO_NAME
+
+		[ "$?" != 0 ] && echo ".. docker pull not successful ...giving up..." && exit -1
+
+		CONTAINER_IMAGE_NAME="$CONTAINER_REPO_NAME"
+	fi
+
+	# TODO only check by image name could be bad, images whith a same name could exist
+	
 	# check if the container_image_name already loaded in docker daemon
 	if [[ -z $(docker images $CONTAINER_IMAGE_NAME -q) ]]; then
 		echo "+ Image unknown by docker daemon ..."
@@ -54,8 +65,8 @@ main ()
 	fi
 
 	echo "+ start container..."
-	echo "+ docker run $CONTAINER_RUN_OPTIONS $CONTAINER_BIND_MOUNT_STRING $CONTAINER_IMAGE_NAME"
-	docker run $CONTAINER_RUN_OPTIONS $CONTAINER_BIND_MOUNT_STRING $CONTAINER_IMAGE_NAME
+	echo "+ docker run $CONTAINER_RUN_OPTIONS $CONTAINER_BIND_MOUNT_STRING $CONTAINER_IMAGE_NAME $CONTAINER_RUN_COMMAND"
+	docker run $CONTAINER_RUN_OPTIONS $CONTAINER_BIND_MOUNT_STRING $CONTAINER_IMAGE_NAME $CONTAINER_RUN_COMMAND
 
 	if [[ "$?" != "0" ]]; then
 		echo "...container start failed!...giving up..."
@@ -64,7 +75,8 @@ main ()
 	
 	if [[ -n $RUNSCRIPT ]]; then
 		echo "+ execute user runscript"
-		/bin/bash $RUNSCRIPT
+		NOHUP_TMP=$(mktemp)
+		nohup /bin/bash $RUNSCRIPT > "$NOHUP_TMP" & tail -f "$NOHUP_TMP"
 	fi 
 }
 

@@ -8,6 +8,7 @@ function process_container_meta()
 	export CONTAINER_IMAGE_NAME=$( jq -r '.image_name'  "$CONFDIR/container_meta.json" | \
 		tr  '[:upper:]' '[:lower:]' | sed -e  's/^[[:space:]]*//g' -e 's/[[:space:]]*$//g' | sed -e 's/[[:space:]]/_/g')
 	export CONTAINER_RUN_OPTIONS=$( jq -r '.run_options'  "$CONFDIR/container_meta.json" )
+	export CONTAINER_RUN_COMMAND=$( jq -r '.run_command'  "$CONFDIR/container_meta.json" )
 
 	
 	# set build context
@@ -18,6 +19,9 @@ function process_container_meta()
 	elif [[ "$build_context_method" == "1" ]]; then
 		writelog "+ container_build_context: git url"
 		export CONTAINER_BUILD_CONTEXT=$( jq -r '.build_context_url'  "$CONFDIR/container_meta.json" )
+	elif [[ "$build_context_method" == "2" ]]; then
+		writelog "+ pull public container"
+		export CONTAINER_REPO_NAME=$( jq -r '.image_repo'  "$CONFDIR/container_meta.json" )
 	else
 		writelog "+ no proper build_context_method!"
 		cleanexit 1
@@ -62,9 +66,11 @@ function init_user_container_config()
 
 	sed -i "s#export VM_DISKFILE_RO=".*"#export VM_DISKFILE_RO=\"$VM_DISKFILE_RO\"#" "$USER_CONTAINER_CONFIG"
 
+	sed -i "s#export CONTAINER_REPO_NAME=".*"#export CONTAINER_REPO_NAME=\"$CONTAINER_REPO_NAME\"#" "$USER_CONTAINER_CONFIG"
 	sed -i "s#export CONTAINER_BUILD_CONTEXT=".*"#export CONTAINER_BUILD_CONTEXT=\"$CONTAINER_BUILD_CONTEXT\"#" "$USER_CONTAINER_CONFIG"
 	sed -i "s#export CONTAINER_IMAGE_NAME=".*"#export CONTAINER_IMAGE_NAME=\"$CONTAINER_IMAGE_NAME\"#" "$USER_CONTAINER_CONFIG"
 	sed -i "s#export CONTAINER_RUN_OPTIONS=".*"#export CONTAINER_RUN_OPTIONS=\"$CONTAINER_RUN_OPTIONS\"#" "$USER_CONTAINER_CONFIG"
+	sed -i "s#export CONTAINER_RUN_COMMAND=".*"#export CONTAINER_RUN_COMMAND=\"$CONTAINER_RUN_COMMAND\"#" "$USER_CONTAINER_CONFIG"
 
 	local RUNSCRIPT="$CONFDIR/runscript"
 	# check if runscript file contains more than default line "ext=;visibility=1;soundMuted=-1"

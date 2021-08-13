@@ -8,8 +8,9 @@ DOCKER_TMP="/tmp/docker"
 [ -e $DOCKER_TMP ] && rm -rf -- $DOCKER_TMP
 [ ! -e $DOCKER_TMP ] && mkdir -p $DOCKER_TMP && chmod 0777 $DOCKER_TMP
 
-# TODO Check if same user logs on to the system.
-# if prev_user != curr_user then delete existing /tmp/virt/docker/prev_user_uid:prev_user_gid/
+# remove all leftovers in docker_home from previous users
+DOCKER_HOME="/tmp/virt/docker"
+rm -r -- "$DOCKER_HOME"/*
 
 # This changes the subuid and subgid for the dockremap(user) to the current user and restards the docker daemon.
 # Because off this change in the docker daemon, for each userns will be a directory under /tmp/virt/docker/
