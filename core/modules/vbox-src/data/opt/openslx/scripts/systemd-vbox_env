@@ -38,7 +38,7 @@ for MOD in *; do
 done
 
 # check/create vboxusers group
-getent group vboxusers || addgroup -S vboxusers
+getent group vboxusers || addgroup --system vboxusers
 adduser demo vboxusers
 
 # set their permissions
