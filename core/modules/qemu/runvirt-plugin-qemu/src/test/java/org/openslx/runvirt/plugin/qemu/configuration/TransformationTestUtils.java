@@ -36,6 +36,7 @@ public class TransformationTestUtils
 	public static final String DEFAULT_VM_GPU0_DESC = "10de:1d01";
 	public static final String DEFAULT_VM_GPU0_ADDR = "0000:00:02.0";
 	public static final String DEFAULT_VM_NVGPUIDS0 = DEFAULT_VM_GPU0_DESC + "," + DEFAULT_VM_GPU0_ADDR;
+	public static final String DEFAULT_VM_ILMDEVID0 = "4186049f-d192-4c69-8d4f-b0f277ef095f";
 	// @formatter:on
 
 	private static final String[] DEFAULT_CMDLN_ARGS = {
@@ -76,7 +77,9 @@ public class TransformationTestUtils
 			CommandLineArgsTest.CMDLN_PREFIX_OPTION_LONG + CmdLnOption.VM_FSTGT1.getLongOption(),
 			TransformationTestUtils.DEFAULT_VM_FSTGT1,
 			CommandLineArgsTest.CMDLN_PREFIX_OPTION_LONG + CmdLnOption.VM_NVGPUIDS0.getLongOption(),
-			TransformationTestUtils.DEFAULT_VM_NVGPUIDS0
+			TransformationTestUtils.DEFAULT_VM_NVGPUIDS0,
+			CommandLineArgsTest.CMDLN_PREFIX_OPTION_LONG + CmdLnOption.VM_ILMDEVID0.getLongOption(),
+			TransformationTestUtils.DEFAULT_VM_ILMDEVID0
 	};
 
 	private static CommandLineArgs getCmdLnArgs( String[] args )

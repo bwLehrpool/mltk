@@ -397,6 +397,26 @@ public class CommandLineArgs
 	}
 
 	/**
+	 * Returns the argument of the command line option {@link CmdLnOption#VM_ILMDEVID0}.
+	 * 
+	 * @return argument of the command line option {@link CmdLnOption#VM_ILMDEVID0}.
+	 */
+	public String getVmIlMdevId0()
+	{
+		return this.getArgument( CmdLnOption.VM_ILMDEVID0 );
+	}
+
+	/**
+	 * Returns the state whether a passthrough of an Intel mediated device (virtual GPU) is required.
+	 * 
+	 * @return state whether a passthrough of an Intel mediated device (virtual GPU) is required.
+	 */
+	public boolean isIntelMdevPassthroughEnabled()
+	{
+		return this.getVmIlMdevId0() != null;
+	}
+
+	/**
 	 * Command line options for the run-virt QEMU plugin (command line tool).
 	 * 
 	 * @author Manuel Bentele
@@ -429,7 +449,8 @@ public class CommandLineArgs
 		VM_FSTGT1   ( 'w', "vmfstgt1",    1, "Target directory for second file system passthrough (shared folder)" ),
 		VM_NVGPUIDS0( 'y', "vmnvgpuids0", 2, "PCI device description and address for passthrough of the first Nvidia GPU. " +
 		                                     "The argument follow the pattern: " +
-				                               "\"<VENDOR ID>:<PRODUCT ID>,<PCI DOMAIN>:<PCI DEVICE>:<PCI DEVICE>.<PCI FUNCTION>\"" );
+				                               "\"<VENDOR ID>:<PRODUCT ID>,<PCI DOMAIN>:<PCI DEVICE>:<PCI DEVICE>.<PCI FUNCTION>\"" ),
+		VM_ILMDEVID0( 'z', "vmilmdevid0", 1, "Mediated device UUID for passthrough of the first Intel mediated device (virtual GPU)." );
 		// @formatter:on
 
 		/**

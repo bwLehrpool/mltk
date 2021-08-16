@@ -2,6 +2,7 @@ package org.openslx.runvirt.plugin.qemu.cmdln;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -31,6 +32,7 @@ public class CommandLineArgsTest
 	private static final String CMDLN_TEST_MAC         = "02:42:8e:77:1b:e6";
 	private static final String CMDLN_TEST_NVGPU_DESC  = "10de:0ff9";
 	private static final String CMDLN_TEST_NVGPU_ADDR  = "0000:00:01.0";
+	private static final String CMDLN_TEST_ILMDEV_ID   = "25f672e0-5456-4ed3-b2fc-aeaf2e508301";
 	// @formatter:on
 
 	@Test
@@ -748,5 +750,54 @@ public class CommandLineArgsTest
 
 		assertTrue( cmdLn1.isNvidiaGpuPassthroughEnabled() );
 		assertFalse( cmdLn2.isNvidiaGpuPassthroughEnabled() );
+	}
+
+	@Test
+	@DisplayName( "Test the parsing of Intel mediated device ID for the first virtual GPU passthrough (short version)" )
+	public void testCmdlnOptionVmIlMdevId0Short() throws CommandLineArgsException
+	{
+		final String[] args = {
+				CMDLN_PREFIX_OPTION_SHORT + CmdLnOption.VM_ILMDEVID0.getShortOption(),
+				CMDLN_TEST_ILMDEV_ID
+		};
+
+		CommandLineArgs cmdLn = new CommandLineArgs( args );
+
+		final String intelMdevId = cmdLn.getVmIlMdevId0();
+		assertNotNull( intelMdevId );
+		assertEquals( CMDLN_TEST_ILMDEV_ID, intelMdevId );
+	}
+
+	@Test
+	@DisplayName( "Test the parsing of Intel mediated device ID for the first virtual GPU passthrough (long version)" )
+	public void testCmdlnOptionVmIlMdevId0Long() throws CommandLineArgsException
+	{
+		final String[] args = {
+				CMDLN_PREFIX_OPTION_LONG + CmdLnOption.VM_ILMDEVID0.getLongOption(),
+				CMDLN_TEST_ILMDEV_ID
+		};
+
+		CommandLineArgs cmdLn = new CommandLineArgs( args );
+
+		final String intelMdevId = cmdLn.getVmIlMdevId0();
+		assertNotNull( intelMdevId );
+		assertEquals( CMDLN_TEST_ILMDEV_ID, intelMdevId );
+	}
+
+	@Test
+	@DisplayName( "Test whether a Intel mediated device passthrough is enabled" )
+	public void testIsIntelMdevPassthroughEnabled() throws CommandLineArgsException
+	{
+		final String[] args1 = {
+				CMDLN_PREFIX_OPTION_LONG + CmdLnOption.VM_ILMDEVID0.getLongOption(),
+				CMDLN_TEST_ILMDEV_ID
+		};
+		final String[] args2 = {};
+
+		CommandLineArgs cmdLn1 = new CommandLineArgs( args1 );
+		CommandLineArgs cmdLn2 = new CommandLineArgs( args2 );
+
+		assertTrue( cmdLn1.isIntelMdevPassthroughEnabled() );
+		assertFalse( cmdLn2.isIntelMdevPassthroughEnabled() );
 	}
 }
