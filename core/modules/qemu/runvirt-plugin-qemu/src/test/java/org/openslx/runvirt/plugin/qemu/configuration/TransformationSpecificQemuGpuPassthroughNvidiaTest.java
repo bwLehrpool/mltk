@@ -85,10 +85,17 @@ public class TransformationSpecificQemuGpuPassthroughNvidiaTest
 		assertEquals( Shmem.Model.IVSHMEM_PLAIN, shmemDevice.getModel() );
 		assertEquals( BigInteger.valueOf( 67108864 ).toString(), shmemDevice.getSize().toString() );
 
-		assertEquals( TransformationSpecificQemuGpuPassthroughNvidia.HYPERV_VENDOR_ID,
-				config.getFeatureHypervVendorIdValue() );
-		assertTrue( config.isFeatureHypervVendorIdStateOn() );
-		assertTrue( config.isFeatureKvmHiddenStateOn() );
+		if ( TransformationSpecificQemuGpuPassthroughNvidia.NVIDIA_PATCH ) {
+			assertEquals( TransformationSpecificQemuGpuPassthroughNvidia.HYPERV_VENDOR_ID,
+					config.getFeatureHypervVendorIdValue() );
+			assertTrue( config.isFeatureHypervVendorIdStateOn() );
+			assertTrue( config.isFeatureKvmHiddenStateOn() );
+		} else {
+			assertNotEquals( TransformationSpecificQemuGpuPassthroughNvidia.HYPERV_VENDOR_ID,
+					config.getFeatureHypervVendorIdValue() );
+			assertFalse( config.isFeatureHypervVendorIdStateOn() );
+			assertFalse( config.isFeatureKvmHiddenStateOn() );
+		}
 
 		final List<Video> videoDevices = config.getVideoDevices();
 		assertNotNull( videoDevices );

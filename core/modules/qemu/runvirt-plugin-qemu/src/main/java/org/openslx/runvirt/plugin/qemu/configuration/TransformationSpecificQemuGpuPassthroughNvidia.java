@@ -40,7 +40,7 @@ public class TransformationSpecificQemuGpuPassthroughNvidia
 	 * Switch to turn patch for Nvidia GPU-Passthrough (enables Hyper-V enlightening) on or off to
 	 * avoid driver error code 43 in guest system.
 	 */
-	private static final boolean NVIDIA_PATCH = true;
+	public static final boolean NVIDIA_PATCH = true;
 
 	/**
 	 * Vendor identifier of the Hyper-V enlightenment for hypervisor shadowing.
