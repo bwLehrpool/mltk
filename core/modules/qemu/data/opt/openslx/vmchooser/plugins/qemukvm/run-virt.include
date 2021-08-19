@@ -22,58 +22,12 @@ declare -rg QEMU_INCLUDE_DIR="${QEMU_PLUGIN_DIR}/includes"
 # Define which features the QEMU plugin supports
 declare -rg PLUGIN_FEATURES="firewall printer usb slxfloppy sound netshares"
 
-# Function to parse an option's value from the kernel command line
-# Parameter 1: name of the kernel command line option
-# Return     : value of the kernel command line option
-function parse_kcl_option() {
-	grep -o "\b${1}=[^ ]*" /proc/cmdline | cut -d '=' -f 2
-}
-
-# Function to parse VFIO PCI-IDs from the kernel command line
-# Return     : PCI-IDs of the kernel command line as space separated string
-function parse_kcl_pci_ids() {
-	local passthrough_pci_ids="$(parse_kcl_option "vfio-pci.ids")"
-	echo "${passthrough_pci_ids}" | tr ',' ' '
-}
-
-# Function to get state of passthrough
-# Return     : 0 (true) if passthrough is enabled, otherwise 1 (false)
-function passthrough_enabled() {
-	local passthrough_iommu="$(parse_kcl_option "iommu")"
-	if [ "${passthrough_iommu}" == "pt" ]; then
-		return 0
-	else
-		return 1
-	fi
-}
-
-# Function to check validitiy of the passthrough configuration
-# Return     : 0 (true) if passthrough is configured properly, otherwise 1 (false)
-function passthrough_check() {
-	local passthrough_iommu_intel="$(parse_kcl_option "intel_iommu")"
-	local passthrough_iommu_amd="$(parse_kcl_option "amd_iommu")"
-	if [ "${passthrough_iommu_intel}" != "on" ] && [ "${passthrough_iommu_amd}" != "on" ]; then
-		return 1
-	else
-		return 0
-	fi
-}
-
-# Function to get PCI address of a PCI device specified by its vendor and product ID
-# Parameter 1: vendor and product ID with the following pattern: "<VENDOR ID>:<PRODUCT ID>"
-# Return     : PCI address of the specified PCI device of form "<PCI DOMAIN>:<PCI DEVICE>:<PCI DEVICE>.<PCI FUNCTION>"
-function passthrough_lookup_pci_address() {
-	local passthrough_pci_addresses="$(lspci -n -D -d "${1}" | cut -d ' ' -f 1)"
-	passthrough_pci_addresses=($(echo "${passthrough_pci_addresses}" | tr '\n' ' '))
-	if [ "${#passthrough_pci_addresses[@]}" -eq 1 ]; then
-		echo "${passthrough_pci_addresses[0]}"
-		return 0
-	else
-		return 1
-	fi
-}
-
 run_plugin() {
+	# include kernel command line utils and functions
+	$(safesource "${QEMU_INCLUDE_DIR}/kernel-cmdln.inc")
+	# include PCI passthrough utils and functions
+	$(safesource "${QEMU_INCLUDE_DIR}/passthrough-pci.inc")
+
 	# setup RW image access for operation
 	local vm_diskfile
 	if notempty VM_DISKFILE_RO; then
@@ -86,28 +40,8 @@ run_plugin() {
 		vm_diskfile="${VM_DISKFILE_RW}"
 	fi
 
-	# setup GPU passthrough if passthrough is enabled
-	if passthrough_enabled; then
-		# check if passthrough is configured properly
-		if ! passthrough_check; then
-			return 1;
-		fi
-
-		# parse PCI-IDs from the kernel command line
-		local passthrough_pci_ids=($(parse_kcl_pci_ids))
-
-		# lookup PCI address of each specified PCI-ID
-		local device_pci_address
-		local pt_gpu_pci_ids
-		for device_vendor_id in "${passthrough_pci_ids[@]}"; do
-			device_pci_address="$(passthrough_lookup_pci_address "${device_vendor_id}")"
-			if [ "${?}" -eq 0 ]; then
-				pt_gpu_pci_ids+=("${device_vendor_id},${device_pci_address}")
-			else
-				writelog "Failed to lookup PCI address for '${device_vendor_id}'"
-			fi
-		done
-	fi
+	# setup GPU passthrough and obtain PCI addresses and IDs if passthrough is enabled
+	local pt_gpu_pci_ids=($(passthrough_pci_setup))
 
 	# write finalized config in debug mode to temporary folder for debugging purposes
 	if [ "${DEBUG}" = "true" ]; then
