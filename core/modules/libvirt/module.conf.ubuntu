@@ -5,6 +5,7 @@ REQUIRED_INSTALLED_PACKAGES="
 	libvirt-clients
 	ebtables
 	dnsmasq
+	mdevctl
 "
 
 REQUIRED_CONTENT_PACKAGES="
@@ -13,4 +14,5 @@ REQUIRED_CONTENT_PACKAGES="
 	libvirt-clients
 	ebtables
 	dnsmasq
+	mdevctl
 "
