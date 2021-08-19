@@ -18,7 +18,7 @@
 # Return     : 0 (true) if passthrough is enabled, otherwise 1 (false)
 function passthrough_pci_enabled() {
 	local passthrough_iommu="$(kernel_cmdln_parse_option "iommu")"
-        local passthrough_pci_ids=($(kernel_cmdln_parse_pci_ids))
+	local passthrough_pci_ids=($(kernel_cmdln_parse_pci_ids))
 	if [ "${passthrough_iommu}" == "pt" ] && ["${#passthrough_pci_ids[@]}" -gt 0 ]; then
 		return 0
 	else
@@ -56,14 +56,14 @@ function passthrough_pci_lookup_address() {
 # Return     : PCI-IDs and addresses of the specified passthrough PCI devices as tuples of form
 #              "<VENDOR ID>:<PRODUCT ID>,<PCI DOMAIN>:<PCI BUS>:<PCI DEVICE>.<PCI FUNCTION>"
 function passthrough_pci_setup() {
-        # check if passthrough is enabled
-        if passthrough_enabled; then
+	# check if passthrough is enabled
+	if passthrough_pci_enabled; then
 		# check if passthrough is configured properly
-		if ! passthrough_check; then
+		if ! passthrough_pci_check; then
 			return 1;
 		fi
 
-                writelog "Passthrough of PCI devices is enabled successfully"
+		writelog "Passthrough of PCI devices is enabled successfully"
 
 		# parse PCI-IDs from the kernel command line
 		local passthrough_pci_ids=($(kernel_cmdln_parse_pci_ids))
@@ -80,8 +80,8 @@ function passthrough_pci_setup() {
 			fi
 		done
 
-                echo "${pt_gpu_pci_ids[@]}"
-        fi
+		echo "${pt_gpu_pci_ids[@]}"
+	fi
 
-        return 0;
+	return 0;
 }
