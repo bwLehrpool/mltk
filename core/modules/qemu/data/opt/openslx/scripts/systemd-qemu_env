@@ -19,6 +19,8 @@
 #
 # create and setup Intel GVT-g mediated device instance for passthrough if Intel GVT-g is enabled
 #
+declare -rg LOGFILE="/dev/null"
+source /opt/openslx/vmchooser/run-virt-includes/vmchooser_runvirt_functions.inc
 source /opt/openslx/vmchooser/plugins/qemukvm/includes/kernel-cmdln.inc
 source /opt/openslx/vmchooser/plugins/qemukvm/includes/passthrough-mdev.inc
 
