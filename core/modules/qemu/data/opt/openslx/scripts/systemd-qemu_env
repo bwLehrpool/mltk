@@ -17,35 +17,6 @@
 ################################################################################
 
 #
-# load general KVM module
-#
-modprobe "kvm" || slxlog "qemu" "Could not load 'kvm' kernel modul!"
-
-#
-# load CPU specific KVM implementation
-#
-virt=$(egrep -m1 -w '^flags[[:blank:]]*:' /proc/cpuinfo | egrep -wo '(vmx|svm)') || true
-
-if [ "${virt}" = "vmx" ]; then
-	kmod="kvm_intel"
-elif [ "${virt}" = "svm" ]; then
-	kmod="kvm_amd"
-else
-	slxlog "qemu" "CPU does not support KVM extensions!"
-	exit 1
-fi
-
-modprobe "${kmod}" || slxlog "qemu" "Could not load '${kmod}' kernel modul!"
-
-#
-# check that the KVM exposed device exists
-#
-if [ ! -e /dev/kvm ]; then
-	slxlog "qemu" "/dev/kvm not found! Missing kvm kernel module(s)?"
-	exit 1
-fi
-
-#
 # create and setup Intel GVT-g mediated device instance for passthrough if Intel GVT-g is enabled
 #
 source /opt/openslx/vmchooser/plugins/qemukvm/includes/kernel-cmdln.inc
