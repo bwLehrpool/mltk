@@ -27,6 +27,8 @@ run_plugin() {
 	$(safesource "${QEMU_INCLUDE_DIR}/kernel-cmdln.inc")
 	# include PCI passthrough utils and functions
 	$(safesource "${QEMU_INCLUDE_DIR}/passthrough-pci.inc")
+	# include mediated device passthrough utils and functions
+	$(safesource "${QEMU_INCLUDE_DIR}/passthrough-mdev.inc")
 
 	# setup RW image access for operation
 	local vm_diskfile
@@ -42,6 +44,9 @@ run_plugin() {
 
 	# setup GPU passthrough and obtain PCI addresses and IDs if passthrough is enabled
 	local pt_gpu_pci_ids=($(passthrough_pci_setup))
+
+	# setup GPU mediated device passthrough and obtain mediated device address
+	local pt_gpu_mdev_id=($(passthrough_mdev_setup))
 
 	# write finalized config in debug mode to temporary folder for debugging purposes
 	if [ "${DEBUG}" = "true" ]; then
@@ -69,6 +74,7 @@ run_plugin() {
 	notempty CDROM_1           && VIRTCMDOPTS+=( "-vmcdrom1"    "${CDROM_1}" )
 	notempty SERIAL0           && VIRTCMDOPTS+=( "-vmserial0"   "${SERIAL0}" )
 	notempty PARALLEL0         && VIRTCMDOPTS+=( "-vmparallel0" "${PARALLEL0}" )
+	notempty pt_gpu_mdev_id    && VIRTCMDOPTS+=( "-vmilmdevid0" "${pt_gpu_mdev_id}" )
 
 	if [ "${SHARE_REMAP_MODE}" -gt 1 ]; then
 		notempty HOME_SHARE_PATH   && VIRTCMDOPTS+=( "-vmfssrc0"    "${HOME_SHARE_PATH}" )
