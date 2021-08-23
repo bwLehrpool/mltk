@@ -201,7 +201,7 @@ public class TransformationSpecificQemuArchitecture
 				for ( String targetMachineCanonicalName : targetMachineCanonicalNames ) {
 					final String targetMachineName = VirtualizationConfigurationQemuUtils
 							.getOsMachineName( targetMachineCanonicalName );
-					if ( sourceMachine.contains( targetMachineName ) ) {
+					if ( targetMachineName != null && sourceMachine.contains( targetMachineName ) ) {
 						sourceMachineOverwrite = targetMachineCanonicalName;
 						break;
 					}
