@@ -181,9 +181,11 @@ main() {
 
 	writelog "VM command: ${VIRTCMD} ${VIRTCMDOPTS[*]}"
 	# This will start the VM (no eval needed!)
+	writelog "---------- BEGIN VM command output ----------"
 	local retval
-	"${VIRTCMD}" "${VIRTCMDOPTS[@]}"
-	retval=$?
+	"${VIRTCMD}" "${VIRTCMDOPTS[@]}" >> "${LOGFILE}"
+	retval=${?}
+	writelog "---------- END VM command output ----------"
 
 	run_hooks "post-exec" "$PLUGIN_ID" "$IMGUUID"
 
