@@ -39,6 +39,7 @@ import org.openslx.runvirt.virtualization.LibvirtHypervisor;
 import org.openslx.runvirt.virtualization.LibvirtHypervisorException;
 import org.openslx.runvirt.virtualization.LibvirtVirtualMachine;
 import org.openslx.runvirt.virtualization.LibvirtVirtualMachineException;
+import org.openslx.util.AppUtil;
 import org.openslx.virtualization.configuration.transformation.TransformationException;
 import org.openslx.virtualization.configuration.transformation.TransformationManager;
 
@@ -96,6 +97,9 @@ public class App
 			App.printUsage( cmdLn );
 			System.exit( 0 );
 		}
+
+		// log generic application information
+		AppUtil.logHeader( LOGGER, APP_NAME, App.class.getPackage().getImplementationVersion() );
 
 		// print command line arguments for debugging purposes
 		App.printCmdLnArgs( cmdLn );

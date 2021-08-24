@@ -11,6 +11,10 @@
   <name>runvirt-plugin-qemu</name>
   <url>https://git.openslx.org/openslx-ng/mltk.git/</url>
 
+  <scm>
+    <connection>scm:git:git://git.openslx.org/openslx-ng/mltk.git</connection>
+  </scm>
+
   <properties>
     <main.class>org.openslx.runvirt.plugin.qemu.App</main.class>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -116,6 +120,28 @@
   <build>
     <plugins>
       <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>buildnumber-maven-plugin</artifactId>
+        <version>1.4</version>
+        <executions>
+          <execution>
+            <phase>package</phase>
+            <goals>
+              <goal>create</goal>
+              <goal>create-timestamp</goal>
+            </goals>
+          </execution>
+        </executions>
+        <configuration>
+          <doCheck>false</doCheck>
+          <doUpdate>false</doUpdate>
+          <timezone>UTC</timezone>
+          <timestampPropertyName>build.time</timestampPropertyName>
+          <scmBranchPropertyName>revision.branch</scmBranchPropertyName>
+          <buildNumberPropertyName>revision.version</buildNumberPropertyName>
+        </configuration>
+      </plugin>
+      <plugin>
         <artifactId>maven-clean-plugin</artifactId>
         <version>3.1.0</version>
       </plugin>
@@ -167,6 +193,11 @@
               <addDefaultImplementationEntries>true</addDefaultImplementationEntries>
               <addDefaultSpecificationEntries>true</addDefaultSpecificationEntries>
             </manifest>
+            <manifestEntries>
+              <Build-Timestamp>${build.time}</Build-Timestamp>
+              <Revision-Branch>${revision.branch}</Revision-Branch>
+              <Revision-Version>${revision.version}</Revision-Version>
+            </manifestEntries>
           </archive>
           <descriptorRefs>
             <descriptorRef>jar-with-dependencies</descriptorRef>
