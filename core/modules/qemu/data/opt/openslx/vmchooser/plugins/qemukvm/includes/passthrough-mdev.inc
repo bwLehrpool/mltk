@@ -145,14 +145,11 @@ function passthrough_mdev_setup() {
 			return 1;
 		fi
 
-		writelog "Passthrough of mediated devices (mdev) is enabled successfully"
-
 		# obtain created mediated device for passthrough
 		local pt_gpu_mdev_id="$(passthrough_mdev_instance_get)"
 
 		# check if mediated device ID could be obtained
 		if [ -z "${pt_gpu_mdev_id}" ]; then
-			writelog "Failed to obtain created mediated device UUID"
 			return 2;
 		fi
 

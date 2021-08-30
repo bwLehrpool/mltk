@@ -46,7 +46,12 @@ run_plugin() {
 	local pt_gpu_pci_ids=($(passthrough_pci_setup))
 
 	# setup GPU mediated device passthrough and obtain mediated device address
-	local pt_gpu_mdev_id=($(passthrough_mdev_setup))
+	pt_gpu_mdev_id="$(passthrough_mdev_setup)"
+	if [ "${?}" -eq 0 ]; then
+		writelog "Mediated device (${pt_gpu_mdev_id}) is set up for passthrough successfully."
+	else
+		writelog "Failed to obtain created mediated device UUID!"
+	fi
 
 	# write finalized config in debug mode to temporary folder for debugging purposes
 	if [ "${DEBUG}" = "true" ]; then
