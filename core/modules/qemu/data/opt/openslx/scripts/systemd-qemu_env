@@ -36,21 +36,21 @@ if passthrough_mdev_enabled; then
 	modprobe "kvmgt" || { slxlog "qemu" "Could not load 'kvmgt' kernel modul!"; exit 4; }
 
 	# get Intel integrated GPU mediated device for passthrough
-	local pt_mdev_device="$(passthrough_mdev_device_get_intel_igd)"
+	pt_mdev_device="$(passthrough_mdev_device_get_intel_igd)"
 	if [ -z "${pt_mdev_device}" ]; then
 		slxlog "qemu" "Could find any Intel integrated GPU with mediated device (Intel GVT-g) support!"
 		exit 5;
 	fi
 
 	# get Intel GVT-g mediated device instance type
-	local pt_mdev_device_type="$(passthrough_mdev_type_get "${pt_mdev_device}")"
+	pt_mdev_device_type="$(passthrough_mdev_type_get "${pt_mdev_device}")"
 	if [ -z "${pt_mdev_device_type}" ]; then
 		slxlog "qemu" "Could obtain the mediated device instance type of the Intel integrated GPU (${pt_mdev_device})"
 		exit 6;
 	fi
 
 	# generate UUID for Intel GVT-g mediated device instance
-	local pt_mdev_uuid="$(uuidgen)"
+	pt_mdev_uuid="$(uuidgen)"
 
 	# create Intel GVT-g mediated device instance
 	passthrough_mdev_instance_create "${pt_mdev_device}" "${pt_mdev_device_type}" "${pt_mdev_uuid}"
