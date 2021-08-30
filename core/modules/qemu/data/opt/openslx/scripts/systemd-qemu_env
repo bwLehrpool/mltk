@@ -19,7 +19,6 @@
 #
 # create and setup Intel GVT-g mediated device instance for passthrough if Intel GVT-g is enabled
 #
-declare -rg LOGFILE="/dev/null"
 source /opt/openslx/vmchooser/run-virt-includes/vmchooser_runvirt_functions.inc
 source /opt/openslx/vmchooser/plugins/qemukvm/includes/kernel-cmdln.inc
 source /opt/openslx/vmchooser/plugins/qemukvm/includes/passthrough-mdev.inc
@@ -27,25 +26,25 @@ source /opt/openslx/vmchooser/plugins/qemukvm/includes/passthrough-mdev.inc
 if passthrough_mdev_enabled; then
 	# check if passthrough is configured properly
 	if ! passthrough_mdev_check; then
-		slxlog "qemu" "mediated device passthrough is enabled but not setup properly!"
+		slxlog --echo "qemu" "mediated device passthrough is enabled but not setup properly!"
 		exit 2;
 	fi
 
 	# load required kernel modules for mediated device passthrough
-	modprobe "vfio-mdev" || { slxlog "qemu" "Could not load 'vfio-mdev' kernel modul!"; exit 3; }
-	modprobe "kvmgt" || { slxlog "qemu" "Could not load 'kvmgt' kernel modul!"; exit 4; }
+	modprobe "vfio-mdev" || { slxlog --echo "qemu" "Could not load 'vfio-mdev' kernel modul!"; exit 3; }
+	modprobe "kvmgt" || { slxlog --echo "qemu" "Could not load 'kvmgt' kernel modul!"; exit 4; }
 
 	# get Intel integrated GPU mediated device for passthrough
 	pt_mdev_device="$(passthrough_mdev_device_get_intel_igd)"
 	if [ -z "${pt_mdev_device}" ]; then
-		slxlog "qemu" "Could find any Intel integrated GPU with mediated device (Intel GVT-g) support!"
+		slxlog --echo "qemu" "Could find any Intel integrated GPU with mediated device (Intel GVT-g) support!"
 		exit 5;
 	fi
 
 	# get Intel GVT-g mediated device instance type
 	pt_mdev_device_type="$(passthrough_mdev_type_get "${pt_mdev_device}")"
 	if [ -z "${pt_mdev_device_type}" ]; then
-		slxlog "qemu" "Could obtain the mediated device instance type of the Intel integrated GPU (${pt_mdev_device})"
+		slxlog --echo "qemu" "Could obtain the mediated device instance type of the Intel integrated GPU (${pt_mdev_device})"
 		exit 6;
 	fi
 
@@ -55,8 +54,8 @@ if passthrough_mdev_enabled; then
 	# create Intel GVT-g mediated device instance
 	passthrough_mdev_instance_create "${pt_mdev_device}" "${pt_mdev_device_type}" "${pt_mdev_uuid}"
 	if [ "${?}" -eq 0 ]; then
-		slxlog "qemu" "Successfully created Intel GVT-g mediated device instance (${pt_mdev_uuid})"
+		slxlog --echo "qemu" "Successfully created Intel GVT-g mediated device instance (${pt_mdev_uuid})"
 	else
-		slxlog "qemu" "Failed to create Intel GVT-g mediated device instance!"
+		slxlog --echo "qemu" "Failed to create Intel GVT-g mediated device instance!"
 	fi
 fi
