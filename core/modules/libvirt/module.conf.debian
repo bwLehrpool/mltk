@@ -6,6 +6,7 @@ REQUIRED_INSTALLED_PACKAGES="
 	ebtables
 	dnsmasq
 	mdevctl
+	uuid-runtime
 "
 
 REQUIRED_CONTENT_PACKAGES="
@@ -15,4 +16,5 @@ REQUIRED_CONTENT_PACKAGES="
 	ebtables
 	dnsmasq
 	mdevctl
+	uuid-runtime
 "
