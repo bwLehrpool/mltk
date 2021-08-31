@@ -2,6 +2,7 @@ package org.openslx.runvirt.plugin.qemu.configuration;
 
 import org.openslx.libvirt.capabilities.Capabilities;
 import org.openslx.libvirt.domain.Domain;
+import org.openslx.libvirt.domain.device.GraphicsSpice;
 import org.openslx.libvirt.domain.device.Hostdev;
 import org.openslx.libvirt.domain.device.HostdevMdev;
 import org.openslx.libvirt.domain.device.HostdevMdev.Model;
@@ -119,6 +120,11 @@ public class TransformationSpecificQemuMdevPassthroughIntel
 			// disable all software video devices by disable them
 			for ( Video videoDevice : config.getVideoDevices() ) {
 				videoDevice.disable();
+			}
+
+			// enable OpenGL on all SPICE graphics devices
+			for ( GraphicsSpice graphicsSpiceDevice : config.getGraphicSpiceDevices() ) {
+				graphicsSpiceDevice.setOpenGl( true );
 			}
 		}
 	}
