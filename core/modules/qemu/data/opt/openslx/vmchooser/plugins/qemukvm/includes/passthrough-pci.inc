@@ -19,7 +19,7 @@
 function passthrough_pci_enabled() {
 	local passthrough_iommu="$(kernel_cmdln_parse_option "iommu")"
 	local passthrough_pci_ids=($(kernel_cmdln_parse_pci_ids))
-	if [ "${passthrough_iommu}" == "pt" ] && ["${#passthrough_pci_ids[@]}" -gt 0 ]; then
+	if [ "${passthrough_iommu}" == "pt" ] && [ "${#passthrough_pci_ids[@]}" -gt 0 ]; then
 		return 0
 	else
 		return 1
@@ -63,8 +63,6 @@ function passthrough_pci_setup() {
 			return 1;
 		fi
 
-		writelog "Passthrough of PCI devices is enabled successfully"
-
 		# parse PCI-IDs from the kernel command line
 		local passthrough_pci_ids=($(kernel_cmdln_parse_pci_ids))
 
@@ -75,8 +73,6 @@ function passthrough_pci_setup() {
 			device_pci_address="$(passthrough_pci_lookup_address "${device_vendor_id}")"
 			if [ "${?}" -eq 0 ]; then
 				pt_gpu_pci_ids+=("${device_vendor_id},${device_pci_address}")
-			else
-				writelog "Failed to lookup PCI address for '${device_vendor_id}'"
 			fi
 		done
 

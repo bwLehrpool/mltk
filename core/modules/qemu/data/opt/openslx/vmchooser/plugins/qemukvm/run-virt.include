@@ -43,14 +43,15 @@ run_plugin() {
 	fi
 
 	# setup GPU passthrough and obtain PCI addresses and IDs if passthrough is enabled
-	local pt_gpu_pci_ids=($(passthrough_pci_setup))
+	pt_gpu_pci_ids=($(passthrough_pci_setup))
+	if [ "${?}" -ne 0 ]; then
+		writelog "Failed to set up PCI devices for GPU passthrough!"
+	fi
 
 	# setup GPU mediated device passthrough and obtain mediated device address
 	pt_gpu_mdev_id="$(passthrough_mdev_setup)"
-	if [ "${?}" -eq 0 ]; then
-		writelog "Mediated device (${pt_gpu_mdev_id}) is set up for passthrough successfully."
-	else
-		writelog "Failed to obtain created mediated device UUID!"
+	if [ "${?}" -ne 0 ]; then
+		writelog "Failed to set up mediated device (Intel GVT-g) for GPU passthrough!"
 	fi
 
 	# write finalized config in debug mode to temporary folder for debugging purposes
