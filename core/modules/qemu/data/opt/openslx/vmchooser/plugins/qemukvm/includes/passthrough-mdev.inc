@@ -19,7 +19,7 @@
 function passthrough_mdev_enabled() {
 	local passthrough_iommu="$(kernel_cmdln_parse_option "iommu")"
 	local intel_gvt="$(kernel_cmdln_parse_option "i915.enable_gvt")"
-	if [ "${passthrough_iommu}" == "pt" ] && [ "${intel_gvt}" -eq 1 ]; then
+	if [ "${passthrough_iommu}" == "pt" ] && [ "${intel_gvt}" == "1" ]; then
 		return 0
 	else
 		return 1
