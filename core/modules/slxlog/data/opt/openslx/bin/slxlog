@@ -10,19 +10,22 @@
 
 export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/openslx/sbin:/opt/openslx/bin"
 
+[ $# -eq 0 ] && exit 0
+
 . /opt/openslx/config
 [ -z "$SLX_REMOTE_LOG" ] && exit 3
 
 USER=$(whoami)
 LOGCHECK="/tmp/remote_log_check-$USER"
 NOW=$(date +%s)
+ECHO=
 DELFILE=
 SYNC=
 
 while [ $# -gt 0 ]; do
 	case "$1" in
 		-e|--echo)
-			echo "$@"
+			ECHO=yes
 			;;
 		-d|--delete)
 			DELFILE=yes
@@ -37,7 +40,9 @@ while [ $# -gt 0 ]; do
 	shift
 done
 
-[ $# -eq 0 ] && exit 0
+if [ "${ECHO}" == "yes" ]; then
+	echo "$@"
+fi
 
 TYPE="$1"
 
