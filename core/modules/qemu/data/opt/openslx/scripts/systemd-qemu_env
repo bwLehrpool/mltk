@@ -21,7 +21,20 @@
 #
 source /opt/openslx/vmchooser/run-virt-includes/vmchooser_runvirt_functions.inc
 source /opt/openslx/vmchooser/plugins/qemukvm/includes/kernel-cmdln.inc
+source /opt/openslx/vmchooser/plugins/qemukvm/includes/passthrough-pci.inc
 source /opt/openslx/vmchooser/plugins/qemukvm/includes/passthrough-mdev.inc
+
+if passthrough_pci_enabled; then
+	# check if passthrough is configured properly
+	if ! passthrough_pci_check; then
+		slxlog --echo "qemu" "PCI device passthrough is enabled but not setup properly!"
+		exit 1;
+	fi
+
+	# allow access to passthrough IOMMU devices from libvirt-passthrough group
+	chown -R root:libvirt-passthrough /dev/vfio/* || slxlog --echo "qemu" "Could not set owner and group for 'vfio' IOMMU devices!"
+	chmod -R 660 /dev/vfio/* || slxlog --echo "qemu" "Could not change access mode for 'vfio' IOMMU devices!"
+fi
 
 if passthrough_mdev_enabled; then
 	# check if passthrough is configured properly
