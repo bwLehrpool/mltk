@@ -16,14 +16,14 @@
 #    - This is the preparation script for the configuration of QEMU on Linux.
 ################################################################################
 
-#
-# create and setup Intel GVT-g mediated device instance for passthrough if Intel GVT-g is enabled
-#
 source /opt/openslx/vmchooser/run-virt-includes/vmchooser_runvirt_functions.inc
 source /opt/openslx/vmchooser/plugins/qemukvm/includes/kernel-cmdln.inc
 source /opt/openslx/vmchooser/plugins/qemukvm/includes/passthrough-pci.inc
 source /opt/openslx/vmchooser/plugins/qemukvm/includes/passthrough-mdev.inc
 
+#
+# setup PCI devices for passthrough if Intel PCI passthrough is enabled
+#
 if passthrough_pci_enabled; then
 	# check if passthrough is configured properly
 	if ! passthrough_pci_check; then
@@ -36,6 +36,9 @@ if passthrough_pci_enabled; then
 	chmod -R 660 /dev/vfio/* || slxlog --echo "qemu" "Could not change access mode for 'vfio' IOMMU devices!"
 fi
 
+#
+# create and setup Intel GVT-g mediated device instance for passthrough if Intel GVT-g is enabled
+#
 if passthrough_mdev_enabled; then
 	# check if passthrough is configured properly
 	if ! passthrough_mdev_check; then
