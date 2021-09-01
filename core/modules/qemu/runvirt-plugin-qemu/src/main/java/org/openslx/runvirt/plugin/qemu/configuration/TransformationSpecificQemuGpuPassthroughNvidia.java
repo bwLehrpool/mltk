@@ -6,11 +6,13 @@ import java.util.List;
 
 import org.openslx.libvirt.capabilities.Capabilities;
 import org.openslx.libvirt.domain.Domain;
+import org.openslx.libvirt.domain.device.GraphicsSpice;
 import org.openslx.libvirt.domain.device.HostdevPci;
 import org.openslx.libvirt.domain.device.HostdevPciDeviceAddress;
 import org.openslx.libvirt.domain.device.HostdevPciDeviceDescription;
 import org.openslx.libvirt.domain.device.Shmem;
 import org.openslx.libvirt.domain.device.Video;
+import org.openslx.libvirt.domain.device.Graphics.ListenType;
 import org.openslx.runvirt.plugin.qemu.cmdln.CommandLineArgs;
 import org.openslx.runvirt.plugin.qemu.virtualization.LibvirtHypervisorQemu;
 import org.openslx.runvirt.virtualization.LibvirtHypervisorException;
@@ -234,6 +236,14 @@ public class TransformationSpecificQemuGpuPassthroughNvidia
 			// disable all software video devices by disable them
 			for ( Video videoDevice : config.getVideoDevices() ) {
 				videoDevice.disable();
+			}
+
+			// force SPICE graphics to listen on local address for looking-glass-client
+			for ( int i = 0; i < config.getGraphicSpiceDevices().size(); i++ ) {
+				final GraphicsSpice graphicsSpiceDevice = config.getGraphicSpiceDevices().get( i );
+				graphicsSpiceDevice.setListenType( ListenType.ADDRESS );
+				graphicsSpiceDevice.setListenAddress( GraphicsSpice.DEFAULT_ADDRESS );
+				graphicsSpiceDevice.setListenPort( GraphicsSpice.DEFAULT_PORT + i );
 			}
 		}
 	}

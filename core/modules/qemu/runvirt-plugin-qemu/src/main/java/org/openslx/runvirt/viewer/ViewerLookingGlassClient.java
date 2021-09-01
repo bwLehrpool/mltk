@@ -1,5 +1,6 @@
 package org.openslx.runvirt.viewer;
 
+import org.openslx.libvirt.domain.device.GraphicsSpice;
 import org.openslx.runvirt.virtualization.LibvirtHypervisor;
 import org.openslx.runvirt.virtualization.LibvirtVirtualMachine;
 import org.openslx.virtualization.Version;
@@ -90,12 +91,16 @@ public class ViewerLookingGlassClient extends Viewer
 					"app:shmFile=" + ViewerLookingGlassClient.SHARED_MEMORY_FILENAME,
 					"win:fullScreen=yes",
 					"spice:enable=yes",
+					"spice:host=" + GraphicsSpice.DEFAULT_ADDRESS,
+					"spice:port=" + GraphicsSpice.DEFAULT_PORT,
 					"win:alerts=no" };
 		} else {
 			viewerParameters = new String[] {
 					"app:shmFile=" + ViewerLookingGlassClient.SHARED_MEMORY_FILENAME,
 					"win:fullScreen=yes",
 					"spice:enable=yes",
+					"spice:host=" + GraphicsSpice.DEFAULT_ADDRESS,
+					"spice:port=" + GraphicsSpice.DEFAULT_PORT,
 					"win:alerts=yes",
 					"win:showFPS=yes" };
 		}

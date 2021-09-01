@@ -16,6 +16,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.openslx.libvirt.capabilities.Capabilities;
 import org.openslx.libvirt.domain.Domain;
+import org.openslx.libvirt.domain.device.Graphics.ListenType;
+import org.openslx.libvirt.domain.device.GraphicsSpice;
 import org.openslx.libvirt.domain.device.HostdevPci;
 import org.openslx.libvirt.domain.device.HostdevPciDeviceAddress;
 import org.openslx.libvirt.domain.device.Shmem;
@@ -101,6 +103,15 @@ public class TransformationSpecificQemuGpuPassthroughNvidiaTest
 		assertNotNull( videoDevices );
 		for ( final Video videoDevice : videoDevices ) {
 			assertEquals( Video.Model.NONE, videoDevice.getModel() );
+		}
+
+		final List<GraphicsSpice> graphicsSpiceDevices = config.getGraphicSpiceDevices();
+		assertNotNull( graphicsSpiceDevices );
+		for ( int i = 0; i < config.getGraphicSpiceDevices().size(); i++ ) {
+			final GraphicsSpice graphicsSpiceDevice = config.getGraphicSpiceDevices().get( i );
+			assertEquals( ListenType.ADDRESS, graphicsSpiceDevice.getListenType() );
+			assertEquals( GraphicsSpice.DEFAULT_ADDRESS, graphicsSpiceDevice.getListenAddress() );
+			assertEquals( GraphicsSpice.DEFAULT_PORT + i, graphicsSpiceDevice.getListenPort() );
 		}
 
 		assertDoesNotThrow( () -> config.validateXml() );
