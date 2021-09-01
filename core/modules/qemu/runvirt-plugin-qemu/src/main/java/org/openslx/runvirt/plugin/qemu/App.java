@@ -219,13 +219,22 @@ public class App
 			System.exit( 8 );
 		}
 
+		// stop VM if VM isn't turned off already (or if VM viewer) died
+		try {
+			vm.stop();
+		} catch ( LibvirtVirtualMachineException e ) {
+			LOGGER.error( "Failed to shutdown orphaned VM: " + e.getLocalizedMessage() );
+			hypervisor.close();
+			System.exit( 9 );
+		}
+
 		// undefine VM after usage
 		try {
 			hypervisor.deregisterVm( vm );
 		} catch ( LibvirtHypervisorException | LibvirtVirtualMachineException e ) {
 			LOGGER.error( "Failed to undefine VM: " + e.getLocalizedMessage() );
 			hypervisor.close();
-			System.exit( 9 );
+			System.exit( 10 );
 		}
 
 		// close connection to hypervisor
