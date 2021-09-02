@@ -9,6 +9,7 @@ import org.apache.commons.exec.PumpStreamHandler;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.io.output.ByteArrayOutputStream;
+import org.apache.log4j.Logger;
 
 /**
  * Utils for viewing displays of virtual machines.
@@ -18,6 +19,11 @@ import org.apache.commons.io.output.ByteArrayOutputStream;
  */
 public class ViewerUtils
 {
+	/**
+	 * Reference to the global logger for this class.
+	 */
+	private static final Logger LOGGER = Logger.getLogger( ViewerUtils.class );
+
 	/**
 	 * Synchronously executes a viewer program specified by a command line call.
 	 * <p>
@@ -57,8 +63,12 @@ public class ViewerUtils
 			throw new ViewerException( "Failed to execute '" + viewerProgram + "': " + e.getLocalizedMessage() );
 		}
 
+		// retrieve the content from the viewer's standard output
 		final String viewerOuput = viewerOutputStream.toString( StandardCharsets.UTF_8 );
 		IOUtils.closeQuietly( viewerOutputStream );
+
+		// log content from the viewer's standard output
+		ViewerUtils.LOGGER.debug( viewerOuput );
 
 		return viewerOuput;
 	}
