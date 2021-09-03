@@ -88,7 +88,7 @@ public class ViewerLookingGlassClient extends Viewer
 		final String[] viewerParameters;
 		if ( this.isDebugEnabled() ) {
 			viewerParameters = new String[] {
-					"app:shmFile=" + ViewerLookingGlassClient.SHARED_MEMORY_FILENAME,
+					"app:shmFile=" + "/dev/shm/" + ViewerLookingGlassClient.SHARED_MEMORY_FILENAME,
 					"win:fullScreen=yes",
 					"spice:enable=yes",
 					"spice:host=" + GraphicsSpice.DEFAULT_ADDRESS,
@@ -96,7 +96,7 @@ public class ViewerLookingGlassClient extends Viewer
 					"win:alerts=no" };
 		} else {
 			viewerParameters = new String[] {
-					"app:shmFile=" + ViewerLookingGlassClient.SHARED_MEMORY_FILENAME,
+					"app:shmFile=" + "/dev/shm/" + ViewerLookingGlassClient.SHARED_MEMORY_FILENAME,
 					"win:fullScreen=yes",
 					"spice:enable=yes",
 					"spice:host=" + GraphicsSpice.DEFAULT_ADDRESS,
