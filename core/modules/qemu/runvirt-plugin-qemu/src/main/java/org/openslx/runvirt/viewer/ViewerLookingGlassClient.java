@@ -94,7 +94,8 @@ public class ViewerLookingGlassClient extends Viewer
 					"spice:enable=yes",
 					"spice:host=" + GraphicsSpice.DEFAULT_ADDRESS,
 					"spice:port=" + GraphicsSpice.DEFAULT_PORT,
-					"win:alerts=no" };
+					"win:alerts=yes",
+					"win:showFPS=yes" };
 		} else {
 			viewerParameters = new String[] {
 					"app:renderer=OpenGL",
@@ -103,8 +104,8 @@ public class ViewerLookingGlassClient extends Viewer
 					"spice:enable=yes",
 					"spice:host=" + GraphicsSpice.DEFAULT_ADDRESS,
 					"spice:port=" + GraphicsSpice.DEFAULT_PORT,
-					"win:alerts=yes",
-					"win:showFPS=yes" };
+					"win:alerts=no",
+					"win:showFPS=no" };
 		}
 
 		ViewerUtils.executeViewer( ViewerLookingGlassClient.NAME, viewerParameters );
