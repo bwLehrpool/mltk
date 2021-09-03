@@ -82,12 +82,13 @@ public class ViewerLookingGlassClient extends Viewer
 	{
 		// execute viewer process with arguments:
 		//   in non-debug mode:
-		//     "looking-glass-client app:shmFile=<SHARED-MEM-FILE> win:fullScreen=yes spice:enable=yes spice:host=<SPICE-ADDRESS> spice:port=<SPICE-PORT> win:alerts=no"
+		//     "looking-glass-client app:renderer=OpenGL app:shmFile=<SHARED-MEM-FILE> win:fullScreen=yes spice:enable=yes spice:host=<SPICE-ADDRESS> spice:port=<SPICE-PORT> win:alerts=no"
 		//   in debug mode:
-		//     "looking-glass-client app:shmFile=<SHARED-MEM-FILE> win:fullScreen=yes spice:enable=yes spice:host=<SPICE-ADDRESS> spice:port=<SPICE-PORT> win:alerts=yes win:showFPS=yes"
+		//     "looking-glass-client app:renderer=OpenGL app:shmFile=<SHARED-MEM-FILE> win:fullScreen=yes spice:enable=yes spice:host=<SPICE-ADDRESS> spice:port=<SPICE-PORT> win:alerts=yes win:showFPS=yes"
 		final String[] viewerParameters;
 		if ( this.isDebugEnabled() ) {
 			viewerParameters = new String[] {
+					"app:renderer=OpenGL",
 					"app:shmFile=" + "/dev/shm/" + ViewerLookingGlassClient.SHARED_MEMORY_FILENAME,
 					"win:fullScreen=yes",
 					"spice:enable=yes",
@@ -96,6 +97,7 @@ public class ViewerLookingGlassClient extends Viewer
 					"win:alerts=no" };
 		} else {
 			viewerParameters = new String[] {
+					"app:renderer=OpenGL",
 					"app:shmFile=" + "/dev/shm/" + ViewerLookingGlassClient.SHARED_MEMORY_FILENAME,
 					"win:fullScreen=yes",
 					"spice:enable=yes",
