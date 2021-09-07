@@ -39,7 +39,7 @@ rebuild_resolv_conf () {
 	# group everything else together into one line.
 	# Skip domain entirely if any search lines are found.
 	cat "/run/network/$primary.resolv" /run/network/!("$primary").resolv \
-		| awk '{
+		| gawk '{
 			if ( $1 ~ /^[a-z]+$/ ) {
 				for (i = 2; i <= NF; ++i) {
 					if (done[$1][$i])
