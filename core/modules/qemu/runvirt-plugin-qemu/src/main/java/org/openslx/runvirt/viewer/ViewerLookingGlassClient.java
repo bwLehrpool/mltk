@@ -89,7 +89,7 @@ public class ViewerLookingGlassClient extends Viewer
 		if ( this.isDebugEnabled() ) {
 			viewerParameters = new String[] {
 					"app:renderer=OpenGL",
-					"app:shmFile=" + "/dev/shm/" + ViewerLookingGlassClient.SHARED_MEMORY_FILENAME,
+					"app:shmFile=" + ViewerLookingGlassClient.SHARED_MEMORY_FILENAME,
 					"win:fullScreen=yes",
 					"spice:enable=yes",
 					"spice:host=" + GraphicsSpice.DEFAULT_ADDRESS,
@@ -99,7 +99,7 @@ public class ViewerLookingGlassClient extends Viewer
 		} else {
 			viewerParameters = new String[] {
 					"app:renderer=OpenGL",
-					"app:shmFile=" + "/dev/shm/" + ViewerLookingGlassClient.SHARED_MEMORY_FILENAME,
+					"app:shmFile=" + ViewerLookingGlassClient.SHARED_MEMORY_FILENAME,
 					"win:fullScreen=yes",
 					"spice:enable=yes",
 					"spice:host=" + GraphicsSpice.DEFAULT_ADDRESS,
