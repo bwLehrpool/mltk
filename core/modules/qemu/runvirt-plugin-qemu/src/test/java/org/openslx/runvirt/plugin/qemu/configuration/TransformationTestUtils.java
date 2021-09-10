@@ -24,8 +24,8 @@ public class TransformationTestUtils
 	public static final String DEFAULT_VM_HDD0      = "/mnt/vm/windows.qcow2";
 	public static final String DEFAULT_VM_FLOPPY0   = "/mnt/vm/floppy0.qcow2";
 	public static final String DEFAULT_VM_FLOPPY1   = "/mnt/vm/floppy1.qcow2";
-	public static final String DEFAULT_VM_CDROM0    = "/dev/sr0";
-	public static final String DEFAULT_VM_CDROM1    = "/mnt/vm/cdrom1.qcow2";
+	public static final String DEFAULT_VM_CDROM0    = "/dev/mem";
+	public static final String DEFAULT_VM_CDROM1    = "/etc/passwd";
 	public static final String DEFAULT_VM_PARALLEL0 = "/dev/parport0";
 	public static final String DEFAULT_VM_SERIAL0   = "/dev/ttyS0";
 	public static final String DEFAULT_VM_MAC0      = "ca:06:29:84:f0:6d";

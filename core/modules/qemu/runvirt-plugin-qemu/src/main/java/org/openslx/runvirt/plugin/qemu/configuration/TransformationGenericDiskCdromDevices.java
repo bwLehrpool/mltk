@@ -1,5 +1,10 @@
 package org.openslx.runvirt.plugin.qemu.configuration;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 
 import org.openslx.libvirt.domain.Domain;
@@ -48,6 +53,49 @@ public class TransformationGenericDiskCdromDevices extends TransformationGeneric
 	}
 
 	/**
+	 * Sets the storage of a CDROM drive from a virtualization configuration.
+	 * 
+	 * @param disk CDROM drive from a virtualization configuration.
+	 * @param fileName path to a storage that is set for the specified CDROM drive (e.g. block device
+	 *           or image)
+	 */
+	private void setDiskCdromStorage( DiskCdrom disk, String fileName )
+	{
+		if ( fileName == null ) {
+			// remove disk storage device if disk image file name is not set
+			disk.remove();
+		} else if ( fileName.isEmpty() ) {
+			// remove storage source if empty string is specified to emulate an empty CDROM drive
+			disk.removeStorage();
+		} else {
+			// set disk image file as storage source of the disk CDROM drive
+			// check before, whether the referenced file is a regular file or a block device file
+			final Path diskFilePath = Paths.get( fileName );
+			BasicFileAttributes diskFileAttrs = null;
+
+			// get file attributes from referenced file
+			try {
+				diskFileAttrs = Files.readAttributes( diskFilePath, BasicFileAttributes.class );
+			} catch ( IOException e ) {
+				diskFileAttrs = null;
+			}
+
+			// set storage type according to the file attributes of the referenced file
+			if ( diskFileAttrs != null ) {
+				if ( diskFileAttrs.isOther() && !diskFileAttrs.isRegularFile() ) {
+					// referenced file is a block device file
+					// set block device storage type
+					disk.setStorage( StorageType.BLOCK, fileName );
+				} else {
+					// referenced file is a regular file
+					// set file storage type
+					disk.setStorage( StorageType.FILE, fileName );
+				}
+			}
+		}
+	}
+
+	/**
 	 * Transforms a CDROM drive in a virtualization configuration selected by its {@code index}.
 	 * 
 	 * @param config virtualization configuration for the transformation.
@@ -68,26 +116,11 @@ public class TransformationGenericDiskCdromDevices extends TransformationGeneric
 				String targetDevName = VirtualizationConfigurationQemuUtils.createAlphabeticalDeviceName( "sd", index );
 				newDisk.setTargetDevice( targetDevName );
 
-				if ( fileName.isEmpty() ) {
-					// remove storage source if empty string is specified to emulate an empty CDROM drive
-					newDisk.removeStorage();
-				} else {
-					// set disk image file as storage source of the disk CDROM drive
-					newDisk.setStorage( StorageType.FILE, fileName );
-				}
+				this.setDiskCdromStorage( newDisk, fileName );
 			}
 		} else {
 			// CDROM drive exists, so update existing CDROM drive
-			if ( fileName == null ) {
-				// remove disk storage device if disk image file name is not set
-				disk.remove();
-			} else if ( fileName.isEmpty() ) {
-				// remove storage source if empty string is specified to emulate an empty CDROM drive
-				disk.removeStorage();
-			} else {
-				// set disk image file as storage source of the disk CDROM drive
-				disk.setStorage( StorageType.FILE, fileName );
-			}
+			this.setDiskCdromStorage( disk, fileName );
 		}
 	}
 

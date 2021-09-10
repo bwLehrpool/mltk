@@ -36,7 +36,7 @@ public class TransformationGenericDiskCdromDevicesTest
 		assertEquals( 2, devicesAfterTransformation.size() );
 		final DiskCdrom cdromDevice1AfterTransformation = devicesAfterTransformation.get( 0 );
 		final DiskCdrom cdromDevice2AfterTransformation = devicesAfterTransformation.get( 1 );
-		assertEquals( StorageType.FILE, cdromDevice1AfterTransformation.getStorageType() );
+		assertEquals( StorageType.BLOCK, cdromDevice1AfterTransformation.getStorageType() );
 		assertEquals( TransformationTestUtils.DEFAULT_VM_CDROM0, cdromDevice1AfterTransformation.getStorageSource() );
 		assertEquals( StorageType.FILE, cdromDevice2AfterTransformation.getStorageType() );
 		assertEquals( TransformationTestUtils.DEFAULT_VM_CDROM1, cdromDevice2AfterTransformation.getStorageSource() );
