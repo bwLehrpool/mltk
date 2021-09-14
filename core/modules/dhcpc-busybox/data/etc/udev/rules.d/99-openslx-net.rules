@@ -1,1 +1,8 @@
-ACTION=="add", SUBSYSTEM=="net", KERNEL=="br0|br-nic-*", TAG+="systemd", ENV{SYSTEMD_ALIAS}="/sys/subsystem/net/devices/$name", ENV{SYSTEMD_WANTS}="network-interface@$name.service"
+# This doesn't reliably trigger. It's a rare race condition, on some machines it always works, on others it's
+# maybe a 1:20 chance it doesn't work. Apparently udev tries to remember whether a device was already handled
+# by systemd and ignores further add events. So if you think this problem doesn't exist anymore, make sure
+# you're not just lucky and not hitting this issue, and also make sure you understand what the initial problem
+# was. I assume it's something to with switching from initrd to final root, but this isn't worth the effort tbh.
+#ACTION=="add", SUBSYSTEM=="net", KERNEL=="br0|br-nic-*", TAG+="systemd", ENV{SYSTEMD_ALIAS}="/sys/subsystem/net/devices/$name", ENV{SYSTEMD_WANTS}="network-interface@$name.service"
+# So use a more crude approach that triggers every time (consecutive invocations shouldn't do anything)
+ACTION=="add", SUBSYSTEM=="net", KERNEL=="br0|br-nic-*", RUN+="/usr/bin/systemctl --no-block start network-interface@$name.service"
