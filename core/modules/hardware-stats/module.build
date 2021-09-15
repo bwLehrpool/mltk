@@ -4,7 +4,14 @@ fetch_source() {
 }
 
 build() {
-	:
+	local dir="${MODULE_BUILD_DIR}/opt/openslx/system-check"
+	mkdir -p "$dir"
+	cde "$dir"
+	local file
+	for file in collect_hw_info_json.py dmiparser.py; do
+		wget -O "$file" "https://git.openslx.org/openslx-ng/systemd-init.git/plain/modules.d/bas-hw-collect/scripts/${file}?h=bas" \
+			|| perror "Could not download $file"
+	done
 }
 
 post_copy() {
