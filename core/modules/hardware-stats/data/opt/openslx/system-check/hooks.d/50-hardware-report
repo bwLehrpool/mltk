@@ -55,7 +55,7 @@ report_hardware_info() {
 	subnet="$( ip -o -f inet addr show "$primary" | awk '/scope global/ {print $4}' )"
 	# Finally, new json-based reporting
 	jsonfile="$( mktemp )"
-	if ! python3 /opt/openslx/system-check/collect_hw_info_json.py > "$jsonfile"; then
+	if ! python3 /opt/openslx/system-check/collect_hw_info_json.py -p > "$jsonfile"; then
 		echo -n "" > "$jsonfile"
 	fi
 	# just assume the uuid/mac dumped are valid here (its checked often enough :))
