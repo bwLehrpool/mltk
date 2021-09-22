@@ -1,0 +1,24 @@
+#!/bin/bash
+fetch_source() {
+	local SRCDIR="${MODULE_WORK_DIR}/src/LookingGlass"
+	autoclone
+	cde "${SRCDIR}"
+	git submodule update --init --recursive || perror "Failed to init and update submodules!"
+}
+
+build() {
+	local SRCDIR="${MODULE_WORK_DIR}/src/LookingGlass"
+	local CLIENTBUILDDIR="client/build"
+	mkdir -p "${SRCDIR}/${CLIENTBUILDDIR}" || perror "Failed to create CMake build directory!"
+	cde "${SRCDIR}/${CLIENTBUILDDIR}"
+	cmake -DENABLE_WAYLAND=no \
+		-DENABLE_X11=yes \
+		../ || perror "'cmake' failed."
+	make || perror "'make' failed."
+	mkdir -p "${MODULE_BUILD_DIR}/opt/openslx/bin"
+	cp "${SRCDIR}/${CLIENTBUILDDIR}/looking-glass-client" "${MODULE_BUILD_DIR}/opt/openslx/bin/looking-glass-client" || perror "'cp' failed."
+}
+
+post_copy() {
+	:
+}
