@@ -1,9 +1,7 @@
 #!/bin/bash
 fetch_source() {
-	local SRCDIR="${MODULE_WORK_DIR}/src/LookingGlass"
 	autoclone
-	cde "${SRCDIR}"
-	git submodule update --init --recursive || perror "Failed to init and update submodules!"
+	git -C "${MODULE_WORK_DIR}/src/LookingGlass" submodule update --init --recursive || perror "Failed to init and update submodules!"
 }
 
 build() {
