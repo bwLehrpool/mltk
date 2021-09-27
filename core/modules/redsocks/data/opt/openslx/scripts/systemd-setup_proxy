@@ -64,25 +64,26 @@ if [ -n "$SLX_PROXY_BLACKLIST" ]; then
 	done >> "$tfile"
 fi
 
+# Append alias for satellite server, used for HTTPS
+SLX_PROXY_BLACKLIST="$SLX_PROXY_BLACKLIST satellite.bwlehrpool"
+mkdir -p "/etc/profile.d"
+rm -f -- "/etc/profile.d/99-proxy.sh"
+
 if [ "${SLX_PROXY_TYPE:0:5}" = "http-" ]; then
 	# transparent proxying for HTTP -- DOES NOT WORK, might give 400 Bad Request
 	#echo "iptables -t nat -A REDSOCKS -p tcp --dport 80 -j DNAT --to-destination ${SLX_PROXY_IP}:${SLX_PROXY_PORT}" >> "$tfile"
-	mkdir -p "/etc/profile.d" &> /dev/null
-	echo "export http_proxy='http://${SLX_PROXY_IP}:${SLX_PROXY_PORT}/'"
-	echo "export HTTP_PROXY='http://${SLX_PROXY_IP}:${SLX_PROXY_PORT}/'"
-	echo "export all_proxy='http://${SLX_PROXY_IP}:${SLX_PROXY_PORT}/'"
-	echo "export ALL_PROXY='http://${SLX_PROXY_IP}:${SLX_PROXY_PORT}/'"
-	echo -n "export no_proxy='${SLX_PXE_SERVER_IP}"
+	for var in http_proxy HTTP_PROXY all_proxy ALL_PROXY; do
+		echo "export ${var}='http://${SLX_PROXY_IP}:${SLX_PROXY_PORT}/'"
+	done >> "/etc/profile.d/99-proxy.sh"
+fi
+# No proxy - always set
+for var in no_proxy NO_PROXY; do
+	echo -n "export ${var}='${SLX_PXE_SERVER_IP}"
 	for ADDR in $SLX_PROXY_BLACKLIST; do
 		echo -n ", $ADDR"
 	done
 	echo "'"
-	echo -n "export NO_PROXY='${SLX_PXE_SERVER_IP}"
-	for ADDR in $SLX_PROXY_BLACKLIST; do
-		echo -n ", $ADDR"
-	done
-	echo "'"
-fi > "/etc/profile.d/99-proxy.sh"
+done >> "/etc/profile.d/99-proxy.sh"
 
 cat >> "$tfile" <<HEREDOCBROWN
 iptables -t nat -A REDSOCKS -p tcp -j REDIRECT --to-port 12345
