@@ -92,6 +92,7 @@ echo "Determined MAC=$MAC"
 VCORES=$(grep '^processor\s' /proc/cpuinfo | sort -u | wc -l)
 # Real cores
 CPUCORES=$(cat /sys/devices/system/cpu/cpu*/topology/thread_siblings_list | sort -u | wc -l)
+CPUSOCKETS=$(grep '^physical id' /proc/cpuinfo | sort -u | wc -l)
 # Fallback 1...
 if [ -z "$CPUCORES" ] || [ "$CPUCORES" = "0" ]; then
 	for c in $(dmidecode -t 4 | grep 'Core Enabled' | awk -F ':' '{print $2}'); do
@@ -100,7 +101,7 @@ if [ -z "$CPUCORES" ] || [ "$CPUCORES" = "0" ]; then
 fi
 # Fallback 2...
 if [ -z "$CPUCORES" ] || [ "$CPUCORES" = "0" ]; then
-	CPUCORES=$(grep -E -e '^core id\s*:' -e '^physical\s*:' /proc/cpuinfo | xargs -l2 echo | sort -u | wc -l)
+	CPUCORES=$(grep -E -e '^core id\s*:' -e '^physical id\s*:' /proc/cpuinfo | xargs -l2 echo | sort -u | wc -l)
 fi
 echo "$CPUCORES real cores, $VCORES with HT"
 
@@ -266,7 +267,7 @@ HW_MODEL=$(bashesc "$HW_MODEL")
 REPORTFILE="/run/hwreport"
 cat > "$REPORTFILE" <<-EOF
 ############################### CPU #####################################
-Sockets:       $(grep '^physical id' /proc/cpuinfo | sort -u | wc -l)
+Sockets:       $CPUSOCKETS
 Real cores:    $CPUCORES
 Virtual cores: $VCORES
 ######################## Partition tables ###############################
@@ -306,6 +307,7 @@ HW_BADSECTORS='${BADSECTORS}'
 HW_MANUF='${HW_MANUF}'
 HW_MODEL='${HW_MODEL}'
 HW_CPUMODEL='${CPUMODEL}'
+HW_SOCKETS='${CPUSOCKETS}'
 HW_CORES='${CPUCORES}'
 HW_THREADS='${VCORES}'
 HORST
