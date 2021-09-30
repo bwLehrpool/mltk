@@ -6,13 +6,5 @@ REQUIRED_INSTALLED_PACKAGES="
 "
 
 REQUIRED_CONTENT_PACKAGES="
-	qemu
-	qemu-kvm
-	qemu-system-common
-	qemu-system-arm
-	qemu-system-x86
-	qemu-utils
-	seabios
-	ovmf
 	jq
 "

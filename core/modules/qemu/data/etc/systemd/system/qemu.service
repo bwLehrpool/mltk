@@ -11,3 +11,6 @@ After=qemu-kvm.service
 Type=oneshot
 RemainAfterExit=yes
 ExecStart=/opt/openslx/scripts/systemd-qemu_env start
+
+[Install]
+WantedBy=graphical.target

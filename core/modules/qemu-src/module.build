@@ -1,0 +1,61 @@
+#!/bin/bash
+fetch_source() {
+	autoclone
+	git -C "${MODULE_WORK_DIR}/src/qemu" submodule update --init || perror "Failed to init and update submodules!"
+
+	# patch EDK2 version to retrieve EDK2 submodules
+	git -C "${MODULE_WORK_DIR}/src/qemu/roms/edk2" checkout edk2-stable202108 || perror "Failed to checkout new EDK2 version!"
+	git -C "${MODULE_WORK_DIR}/src/qemu" commit -a -m "Update EDK2 to 08.2021 release" || perror "Failed to update EDK2 version!"
+
+	git -C "${MODULE_WORK_DIR}/src/qemu" submodule update --recursive || perror "Failed to update submodules recursivly!"
+}
+
+build() {
+	local SRCDIR="${MODULE_WORK_DIR}/src/qemu"
+	local DSTDIR="${MODULE_BUILD_DIR}"
+	cde "${SRCDIR}"
+
+	# install meson (>= 0.54.0) since packaged version is too old
+	pip3 install "meson>=0.54.0"
+
+	./configure \
+		--prefix="/usr" \
+		--sysconfdir="/etc" \
+		--libexecdir="/usr/libexec" \
+		--localstatedir="/var" \
+		--target-list=x86_64-softmmu \
+		--enable-kvm \
+		--disable-xen \
+		--enable-gnutls \
+		--enable-gtk \
+		--enable-vnc \
+		--enable-spice \
+		--enable-libusb \
+		--enable-usb-redir \
+		--enable-lzo \
+		--enable-zstd \
+		--enable-linux-aio \
+		--enable-opengl \
+		--enable-virglrenderer \
+		--enable-vhost-net \
+		--enable-vhost-user \
+		--enable-libudev \
+		--enable-brlapi \
+		--audio-drv-list="pa alsa" \
+		--enable-modules || perror "'configure' failed."
+	make || perror "'make' failed."
+	DESTDIR="${DSTDIR}" make install || perror "'make install' failed."
+
+	# change permissions for the bridge helper
+	chmod u+s "${DSTDIR}/usr/libexec/qemu-bridge-helper"
+
+	# change permission of setup script
+	chmod +x "${DSTDIR}/usr/share/qemu/init/qemu-kvm-init"
+
+	# delete empty run folder to prevent mltk from stopping
+	rm -rf "${DSTDIR}/var/run"
+}
+
+post_copy() {
+	:
+}
