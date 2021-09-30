@@ -1,13 +1,5 @@
 #!/bin/bash
 
-module_init() {
-	groupadd --system "kvm"
-	groupadd --system "libvirt-qemu"
-	groupadd --system "libvirt-passthrough"
-	useradd --gid "kvm" --groups "libvirt-qemu,libvirt-passthrough" --system \
-		--no-create-home --home-dir "/var/lib/libvirt" "libvirt-qemu"
-}
-
 fetch_source() {
 	:
 }
@@ -17,9 +9,5 @@ build() {
 }
 
 post_copy() {
-	# remove default network configuration
-	# TODO: Some REQUIRED_DELETIONS var that handles this? This would not
-	# do the right thing in MiniLinux mode.
-	rm "/etc/libvirt/qemu/networks/default.xml"
-	rm "/etc/libvirt/qemu/networks/autostart/default.xml"
+	:
 }

@@ -1,0 +1,64 @@
+#!/bin/bash
+
+LIBVIRT_QEMU_USR="libvirt-qemu"
+LIBVIRT_QEMU_GRP="kvm"
+LIBVIRT_PTHR_GRP="libvirt-passthrough"
+
+module_init() {
+	groupadd --system "${LIBVIRT_QEMU_GRP}"
+	groupadd --system "${LIBVIRT_QEMU_USR}"
+	groupadd --system "${LIBVIRT_PTHR_GRP}"
+	useradd --gid "${LIBVIRT_QEMU_GRP}" --groups "${LIBVIRT_QEMU_USR},${LIBVIRT_PTHR_GRP}" --system \
+		--no-create-home --home-dir "/var/lib/libvirt" "${LIBVIRT_QEMU_USR}"
+}
+
+fetch_source() {
+	autoclone
+	git -C "${MODULE_WORK_DIR}/src/libvirt" submodule update --init || perror "Failed to init and update submodules!"
+}
+
+build() {
+	local SRCDIR="${MODULE_WORK_DIR}/src/libvirt"
+	local DSTDIR="${MODULE_BUILD_DIR}"
+	cde "${SRCDIR}"
+
+	# install meson (>= 0.54.0) since packaged version is too old
+	pip3 install "meson>=0.54.0"
+
+	meson build \
+		--prefix="/usr" \
+		--sysconfdir="/etc" \
+		--libexecdir="/usr/libexec" \
+		--localstatedir="/var" \
+		-Dsystem=true \
+		-Dtests=disabled \
+		-Ddocs=disabled \
+		-Dwireshark_dissector=disabled \
+		-Dstorage_dir=enabled \
+		-Dstorage_disk=enabled \
+		-Dstorage_lvm=enabled \
+		-Ddriver_qemu=enabled \
+		-Dqemu_user="${LIBVIRT_QEMU_USR}" \
+		-Dqemu_group="${LIBVIRT_QEMU_GRP}" \
+		-Ddriver_vbox=enabled \
+		-Ddriver_vmware=enabled \
+		-Ddriver_remote=enabled || perror "'meson' failed."
+	ninja -v -C build || perror "'ninja' failed."
+	DESTDIR="${DSTDIR}" ninja -v -C build install || perror "'ninja install' failed."
+
+	# delete default libvirt network
+	rm "${DSTDIR}/etc/libvirt/qemu/networks/autostart/default.xml"
+	rm "${DSTDIR}/etc/libvirt/qemu/networks/default.xml"
+
+	# delete installed test and documentation files
+	rm -rf "${DSTDIR}/usr/include/libvirt"
+	rm -rf "${DSTDIR}/usr/share/augeas"
+	rm -rf "${DSTDIR}/usr/share/doc/libvirt"
+
+	# delete empty run folder to prevent mltk from stopping
+	rm -rf "${DSTDIR}/var/run"
+}
+
+post_copy() {
+	:
+}
