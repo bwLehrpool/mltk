@@ -1,0 +1,28 @@
+#!/bin/bash
+fetch_source() {
+	autoclone
+}
+
+build() {
+	local SRCDIR="${MODULE_WORK_DIR}/src/virt-viewer"
+	local DSTDIR="${MODULE_BUILD_DIR}"
+	cde "${SRCDIR}"
+
+	# install meson (>= 0.54.0) since packaged version is too old
+	pip3 install "meson>=0.54.0"
+
+	meson build \
+		--prefix="/usr" \
+		--sysconfdir="/etc" \
+		--localstatedir="/var" \
+		-Dovirt=disabled \
+		-Dspice=enabled \
+		-Dvnc=enabled \
+		-Dlibvirt=enabled || perror "'meson' failed."
+	ninja -v -C build || perror "'ninja' failed."
+	DESTDIR="${DSTDIR}" ninja -v -C build install || perror "'ninja install' failed."
+}
+
+post_copy() {
+	:
+}
