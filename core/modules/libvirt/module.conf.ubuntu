@@ -1,8 +1,5 @@
 #!/bin/bash
 REQUIRED_INSTALLED_PACKAGES="
-	libvirt-daemon-system
-	libvirt-daemon
-	libvirt-clients
 	ebtables
 	dnsmasq
 	mdevctl
@@ -10,9 +7,6 @@ REQUIRED_INSTALLED_PACKAGES="
 "
 
 REQUIRED_CONTENT_PACKAGES="
-	libvirt-daemon-system
-	libvirt-daemon
-	libvirt-clients
 	ebtables
 	dnsmasq
 	mdevctl
