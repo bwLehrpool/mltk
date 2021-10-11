@@ -1,0 +1,20 @@
+#!/bin/bash
+fetch_source() {
+	autoclone
+}
+
+build() {
+	local SRCDIR="${MODULE_WORK_DIR}/src/libvirt-python"
+	local DSTDIR="${MODULE_BUILD_DIR}"
+	cde "${SRCDIR}"
+
+	local LIBVIRT_SRCDIR="${MODULE_WORK_DIR}/../libvirt-src/src/libvirt"
+	PKG_CONFIG_PATH="${LIBVIRT_SRCDIR}/build/src" python3 setup.py build || perror "'setup.py build' failed."
+	PKG_CONFIG_PATH="${LIBVIRT_SRCDIR}/build/src" python3 setup.py install --root "${DSTDIR}" --prefix "/usr" || perror "'setup.py install' failed."
+
+	rm -rf "${DSTDIR}/usr/lib/python3.8/site-packages/__pycache__"
+}
+
+post_copy() {
+	:
+}
