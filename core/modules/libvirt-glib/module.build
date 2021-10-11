@@ -1,0 +1,28 @@
+#!/bin/bash
+fetch_source() {
+	autoclone
+}
+
+build() {
+	local SRCDIR="${MODULE_WORK_DIR}/src/libvirt-glib"
+	local DSTDIR="${MODULE_BUILD_DIR}"
+	cde "${SRCDIR}"
+
+        # install meson (>= 0.54.0) since packaged version is too old
+        pip3 install "meson>=0.54.0"
+
+	local LIBVIRT_SRCDIR="${MODULE_WORK_DIR}/../libvirt-src/src/libvirt"
+	PKG_CONFIG_PATH="${LIBVIRT_SRCDIR}/build/src" meson build \
+		--prefix="/usr" \
+		--sysconfdir="/etc" \
+		--libexecdir="/usr/libexec" \
+		--localstatedir="/var" \
+		-Dtests=disabled \
+		-Ddocs=disabled || perror "'meson' failed."
+        ninja -v -C build || perror "'ninja' failed."
+        DESTDIR="${DSTDIR}" ninja -v -C build install || perror "'ninja install' failed."
+}
+
+post_copy() {
+	:
+}
