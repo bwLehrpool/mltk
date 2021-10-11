@@ -32,7 +32,7 @@ build() {
 		--localstatedir="/var" \
 		-Dsystem=true \
 		-Dtests=disabled \
-		-Ddocs=disabled \
+		-Ddocs=enabled \
 		-Dwireshark_dissector=disabled \
 		-Dstorage_dir=enabled \
 		-Dstorage_disk=enabled \
@@ -51,9 +51,14 @@ build() {
 	rm "${DSTDIR}/etc/libvirt/qemu/networks/default.xml"
 
 	# delete installed test and documentation files
-	rm -rf "${DSTDIR}/usr/include/libvirt"
 	rm -rf "${DSTDIR}/usr/share/augeas"
 	rm -rf "${DSTDIR}/usr/share/doc/libvirt"
+
+	# patch library directory in pkg-config files
+	sed -i 's/^libdir=.*$/libdir=\/usr\/lib\/x86_64-linux-gnu/g' "${DSTDIR}/usr/lib64/pkgconfig/libvirt.pc"
+	sed -i 's/^libdir=.*$/libdir=\/usr\/lib\/x86_64-linux-gnu/g' "${DSTDIR}/usr/lib64/pkgconfig/libvirt-admin.pc"
+	sed -i 's/^libdir=.*$/libdir=\/usr\/lib\/x86_64-linux-gnu/g' "${DSTDIR}/usr/lib64/pkgconfig/libvirt-lxc.pc"
+	sed -i 's/^libdir=.*$/libdir=\/usr\/lib\/x86_64-linux-gnu/g' "${DSTDIR}/usr/lib64/pkgconfig/libvirt-qemu.pc"
 
 	# delete empty run folder to prevent mltk from stopping
 	rm -rf "${DSTDIR}/var/run"

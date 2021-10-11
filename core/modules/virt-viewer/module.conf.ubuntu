@@ -5,7 +5,6 @@ REQUIRED_INSTALLED_PACKAGES="
 	python3-pip
 	ninja-build
 	debhelper
-	libvirt-glib-1.0-dev
 	libgovirt-dev
 	libgtk-vnc-2.0-dev
 	libspice-client-gtk-3.0-dev

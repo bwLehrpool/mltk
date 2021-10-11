@@ -11,6 +11,29 @@ build() {
 	# install meson (>= 0.54.0) since packaged version is too old
 	pip3 install "meson>=0.54.0"
 
+	# set config paths for additional pkg-config files
+	export PKG_CONFIG_PATH="${TARGET_BUILD_DIR}/usr/lib/x86_64-linux-gnu/pkgconfig:${TARGET_BUILD_DIR}/usr/lib64/pkgconfig"
+	# set system root directory for prebuilt headers and libraries, e.g. libvirt-glib
+	export PKG_CONFIG_SYSROOT_DIR="${TARGET_BUILD_DIR}"
+	# enable output of all system include directories
+	export PKG_CONFIG_ALLOW_SYSTEM_CFLAGS=1
+	# enable output of all system library directories
+	export PKG_CONFIG_ALLOW_SYSTEM_LIBS=1
+
+	# create custom pkg-config program to patch paths from pkg-build config files in our build directory
+	cat > "${SRCDIR}/pkg-config" <<-EOF
+		#!/bin/bash
+
+		# unset custom path to avoid call recursion of this custom pkg-config script
+		unset PATH
+
+		# call patched pkg-config wrapper from mltk bin directory
+		exec "${ROOT_DIR}/core/bin/pkg-config.sh" "\${@}"
+	EOF
+	chmod +x "${SRCDIR}/pkg-config"
+
+	# overwrite search path to inject custom pkg-config program
+	PATH="${SRCDIR}:${PATH}" \
 	meson build \
 		--prefix="/usr" \
 		--sysconfdir="/etc" \
@@ -21,6 +44,8 @@ build() {
 		-Dlibvirt=enabled || perror "'meson' failed."
 	ninja -v -C build || perror "'ninja' failed."
 	DESTDIR="${DSTDIR}" ninja -v -C build install || perror "'ninja install' failed."
+
+	rm "${SRCDIR}/pkg-config"
 }
 
 post_copy() {
