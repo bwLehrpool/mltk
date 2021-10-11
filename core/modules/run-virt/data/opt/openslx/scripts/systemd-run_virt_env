@@ -30,8 +30,6 @@
 VMCHOOSER_DIR="/opt/openslx/vmchooser"
 VMCHOOSER_CONF_DIR="${VMCHOOSER_DIR}/config"
 VMCHOOSER_VIRT_CONF="${VMCHOOSER_CONF_DIR}/virtualization.conf"
-# Same as in service file for udhcpd
-DHCP_NAT_CONF="${VMCHOOSER_CONF_DIR}/udhcpd-nat1.conf"
 
 echo "# Generated $(date)" > "$VMCHOOSER_VIRT_CONF"
 
@@ -73,23 +71,6 @@ if [ -n "${SLX_VM_TMP_SOURCE}" ]; then
 fi
 
 chmod a+rwxt /tmp/virt
-
-# enable normal users to setup the extended virtual machine redo file space
-# and image source via network block device (NBD only at the moment)
-# allow to start/stop samba on virtual devices (latter one ignores multiple
-# independent daemons) 
-
-#cat >> /mnt/etc/sudoers << EOF
-# allow to start and stop the special /tmp redo file space (RAM + NBD/NFS server RAID)
-#ALL ALL=NOPASSWD: /sbin/losetup /dev/loop* 
-#ALL ALL=NOPASSWD: /sbin/mdadm -C /dev/md0 -l linear --raid-devices=2 /dev/loop* /dev/*
-#ALL ALL=NOPASSWD: /opt/openslx/rootfs/usr/sbin/nbd-client * * /dev/nbd*
-# allow to configure and start/stop samba services
-#ALL ALL=NOPASSWD: /opt/openslx/rootfs/bin/sed -i /etc/*/smb.conf -e *
-#ALL ALL=NOPASSWD: /usr/sbin/nmbd -s /etc/*/smb.conf
-#ALL ALL=NOPASSWD: /usr/sbin/smbd -s /etc/*/smb.conf
-#ALL ALL=NOPASSWD: /opt/openslx/rootfs/usr/bin/killall nmbd smbd
-#EOF
 
 ################################################################################
 echo "Determine host's hardware configuration"
@@ -185,55 +166,14 @@ echo "1" >/proc/sys/net/ipv4/conf/nat1/forwarding
 echo "1" >/proc/sys/net/ipv4/conf/br0/forwarding 2>/dev/null
 # iptables masquerade rule is now inserted by /opt/openslx/iptables/rules.d/50-virt-nat1-masquerading
 
-FALLBACK_DOMAIN="virtual.localnet"
-
-getips () {
-	[ -z "$1" ] && return
-	[ "$1" = "$FALLBACK_DOMAIN" ] && return
-	# Output in one line by using echo without quotes
-	echo $(busybox timeout 2 nslookup "$1" 2>/dev/null | grep -A 4 '^Name:' | grep -E '^Address\s*[0-9]*: ' | awk -F': ' '{print $2}' | grep -oE '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' | awk '{print $1}')
-}
-
-# read the DNS configuration and configure the udhcpd
-getresolvconf() {
-	awk -vattr="$1"  '$1 == attr {for (i=2; i<=NF; i++) printf "%s ",$i}' /etc/resolv.conf
-}
-[ -z "${SLX_DNS}" ] && SLX_DNS="$( getresolvconf nameserver )"
-[ -z "${SLX_NET_DOMAIN}" ] && SLX_NET_DOMAIN="$( getresolvconf domain )"
-[ -z "${SLX_NET_SEARCH}" ] && SLX_NET_SEARCH="$( getresolvconf search )"
-[ -z "${SLX_DNS}" ] && SLX_DNS="8.8.8.8 8.8.4.4"
-[ -z "${SLX_NET_DOMAIN}" ] && SLX_NET_DOMAIN="$FALLBACK_DOMAIN"
-[ -z "${SLX_NET_SEARCH}" ] && SLX_NET_SEARCH="$FALLBACK_DOMAIN"
-# WINS - if not supplied, try to get it from the search base of our ldap config
-if [ -z "${SLX_NET_WINS}" ]; then
-	DC=$(grep -m1 -i '^BASE\s*DC=' "/etc/ldap.conf" | grep -o -i 'DC=.*' | sed -r 's/\s*,\s*DC=/./gI;s/^\s*DC=//I')
-	[ -z "$DC" ] && DC=$(grep -m1 -i '^ldap_search_base\s*=\s*DC=' "/etc/sssd/sssd.conf" | grep -o -i 'DC=.*'  | sed -r 's/\s*,\s*DC=/./gI;s/^\s*DC=//I')
-	[ -n "$DC" ] && SLX_NET_WINS=$(getips "$DC")
-fi
-# NTP - default to pool.ntp.org
-NTPSRV=
-[ -z "$SLX_NTP_SERVER" ] && SLX_NTP_SERVER="pool.ntp.org"
-for ips in $SLX_NTP_SERVER; do
-	if ! printf "%s" "$ips" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$'; then
-		ips="$( getips "$ips" )"
-		[ -z "$ips" ] && continue
-	fi
-	NTPSRV="$NTPSRV $ips"
-done
-[ -z "$NTPSRV" ] && NTPSRV="0.0.0.0"
-[ -z "${SLX_NET_WINS}" ] && SLX_NET_WINS=$(getips "$SLX_NET_DOMAIN")
-[ -z "${SLX_NET_WINS}" ] && SLX_NET_WINS="0.0.0.0"
-sed "s#%DNSSERVER%#${SLX_DNS}#;s#%DOMAIN%#${SLX_NET_DOMAIN}#;s#%SEARCH%#${SLX_NET_SEARCH}#;s#%WINS%#${SLX_NET_WINS}#;s#%NTPSERVER%#${NTPSRV}#" "${DHCP_NAT_CONF}.template" > "${DHCP_NAT_CONF}"
-
-# Make sure the primary vm running (we most likely never run more than one at a time anyways) always gets the same ip
-echo "static_lease $(echo "$MACADDRPREFIX:$MACADDRSUFFIX" | sed 's/%VMID%/01/') 192.168.101.20" >> "${DHCP_NAT_CONF}"
-
-mkdir -p /var/lib/udhcpd
 
 # creating and configuring vsw2
 brctl addbr vsw2
 ip link set dev vsw2 up
 echo "1" >/proc/sys/net/ipv4/conf/vsw2/forwarding
+
+# Write proper DHCPd config for VM network
+/opt/openslx/scripts/runvirt-start_dhcpd
 
 # estimate free mem during clean boot
 # TODO: Does that even make sense? We determine available memory during bootup and then blindly use

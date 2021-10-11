@@ -1,0 +1,64 @@
+#!/bin/bash
+
+. /opt/openslx/config
+. /opt/openslx/vmchooser/config/virtualization.conf
+
+# Same as in service file for udhcpd
+DHCP_NAT_CONF="/opt/openslx/vmchooser/config/udhcpd-nat1.conf"
+
+FALLBACK_DOMAIN="virtual.localnet"
+
+getips () {
+	[ -z "$1" ] && return
+	[ "$1" = "$FALLBACK_DOMAIN" ] && return
+	# Output in one line by using echo without quotes
+	echo $(busybox timeout 2 nslookup "$1" 2>/dev/null | grep -A 4 '^Name:' | grep -E '^Address\s*[0-9]*: ' | awk -F': ' '{print $2}' | grep -oE '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' | awk '{print $1}')
+}
+
+# read the DNS configuration and configure the udhcpd
+getresolvconf() {
+	awk -vattr="$1"  '$1 == attr {for (i=2; i<=NF; i++) printf "%s ",$i}' /etc/resolv.conf
+}
+[ -z "${SLX_DNS}" ] && SLX_DNS="$( getresolvconf nameserver )"
+[ -z "${SLX_NET_DOMAIN}" ] && SLX_NET_DOMAIN="$( getresolvconf domain )"
+[ -z "${SLX_NET_SEARCH}" ] && SLX_NET_SEARCH="$( getresolvconf search )"
+[ -z "${SLX_DNS}" ] && SLX_DNS="8.8.8.8 8.8.4.4"
+[ -z "${SLX_NET_DOMAIN}" ] && SLX_NET_DOMAIN="$FALLBACK_DOMAIN"
+[ -z "${SLX_NET_SEARCH}" ] && SLX_NET_SEARCH="$FALLBACK_DOMAIN"
+# WINS - if not supplied, try to get it from the search base of our ldap config
+if [ -z "${SLX_NET_WINS}" ]; then
+	DC=$(grep -m1 -i '^BASE\s*DC=' "/etc/ldap.conf" | grep -o -i 'DC=.*' | sed -r 's/\s*,\s*DC=/./gI;s/^\s*DC=//I')
+	[ -z "$DC" ] && DC=$(grep -m1 -i '^ldap_search_base\s*=\s*DC=' "/etc/sssd/sssd.conf" | grep -o -i 'DC=.*'  | sed -r 's/\s*,\s*DC=/./gI;s/^\s*DC=//I')
+	[ -n "$DC" ] && SLX_NET_WINS=$(getips "$DC")
+fi
+# NTP - default to pool.ntp.org
+NTPSRV=
+[ -z "$SLX_NTP_SERVER" ] && SLX_NTP_SERVER="pool.ntp.org"
+for ips in $SLX_NTP_SERVER; do
+	if ! printf "%s" "$ips" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$'; then
+		ips="$( getips "$ips" )"
+		[ -z "$ips" ] && continue
+	fi
+	NTPSRV="$NTPSRV $ips"
+done
+[ -z "$NTPSRV" ] && NTPSRV="0.0.0.0"
+[ -z "${SLX_NET_WINS}" ] && SLX_NET_WINS=$(getips "$SLX_NET_DOMAIN")
+[ -z "${SLX_NET_WINS}" ] && SLX_NET_WINS="0.0.0.0"
+sed "s#%DNSSERVER%#${SLX_DNS}#;s#%DOMAIN%#${SLX_NET_DOMAIN}#;s#%SEARCH%#${SLX_NET_SEARCH}#;s#%WINS%#${SLX_NET_WINS}#;s#%NTPSERVER%#${NTPSRV}#" "${DHCP_NAT_CONF}.template" > "${DHCP_NAT_CONF}.tmp"
+
+# Make sure the primary vm running (we most likely never run more than one at a time anyways) always gets the same ip
+echo "static_lease $(echo "$MACADDRPREFIX:$MACADDRSUFFIX" | sed 's/%VMID%/01/') 192.168.101.20" >> "${DHCP_NAT_CONF}.tmp"
+
+mkdir -p /var/lib/udhcpd
+
+if [ -s "${DHCP_NAT_CONF}" ] && cmp -s "${DHCP_NAT_CONF}.tmp" "${DHCP_NAT_CONF}"; then
+	# Same, nothing to do
+	rm -f -- "${DHCP_NAT_CONF}.tmp"
+else
+	# Changed, replace and restart
+	mv -f -- "${DHCP_NAT_CONF}.tmp" "${DHCP_NAT_CONF}"
+	echo "NAT1 dhcpd config changed; restarting service..."
+	systemctl --no-block try-restart run-virt-dhcpd.service
+fi
+
+exit 0

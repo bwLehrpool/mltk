@@ -247,6 +247,9 @@ case "$1" in
 			echo "# Config written by openslx-dhcp-script (2)" >> /opt/openslx/config
 			echo "SLX_DNS='$dns'" >> /opt/openslx/config
 		fi
+
+		# Rewrite nat1 dhcpd config for VMs, and restart dnsmasq if it changed
+		/opt/openslx/scripts/runvirt-start_dhcpd
 	;;
 	
 	deconfig)
