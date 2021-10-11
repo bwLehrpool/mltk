@@ -110,7 +110,7 @@ if [ -n "$SLX_BROWSER_RELOAD_SECS" ] && [ "$SLX_BROWSER_RELOAD_SECS" -gt 0 ]; th
 			else
 				xdotool windowactivate "$wid"
 				xdotool key Alt+Home
-				sleep 3
+				sleep "$SLX_BROWSER_RELOAD_SECS"
 				activity=init
 				continue
 			fi
