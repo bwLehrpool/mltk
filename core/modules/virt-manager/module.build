@@ -1,0 +1,18 @@
+#!/bin/bash
+fetch_source() {
+	autoclone
+}
+
+build() {
+	local SRCDIR="${MODULE_WORK_DIR}/src/virt-manager"
+	local DSTDIR="${MODULE_BUILD_DIR}"
+	cde "${SRCDIR}"
+
+	python3 setup.py configure --default-hvs qemu,lxc --default-graphics spice || perror "'setup.py configure' failed."
+	python3 setup.py build || perror "'setup.py build' failed."
+	python3 setup.py --no-update-icon-cache --no-compile-schemas install --root "${DSTDIR}" --no-compile -O0 || perror "'setup.py install' failed."
+}
+
+post_copy() {
+	:
+}
