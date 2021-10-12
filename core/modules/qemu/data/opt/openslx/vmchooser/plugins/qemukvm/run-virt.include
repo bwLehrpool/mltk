@@ -54,9 +54,20 @@ run_plugin() {
 		writelog "Failed to set up mediated device (Intel GVT-g) for GPU passthrough!"
 	fi
 
-	# write finalized config in debug mode to temporary folder for debugging purposes
+	# set debug related options
 	if [ "${DEBUG}" = "true" ]; then
+		# write finalized config in debug mode to temporary folder for debugging purposes
 		local vm_final_config="/tmp/qemu-last-config.xml"
+
+		# set configuration for virt-manager
+		local GSETTINGS_SCHEMA_NAME_PREFIX="org.virt-manager.virt-manager"
+		local GSETTINGS_SCHEMA_PATH_PREFIX="/org/virt-manager/virt-manager"
+
+		# per VM relocatable virt-manager settings
+		# scale a VM's output in fullscreen to fit the virt-manager's console size
+		gsettings set "${GSETTINGS_SCHEMA_NAME_PREFIX}.vm:${GSETTINGS_SCHEMA_PATH_PREFIX}/vm/" "scaling" "1"
+		# automatic resize of VM resolution to virt-manager's console resolution
+		gsettings set "${GSETTINGS_SCHEMA_NAME_PREFIX}.vm:${GSETTINGS_SCHEMA_PATH_PREFIX}/vm/" "resize-guest" "1"
 	fi
 
 	# call the Libvirt Java tool to finalize configuration and start VM
