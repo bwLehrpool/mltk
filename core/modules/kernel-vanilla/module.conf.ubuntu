@@ -3,4 +3,5 @@ REQUIRED_INSTALLED_PACKAGES="
 	flex
 	libelf-dev
 	libssl-dev
+	cpio
 "
