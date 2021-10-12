@@ -68,8 +68,8 @@ public class ViewerVirtManager extends Viewer
 		}
 
 		// execute viewer process with arguments:
-		// "virt-viewer --connect=<URI> --show-domain-console <DOMAIN-UUID>"
+		// "virt-manager --no-fork --connect=<URI> --show-domain-console=<DOMAIN-UUID>"
 		ViewerUtils.executeViewer( ViewerVirtManager.NAME,
-				new String[] { "--connect=" + connectionUri, "--show-domain-console", machineUuid } );
+				new String[] { "--no-fork", "--connect=" + connectionUri, "--show-domain-console=" + machineUuid } );
 	}
 }
