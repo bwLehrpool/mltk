@@ -6,15 +6,17 @@ fetch_source() {
 
 build() {
 	local SRCDIR="${MODULE_WORK_DIR}/src/LookingGlass"
-	local CLIENTBUILDDIR="client/build"
-	mkdir -p "${SRCDIR}/${CLIENTBUILDDIR}" || perror "Failed to create CMake build directory!"
-	cde "${SRCDIR}/${CLIENTBUILDDIR}"
+	local DSTDIR="${MODULE_BUILD_DIR}"
+
+	mkdir -p "${SRCDIR}/client/build" || perror "Failed to create CMake build directory!"
+	cde "${SRCDIR}/client/build"
+
 	cmake -DENABLE_WAYLAND=no \
 		-DENABLE_X11=yes \
+		-DCMAKE_INSTALL_PREFIX=/usr \
 		../ || perror "'cmake' failed."
 	make || perror "'make' failed."
-	mkdir -p "${MODULE_BUILD_DIR}/opt/openslx/bin"
-	cp "${SRCDIR}/${CLIENTBUILDDIR}/looking-glass-client" "${MODULE_BUILD_DIR}/opt/openslx/bin/looking-glass-client" || perror "'cp' failed."
+	DESTDIR="${DSTDIR}" make install || perror "'make install' failed."
 }
 
 post_copy() {
