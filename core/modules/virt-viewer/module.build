@@ -11,6 +11,9 @@ build() {
 	# install meson (>= 0.54.0) since packaged version is too old
 	pip3 install "meson>=0.54.0"
 
+	# save original path content before modifying path variable
+	local PATH_OLD="${PATH}"
+
 	# set config paths for additional pkg-config files
 	export PKG_CONFIG_PATH="${TARGET_BUILD_DIR}/usr/lib/x86_64-linux-gnu/pkgconfig:${TARGET_BUILD_DIR}/usr/lib64/pkgconfig"
 	# set system root directory for prebuilt headers and libraries, e.g. libvirt-glib
@@ -46,6 +49,15 @@ build() {
 	DESTDIR="${DSTDIR}" ninja -v -C build install || perror "'ninja install' failed."
 
 	rm "${SRCDIR}/pkg-config"
+
+	# restore old environment so that following pkg-config calls are not modified
+	unset PKG_CONFIG_PATH
+	unset PKG_CONFIG_SYSROOT_DIR
+	unset PKG_CONFIG_ALLOW_SYSTEM_CFLAGS
+	unset PKG_CONFIG_ALLOW_SYSTEM_LIBS
+
+	# restore original path variable
+	export PATH="${PATH_OLD}"
 }
 
 post_copy() {
