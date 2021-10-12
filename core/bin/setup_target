@@ -637,6 +637,9 @@ post_process_target() {
 
 	[ -z "$MLTK_DEBUG" ] && rm -f -- "$RSYNC_EXCLUDE_LIST"
 
+	# compile Gsettings schema files
+	"${RSYNC_DEST}/usr/bin/glib-compile-schemas"  "${RSYNC_DEST}/usr/share/glib-2.0/schemas/"
+
 	# finish by running ldconfig for the running system (when processing non-addons).
 	if [ ! -e "${TARGET_DIR}/.addon" ]; then
 		ldconfig -v
