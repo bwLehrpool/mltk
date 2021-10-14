@@ -4,18 +4,9 @@ fetch_source() {
 }
 
 build() {
-
-	local BIN_LOCATION="$(which sshd)"
-	[ ! -z "${BIN_LOCATION}" ] && BIN_LOCATION=$(readlink -f "$BIN_LOCATION")
-	if [ ! -z "${BIN_LOCATION}" -a -e "${BIN_LOCATION}" ]; then
-		tarcopy "${BIN_LOCATION}" "${MODULE_BUILD_DIR}"
-	else
-		perror "'sshd' not found on the system! Please install it."
-	fi
+	:
 }
 
 post_copy() {
-	mkdir -p "${TARGET_BUILD_DIR}/var/lib/empty" # suse
-
 	chmod -R go-rwx "${TARGET_BUILD_DIR}/etc/ssh"
 }
