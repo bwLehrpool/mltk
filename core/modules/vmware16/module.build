@@ -79,6 +79,19 @@ build() {
 	[ -z "${KERNEL_HEADERS_DIR}" -o ! -e "${KERNEL_HEADERS_DIR}" ] && perror "KERNEL_HEADERS_DIR ('"${KERNEL_HEADERS_DIR}"') not found. Was the kernel module built?"
 
 	# build in two steps, to be able to use mltk function while patching modules
+	mkdir -p "${MODULE_BUILD_DIR}/usr/local/bin"
+	# This is required as there are still some uname calls in the Makefiles, EVEN THOUGH
+	# YOU SPECIFY ANOTHER KERNEL via -k below. Building will fail for a 5.x kernel if you
+	# run on a system with a 4.x kernel.
+	cat > "${MODULE_BUILD_DIR}/usr/local/bin/uname" <<-EOF
+	#!/bin/sh
+	if [ "\$1" = "-r" ]; then
+		echo '${TARGET_KERNEL_LONG}'
+	else
+		/bin/uname "\$@" || /usr/bin/uname "\$@"
+	fi
+	EOF
+	chmod +x "${MODULE_BUILD_DIR}/usr/local/bin/uname"
 	pinfo "Installing vmware per chroot..."
 	chroot_run "${MODULE_BUILD_DIR}" <<-EOF
 		perror() {
