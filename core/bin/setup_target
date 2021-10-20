@@ -352,7 +352,7 @@ scan_target() {
 		[ -L "$item" ] || continue
 		base="$( basename "$item" )"
 		real="$( readlink -f "$item" )"
-		if [ -s "$item/module.conf" ]; then
+		if [ -f "$item/module.conf" ]; then
 			if [ -n "${MODULE_PATHS["$base"]}" ] \
 					&& [ "${MODULE_PATHS["$base"]}" != "$real" ]; then
 				perror "$base exists in multiple sub-targets and links to different modules\n1: $real\n2: ${MODULE_PATHS["$base"]}"
