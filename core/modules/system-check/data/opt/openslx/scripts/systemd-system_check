@@ -10,13 +10,19 @@
 
 declare -rg root_dir="/opt/openslx/system-check"
 generate_messages() {
-	local hook_dir="${root_dir}/hooks.d"
-	local lang=en
+	local lang f hook_dir lang_dir
+	hook_dir="${root_dir}/hooks.d"
+	lang_dir=
 	# determine lang
-	if [ -z "$LANG" ] && [ -s "/etc/default/locale" ]; then
-		. /etc/default/locale
-	fi
-	[ -n "$LANG" ] && lang="${LANG:0:2}"
+
+	for f in "/etc/default/locale" "/etc/environment"; do
+		lang="$( unset LANG; . "$f" &> /dev/null; [ -n "$LANG" ] && echo "${LANG:0:2}" || echo "${LANGUAGE}" )"
+		if [ -d "${root_dir}/lang/${lang}" ]; then
+			lang_dir="${root_dir}/lang/${lang}"
+			break
+		fi
+	done
+	[ -z "$lang_dir" ] && lang_dir="${root_dir}/lang/en"
 
 	local dm_warning_file="$( \
 		awk -F'=' '$1 == "greeter-message-file" {print $2}' \
@@ -27,7 +33,7 @@ generate_messages() {
 	if [ ! -d "$hook_dir" ]; then
 		echo "Missing '$hook_dir' - dev failure?"
 		return 1
-	fi 
+	fi
 	for file in "$hook_dir"/*; do
 		[ -x "$file" ] || continue
 		(
@@ -75,10 +81,10 @@ print_tag() {
 	local tag="$1"
 	shift
 	# get localized message for this tag
-	local file="${root_dir}/lang/${lang}/${tag}"
+	local file="${lang_dir}/${tag}"
 	if [ ! -f "$file" ]; then
 		# fallback
-		echo "000000" "Missing translation for '$tag'."
+		echo "000000" "Missing translation for '$tag' in '$lang_dir'."
 		return 1
 	fi
 	while read -r line; do
