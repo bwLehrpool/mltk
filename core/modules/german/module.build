@@ -34,6 +34,7 @@ build() {
 	# Done collecting file and directory names, copy everything
 	tarcopy "$(sort -u "$FILELIST")" "$MODULE_BUILD_DIR"
 
+	update-locale LANG=de_DE.UTF-8 LANGUAGE=de
 }
 
 post_copy() {
