@@ -10,11 +10,11 @@
 
 declare -rg root_dir="/opt/openslx/system-check"
 generate_messages() {
-	local lang f hook_dir lang_dir
+	local lang f hook_dir lang_dir dm_warning_tmp dm_warning_file
 	hook_dir="${root_dir}/hooks.d"
 	lang_dir=
-	# determine lang
 
+	# determine lang. Ignore current environment to make sure we use the system setting
 	for f in "/etc/default/locale" "/etc/environment"; do
 		lang="$( unset LANG; . "$f" &> /dev/null; [ -n "$LANG" ] && echo "${LANG:0:2}" || echo "${LANGUAGE}" )"
 		if [ -d "${root_dir}/lang/${lang}" ]; then
@@ -24,24 +24,26 @@ generate_messages() {
 	done
 	[ -z "$lang_dir" ] && lang_dir="${root_dir}/lang/en"
 
-	local dm_warning_file="$( \
+	# Determine which file to put final messages into
+	dm_warning_file="$( \
 		awk -F'=' '$1 == "greeter-message-file" {print $2}' \
-		/etc/lightdm/qt-lightdm-greeter.conf)"
+		/etc/lightdm/qt-lightdm-greeter.conf /etc/lightdm/qt-lightdm-greeter.conf.d/* \
+		| tail -n 1)"
 	[ -z "$dm_warning_file" ] && dm_warning_file="/run/hw-warnings.log"
-	local dm_warning_tmp="$(mktemp)"
+	dm_warning_tmp="$(mktemp)"
 
+	# Run hooks that will generate all the warnings
 	if [ ! -d "$hook_dir" ]; then
 		echo "Missing '$hook_dir' - dev failure?"
 		return 1
 	fi
 	for file in "$hook_dir"/*; do
+		[ -s "$file" ] || continue
 		[ -x "$file" ] || continue
-		(
-			"$file" "$dm_warning_tmp"
-		) &
-	done
+		"$file" &
+	done > "$dm_warning_tmp"
 	wait
-	# post-process, dm_warning_file contains just tags now
+	# post-process, dm_warning_tmp contains just tags now
 	# check in /opt/openslx/messages/{lang,tags}
 	local blacklist="${root_dir}/blacklist"
 	local color do_contact
@@ -50,7 +52,7 @@ generate_messages() {
 		IFS='|' tag_with_params=($tag)
 		IFS="$old_IFS"
 		# blacklisted?
-		grep -q "${tag_with_params[0]}" "$blacklist" && continue
+		grep -qFx "${tag_with_params[0]}" "$blacklist" && continue
 		# "meta" info?
 		[ -s "${root_dir}/tags/${tag_with_params[0]}" ] && \
 			. "${root_dir}/tags/${tag_with_params[0]}"

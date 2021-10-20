@@ -1,0 +1,11 @@
+[Unit]
+Description=Send hardware information to boot server
+After=system-check.service hardware-stats.service
+Wants=system-check.service hardware-stats.service
+
+[Service]
+Type=oneshot
+ExecStart=/opt/openslx/scripts/systemd-hardware_report
+RemainAfterExit=yes
+ExecStop=/opt/openslx/scripts/shutdown-system_usage_update
+
