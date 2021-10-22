@@ -66,8 +66,8 @@ fetch_source() {
 }
 
 build() {
-	local TARGET_CONFIG_FILE="openslx.config"
-	rm -f "${TARGET_CONFIG_FILE}"
+	local TARGET_CONFIG_FILE="${MODULE_WORK_DIR}/openslx.config"
+	rm -f -- "${TARGET_CONFIG_FILE}"
 	# update config and copy to ksrc
 	pinfo "Updating kernel config..."
 	update_config
@@ -110,41 +110,47 @@ post_copy() {
 
 # helper function to update the current kernel config with our parameters
 update_config() {
-
+	local src_config_file wanted_config_file wanted_line option value current_line
 	# first we need to update the current config
-	local BASE_CONFIG_FILE="/boot/config-$(uname -r)"
-	if [ ! -e "${BASE_CONFIG_FILE}" ]; then
-		pwarning "$BASE_CONFIG_FILE could not be found! Using default config in the kernel repository as base config."
+	src_config_file="/boot/config-$(uname -r)"
+	if [ -s "$src_config_file" ]; then
+		pinfo "Using $src_config_file as a starting point"
+	elif [ -s "/proc/config.gz" ]; then
+		pinfo "Using /proc/config.gz as a starting point"
+		src_config_file="${MODULE_WORK_DIR}/ksrc/.config"
+		zcat "/proc/config.gz" > "${src_config_file}"
+	else
+		pwarning "$src_config_file could not be found! Using default config in the kernel repository as base config."
 		make -C "${MODULE_WORK_DIR}/ksrc" defconfig
 		[ -e "${MODULE_WORK_DIR}/ksrc/.config" ] || perror "Failed to create default kernel config."
-		BASE_CONFIG_FILE="${MODULE_WORK_DIR}/ksrc/.config"
+		src_config_file="${MODULE_WORK_DIR}/ksrc/.config"
 	fi
-	
-	# check for our wanted config parameter
-	local OPENSLX_WANTED_CONFIG="${ROOT_DIR}/data/kernel.wanted.config"
 
-	[ -e "${OPENSLX_WANTED_CONFIG}" ] || perror "$OPENSLX_WANTED_CONFIG does not exist! Please add a list of wanted kernel config parameters."
+	# check for our wanted config parameter
+	wanted_config_file="${ROOT_DIR}/data/kernel.wanted.config"
+
+	[ -e "${wanted_config_file}" ] || perror "$wanted_config_file does not exist! Please add a list of wanted kernel config parameters."
 
 	# copy basic config file
-	cp "$BASE_CONFIG_FILE" "$TARGET_CONFIG_FILE"
+	cp "$src_config_file" "$TARGET_CONFIG_FILE"
 
-	for WANTED_CONFIG in $(cat $OPENSLX_WANTED_CONFIG|sort -u); do
-		local CONFIG_PARAM_NAME="$(echo $WANTED_CONFIG | awk -F "=" '{print $1}')"
-		local SEARCH_RESULT="$(grep -E "^\s*$(echo "$CONFIG_PARAM_NAME" | escape_search)=" "$BASE_CONFIG_FILE")"
+	while read -r wanted_line || [ -n "$wanted_line" ]; do
+		option="${wanted_line%%=*}"
+		value="${wanted_line#*=}"
+		current_line="$( grep -E -m1 "^(# )?${option}[= ]" "$src_config_file" )"
 
+		[ "$current_line" = "$wanted_line" ] && continue
+		[ "$value" = "n" ] && [ "$current_line" = "# ${option} is not set" ] && continue
 		#echo "Process: $SEARCH_RESULT"
 		# analyse results
-		if [ "x$SEARCH_RESULT" == "x" ]; then
+		if [ -z "$current_line" ]; then
 			# no match, add it
-			sed -i -r "s/^\s*#.*\s$(echo "$CONFIG_PARAM_NAME" | escape_search)[^_A-Z0-9].*$//" "$TARGET_CONFIG_FILE"
-			echo "$WANTED_CONFIG" >> "$TARGET_CONFIG_FILE"
+			echo "$wanted_line" >> "$TARGET_CONFIG_FILE"
 		else
 			# match, change to our setting if they differ
-			if [ "x$SEARCH_RESULT" != "x$WANTED_CONFIG" ]; then
-				sed -i "s/$(echo "$SEARCH_RESULT" | escape_search)/$(echo "$WANTED_CONFIG" | escape_replace)/" "$TARGET_CONFIG_FILE"
-			fi
+			sed -r -i "s/^(# )?${option}[= ].*\$/${wanted_line}/" "$TARGET_CONFIG_FILE"
 		fi
-	done
+	done < "$wanted_config_file"
 }
 
 # helper to patch aufs
