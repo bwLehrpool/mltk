@@ -1,15 +1,42 @@
 #!/bin/bash
+
+vbox_build_id() {
+	{
+		echo "$REQUIRED_VBOX_VERSION"
+		gcc --version 2>&1
+		echo "${TARGET_KERNEL_LONG}"
+		grep -E '^(# )?CONFIG_' "${KERNEL_HEADERS_DIR}/.config"
+	} | md5sum | cut -c1-32
+}
+
 fetch_source() {
 	[ -d "${MODULE_WORK_DIR}/src" ] && rm -rf "${MODULE_WORK_DIR}/src"
 	[ -z "${REQUIRED_VBOX_VERSION}" ] && perror "REQUIRED_VBOX_VERSION is not set!"
 
-	local BASEVER="${REQUIRED_VBOX_VERSION}"
-	# In case we have something like 1.2.3a, we need 1.2.3 for the directory name below
-	[[ "${BASEVER: -1}" =~ ^[0-9]$ ]] || BASEVER="${BASEVER:0:-1}"
-	local BASE_URL="http://download.virtualbox.org/virtualbox"
-	local DOWNLOAD_URL="${BASE_URL}/${BASEVER}/VirtualBox-${REQUIRED_VBOX_VERSION}.tar.bz2"
-	download_untar "$DOWNLOAD_URL" "${MODULE_WORK_DIR}/src" || \
-		perror "Could not download_untar '$DOWNLOAD_URL' to '${MODULE_WORK_DIR}/src'."
+	local done=
+	if nfs_cache_avail; then
+		local id tar
+		id="$( vbox_build_id )"
+		pinfo "Build id is $id"
+		tar="${NFS_CACHE_DIR}/cache/${id}.tar.zstd"
+		if [ -s "$tar" ]; then
+			pinfo "Extracting cached vbox build"
+			if < "$tar" zstd -d -T0 | tar -C "${MODULE_WORK_DIR}" -x; then
+				touch "$tar" # We use last modified as last used, as atime is unreliable
+				done=1
+			fi
+			pwarning "Extracting cached kernel failed, building..."
+		fi
+	fi
+	if [ -z "$done" ]; then
+		local BASEVER="${REQUIRED_VBOX_VERSION}"
+		# In case we have something like 1.2.3a, we need 1.2.3 for the directory name below
+		[[ "${BASEVER: -1}" =~ ^[0-9]$ ]] || BASEVER="${BASEVER:0:-1}"
+		local BASE_URL="http://download.virtualbox.org/virtualbox"
+		local DOWNLOAD_URL="${BASE_URL}/${BASEVER}/VirtualBox-${REQUIRED_VBOX_VERSION}.tar.bz2"
+		download_untar "$DOWNLOAD_URL" "${MODULE_WORK_DIR}/src" || \
+			perror "Could not download_untar '$DOWNLOAD_URL' to '${MODULE_WORK_DIR}/src'."
+	fi
 
 	if [ -n "$REQUIRED_EXTPACK" ]; then
 		# oracle's extension pack
@@ -21,25 +48,31 @@ fetch_source() {
 	fi
 }
 
-build() {
+build() (
 	[ -n "${KERNEL_HEADERS_DIR}" ] || perror "KERNEL_HEADERS_DIR not set, kernel module present?"
 	local BASEVER="${REQUIRED_VBOX_VERSION}"
 	# In case we have something like 1.2.3a, we need 1.2.3 for the directory name below
 	[[ "${BASEVER: -1}" =~ ^[0-9]$ ]] || BASEVER="${BASEVER:0:-1}"
-	cd "${MODULE_WORK_DIR}/src/VirtualBox-${BASEVER}" || \
-		perror "Could not cd to '${MODULE_WORK_DIR}/src/VirtualBox-${BASEVER}'."
 	local VBOX_BUILD_DIR="${MODULE_WORK_DIR}/src/VirtualBox-${BASEVER}/build"
-	mkdir -p "$VBOX_BUILD_DIR" || perror "Failed to mkdir '$VBOX_BUILD_DIR'."
-	./configure \
-		--disable-docs				\
-		--disable-java				\
-		--disable-python			\
-		--disable-libvpx			\
-		--with-linux="${KERNEL_HEADERS_DIR}"	\
-		--out-path="${VBOX_BUILD_DIR}"	\
-			|| perror "'configure' failed."
+	# Cached?
+	local bf="${MODULE_WORK_DIR}/src/.mltk-build-flag"
+	if [ -e "$bf"  ]; then
+		# Cached, setup vars
+		source "${VBOX_BUILD_DIR}/env.sh" || perror "Failed to source '${VBOX_BUILD_DIR}/env.sh'."
+		local VBOX_RELEASE_BUILD_DIR="${VBOX_BUILD_DIR}/linux.${BUILD_PLATFORM_ARCH}/release"
+	else
+		cd "${MODULE_WORK_DIR}/src/VirtualBox-${BASEVER}" || \
+			perror "Could not cd to '${MODULE_WORK_DIR}/src/VirtualBox-${BASEVER}'."
+		mkdir -p "$VBOX_BUILD_DIR" || perror "Failed to mkdir '$VBOX_BUILD_DIR'."
+		./configure \
+			--disable-docs				\
+			--disable-java				\
+			--disable-python			\
+			--disable-libvpx			\
+			--with-linux="${KERNEL_HEADERS_DIR}"	\
+			--out-path="${VBOX_BUILD_DIR}"	\
+				|| perror "'configure' failed."
 
-	(
 		# Limit job count - can easily OOM
 		num="$( awk '$1 == "MemTotal:" { print int(0.25 + $2 / (1024*1024)) }' /proc/meminfo )"
 		(( num > CPU_CORES )) && num="$CPU_CORES"
@@ -55,57 +88,70 @@ build() {
 		[ -d "${VBOX_RELEASE_BUILD_DIR}" ] || \
 			perror "No release build dir found under '${VBOX_RELEASE_BUILD_DIR}'. Build failed?"
 
-		# the resulting linux.<arch>/release/bin folder contains the whole build,
-		# copy it over to usr/lib/virtualbox
-		mkdir -p "${MODULE_BUILD_DIR}/usr/lib/virtualbox" || \
-			perror "Failed to mkdir '${MODULE_BUILD_DIR}/usr/lib/virtualbox'."
-		cp -r "${VBOX_RELEASE_BUILD_DIR}/bin/"* "${MODULE_BUILD_DIR}/usr/lib/virtualbox" || \
-			perror "Failed to cp -r '${VBOX_RELEASE_BUILD_DIR}/bin' to '${MODULE_BUILD_DIR}/usr/lib/virtualbox'."
-
-		# set suid bits
-		for BIN in VBoxHeadless VBoxNetAdpCtl VBoxNetDHCP VBoxSDL VBoxVolInfo VirtualBox VBoxNetAdpCtl VirtualBoxVM; do
-			if ! [ -e "${MODULE_BUILD_DIR}/usr/lib/virtualbox/$BIN" ]; then
-				pwarning "No such file: '${MODULE_BUILD_DIR}/usr/lib/virtualbox/$BIN', cannot add suid bit."
-				continue
-			fi
-			chmod u+s "${MODULE_BUILD_DIR}/usr/lib/virtualbox/${BIN}" || perror "Failed to set suid bit on '${BIN}'."
-		done
-
 		## Kernel modules
 		# build kernel modules from the release dir
-		cd "${VBOX_RELEASE_BUILD_DIR}/bin/src" || \
-			perror "Failed to cd to '${VBOX_RELEASE_BUILD_DIR}/bin/src'."
+		cde "${VBOX_RELEASE_BUILD_DIR}/bin/src"
 		make \
 			KERN_DIR="${KERNEL_HEADERS_DIR}" \
 			KERN_VER="${TARGET_KERNEL_LONG}" \
 				|| perror "Build kernel modules failed."
-		# check they were, in fact, built and copy them to build dir
-		mkdir -p "${MODULE_BUILD_DIR}/lib/modules/vbox" || \
-			perror "Failed to mkdir '${MODULE_BUILD_DIR}/lib/modules/vbox'."
-		for MOD in $(find ./* -maxdepth 0 -type d); do
-			[ -e "$MOD.ko" ] || perror "Module '$MOD' was not built!"
-			cp "$MOD.ko" "${MODULE_BUILD_DIR}/lib/modules/vbox/" || \
-				perror "Failed to cp $MOD.ko to '${MODULE_BUILD_DIR}/lib/modules/vbox/'."
-		done
 
-		if [ -n "$REQUIRED_EXTPACK" ]; then
-			# finally copy the extension pack files, everthing is needed as the subfolders
-			# target the guest architectures and not that of the host!
-			local VBOX_EXTPACK_DIR="${MODULE_BUILD_DIR}/usr/lib/virtualbox/ExtensionPacks/Oracle_VM_VirtualBox_Extension_Pack"
-			cp -ar "${MODULE_WORK_DIR}/extpack" "${VBOX_EXTPACK_DIR}" || \
-				perror "Failed to cp '${MODULE_WORK_DIR}/extpack' to '${VBOX_EXTPACK_DIR}'."
-			chown -R root:root "${VBOX_EXTPACK_DIR}" || \
-				perror "Failed to chown '${VBOX_EXTPACK_DIR}' to root:root."
+		# Cache
+		touch "$bf"
+		if nfs_cache_avail; then
+			local id tar
+			id="$( vbox_build_id )"
+			tar="${NFS_CACHE_DIR}/cache/${id}.tar.zstd"
+			pinfo "Copying built vbox to NFS cache with id $id"
+			mkdir -p "$( dirname "$tar" )"
+			tar -C "${MODULE_WORK_DIR}" -c -k src | zstd -T0 -2 -z > "$tar" \
+				|| pwarning "Could not write vbox to NFS cache"
 		fi
+	fi
 
-		# od binary
-		local OD_BIN="$(which od 2>/dev/null)"
-		if [ -n "$OD_BIN" ] && [ -f "$OD_BIN" ]; then
-			tarcopy "$OD_BIN" "$MODULE_BUILD_DIR"
+	# the resulting linux.<arch>/release/bin folder contains the whole build,
+	# copy it over to usr/lib/virtualbox
+	mkdir -p "${MODULE_BUILD_DIR}/usr/lib/virtualbox" || \
+		perror "Failed to mkdir '${MODULE_BUILD_DIR}/usr/lib/virtualbox'."
+	cp -r "${VBOX_RELEASE_BUILD_DIR}/bin/"* "${MODULE_BUILD_DIR}/usr/lib/virtualbox" || \
+		perror "Failed to cp -r '${VBOX_RELEASE_BUILD_DIR}/bin' to '${MODULE_BUILD_DIR}/usr/lib/virtualbox'."
+
+	# set suid bits
+	for BIN in VBoxHeadless VBoxNetAdpCtl VBoxNetDHCP VBoxSDL VBoxVolInfo VirtualBox VBoxNetAdpCtl VirtualBoxVM; do
+		if ! [ -e "${MODULE_BUILD_DIR}/usr/lib/virtualbox/$BIN" ]; then
+			pwarning "No such file: '${MODULE_BUILD_DIR}/usr/lib/virtualbox/$BIN', cannot add suid bit."
+			continue
 		fi
-		true
-	) || perror "Failed"
-}
+		chmod u+s "${MODULE_BUILD_DIR}/usr/lib/virtualbox/${BIN}" || perror "Failed to set suid bit on '${BIN}'."
+	done
+
+	# Copy kernel modules
+	cde "${VBOX_RELEASE_BUILD_DIR}/bin/src"
+	mkdir -p "${MODULE_BUILD_DIR}/lib/modules/vbox" || \
+		perror "Failed to mkdir '${MODULE_BUILD_DIR}/lib/modules/vbox'."
+	for MOD in $(find ./* -maxdepth 0 -type d); do
+		[ -e "$MOD.ko" ] || perror "Module '$MOD' was not built!"
+		cp "$MOD.ko" "${MODULE_BUILD_DIR}/lib/modules/vbox/" || \
+			perror "Failed to cp $MOD.ko to '${MODULE_BUILD_DIR}/lib/modules/vbox/'."
+	done
+
+	if [ -n "$REQUIRED_EXTPACK" ]; then
+		# finally copy the extension pack files, everthing is needed as the subfolders
+		# target the guest architectures and not that of the host!
+		local VBOX_EXTPACK_DIR="${MODULE_BUILD_DIR}/usr/lib/virtualbox/ExtensionPacks/Oracle_VM_VirtualBox_Extension_Pack"
+		cp -ar "${MODULE_WORK_DIR}/extpack" "${VBOX_EXTPACK_DIR}" || \
+			perror "Failed to cp '${MODULE_WORK_DIR}/extpack' to '${VBOX_EXTPACK_DIR}'."
+		chown -R root:root "${VBOX_EXTPACK_DIR}" || \
+			perror "Failed to chown '${VBOX_EXTPACK_DIR}' to root:root."
+	fi
+
+	# od binary
+	local OD_BIN="$(which od 2>/dev/null)"
+	if [ -n "$OD_BIN" ] && [ -f "$OD_BIN" ]; then
+		tarcopy "$OD_BIN" "$MODULE_BUILD_DIR"
+	fi
+	true
+)
 
 post_copy() {
 	:

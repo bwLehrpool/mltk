@@ -108,10 +108,10 @@ build() {
 		make $MAKEFLAGS ${CC:+CC=${CC}} || perror "make failed."
 		touch "$bf"
 		if nfs_cache_avail; then
-			pinfo "Copying built kernel to NFS cache with id $id"
 			local id tar
 			id="$( kernel_build_id )"
 			tar="${NFS_CACHE_DIR}/cache/${id}.tar.zstd"
+			pinfo "Copying built kernel to NFS cache with id $id"
 			mkdir -p "$( dirname "$tar" )"
 			tar -C "${MODULE_WORK_DIR}" -c -k ksrc | zstd -T0 -2 -z > "$tar" \
 				|| pwarning "Could not write kernel to NFS cache"
