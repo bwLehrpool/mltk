@@ -17,13 +17,40 @@ get_kernel_version() {
 	declare -rg KERNEL_BASE_DIR="${ROOT_DIR}/tmp/work/kernel/build"
 
 	# print debug info
-	pinfo "TARGET_KERNEL_LONG: '$TARGET_KERNEL_LONG'"
-	pinfo "TARGET_KERNEL_SHORT: '$TARGET_KERNEL_SHORT'"
-	pdebug "KERNEL_BASE_DIR: '$KERNEL_BASE_DIR'"
-	pdebug "KERNEL_HEADERS_DIR: '$KERNEL_HEADERS_DIR'"
+	pinfo  "TARGET_KERNEL_LONG:  '$TARGET_KERNEL_LONG'"
+	pinfo  "TARGET_KERNEL_SHORT: '$TARGET_KERNEL_SHORT'"
+	pdebug "KERNEL_BASE_DIR:     '$KERNEL_BASE_DIR'"
+	pdebug "KERNEL_HEADERS_DIR:  '$KERNEL_HEADERS_DIR'"
 }
 
 fetch_source() {
+	# Fetch all the firmware
+	if ! [ -s "./fw/Makefile" ]; then
+		rm -rf -- "./fw"
+		git clone --depth 1 "git://git.kernel.org/pub/scm/linux/kernel/git/firmware/linux-firmware.git" "./fw" \
+			|| perror "Could not clone linux-firmware repo."
+		rm -rf -- ./fw/LICENSE.* ./fw/*.txt
+	fi
+
+	# Kernel - cached or freshly fetched
+	if nfs_cache_avail; then
+		local id tar
+		id="$( kernel_build_id )"
+		pinfo "Build id is $id"
+		tar="${NFS_CACHE_DIR}/cache/${id}.tar.zstd"
+		if [ -s "$tar" ]; then
+			pinfo "Extracting cached kernel build"
+			if < "$tar" zstd -d -T0 | tar -C "${MODULE_WORK_DIR}" -x; then
+				touch "$tar" # We use last modified as last used, as atime is unreliable
+				return 0
+			fi
+			pwarning "Extracting cached kernel failed, building..."
+		fi
+	fi
+	fetch_kernel_source
+}
+
+fetch_kernel_source() {
 	pdebug "getting kernel sources via git ...."
 	if grep -q -- "${REQUIRED_GIT}" "./ksrc/.git/config" && grep -q -- "v${REQUIRED_KERNEL}" "./ksrc/.git/config"; then
 		pinfo "Trying to update existing clone"
@@ -55,39 +82,45 @@ fetch_source() {
 		echo "$patch" >> "patches-done"
 	done
 	cd -
-	# remember the current kernel version
-	echo "${SYSTEM_KERNEL_LONG}" > ksrc/KVERSION
-	# Fetch all the firmware
-	if ! [ -s "./fw/Makefile" ]; then
-		rm -rf -- "./fw"
-		git clone "git://git.kernel.org/pub/scm/linux/kernel/git/firmware/linux-firmware.git" "./fw" || perror "Could not clone linux-firmware repo."
-		rm -rf -- ./fw/LICENSE.* ./fw/*.txt
-	fi
 }
 
 build() {
-	local TARGET_CONFIG_FILE="${MODULE_WORK_DIR}/openslx.config"
-	rm -f -- "${TARGET_CONFIG_FILE}"
-	# update config and copy to ksrc
-	pinfo "Updating kernel config..."
-	update_config
-	cp "${TARGET_CONFIG_FILE}" "ksrc/.config"
-	# make kernel with the new config
-	cde ksrc
-	pinfo "Preparing kernel for new config ('make oldconfig')."
-	if [ "x$MLTK_QUIET" = "x1" ]; then
-		make olddefconfig || perror "make oldconfig failed."
-	else
-		make oldconfig || perror "make oldconfig failed."
-	fi
+	local bf="${MODULE_WORK_DIR}/ksrc/.mltk-build-flag"
+	if ! [ -e "$bf"  ]; then
+		local TARGET_CONFIG_FILE="${MODULE_WORK_DIR}/openslx.config"
+		rm -f -- "${TARGET_CONFIG_FILE}"
+		# update config and copy to ksrc
+		pinfo "Updating kernel config..."
+		update_config
+		cp "${TARGET_CONFIG_FILE}" "ksrc/.config"
+		# make kernel with the new config
+		cde ksrc
+		pinfo "Preparing kernel for new config ('make oldconfig')."
+		if [ "x$MLTK_QUIET" = "x1" ]; then
+			make olddefconfig || perror "make oldconfig failed."
+		else
+			make oldconfig || perror "make oldconfig failed."
+		fi
 
-	pinfo "Compiling kernel... (this will take some time)"
-	# explicitly state number of cores here, as MAKEFLAGS seems to be overridden
-	# also pass CC if set by core/includes/system.inc
-	make $MAKEFLAGS ${CC:+CC=${CC}} || perror "make failed."
+		pinfo "Compiling kernel... (this will take some time)"
+		# explicitly state number of cores here, as MAKEFLAGS seems to be overridden
+		# also pass CC if set by core/includes/system.inc
+		make $MAKEFLAGS ${CC:+CC=${CC}} || perror "make failed."
+		touch "$bf"
+		if nfs_cache_avail; then
+			pinfo "Copying built kernel to NFS cache with id $id"
+			local id tar
+			id="$( kernel_build_id )"
+			tar="${NFS_CACHE_DIR}/cache/${id}.tar.zstd"
+			mkdir -p "$( dirname "$tar" )"
+			tar -C "${MODULE_WORK_DIR}" -c -k ksrc | zstd -T0 -2 -z > "$tar" \
+				|| pwarning "Could not write kernel to NFS cache"
+		fi
+	fi
 
 	# install modules to build directory
 	pinfo "Installing kernel modules..."
+	cde "${MODULE_WORK_DIR}/ksrc"
 	if [ -d "${MODULE_BUILD_DIR}/lib/modules" ]; then
 		rm -r "${MODULE_BUILD_DIR}/lib/modules" || pwarning "Could not clean old modules."
 	fi
@@ -99,7 +132,7 @@ build() {
 	cp -r ./fw/* "${MODULE_BUILD_DIR}/lib/firmware/" || perror "Could not copy linux-firmware to '${MODULE_BUILD_DIR}/lib/firmware/'"
 
 	# copy kernel to build
-	cp ksrc/arch/x86/boot/bzImage "${MODULE_BUILD_DIR}/kernel"
+	cp ksrc/arch/x86/boot/bzImage "${MODULE_BUILD_DIR}/kernel" || perror "Could not copy bzImage"
 	pinfo "Kernel was successfully built at ${MODULE_BUILD_DIR}/kernel"
 	[ -z "${KERNEL_BUILD_DIR}" ] && KERNEL_BUILD_DIR="${MODULE_BUILD_DIR}"
 }
@@ -108,19 +141,40 @@ post_copy() {
 	:
 }
 
+# Get unique ID for this build configuration and environment
+kernel_build_id() {
+	local conf
+	conf="$( kernel_config_base )"
+	{
+		[ -n "$conf" ] && grep -E '^(# )?CONFIG_' "$conf" # Base config
+		cat "${ROOT_DIR}/data/kernel.wanted.config" # Wanted config
+		gcc --version 2>&1 # gcc version might be important
+		echo "${REQUIRED_KERNEL} ${MLTK_INSTALL}" # wanted kernel version, whether we run install mode
+		cat "${MODULE_DIR}/patches/"* 2> /dev/null # any local patches
+	} | md5sum | cut -c1-32
+}
+
+# Get path of kernel config zu base this kernel on; empty if none exists
+kernel_config_base() {
+	local src
+	src="/boot/config-$(uname -r)"
+	if [ -s "$src" ]; then
+		echo "$src"
+	elif [ -f "/proc/config.gz" ]; then
+		zcat "/proc/config.gz" > "${ROOT_DIR}/tmp/kernel-config"
+		echo "${ROOT_DIR}/tmp/kernel-config"
+	fi
+}
+
 # helper function to update the current kernel config with our parameters
 update_config() {
 	local src_config_file wanted_config_file wanted_line option value current_line
 	# first we need to update the current config
-	src_config_file="/boot/config-$(uname -r)"
-	if [ -s "$src_config_file" ]; then
+	src_config_file="$( kernel_config_base )"
+	if [ -n "$src_config_file" ]; then
 		pinfo "Using $src_config_file as a starting point"
-	elif [ -s "/proc/config.gz" ]; then
-		pinfo "Using /proc/config.gz as a starting point"
-		src_config_file="${MODULE_WORK_DIR}/ksrc/.config"
-		zcat "/proc/config.gz" > "${src_config_file}"
 	else
-		pwarning "$src_config_file could not be found! Using default config in the kernel repository as base config."
+		pwarning "Using default config in the kernel repository as base config."
 		make -C "${MODULE_WORK_DIR}/ksrc" defconfig
 		[ -e "${MODULE_WORK_DIR}/ksrc/.config" ] || perror "Failed to create default kernel config."
 		src_config_file="${MODULE_WORK_DIR}/ksrc/.config"

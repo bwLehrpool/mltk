@@ -30,3 +30,18 @@ __init () {
 	pdebug "System lib paths: $SYS_LIB_PATHS"
 }
 
+nfs_cache_avail () {
+	[ -z "$CONFIG_NFS_CACHE" ] && return 1
+	NFS_CACHE_DIR="${ROOT_DIR}/tmp/nfscache"
+	mountpoint "$NFS_CACHE_DIR" && return 0
+	pinfo "Trying to mount NFS cache"
+	mkdir -p "$NFS_CACHE_DIR" || perror "Could not mkdir $NFS_CACHE_DIR"
+	if mount -v -o rw,async,nolock,soft,timeo=300,fg,retry=0 "$CONFIG_NFS_CACHE" "$NFS_CACHE_DIR"; then
+		pinfo "Mounted NFS build cache"
+		return 0
+	fi
+	pwarning "Error mounting NFS build cache. Caching not enabled"
+	CONFIG_NFS_CACHE=
+	NFS_CACHE_DIR=
+	return 1
+}

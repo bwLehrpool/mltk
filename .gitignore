@@ -20,3 +20,4 @@ var/builds
 var/log
 **/winres/tmp/
 **/winres/winres.exe
+/tmp/nfscache
