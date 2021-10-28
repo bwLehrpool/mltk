@@ -15,6 +15,6 @@ build() {
 		ln -ns "$base" "${MODULE_BUILD_DIR}/usr/share/alsa/alsa.conf.d/${link}"
 	done
 	if [ -z "$MLTK_INSTALL" ]; then
-		tarcopy "/usr/share/mime" "${MODULE_BUILD_DIR}/" || perror "Could not tarcopy /usr/share/mime"
+		tarcopy "/usr/share/mime" "${MODULE_BUILD_DIR}/"
 	fi
 }
