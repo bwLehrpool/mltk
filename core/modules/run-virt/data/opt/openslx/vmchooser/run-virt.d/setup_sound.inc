@@ -15,10 +15,26 @@ setup_sound() {
 		# Read
 		local VOL=${VOLUME_EXCEPTIONS["${HW_MANUF}//${HW_MODEL}"]}
 	fi
-	
+
 	# Default to maximum volume
 	notempty VOL || VOL="100%"
-	
+
+	if ! check_dep pactl || [ "$(amixer | grep -c '^Simple mixer' )" -gt 3 ]; then
+		check_dep amixer && set_sound_alsa
+	fi
+	if check_dep pactl; then
+		set_sound_pulse
+	fi
+	writelog --quiet "Done setting up volume."
+}
+
+set_sound_pulse() {
+	writelog --quiet "Setting up volume to '$VOL' via pactl..."
+	pactl set-sink-mute @DEFAULT_SINK@ 0
+	pactl set-sink-volume @DEFAULT_SINK@ "$VOL"
+}
+
+set_sound_alsa() {
 	# detecting which card is to be used
 	writelog --quiet "Detecting which sound card to use ..."
 	local PROC="/proc/asound/cards"
@@ -35,7 +51,7 @@ setup_sound() {
 			writelog --quiet "\tNo sound card found."
 			SOUND_CARD_INDEX=0
 		fi
-		SOUND_CARD_COUNT=$(grep -E '^[[:space:]]{0,2}[0-9]+[[:space:]]+' "${PROC}" | wc -l)
+		SOUND_CARD_COUNT="$( grep -E -c '^[[:space:]]{0,2}[0-9]+[[:space:]]+' "${PROC}" )"
 	fi
 	
 	SOUND_CARD_INDEX="$(grep -E -o '[0-9]+' <<<$SOUND_CARD_INDEX)"
@@ -79,14 +95,8 @@ setup_sound() {
 	EOF
 	# fix random static noise when starting vmplayer when module snd_pcsp (not pcspkr) is loaded
 	lsmod | grep -q snd_pcsp && amixer -q -c pcsp sset Master "0%" mute
-	writelog --quiet "Done setting up volume."
 }
 
 ## MAIN ##
-# Sanity checks
-if ! check_dep amixer; then
-	writelog "'amixer' not available, sound will not work!"
-	error_user "Fehler" "Konnte Sound nicht initialisieren! Virtuelle Maschine wird kein Sound haben!"
-else
-	reg_feature_handler "sound" "setup_sound" 
-fi
+reg_feature_handler "sound" "setup_sound"
+:
