@@ -1,5 +1,5 @@
 [General]
-exec=/usr/bin/pavucontrol
-caption=Soundkonfiguration
+exec=/opt/openslx/pvs2/launch-pavucontrol.sh
+caption=Sound-Konfiguration
 tooltip=Startet pavucontrol
 type=menu
