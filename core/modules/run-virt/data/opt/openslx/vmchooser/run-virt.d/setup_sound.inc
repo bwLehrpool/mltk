@@ -19,10 +19,12 @@ setup_sound() {
 	# Default to maximum volume
 	notempty VOL || VOL="100%"
 
-	if ! check_dep pactl || [ "$(amixer | grep -c '^Simple mixer' )" -gt 3 ]; then
-		check_dep amixer && set_sound_alsa
+	# If we don't have pulse, or more than three output devices, try to set up alsa
+	if ! command -v pactl > /dev/null || [ "$(amixer | grep -c '^Simple mixer' )" -gt 3 ]; then
+		command -v amixer > /dev/null && set_sound_alsa
 	fi
-	if check_dep pactl; then
+	# pactl exists, assume we're running PA
+	if command -v pactl > /dev/null; then
 		set_sound_pulse
 	fi
 	writelog --quiet "Done setting up volume."
