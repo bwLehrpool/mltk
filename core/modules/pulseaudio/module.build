@@ -1,0 +1,17 @@
+#!/bin/bash
+
+fetch_source() {
+	:
+}
+
+build() {
+	declare -a confs
+	local conf link base
+	readarray -d '' confs < <( find /usr/share/alsa/alsa.conf.d/ -type f -name "*pulse*.example" -print0 )
+	mkdir -p "${MODULE_BUILD_DIR}/usr/share/alsa/alsa.conf.d"
+	for conf in "${confs[@]}"; do
+		base="${$conf##*/}"
+		link="${base%.example}"
+		ln -ns "$base" "${MODULE_BUILD_DIR}/usr/share/alsa/alsa.conf.d/${link}"
+	done
+}

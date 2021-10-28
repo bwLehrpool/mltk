@@ -1,0 +1,7 @@
+#!/bin/bash
+
+REQUIRED_CONTENT_PACKAGES="
+	libasound2-plugins
+	pavucontrol
+	pulseaudio
+"

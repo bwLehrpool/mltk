@@ -1,0 +1,5 @@
+[General]
+exec=/usr/bin/pavucontrol
+caption=Soundkonfiguration
+tooltip=Startet pavucontrol
+type=menu
