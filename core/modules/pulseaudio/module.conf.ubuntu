@@ -1,7 +1,13 @@
 #!/bin/bash
 
 REQUIRED_CONTENT_PACKAGES="
+	alsa-base
+	alsa-topology-conf
+	libasound2
 	libasound2-plugins
+	libgdk-pixbuf2.0-0
+	libpulse0
 	pavucontrol
 	pulseaudio
+	pulseaudio-utils
 "
