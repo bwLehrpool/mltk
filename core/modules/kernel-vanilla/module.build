@@ -125,9 +125,9 @@ build() {
 		rm -r "${MODULE_BUILD_DIR}/lib/modules" || pwarning "Could not clean old modules."
 	fi
 	make INSTALL_MOD_PATH="${MODULE_BUILD_DIR}" INSTALL_MOD_STRIP=1 modules_install || perror "make modules_install failed in ${MODULE_BUILD_DIR}."
-	cd - 2> /dev/null
 
 	# copy most recent firmware
+	cde "${MODULE_WORK_DIR}"
 	mkdir -p "${MODULE_BUILD_DIR}/lib/firmware"
 	cp -r ./fw/* "${MODULE_BUILD_DIR}/lib/firmware/" || perror "Could not copy linux-firmware to '${MODULE_BUILD_DIR}/lib/firmware/'"
 
