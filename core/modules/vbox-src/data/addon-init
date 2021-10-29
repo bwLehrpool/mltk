@@ -3,6 +3,6 @@
 addgroup --system vboxusers
 
 systemctl daemon-reload
-systemctl start vbox
+systemctl --no-block start vbox
 exit 0
 

@@ -1,6 +1,6 @@
 #!/bin/ash
 
 systemctl daemon-reload
-systemctl start vmware
+systemctl --no-block start vmware
 exit 0
 
