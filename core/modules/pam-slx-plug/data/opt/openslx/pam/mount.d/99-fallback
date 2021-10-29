@@ -88,6 +88,12 @@ if [ -n "$PIDS" ]; then
 	kill -9 $PIDS # Kill any leftovers; No quotes
 fi
 
+# In rare cases we end up with a race condition that leads to two mounts
+while [ "$( grep -c -F " ${PERSISTENT_HOME_DIR} " "/proc/mounts" )" -gt 1 ]; do
+	umount "${PERSISTENT_HOME_DIR}" || break
+	usleep 100000 # 100ms
+done
+
 # Only if SHARE_NO_HOME_WARN is empty or 0
 if [ -z "${SHARE_NO_HOME_WARN%0}" ] && ! isHomeMounted; then
 	LOG_COMBINED=$(mktemp)
