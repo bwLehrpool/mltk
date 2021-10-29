@@ -4,11 +4,31 @@
 
 export UID=`id -u` 2> /dev/null
 
-# If running interactively, then:
-if [ "$PS1" ]; then
+# Stuff we might wanna know
+PWENT=
+[ -n "$UID" ] && PWENT=`getent passwd "$UID"`
+[ -z "$PWENT" ] && [ -n "$USER" ] && PWENT=`getent passwd "$USER"`
+if [ -n "$PWENT" ]; then
+	export USER=`echo "$PWENT" | awk -F ':' '{print $1}'`
+	export GID=`echo "$PWENT" | awk -F ':' '{print $4}'`
+	export HOME=`echo "$PWENT" | awk -F ':' '{print $6}'`
+	export GROUP=`id -gn`
+	export LOGNAME=$USER
+	export HOSTNAME=`hostname`
+fi
+unset PWENT
 
-	if [ "$BASH" ]; then
+# If running interactively, then:
+if [ "${PS1-}" ]; then
+
+	if [ "${BASH-}" ] && [ "$BASH" != "/bin/sh" ]; then
 		export PS1="[\u@\h \W]\\$ "
+		if [ -s /etc/bash.bashrc ]; then
+			. /etc/bash.bashrc
+		fi
+		if [ -s "$HOME/.bashrc" ]; then
+			. "$HOME/.bashrc"
+		fi
 	else
 		if [ "$UID" -eq 0 ]; then
 			export PS1='# '
@@ -22,22 +42,8 @@ if [ "$PS1" ]; then
 	export PAGER='/bin/less'
 	export EDITOR='/bin/vi'
 	export INPUTRC=/etc/inputrc
-	#export DMALLOC_OPTIONS=debug=0x34f47d83,inter=100,log=logfile
 	export TERMINFO='/lib/terminfo'
 
-fi
-
-# Stuff we might wanna know
-PWENT=
-[ -n "$UID" ] && PWENT=`getent passwd "$UID"`
-[ -z "$PWENT" ] && [ -n "$USER" ] && PWENT=`getent passwd "$USER"`
-if [ -n "$PWENT" ]; then
-	export USER=`echo "$PWENT" | awk -F ':' '{print $1}'`
-	export GID=`echo "$PWENT" | awk -F ':' '{print $4}'`
-	export HOME=`echo "$PWENT" | awk -F ':' '{print $6}'`
-	export GROUP=`id -gn`
-	export LOGNAME=$USER
-	export HOSTNAME=`hostname`
 fi
 
 # set TERM to xterm on SSH sessions
@@ -49,12 +55,9 @@ for i in /etc/profile.d/*.sh ; do
 		. "$i"
 	fi
 done
+unset i
 
 # Sourcing /etc/profile.local - please add custom stuff to profile.local
 # as /etc/profile may be overwritten by system updates
 test -s /etc/profile.local && . /etc/profile.local
-
-if [ -s "$HOME/.bashrc" ]; then
-	. "$HOME/.bashrc"
-fi
 
