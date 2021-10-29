@@ -32,7 +32,7 @@ build() {
 		--localstatedir="/var" \
 		-Dsystem=true \
 		-Dtests=disabled \
-		-Ddocs=disabled \
+		-Ddocs=enabled \
 		-Dwireshark_dissector=disabled \
 		-Dstorage_dir=enabled \
 		-Dstorage_disk=enabled \
