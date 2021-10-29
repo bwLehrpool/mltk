@@ -141,8 +141,8 @@ get_link_chain() {
 	
 	# sanity checks
 	[[ "$1" == /* ]] || perror "get_link_chain() requires absolute paths, given: $1"
-	if [ ! -e $1 -a ! -L $1 ]; then
-		perror "'$1' is a link but its target '$LINK_TARGET' is not in '${LOCALSEARCHDIR}'"
+	if [ ! -e "$1" -a ! -L "$1" ]; then
+		perror "get_link_chain: '$1' does not exist"
 	fi
 	local PREFIX=
 	if [ $# == 2 ] ; then
