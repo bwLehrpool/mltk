@@ -1,3 +1,4 @@
 #!/bin/ash
 
+export DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/$(id -u)/bus"
 systemctl --user import-environment DISPLAY DBUS_SESSION_BUS_ADDRESS
