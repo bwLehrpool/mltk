@@ -98,15 +98,20 @@ fi
 
 # Run post-hook if available
 if [ -x "$ADDON_MOUNT_POINT/addon-init" ]; then
-	echo "Running post-append hook"
-	"$ADDON_MOUNT_POINT/addon-init" || \
-		slxlog --echo "addon-setup-init" "Warning: Could not execute addon-init of $ADDON"
+	{
+		echo "Running post-append hook"
+		"$ADDON_MOUNT_POINT/addon-init" \
+			|| slxlog --echo "addon-setup-init" "Warning: Could not execute addon-init of $ADDON"
+		echo "post-append hook completed"
+	} &
 fi
 if ! grep -q -F '/opt/openslx/mnt/stage4' '/proc/mounts'; then
 	echo "Running ldconfig"
 	ldconfig 2> /dev/null || ldconfig.real 2> /dev/null
+	echo "ldconfig completed"
 fi
 
+wait
 echo "Addon initialized."
 exit 0
 
