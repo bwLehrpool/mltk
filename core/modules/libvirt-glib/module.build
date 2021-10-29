@@ -8,9 +8,9 @@ build() {
 	local DSTDIR="${MODULE_BUILD_DIR}"
 	cde "${SRCDIR}"
 
-        # install meson (>= 0.54.0) since packaged version is too old
-		  # Force 0.55 for now: https://github.com/mesonbuild/meson/issues/9472
-        pip3 install "meson==0.55.0"
+	# install meson (>= 0.54.0) since packaged version is too old
+	# Force 0.55 for now: https://github.com/mesonbuild/meson/issues/9472
+	pip3 install "meson==0.55.0"
 
 	local LIBVIRT_SRCDIR="${MODULE_WORK_DIR}/../libvirt-src/src/libvirt"
 	PKG_CONFIG_PATH="${LIBVIRT_SRCDIR}/build/src" meson build \
@@ -20,8 +20,8 @@ build() {
 		--localstatedir="/var" \
 		-Dtests=disabled \
 		-Ddocs=disabled || perror "'meson' failed."
-        ninja -v -C build || perror "'ninja' failed."
-        DESTDIR="${DSTDIR}" ninja -v -C build install || perror "'ninja install' failed."
+	ninja -v -C build || perror "'ninja' failed."
+	DESTDIR="${DSTDIR}" ninja -v -C build install || perror "'ninja install' failed."
 }
 
 post_copy() {
