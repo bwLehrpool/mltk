@@ -5,7 +5,9 @@ fetch_source() {
 }
 
 build() {
-	:
+	if [ -z "$MLTK_INSTALL" ]; then
+		tarcopy "/usr/share/icons/gnome/icon-theme.cache" "${MODULE_BUILD_DIR}/"
+	fi
 }
 
 post_copy() {
