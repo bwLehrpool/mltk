@@ -15,11 +15,6 @@ build() {
 		ln -ns "$base" "${MODULE_BUILD_DIR}/usr/share/alsa/alsa.conf.d/${link}"
 	done
 	if [ -z "$MLTK_INSTALL" ]; then
-		tarcopy "/usr/share/mime" "${MODULE_BUILD_DIR}/"
-		base="$( grep -o -m1 '^.*/gdk-pixbuf-2.0/' "$PKG_CONTENT_FILE" )"
-		if [ -n "$base" ]; then
-			tarcopy "$( find "$base" -type f -name "loaders.cache" )" "${MODULE_BUILD_DIR}/"
-		fi
 		base="$( grep -m1 -F '/pulseaudio.socket' "$PKG_CONTENT_FILE" )"
 		if [ -n "$base" ]; then
 			base="${base%/*}"
@@ -27,6 +22,5 @@ build() {
 			ln -ns "../pulseaudio.socket" \
 				"${MODULE_BUILD_DIR}${base}/sockets.target.wants/pulseaudio.socket"
 		fi
-		tarcopy "/usr/share/icons/gnome/icon-theme.cache" "${MODULE_BUILD_DIR}/"
 	fi
 }

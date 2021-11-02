@@ -3,13 +3,11 @@
 REQUIRED_CONTENT_PACKAGES="
 	alsa-base
 	alsa-topology-conf
-	gnome-icon-theme
 	libasound2
 	libasound2-data
 	libasound2-plugins
-	libgdk-pixbuf2.0-0
 	libpulse0
-	pavucontrol
+	pavucontrol-qt
 	pulseaudio
 	pulseaudio-utils
 "

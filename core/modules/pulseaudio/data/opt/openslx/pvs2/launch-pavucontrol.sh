@@ -1,3 +1,3 @@
 #!/bin/sh
 
-exec /usr/bin/pavucontrol -t 5
+exec /usr/bin/pavucontrol-qt -t 5
