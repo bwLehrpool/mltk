@@ -1,10 +1,19 @@
 #!/bin/bash
 
 fetch_source() {
-	:
+	autoclone
 }
 
 build() {
+	cde src/pavucontrol-slx
+	mkdir build
+	cde build
+	cmake .. || perror "Cmake fail"
+	make || perror "make fail"
+	mkdir -p "${MODULE_BUILD_DIR}/opt/openslx/bin"
+	cp src/pavucontrol-qt "${MODULE_BUILD_DIR}/opt/openslx/bin/pavucontrol-slx" \
+		|| cp src/pavucontrol-slx "${MODULE_BUILD_DIR}/opt/openslx/bin/pavucontrol-slx" \
+		|| perror "Copying binary failed"
 	declare -a confs
 	local conf link base
 	readarray -d '' confs < <( find /usr/share/alsa/alsa.conf.d/ -type f -name "*pulse*.example" -print0 )

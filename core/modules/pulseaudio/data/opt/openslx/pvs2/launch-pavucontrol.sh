@@ -1,3 +1,3 @@
 #!/bin/sh
 
-exec /usr/bin/pavucontrol-qt -t 5
+exec /opt/openslx/bin/pavucontrol-slx -t 5
