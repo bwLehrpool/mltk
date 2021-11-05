@@ -44,6 +44,7 @@ REQUIRED_INSTALLED_PACKAGES="
 	libjpeg-dev
 	libpng-dev
 	libpmem-dev
+	liblzo2-dev
 	libzstd-dev
 	libbz2-dev
 	libfuse3-dev
