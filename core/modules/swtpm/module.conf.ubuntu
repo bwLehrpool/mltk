@@ -1,0 +1,20 @@
+#!/bin/bash
+REQUIRED_INSTALLED_PACKAGES="
+	gcc
+	debhelper
+	expect
+	gawk
+	gnutls-bin
+	gnutls-dev
+	openssl
+	libfuse-dev
+	libglib2.0-dev
+	libjson-glib-dev
+	libseccomp-dev
+	libssl-dev
+	libtasn1-dev
+	libtool
+	net-tools
+	socat
+	softhsm2
+"

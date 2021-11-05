@@ -41,6 +41,7 @@ build() {
 		--enable-vhost-user \
 		--enable-libudev \
 		--enable-brlapi \
+		--enable-tpm \
 		--audio-drv-list="pa alsa" \
 		--enable-modules || perror "'configure' failed."
 	make || perror "'make' failed."

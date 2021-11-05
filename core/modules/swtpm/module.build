@@ -1,0 +1,78 @@
+#!/bin/bash
+fetch_source() {
+	autoclone
+}
+
+build() {
+	local SRCDIR_LIB="${MODULE_WORK_DIR}/src/libtpms"
+	local SRCDIR_BIN="${MODULE_WORK_DIR}/src/swtpm"
+	local DSTDIR="${MODULE_BUILD_DIR}"
+
+	cde "${SRCDIR_LIB}"
+
+	autoreconf --install --force
+
+	./configure \
+		--prefix="/usr" \
+		--with-openssl \
+		--with-tpm2 || perror "'configure' failed."
+	make || perror "'make' failed."
+	DESTDIR="${DSTDIR}" make install || perror "'make install' failed."
+
+	cde "${SRCDIR_BIN}"
+
+	# save original path content before modifying path variable
+	local PATH_OLD="${PATH}"
+
+	# set config paths for additional pkg-config files
+	export PKG_CONFIG_PATH="${DSTDIR}/usr/lib/pkgconfig"
+	# set system root directory for prebuilt headers and libraries, e.g. libvirt-glib
+	export PKG_CONFIG_SYSROOT_DIR="${DSTDIR}"
+	# enable output of all system include directories
+	export PKG_CONFIG_ALLOW_SYSTEM_CFLAGS=1
+	# enable output of all system library directories
+	export PKG_CONFIG_ALLOW_SYSTEM_LIBS=1
+
+	# create custom pkg-config program to patch paths from pkg-build config files in our build directory
+	cat > "${SRCDIR_BIN}/pkg-config" <<-EOF
+		#!/bin/bash
+
+		# unset custom path to avoid call recursion of this custom pkg-config script
+		unset PATH
+
+		# call patched pkg-config wrapper from mltk bin directory
+		exec "${ROOT_DIR}/core/bin/pkg-config.sh" "\${@}"
+	EOF
+	chmod +x "${SRCDIR_BIN}/pkg-config"
+
+	# Remove usage of /usr/bin/env to avoid PATH manipulation attacks
+	sed -i 's/env //' samples/swtpm-create-tpmca samples/swtpm-create-user-config-files.in
+
+	PATH="${SRCDIR}:${PATH}" \
+	autoreconf --install --force
+
+	# overwrite search path to inject custom pkg-config program
+	PATH="${SRCDIR}:${PATH}" \
+	./configure \
+		--prefix="/usr" \
+		--with-cuse \
+		--with-gnutls \
+		--with-seccomp || perror "'configure' failed."
+	make || perror "'make' failed."
+	DESTDIR="${DSTDIR}" make install || perror "'make install' failed."
+
+	rm "${SRCDIR_BIN}/pkg-config"
+
+	# restore old environment so that following pkg-config calls are not modified
+	unset PKG_CONFIG_PATH
+	unset PKG_CONFIG_SYSROOT_DIR
+	unset PKG_CONFIG_ALLOW_SYSTEM_CFLAGS
+	unset PKG_CONFIG_ALLOW_SYSTEM_LIBS
+
+	# restore original path variable
+	export PATH="${PATH_OLD}"
+}
+
+post_copy() {
+	:
+}
