@@ -26,10 +26,10 @@ function pkg_config_process_dir() {
 	local DIR_NON_SYSROOT="${DIR_WTH_SYSROOT##${PKG_CONFIG_SYSROOT_DIR}}"
 
 	if pkg_config_non_empty_dir "${DIR_WTH_SYSROOT}"; then
-		echo -n "${DIR_OPTION}${DIR_WTH_SYSROOT} "
+		echo -n "${DIR_OPTION}${DIR_WTH_SYSROOT}"
 	else
 		if pkg_config_non_empty_dir "${DIR_NON_SYSROOT}"; then
-			echo -n "${DIR_OPTION}${DIR_NON_SYSROOT} "
+			echo -n "${DIR_OPTION}${DIR_NON_SYSROOT}"
 		else
 			[[ "${DIR_WTH_SYSROOT}" == "${DIR_NON_SYSROOT}" ]] && \
 				echo -n "Directory '${DIR_WTH_SYSROOT}' does not exist!" || \
@@ -44,22 +44,24 @@ function pkg_config_process_dir() {
 # Return    : Patched output of the original pkg-config input.
 function pkg_config_patch_sysroot() {
 
+	local OUTPUT_PATCHED=()
+
 	# process all passed parameters
 	for PARAM in "${@}"; do
 		case "${PARAM}" in
 			-I*)
-				pkg_config_process_dir "-I" "${PARAM##-I}"
+				OUTPUT_PATCHED+=("$(pkg_config_process_dir "-I" "${PARAM##-I}")")
 				;;
 			-L*)
-				pkg_config_process_dir "-L" "${PARAM##-L}"
+				OUTPUT_PATCHED+=("$(pkg_config_process_dir "-L" "${PARAM##-L}")")
 				;;
 			*)
-				echo -n "${PARAM} "
+				OUTPUT_PATCHED+=("${PARAM}")
 				;;
 		esac
 	done
 
-	echo
+	echo "${OUTPUT_PATCHED[@]}"
 }
 
 # execute original pkg-config and save output and return code
