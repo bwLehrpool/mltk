@@ -1,4 +1,11 @@
 #!/bin/bash
+
+LIBVIRT_STPM_GRP="libvirt-tpm"
+
+module_init() {
+        groupadd --system "${LIBVIRT_STPM_GRP}"
+}
+
 fetch_source() {
 	autoclone
 }
@@ -60,6 +67,10 @@ build() {
 		--with-seccomp || perror "'configure' failed."
 	make || perror "'make' failed."
 	DESTDIR="${DSTDIR}" make install || perror "'make install' failed."
+
+	# change group and permissions for libvirt-tpm members
+	chgrp "${LIBVIRT_STPM_GRP}" /var/lib/swtpm-localca
+	chmod 775 /var/lib/swtpm-localca
 
 	rm "${SRCDIR_BIN}/pkg-config"
 

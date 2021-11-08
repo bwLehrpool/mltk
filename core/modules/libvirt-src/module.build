@@ -4,11 +4,15 @@ LIBVIRT_QEMU_USR="libvirt-qemu"
 LIBVIRT_QEMU_GRP="kvm"
 LIBVIRT_PTHR_GRP="libvirt-passthrough"
 
+# group to access software TPM module
+# group is already created by swtpm module
+LIBVIRT_STPM_GRP="libvirt-tpm"
+
 module_init() {
 	groupadd --system "${LIBVIRT_QEMU_GRP}"
 	groupadd --system "${LIBVIRT_QEMU_USR}"
 	groupadd --system "${LIBVIRT_PTHR_GRP}"
-	useradd --gid "${LIBVIRT_QEMU_GRP}" --groups "${LIBVIRT_QEMU_USR},${LIBVIRT_PTHR_GRP}" --system \
+	useradd --gid "${LIBVIRT_QEMU_GRP}" --groups "${LIBVIRT_QEMU_USR},${LIBVIRT_PTHR_GRP},${LIBVIRT_STPM_GRP}" --system \
 		--no-create-home --home-dir "/var/lib/libvirt" "${LIBVIRT_QEMU_USR}"
 }
 
