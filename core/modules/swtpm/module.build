@@ -69,8 +69,8 @@ build() {
 	DESTDIR="${DSTDIR}" make install || perror "'make install' failed."
 
 	# change group and permissions for libvirt-tpm members
-	chgrp "${LIBVIRT_STPM_GRP}" /var/lib/swtpm-localca
-	chmod 775 /var/lib/swtpm-localca
+	chgrp "${LIBVIRT_STPM_GRP}" "${DSTDIR}/var/lib/swtpm-localca"
+	chmod 775 "${DSTDIR}/var/lib/swtpm-localca"
 
 	rm "${SRCDIR_BIN}/pkg-config"
 
