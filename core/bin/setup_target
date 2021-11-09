@@ -426,10 +426,11 @@ generate_target_real() {
 	done
 
 	# Run load hook
+	# This will run before installing any packages, which might be required in
+	# some cases
+	declare -A mod_init_done=()
 	for item in $MODULES; do
-		. "${CORE_DIR}/includes/clean_module_funcs.inc" # Clean all hooks, in case the module doesn't define them all
-		. "${MODULE_PATHS["$item"]}/module.build"
-		module_init
+		process_module_init "$item"
 	done
 
 	install_all_packages
@@ -447,6 +448,22 @@ generate_target_real() {
 
 	pinfo "Target completed. Total size: $(du -bsh "${TARGET_BUILD_DIR}" | awk 'END {print $1}')"
 	TOOL_STR=""
+}
+
+process_module_init() {
+	local item="$1"
+	local dep
+	mod_init_done["$item"]=1
+	unset_required_vars
+	. "${MODULE_PATHS["$item"]}/module.conf"
+	for dep in $REQUIRED_MODULES; do
+		[ -n "${MODULE_PATHS["$dep"]}" ] || perror "Module $dep, dependency of $item, not found in target"
+		[ -z "${mod_init_done["$dep"]}" ] && process_module_init "$dep"
+	done
+	. "${CORE_DIR}/includes/clean_module_funcs.inc" # Clean all hooks, in case the module doesn't define them all
+	. "${MODULE_PATHS["$item"]}/module.build"
+	# TODO? We only source the general .conf, not the .conf.distro one... needed for module_init?
+	module_init
 }
 
 process_module() {
