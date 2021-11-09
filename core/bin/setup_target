@@ -78,7 +78,7 @@ install_all_packages () {
 	declare -a missing
 	declare -A packages dupcheck
 	packages=()
-	for module in "${!MODULE_PATHS[@]}"; do
+	for module in $MODULES; do
 		unset_required_vars
 		config="${MODULE_PATHS["$module"]}/module.conf"
 		for file in $SYS_VERSIONS; do
