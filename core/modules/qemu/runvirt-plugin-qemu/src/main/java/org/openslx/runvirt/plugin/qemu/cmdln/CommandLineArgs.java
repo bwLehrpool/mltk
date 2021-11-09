@@ -161,6 +161,16 @@ public class CommandLineArgs
 	}
 
 	/**
+	 * Returns the argument of the command line option {@link CmdLnOption#FIRMWARE}.
+	 * 
+	 * @return argument of the command line option {@link CmdLnOption#FIRMWARE}.
+	 */
+	public String getFirmware()
+	{
+		return this.getArgument( CmdLnOption.FIRMWARE );
+	}
+
+	/**
 	 * Returns the argument of the command line option {@link CmdLnOption#VM_CFGINP}.
 	 * 
 	 * @return argument of the command line option {@link CmdLnOption#VM_CFGINP}.
@@ -427,6 +437,7 @@ public class CommandLineArgs
 		// @formatter:off
 		HELP        ( 'h', "help",        0, "" ),
 		DEBUG       ( 'b', "debug",       1, "Enable or disable debug mode" ),
+		FIRMWARE    ( 'x', "firmware",    1, "Path to QEMU firmware specifications directory" ),
 		VM_CFGINP   ( 'i', "vmcfginp",    1, "File name of an existing and filtered Libvirt domain XML configuration file" ),
 		VM_CFGOUT   ( 'o', "vmcfgout",    1, "File name to output a finalized Libvirt domain XML configuration file" ),
 		VM_NAME     ( 'n', "vmname",      1, "Name for the virtual machine" ),

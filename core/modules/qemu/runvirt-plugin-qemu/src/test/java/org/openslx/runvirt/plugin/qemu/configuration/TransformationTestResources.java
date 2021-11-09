@@ -5,13 +5,12 @@ import java.net.URL;
 
 public class TransformationTestResources
 {
-	private static final String LIBVIRT_PREFIX_PATH = File.separator + "libvirt";
-	private static final String LIBVIRT_PREFIX_PATH_XML = LIBVIRT_PREFIX_PATH + File.separator + "xml";
+	private static final String QEMU_PREFIX_PATH = File.separator + "qemu";
+	private static final String QEMU_PREFIX_PATH_FW = QEMU_PREFIX_PATH + File.separator + "firmware";
 
-	public static File getLibvirtXmlFile( String libvirtXmlFileName )
+	public static String getQemuFirmwareSpecPath()
 	{
-		String libvirtXmlPath = TransformationTestResources.LIBVIRT_PREFIX_PATH_XML + File.separator + libvirtXmlFileName;
-		URL libvirtXml = TransformationTestResources.class.getResource( libvirtXmlPath );
-		return new File( libvirtXml.getFile() );
+		final URL qemuFwSpecPath = TransformationTestResources.class.getResource( QEMU_PREFIX_PATH_FW );
+		return qemuFwSpecPath.getFile();
 	}
 }

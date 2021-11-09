@@ -54,6 +54,9 @@ run_plugin() {
 		writelog "Failed to set up mediated device (Intel GVT-g) for GPU passthrough!"
 	fi
 
+	# set path to QEMU firmware specification files
+	local firmware_path="/usr/share/qemu/firmware"
+
 	# set debug related options
 	if [ "${DEBUG}" = "true" ]; then
 		# write finalized config in debug mode to temporary folder for debugging purposes
@@ -75,6 +78,7 @@ run_plugin() {
 	VIRTCMDOPTS=( "-jar" "${QEMU_PLUGIN_DIR}/runvirt-plugin-qemu.jar" )
 
 	notempty DEBUG             && VIRTCMDOPTS+=( "-debug"       "${DEBUG}" )
+	notempty firmware_path     && VIRTCMDOPTS+=( "-firmware"    "${firmware_path}" )
 	notempty VM_CLEANNAME      && VIRTCMDOPTS+=( "-vmname"      "${VM_CLEANNAME}" )
 	notempty VM_DISPLAYNAME    && VIRTCMDOPTS+=( "-vmdsplname"  "${VM_DISPLAYNAME}" )
 	notempty VM_OS_TYPE        && VIRTCMDOPTS+=( "-vmos"        "${VM_OS_TYPE}" )

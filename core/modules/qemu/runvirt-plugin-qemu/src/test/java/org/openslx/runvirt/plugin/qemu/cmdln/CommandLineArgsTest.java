@@ -142,6 +142,34 @@ public class CommandLineArgsTest
 	}
 
 	@Test
+	@DisplayName( "Test the parsing of the firmware path command line option (short version)" )
+	public void testCmdlnOptionFirmwareShort() throws CommandLineArgsException
+	{
+		final String[] args = {
+				CMDLN_PREFIX_OPTION_SHORT + CmdLnOption.FIRMWARE.getShortOption(),
+				CMDLN_TEST_FILENAME
+		};
+
+		CommandLineArgs cmdLn = new CommandLineArgs( args );
+
+		assertEquals( CMDLN_TEST_FILENAME, cmdLn.getFirmware() );
+	}
+
+	@Test
+	@DisplayName( "Test the parsing of the firmware command line option (long version)" )
+	public void testCmdlnOptionFirmwareLong() throws CommandLineArgsException
+	{
+		final String[] args = {
+				CMDLN_PREFIX_OPTION_LONG + CmdLnOption.FIRMWARE.getLongOption(),
+				CMDLN_TEST_FILENAME
+		};
+
+		CommandLineArgs cmdLn = new CommandLineArgs( args );
+
+		assertEquals( CMDLN_TEST_FILENAME, cmdLn.getFirmware() );
+	}
+
+	@Test
 	@DisplayName( "Test the parsing of the VM configuration input command line option (short version)" )
 	public void testCmdlnOptionVmCfgInpShort() throws CommandLineArgsException
 	{

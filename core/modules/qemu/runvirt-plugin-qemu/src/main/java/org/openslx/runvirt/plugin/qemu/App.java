@@ -25,6 +25,7 @@ import org.openslx.runvirt.plugin.qemu.configuration.TransformationGenericParall
 import org.openslx.runvirt.plugin.qemu.configuration.TransformationSpecificQemuSerialDevices;
 import org.openslx.runvirt.plugin.qemu.configuration.TransformationGenericUuid;
 import org.openslx.runvirt.plugin.qemu.configuration.TransformationSpecificQemuArchitecture;
+import org.openslx.runvirt.plugin.qemu.configuration.TransformationSpecificQemuFirmware;
 import org.openslx.runvirt.plugin.qemu.configuration.TransformationSpecificQemuGpuPassthroughNvidia;
 import org.openslx.runvirt.plugin.qemu.configuration.TransformationSpecificQemuGraphics;
 import org.openslx.runvirt.plugin.qemu.configuration.TransformationSpecificQemuMdevPassthroughIntel;
@@ -147,6 +148,7 @@ public class App
 			final LibvirtHypervisorQemu hypervisorQemu = LibvirtHypervisorQemu.class.cast( hypervisor );
 
 			transformationManager.register( new TransformationSpecificQemuArchitecture( hypervisorQemu ), true );
+			transformationManager.register( new TransformationSpecificQemuFirmware( hypervisorQemu ), true );
 			transformationManager.register( new TransformationSpecificQemuGraphics( hypervisorQemu ), true );
 			transformationManager.register( new TransformationSpecificQemuSerialDevices( hypervisorQemu ), true );
 			transformationManager.register( new TransformationSpecificQemuMdevPassthroughIntel( hypervisorQemu ), false );

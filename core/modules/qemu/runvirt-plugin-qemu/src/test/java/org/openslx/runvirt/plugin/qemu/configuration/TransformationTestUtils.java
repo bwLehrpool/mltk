@@ -15,6 +15,7 @@ import org.openslx.runvirt.plugin.qemu.cmdln.CommandLineArgsTest;
 public class TransformationTestUtils
 {
 	// @formatter:off
+	public static final String DEFAULT_FW_PATH      = TransformationTestResources.getQemuFirmwareSpecPath();
 	public static final String DEFAULT_VM_NAME      = "archlinux";
 	public static final String DEFAULT_VM_UUID      = "4ec504d5-5eac-482f-a344-dbf1dd4956c8";
 	public static final String DEFAULT_VM_DSPLNAME  = "Archlinux";
@@ -40,6 +41,8 @@ public class TransformationTestUtils
 	// @formatter:on
 
 	private static final String[] DEFAULT_CMDLN_ARGS = {
+			CommandLineArgsTest.CMDLN_PREFIX_OPTION_LONG + CmdLnOption.FIRMWARE.getLongOption(),
+			TransformationTestUtils.DEFAULT_FW_PATH,
 			CommandLineArgsTest.CMDLN_PREFIX_OPTION_LONG + CmdLnOption.VM_NAME.getLongOption(),
 			TransformationTestUtils.DEFAULT_VM_NAME,
 			CommandLineArgsTest.CMDLN_PREFIX_OPTION_LONG + CmdLnOption.VM_UUID.getLongOption(),
