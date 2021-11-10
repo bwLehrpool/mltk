@@ -66,9 +66,10 @@ public class TransformationGenericDiskStorageDevices extends TransformationGener
 		if ( disk == null ) {
 			if ( fileName != null && !fileName.isEmpty() ) {
 				// storage device does not exist, so create new storage device
+				final BusType devBusType = BusType.VIRTIO;
+				final String targetDevName = VirtualizationConfigurationQemuUtils.createDeviceName( config, devBusType );
 				final DiskFloppy newDisk = config.addDiskFloppyDevice();
-				newDisk.setBusType( BusType.VIRTIO );
-				String targetDevName = VirtualizationConfigurationQemuUtils.createAlphabeticalDeviceName( "vd", index );
+				newDisk.setBusType( devBusType );
 				newDisk.setTargetDevice( targetDevName );
 				newDisk.setStorage( StorageType.FILE, fileName );
 			}

@@ -111,9 +111,10 @@ public class TransformationGenericDiskCdromDevices extends TransformationGeneric
 		if ( disk == null ) {
 			if ( fileName != null ) {
 				// CDROM drive does not exist, so create new CDROM drive
+				final BusType devBusType = BusType.SATA;
+				final String targetDevName = VirtualizationConfigurationQemuUtils.createDeviceName( config, devBusType );
 				final DiskCdrom newDisk = config.addDiskCdromDevice();
-				newDisk.setBusType( BusType.SATA );
-				String targetDevName = VirtualizationConfigurationQemuUtils.createAlphabeticalDeviceName( "sd", index );
+				newDisk.setBusType( devBusType );
 				newDisk.setTargetDevice( targetDevName );
 
 				this.setDiskCdromStorage( newDisk, fileName );

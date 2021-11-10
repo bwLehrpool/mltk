@@ -62,9 +62,10 @@ public class TransformationGenericDiskFloppyDevices extends TransformationGeneri
 		if ( disk == null ) {
 			if ( fileName != null ) {
 				// floppy device does not exist, so create new floppy device
+				final BusType devBusType = BusType.FDC;
+				final String targetDevName = VirtualizationConfigurationQemuUtils.createDeviceName( config, devBusType );
 				final DiskFloppy newDisk = config.addDiskFloppyDevice();
-				newDisk.setBusType( BusType.FDC );
-				String targetDevName = VirtualizationConfigurationQemuUtils.createAlphabeticalDeviceName( "fd", index );
+				newDisk.setBusType( devBusType );
 				newDisk.setTargetDevice( targetDevName );
 
 				if ( fileName.isEmpty() ) {
