@@ -3,7 +3,10 @@ package org.openslx.runvirt.plugin.qemu.configuration;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 
 import org.junit.jupiter.api.DisplayName;
@@ -14,13 +17,36 @@ import org.openslx.libvirt.domain.device.DiskCdrom;
 import org.openslx.runvirt.plugin.qemu.cmdln.CommandLineArgs;
 import org.openslx.virtualization.configuration.transformation.TransformationException;
 
+class TransformationGenericDiskCdromDevicesStub extends TransformationGenericDiskCdromDevices
+{
+	@Override
+	protected BasicFileAttributes getFileAttributes( String fileName )
+	{
+		final BasicFileAttributes fileAttrs;
+
+		if ( fileName.equals( TransformationTestUtils.DEFAULT_VM_CDROM0 ) ) {
+			fileAttrs = mock( BasicFileAttributes.class );
+			when( fileAttrs.isRegularFile() ).thenReturn( false );
+			when( fileAttrs.isOther() ).thenReturn( true );
+		} else if ( fileName.equals( TransformationTestUtils.DEFAULT_VM_CDROM1 ) ) {
+			fileAttrs = mock( BasicFileAttributes.class );
+			when( fileAttrs.isRegularFile() ).thenReturn( true );
+			when( fileAttrs.isOther() ).thenReturn( false );
+		} else {
+			fileAttrs = null;
+		}
+
+		return fileAttrs;
+	}
+}
+
 public class TransformationGenericDiskCdromDevicesTest
 {
 	@Test
 	@DisplayName( "Test transformation of VM disk CDROM devices configuration with specified input data" )
 	public void testTransformationGenericDiskCdromDevices() throws TransformationException
 	{
-		final TransformationGenericDiskCdromDevices transformation = new TransformationGenericDiskCdromDevices();
+		final TransformationGenericDiskCdromDevices transformation = new TransformationGenericDiskCdromDevicesStub();
 		final Domain config = TransformationTestUtils.getDefaultDomain();
 		final CommandLineArgs args = TransformationTestUtils.getDefaultCmdLnArgs();
 
@@ -48,7 +74,7 @@ public class TransformationGenericDiskCdromDevicesTest
 	@DisplayName( "Test transformation of VM disk CDROM devices configuration with unspecified input data" )
 	public void testTransformationGenericDiskCdromDevicesNoData() throws TransformationException
 	{
-		final TransformationGenericDiskCdromDevices transformation = new TransformationGenericDiskCdromDevices();
+		final TransformationGenericDiskCdromDevices transformation = new TransformationGenericDiskCdromDevicesStub();
 		final Domain config = TransformationTestUtils.getDefaultDomain();
 		final CommandLineArgs args = TransformationTestUtils.getEmptyCmdLnArgs();
 

@@ -2,6 +2,7 @@ package org.openslx.runvirt.plugin.qemu.configuration;
 
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.attribute.BasicFileAttributes;
@@ -53,6 +54,28 @@ public class TransformationGenericDiskCdromDevices extends TransformationGeneric
 	}
 
 	/**
+	 * Returns attributes of a file specified by its <i>fileName</i>.
+	 * 
+	 * @param fileName file name of the file
+	 * @return attributes of the specified file.
+	 */
+	protected BasicFileAttributes getFileAttributes( String fileName )
+	{
+		BasicFileAttributes fileAttrs = null;
+
+		try {
+			final Path diskFilePath = Paths.get( fileName );
+			fileAttrs = Files.readAttributes( diskFilePath, BasicFileAttributes.class );
+		} catch ( InvalidPathException e ) {
+			fileAttrs = null;
+		} catch ( IOException e ) {
+			fileAttrs = null;
+		}
+
+		return fileAttrs;
+	}
+
+	/**
 	 * Sets the storage of a CDROM drive from a virtualization configuration.
 	 * 
 	 * @param disk CDROM drive from a virtualization configuration.
@@ -70,15 +93,7 @@ public class TransformationGenericDiskCdromDevices extends TransformationGeneric
 		} else {
 			// set disk image file as storage source of the disk CDROM drive
 			// check before, whether the referenced file is a regular file or a block device file
-			final Path diskFilePath = Paths.get( fileName );
-			BasicFileAttributes diskFileAttrs = null;
-
-			// get file attributes from referenced file
-			try {
-				diskFileAttrs = Files.readAttributes( diskFilePath, BasicFileAttributes.class );
-			} catch ( IOException e ) {
-				diskFileAttrs = null;
-			}
+			final BasicFileAttributes diskFileAttrs = this.getFileAttributes( fileName );
 
 			// set storage type according to the file attributes of the referenced file
 			if ( diskFileAttrs != null ) {
