@@ -3,7 +3,7 @@
 LIBVIRT_STPM_GRP="libvirt-tpm"
 
 module_init() {
-        groupadd --system "${LIBVIRT_STPM_GRP}"
+	groupadd --system "${LIBVIRT_STPM_GRP}"
 }
 
 fetch_source() {

@@ -21,7 +21,7 @@ post_copy() {
 	sed -i 's/^Before=udev/#&/' "${TARGET_BUILD_DIR}"/etc/systemd/system/rsyslog.service
 	
 	# activate the service
-        ln -sf rsyslog.service "${TARGET_BUILD_DIR}"/etc/systemd/system/syslog.service
+	ln -sf rsyslog.service "${TARGET_BUILD_DIR}"/etc/systemd/system/syslog.service
 	[ ! -d "${TARGET_BUILD_DIR}"/etc/systemd/system/basic.target.wants ] && mkdir -p "${TARGET_BUILD_DIR}"/etc/systemd/system/basic.target.wants
 	ln -sf ../syslog.service "${TARGET_BUILD_DIR}"/etc/systemd/system/basic.target.wants/syslog.service
 	# TODO: more checks

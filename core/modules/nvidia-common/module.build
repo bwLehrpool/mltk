@@ -121,7 +121,7 @@ build() {
 				fi
 			done < "${builddir}/supportedchips.html" >> "$drmfile"
 		fi
-		
+
 		rm -rf -- "$destdir"
 	done
 }

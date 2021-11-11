@@ -1,9 +1,9 @@
 #!/bin/bash
 REQUIRED_CONTENT_PACKAGES="
-                                cmake
+	cmake
 "
 
 REQUIRED_INSTALLED_PACKAGES="
-                                cmake
-				zlib-devel
+	cmake
+	zlib-devel
 "
