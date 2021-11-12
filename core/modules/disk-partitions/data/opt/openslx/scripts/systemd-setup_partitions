@@ -254,7 +254,7 @@ if [ -n "$DO_PERSISTENT" ]; then
 		done
 		# awk script to take block count and block size from dumpe2fs output and multiply them to get byte size (bc because awk suxx)
 		fs_size=$(dumpe2fs -h "$PART_DEV" | awk -F: \
-			'BEGIN{a=0;b=0}{if ($1 == "Block count") a=$2; if($1 == "Block size") b=$2;}END{ if (a>0 && b>0) print a "*" b} | bc')
+			'BEGIN{a=0;b=0}{if ($1 == "Block count") a=$2; if($1 == "Block size") b=$2;}END{ if (a>0 && b>0) print a "*" b}' | bc)
 		echo "$PART_DEV has ext4 fs of size $fs_size"
 		if [ -n "$fs_size" ] && (( fs_size > 1000000 )); then
 			# It's ext4, see if partition size was changed offline
