@@ -118,7 +118,7 @@ download_if_empty() {
 # Second syntax is mostly for git servers that don't accept a non-branch when shallow-cloning
 autoclone () {
 	[ -z "$REQUIRED_GIT" ] && return 0
-	local url branch dst dstdir checkout
+	local url branch dst dstdir checkout i
 	if [ -n "$1" ]; then
 		dstdir="$1"
 	else
@@ -137,14 +137,20 @@ autoclone () {
 		dst="${url##*/}"
 		dst="${dst%.git}"
 		pinfo "Cloning $url to $dst"
-		if [ -n "$branch" ]; then
-			git clone --depth 1 -b "$branch" "$url" "$dstdir/$dst" || perror "Could not clone $url branch $branch"
-		else
-			git clone "$url" "$dstdir/$dst" || perror "Could not clone $url"
-			if [ -n "$checkout" ]; then
-				git -C "$dstdir/$dst" checkout "$checkout" || perror "Could not checkout $checkout from $url"
+		for i in {1..3} fail; do
+			[ "$i" = "fail" ] && perror "Could not clone."
+			if [ -n "$branch" ]; then
+				git clone --depth 1 -b "$branch" "$url" "$dstdir/$dst" && break
+				pwarning "[Try $i] Could not clone $url branch $branch"
+			else
+				if ! git clone "$url" "$dstdir/$dst"; then
+					pwarning "[Try $i] Could not clone $url"
+				elif [ -n "$checkout" ]; then
+					git -C "$dstdir/$dst" checkout "$checkout" && break
+					perror "Could not checkout $checkout from $url"
+				fi
 			fi
-		fi
+		done
 		[ -n "$AUTOCLONE_FILE" ] \
 			&& echo "$dst: $( git -C "$dstdir/$dst" rev-parse --abbrev-ref HEAD ) $( git -C "$dstdir/$dst" rev-parse --short HEAD )" \
 			>> "$AUTOCLONE_FILE"
