@@ -18,6 +18,9 @@
 #
 # -----------------------------------------------------------------------------
 
+# DO NOT RENAME/MOVE THIS FILE!
+# The slx-network dracut module checks for its existence
+
 . /opt/openslx/config
 
 declare -rg primary="${SLX_BRIDGE:-br0}"
