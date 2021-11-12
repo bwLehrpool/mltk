@@ -65,9 +65,9 @@ build() {
 	sed -i 's/^libdir=.*$/libdir=\/usr\/lib\/x86_64-linux-gnu/g' "${DSTDIR}/usr/lib64/pkgconfig/libvirt-lxc.pc"
 	sed -i 's/^libdir=.*$/libdir=\/usr\/lib\/x86_64-linux-gnu/g' "${DSTDIR}/usr/lib64/pkgconfig/libvirt-qemu.pc"
 
-	# delete empty run folder to prevent mltk from stopping
+	# delete non-empty run folder to prevent mltk from stopping
 	if [ -d "${DSTDIR}/var/run" ] && ! [ -L "${DSTDIR}/var/run" ]; then
-		rmdir "${DSTDIR}/var/run" || perror "${DSTDIR}/var/run exists and is not empty"
+		rm -rf -- "${DSTDIR}/var/run" || perror "${DSTDIR}/var/run exists could not be killed"
 	fi
 }
 
