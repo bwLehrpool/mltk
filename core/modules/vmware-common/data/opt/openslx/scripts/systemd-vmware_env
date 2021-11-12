@@ -47,7 +47,7 @@ vmnet_create() {
 	fi
 	chmod 0700 "${dev}"
 	# now bring it up
-	if ! /usr/bin/vmnet-netifup -d "/var/run/vmnet-netifup-vmnet${vmnet}.pid" "${dev}" "vmnet${vmnet}" ; then
+	if ! /usr/bin/vmnet-netifup -d "/run/vmnet-netifup-vmnet${vmnet}.pid" "${dev}" "vmnet${vmnet}" ; then
 		slxlog "vmware-netifup" "Launching /usr/bin/vmnet-netifup for vmnet${vmnet} failed."
 	fi
 	ip link set dev "vmnet${vmnet}" up

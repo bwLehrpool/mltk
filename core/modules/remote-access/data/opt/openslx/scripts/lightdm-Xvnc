@@ -1,4 +1,4 @@
 #!/bin/sh
 
 # Put xserver-command=<this> in lightdm-*.conf
-exec Xtigervnc :0 -rfbauth /root/.vnc/passwd -auth /var/run/lightdm/root/:0 -SecurityTypes VncAuth -geometry 1024x768 > /tmp/sasasa-$$ 2>&1
+exec Xtigervnc :0 -rfbauth /root/.vnc/passwd -auth /run/lightdm/root/:0 -SecurityTypes VncAuth -geometry 1024x768 > /tmp/sasasa-$$ 2>&1

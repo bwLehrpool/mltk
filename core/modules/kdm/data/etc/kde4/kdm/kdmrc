@@ -1,5 +1,5 @@
 [General]
-PidFile=/var/run/kdm.pid
+PidFile=/run/kdm.pid
 ServerVTs=-7
 # Always spawn :0 (this is the default but it won't hurt)
 StaticServers=:0

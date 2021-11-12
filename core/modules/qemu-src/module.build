@@ -54,7 +54,9 @@ build() {
 	chmod +x "${DSTDIR}/usr/share/qemu/init/qemu-kvm-init"
 
 	# delete empty run folder to prevent mltk from stopping
-	rm -rf "${DSTDIR}/var/run"
+	if [ -d "${DSTDIR}/var/run" ] && ! [ -L "${DSTDIR}/var/run" ]; then
+		rmdir "${DSTDIR}/var/run" || perror "${DSTDIR}/var/run exists and is not empty"
+	fi
 }
 
 post_copy() {

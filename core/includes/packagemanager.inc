@@ -52,13 +52,14 @@ list_content_package() {
 		PACKAGECOMMAND="rpm -ql"
 	fi
 
+	local filter='share/(man|doc)|^(/var)?/run|^/var/log|^/etc/init\.d'
 	if [ -n "$REQUIRED_PACKET_FILES_BLACKLIST" ]; then
 		FILES="$($PACKAGECOMMAND "$PACKAGE" | grep "^/" | \
 			grep -v "$REQUIRED_PACKET_FILES_BLACKLIST" | \
-			grep -v -E 'share/(man|doc)|/var/run|/var/log|/etc/init\.d'; \
+			grep -v -E "$filter"; \
 			echo ":###:${PIPESTATUS[0]}")"
 	else
-		FILES="$($PACKAGECOMMAND "$PACKAGE" | grep "^/" | grep -v -E 'share/(man|doc)|/var/run|/var/log|/etc/init\.d'; echo ":###:${PIPESTATUS[0]}")"
+		FILES="$($PACKAGECOMMAND "$PACKAGE" | grep "^/" | grep -v -E "$filter"; echo ":###:${PIPESTATUS[0]}")"
 	fi
 
 	# ugly hack to get our return value

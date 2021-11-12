@@ -38,7 +38,7 @@ HOTPLUG=$!
 busybox mount -n -t tmpfs -o 'mode=755,size=10m' run "/run"
 busybox mount -n -t tmpfs -o 'mode=755,size=50m' temp "/tmp"
 
-haveged --pidfile /tmp/haveged.pid # Tries to put it in /var/run by default, which doesn't exist so it just dies without any error message :-/
+haveged --pidfile /tmp/haveged.pid # Tries to put it in /run by default, which doesn't exist so it just dies without any error message :-/
 
 # IMPORTANT - check if kernel modules in initrams match kernel version
 BASEDIR="/lib/modules/$(uname -r)/kernel/drivers"
