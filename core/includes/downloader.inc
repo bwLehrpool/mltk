@@ -100,7 +100,7 @@ download_untar () {
 # iff the local file does not exist or is empty.
 # Return 1 if remote file does not exist, 0 otherwise
 download_if_empty() {
-	[ $# -ne 2 ] && perror "download_if_empty: want 2 args, got $# ($@)"
+	[ $# -ne 2 ] && perror "download_if_empty: want 2 args, got $# ($*)"
 	local SRC="$1"
 	local DST="$2"
 	if [ -s "$DST" ]; then
