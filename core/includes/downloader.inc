@@ -148,6 +148,8 @@ autoclone () {
 				elif [ -n "$checkout" ]; then
 					git -C "$dstdir/$dst" checkout "$checkout" && break
 					perror "Could not checkout $checkout from $url"
+				else
+					break
 				fi
 			fi
 		done
