@@ -15,13 +15,19 @@ function process_container_meta()
 	build_context_method=$( jq -r '.build_context_method'  "$CONFDIR/container_meta.json" )
 	if [[ "$build_context_method" == "0" ]]; then
 		writelog "+ container_build_context: dockerfile"
+		export CONTAINER_IMAGE_CONTEXT="DOCKERFILE"
 		export CONTAINER_BUILD_CONTEXT="$CONFDIR/"
 	elif [[ "$build_context_method" == "1" ]]; then
 		writelog "+ container_build_context: git url"
+		export CONTAINER_IMAGE_CONTEXT="GIT_REPO"
 		export CONTAINER_BUILD_CONTEXT=$( jq -r '.build_context_url'  "$CONFDIR/container_meta.json" )
 	elif [[ "$build_context_method" == "2" ]]; then
 		writelog "+ pull public container"
+		export CONTAINER_IMAGE_CONTEXT="CONTAINER_REPO"
 		export CONTAINER_REPO_NAME=$( jq -r '.image_repo'  "$CONFDIR/container_meta.json" )
+	elif [[ "$build_context_method" == "3" ]]; then
+		writelog "+ load docker archive"
+		export CONTAINER_IMAGE_CONTEXT="DOCKER_ARCHIVE"
 	else
 		writelog "+ no proper build_context_method!"
 		cleanexit 1
@@ -33,10 +39,8 @@ function setup_user_container_context()
 {
 	mkdir -p "$USER_CONTAINER_CONTEXT"
 	# init user directory with scripts
-	cp "$DOCKER_PLUGIN_DIR/docker-init" "$USER_CONTAINER_CONTEXT/"
 	cp "$DOCKER_PLUGIN_DIR/remount" "$USER_CONTAINER_CONTEXT/"
 	cp "$DOCKER_PLUGIN_DIR/.bwlp-user-conf" "$USER_CONTAINER_CONFIG"
-	chmod u+x "$USER_CONTAINER_CONTEXT/docker-init"
 	chmod u+x "$USER_CONTAINER_CONTEXT/remount"
 }
 
@@ -46,7 +50,6 @@ function setup_user_container_autostart()
 	# TODO: maybe there is a better way to load and start the container which is used in the current lecture
 	mkdir -p "$HOME/.config/autostart/"
 	cp -f "$DOCKER_PLUGIN_DIR/docker-init.desktop" "$HOME/.config/autostart/"
-	sed -i "s:Exec=:Exec=$USER_CONTAINER_CONTEXT/docker-init:" "$HOME/.config/autostart/docker-init.desktop"
 }
 
 
@@ -60,25 +63,38 @@ function init_user_container_config()
 	process_container_meta
 
 	writelog "+ init USER_CONTAINER_CONFIG: $USER_CONTAINER_CONFIG"
-	sed -i "s#export DOCKER_PLUGIN_DIR=".*"#export DOCKER_PLUGIN_DIR=\"$DOCKER_PLUGIN_DIR\"#" "$USER_CONTAINER_CONFIG"
-	sed -i "s#export DOCKER_INCLUDE_DIR=".*"#export DOCKER_INCLUDE_DIR=\"$DOCKER_INCLUDE_DIR\"#" "$USER_CONTAINER_CONFIG"
-	sed -i "s#export TMPDIR=".*"#export TMPDIR=\"$TMPDIR\"#" "$USER_CONTAINER_CONFIG"
 
-	sed -i "s#export VM_DISKFILE_RO=".*"#export VM_DISKFILE_RO=\"$VM_DISKFILE_RO\"#" "$USER_CONTAINER_CONFIG"
+	echo "export DOCKER_PLUGIN_DIR=\"$DOCKER_PLUGIN_DIR\"" >> "$USER_CONTAINER_CONFIG"
+	echo "export DOCKER_INCLUDE_DIR=\"$DOCKER_INCLUDE_DIR\"" >> "$USER_CONTAINER_CONFIG"
+	echo "export TMPDIR=\"$TMPDIR\"" >> "$USER_CONTAINER_CONFIG"
 
-	sed -i "s#export CONTAINER_REPO_NAME=".*"#export CONTAINER_REPO_NAME=\"$CONTAINER_REPO_NAME\"#" "$USER_CONTAINER_CONFIG"
-	sed -i "s#export CONTAINER_BUILD_CONTEXT=".*"#export CONTAINER_BUILD_CONTEXT=\"$CONTAINER_BUILD_CONTEXT\"#" "$USER_CONTAINER_CONFIG"
-	sed -i "s#export CONTAINER_IMAGE_NAME=".*"#export CONTAINER_IMAGE_NAME=\"$CONTAINER_IMAGE_NAME\"#" "$USER_CONTAINER_CONFIG"
-	sed -i "s#export CONTAINER_RUN_OPTIONS=".*"#export CONTAINER_RUN_OPTIONS=\"$CONTAINER_RUN_OPTIONS\"#" "$USER_CONTAINER_CONFIG"
-	sed -i "s#export CONTAINER_RUN_COMMAND=".*"#export CONTAINER_RUN_COMMAND=\"$CONTAINER_RUN_COMMAND\"#" "$USER_CONTAINER_CONFIG"
+	echo "export VM_DISKFILE_RO=\"$VM_DISKFILE_RO\"" >> "$USER_CONTAINER_CONFIG"
+
+	echo "export CONTAINER_REPO_NAME=\"$CONTAINER_REPO_NAME\"" >> "$USER_CONTAINER_CONFIG"
+	echo "export CONTAINER_BUILD_CONTEXT=\"$CONTAINER_BUILD_CONTEXT\"" >> "$USER_CONTAINER_CONFIG"
+	echo "export CONTAINER_IMAGE_NAME=\"$CONTAINER_IMAGE_NAME\"" >> "$USER_CONTAINER_CONFIG"
+	echo "export CONTAINER_RUN_OPTIONS=\"$CONTAINER_RUN_OPTIONS\"" >> "$USER_CONTAINER_CONFIG"
+	echo "export CONTAINER_RUN_COMMAND=\"$CONTAINER_RUN_COMMAND\"" >> "$USER_CONTAINER_CONFIG"
+	echo "export CONTAINER_IMAGE_CONTEXT=\"$CONTAINER_IMAGE_CONTEXT\"" >> "$USER_CONTAINER_CONFIG"
+
+	# sed -i "s#export DOCKER_PLUGIN_DIR=".*"#export DOCKER_PLUGIN_DIR=\"$DOCKER_PLUGIN_DIR\"#" "$USER_CONTAINER_CONFIG"
+	# sed -i "s#export DOCKER_INCLUDE_DIR=".*"#export DOCKER_INCLUDE_DIR=\"$DOCKER_INCLUDE_DIR\"#" "$USER_CONTAINER_CONFIG"
+	# sed -i "s#export TMPDIR=".*"#export TMPDIR=\"$TMPDIR\"#" "$USER_CONTAINER_CONFIG"
+
+	# sed -i "s#export VM_DISKFILE_RO=".*"#export VM_DISKFILE_RO=\"$VM_DISKFILE_RO\"#" "$USER_CONTAINER_CONFIG"
+
+	# sed -i "s#export CONTAINER_REPO_NAME=".*"#export CONTAINER_REPO_NAME=\"$CONTAINER_REPO_NAME\"#" "$USER_CONTAINER_CONFIG"
+	# sed -i "s#export CONTAINER_BUILD_CONTEXT=".*"#export CONTAINER_BUILD_CONTEXT=\"$CONTAINER_BUILD_CONTEXT\"#" "$USER_CONTAINER_CONFIG"
+	# sed -i "s#export CONTAINER_IMAGE_NAME=".*"#export CONTAINER_IMAGE_NAME=\"$CONTAINER_IMAGE_NAME\"#" "$USER_CONTAINER_CONFIG"
+	# sed -i "s#export CONTAINER_RUN_OPTIONS=".*"#export CONTAINER_RUN_OPTIONS=\"$CONTAINER_RUN_OPTIONS\"#" "$USER_CONTAINER_CONFIG"
+	# sed -i "s#export CONTAINER_RUN_COMMAND=".*"#export CONTAINER_RUN_COMMAND=\"$CONTAINER_RUN_COMMAND\"#" "$USER_CONTAINER_CONFIG"
 
 	local RUNSCRIPT="$CONFDIR/runscript"
 	# check if runscript file contains more than default line "ext=;visibility=1;soundMuted=-1"
 	if [[ "$( < "$RUNSCRIPT"  wc -l )" -gt "1" ]]; then
-		sed -i "s#export RUNSCRIPT=".*"#export RUNSCRIPT=\"$RUNSCRIPT\"#" "$USER_CONTAINER_CONFIG"
+		echo "export RUNSCRIPT=\"$RUNSCRIPT\"" >> "$USER_CONTAINER_CONFIG"
+		#sed -i "s#export RUNSCRIPT=".*"#export RUNSCRIPT=\"$RUNSCRIPT\"#" "$USER_CONTAINER_CONFIG"
 	fi
-
-	sed -i "s#USER_CONTAINER_CONFIG=".*"#USER_CONTAINER_CONFIG=\"$USER_CONTAINER_CONFIG\"#" "$USER_CONTAINER_CONTEXT/docker-init"
 }
 
 

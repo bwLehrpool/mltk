@@ -1,6 +1,6 @@
 #!/bin/bash
 
-USER_CONTAINER_CONFIG=""
+USER_CONTAINER_CONFIG="$HOME/.local/docker/.bwlp-user-conf"
 
 echo "+ source user_config $USER_CONTAINER_CONFIG"
 source $USER_CONTAINER_CONFIG
@@ -9,11 +9,8 @@ load_image () {
 
 	IMAGE_SIZE=$(stat --printf="%s" $VM_DISKFILE_RO)
 	# check file size of VM_DISKFILE_RO is equals to 4096 = 4kB (because of padding)
-	if [[ $IMAGE_SIZE -eq 4096 ]]; then 
-		echo "+ build container image with build_context"
-		echo "+ docker build --tag $CONTAINER_IMAGE_NAME $CONTAINER_BUILD_CONTEXT"
-		docker build --tag $CONTAINER_IMAGE_NAME $CONTAINER_BUILD_CONTEXT
-	else
+
+	if [[ $CONTAINER_IMAGE_CONTEXT == "DOCKER_ARCHIVE" ]]; then
 		# In this case a pre build container image (tar archive from "docker save ...") 
 		# will be loaded into the local docker daemon. 
 		echo "+ load container image... (please be patient)"
@@ -29,15 +26,151 @@ load_image () {
 		# rename image 
 		docker tag "$REPO_TAG" "$CONTAINER_IMAGE_NAME"
 		rm -f -- "$TMP_FILE"
+	
+	elif [[ "$CONTAINER_IMAGE_CONTEXT" == "DOCKERFILE" || "$CONTAINER_IMAGE_CONTEXT" == "GIT_REPO" ]]; then
+		echo "+ build container image with build_context"
+		echo "+ docker build --tag $CONTAINER_IMAGE_NAME $CONTAINER_BUILD_CONTEXT"
+		docker build --tag $CONTAINER_IMAGE_NAME $CONTAINER_BUILD_CONTEXT
 	fi
 	retval=$?
 	return $retval
 }
 
+function build_container_image() 
+{
+	echo "+ build container image with build_context"
+	echo "+ docker build --tag $CONTAINER_IMAGE_TAG $CONTAINER_IMAGE_BUILD_CONTEXT"
+	docker build --tag $CONTAINER_IMAGE_TAG $CONTAINER_IMAGE_BUILD_CONTEXT
+}
+
+function load_container_image()
+{
+	# load a pre build container image (tar archive from "docker save ...") 
+	# into the local docker daemon. 
+	echo "+ load container image... (please be patient)"
+	# create TMP_FILE for docker load output
+	local TMP_FILE=$(mktemp)
+
+	# TODO no progress output for docker load
+	# load image from tar file
+	pv -cN "Image Transfer" < $DATA_CONTAINER_DNBD3_IMAGE | docker load -q > $TMP_FILE
+	retval=$?
+	echo "+ $(cat $TMP_FILE)"
+	local REPO_TAG=$(head -n 1 $TMP_FILE | cut -d" " -f3)
+	# rename image and remove old tag
+	writelog "docker tag $REPO_TAG $CONTAINER_IMAGE_TAG"
+	docker tag "$REPO_TAG" "$CONTAINER_IMAGE_TAG"
+	docker rmi "$REPO_TAG" > /dev/null
+	rm -f -- "$TMP_FILE"
+	return $retval
+}
+
+function prepare_dnbd3_mount()
+{
+	# prepare dnbd3 mount
+	DATA_CONTAINER_DNBD3_MOUNT="${DATA_CONTAINER_DIR}/dnbd3.fuse"
+	DATA_CONTAINER_DNBD3_LOG="${DATA_CONTAINER_DIR}/dnbd3.log"
+	DATA_CONTAINER_DNBD3_IMAGE="${DATA_CONTAINER_DNBD3_MOUNT}/img"
+
+	mkdir -p $DATA_CONTAINER_DNBD3_MOUNT
+	# check DNBD3_MOUNT dir exists and is not used
+
+	if [[ -d $DATA_CONTAINER_DNBD3_MOUNT ]]; then
+		if [[ -n "$(ls -A $DATA_CONTAINER_DNBD3_MOUNT)" ]]; then
+			writelog "+ mount directory not empty"
+			umount "$DATA_CONTAINER_DNBD3_MOUNT"
+			find "$DATA_CONTAINER_DNBD3_MOUNT" -mindepth 1 -delete
+		fi
+	fi
+
+	source /opt/openslx/config
+	writelog "dnbd3-fuse --host $SLX_DNBD3_SERVERS --image $BWLP_IMAGE_PATH $DATA_CONTAINER_DNBD3_MOUNT"
+	dnbd3-fuse --log $DATA_CONTAINER_DNBD3_LOG  --host "${SLX_DNBD3_SERVERS}" --image $BWLP_IMAGE_PATH $DATA_CONTAINER_DNBD3_MOUNT > /dev/null 2>&1
+	echo "RETVAL $?"
+	if [[ ! -f $DATA_CONTAINER_DNBD3_IMAGE ]]; then
+		writelog "+ -FAIL- dnbd3-fuse failed to mount image"
+		return 1
+	fi
+
+	return 0
+}
+
+
+function prepare_data_volume() 
+{
+	local display_name=$( jq -r '.displayname' ${DATA_CONTAINER_METADATA} )
+
+	echo "+ prepare data container $display_name"
+	local build_context_method=$( jq -r '.build_context_method' ${DATA_CONTAINER_METADATA} )
+	local image_file_size=$( jq -r '.filesize' ${DATA_CONTAINER_METADATA} )
+	if [[ "$build_context_method" == "0" ]]; then
+		writelog "+ container_build_context: dockerfile"
+		CONTAINER_IMAGE_BUILD_CONTEXT="$DATA_CONTAINER_DIR"
+		CONTAINER_IMAGE_TAG="$(echo ${display_name} | tr -dc '[:alnum:]' | tr '[:upper:]' '[:lower:]')"
+		DATA_CONTAINER_IMAGE_NAME=$CONTAINER_IMAGE_TAG
+		build_container_image
+		retval=$?
+	elif [[ "$build_context_method" == "1" ]]; then
+		writelog "+ container_build_context: git url"
+		CONTAINER_IMAGE_BUILD_CONTEXT=$( jq -r '.build_context_url' ${DATA_CONTAINER_METADATA} )
+		CONTAINER_IMAGE_TAG="$(echo ${display_name} | tr -dc '[:alnum:]' | tr '[:upper:]' '[:lower:]')"
+		DATA_CONTAINER_IMAGE_NAME=$CONTAINER_IMAGE_TAG
+		build_container_image
+		retval=$?	
+	elif [[ "$build_context_method" == "2" ]]; then
+		writelog "+ pull data container"
+		DATA_CONTAINER_REPO=$( jq -r '.image_repo' ${DATA_CONTAINER_METADATA} )
+		DATA_CONTAINER_IMAGE_NAME="$DATA_CONTAINER_REPO"
+		docker pull "$DATA_CONTAINER_REPO"
+		retval=$?
+	elif  [[ "$build_context_method" == "3" ]]; then
+		CONTAINER_IMAGE_TAG="$(echo ${display_name} | tr -dc '[:alnum:]' | tr '[:upper:]' '[:lower:]')"
+		DATA_CONTAINER_IMAGE_NAME=$CONTAINER_IMAGE_TAG
+		BWLP_IMAGE_PATH=$( jq -r '.imagepath' ${DATA_CONTAINER_METADATA})
+		prepare_dnbd3_mount && load_container_image
+		retval=$?
+	else
+		writelog "+ no proper build_context_method (=$build_context_method)"
+		return 1
+	fi
+
+	## create the volume
+	if [[ $retval == 0 ]]; then
+		VOLUME_NAME="volume_$(echo ${display_name} | tr -dc '[:alnum:]' | tr '[:upper:]' '[:lower:]')"
+		echo "+ create volume VOLUME_NAME=$VOLUME_NAME"
+		docker volume create $VOLUME_NAME
+		
+		# TODO assumption: every data container stores data at /data/
+		writelog "+ populate volume with container data"
+		writelog "+ docker run -it --rm -v $VOLUME_NAME:/data/ $DATA_CONTAINER_IMAGE_NAME"
+		docker run -itd --rm -v $VOLUME_NAME:/data/ $DATA_CONTAINER_IMAGE_NAME
+		
+		source $DATA_CONTAINER_MOUNT_INFO
+		CONTAINER_BIND_MOUNT_STRING+=" --mount type=volume,source=${VOLUME_NAME},target=$MOUNT_TARGET"
+	fi
+}
+
+function process_volume_mount_info()
+{
+	for DATA_CONTAINER_DIR in $VOLUME_MOUNT_INFO; do
+		echo $DATA_CONTAINER_DIR
+		DATA_CONTAINER_METADATA="${DATA_CONTAINER_DIR}/metadata"
+		DATA_CONTAINER_MOUNT_INFO="${DATA_CONTAINER_DIR}/mount_info"
+
+		prepare_data_volume
+	done
+}
+
+
 main () 
 {
 
-	if [[ -n $CONTAINER_REPO_NAME ]]; then
+	if [[ -n "$VOLUME_MOUNT_INFO" ]]; then
+		echo "+ prepare volumes from data container"
+		process_volume_mount_info
+	fi
+
+	if [[ "$CONTAINER_IMAGE_CONTEXT" == "CONTAINER_REPO" ]]; then
 		echo "pull container $CONTAINER_REPO_NAME"
 		docker pull $CONTAINER_REPO_NAME
 
