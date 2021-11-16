@@ -29,9 +29,21 @@ public class TransformationGenericCpuTest
 
 		transformation.transform( config, args );
 
-		assertEquals( Integer.parseInt( TransformationTestUtils.DEFAULT_VM_NCPUS ), config.getVCpu() );
 		assertEquals( CpuMode.HOST_PASSTHROUGH, config.getCpuMode() );
 		assertEquals( CpuCheck.PARTIAL, config.getCpuCheck() );
+
+		final int numDies = TransformationGenericCpu.CPU_NUM_DIES;
+		final int numSockets = TransformationGenericCpu.CPU_NUM_SOCKETS;
+		final int numCores = Integer.valueOf( TransformationTestUtils.DEFAULT_VM_NCPUS );
+		final int numThreads = TransformationGenericCpu.CPU_NUM_THREADS;
+
+		final int numVCpus = numDies * numSockets * numCores * numThreads;
+
+		assertEquals( numDies, config.getCpuDies() );
+		assertEquals( numSockets, config.getCpuSockets() );
+		assertEquals( numCores, config.getCpuCores() );
+		assertEquals( numThreads, config.getCpuThreads() );
+		assertEquals( numVCpus, config.getVCpu() );
 
 		assertDoesNotThrow( () -> config.validateXml() );
 	}

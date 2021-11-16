@@ -21,6 +21,21 @@ public class TransformationGenericCpu extends TransformationGeneric<Domain, Comm
 	private static final String NAME = "CPU [number of cores, mode, ...]";
 
 	/**
+	 * Number of CPU dies per virtual machine.
+	 */
+	public static final int CPU_NUM_DIES = 1;
+
+	/**
+	 * Number of CPU sockets per virtual machine.
+	 */
+	public static final int CPU_NUM_SOCKETS = 1;
+
+	/**
+	 * Number of threads per virtual machine's CPU.
+	 */
+	public static final int CPU_NUM_THREADS = 1;
+
+	/**
 	 * Creates a new generic CPU transformation for Libvirt/QEMU virtualization configurations.
 	 */
 	public TransformationGenericCpu()
@@ -40,7 +55,7 @@ public class TransformationGenericCpu extends TransformationGeneric<Domain, Comm
 		if ( config == null || args == null ) {
 			throw new TransformationException( "Virtualization configuration or input arguments are missing!" );
 		} else if ( args.getVmNumCpus() < 1 ) {
-			throw new TransformationException( "Invalid number of CPUs specified! Expected a number n > 0!" );
+			throw new TransformationException( "Invalid number of virtual CPUs specified! Expected a number n > 0!" );
 		}
 	}
 
@@ -50,8 +65,19 @@ public class TransformationGenericCpu extends TransformationGeneric<Domain, Comm
 		// validate configuration and input arguments
 		this.validateInputs( config, args );
 
-		config.setVCpu( args.getVmNumCpus() );
+		// set general CPU modes
 		config.setCpuMode( CpuMode.HOST_PASSTHROUGH );
 		config.setCpuCheck( CpuCheck.PARTIAL );
+
+		// set detailed CPU topology
+		config.setCpuDies( TransformationGenericCpu.CPU_NUM_DIES );
+		config.setCpuSockets( TransformationGenericCpu.CPU_NUM_SOCKETS );
+		config.setCpuCores( args.getVmNumCpus() );
+		config.setCpuThreads( TransformationGenericCpu.CPU_NUM_THREADS );
+
+		// set maximum allocated CPUs for the VM
+		final int maxCpus = TransformationGenericCpu.CPU_NUM_DIES * TransformationGenericCpu.CPU_NUM_SOCKETS
+				* args.getVmNumCpus() * TransformationGenericCpu.CPU_NUM_THREADS;
+		config.setVCpu( maxCpus );
 	}
 }
