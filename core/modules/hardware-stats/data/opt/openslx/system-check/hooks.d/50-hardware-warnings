@@ -9,6 +9,6 @@ if [ -n "$1" ]; then
 	exec >> "$1"
 fi
 
-if grep -q '^nouveau ' "/proc/modules"; then
+if lspci -nk | grep -q 'Kernel driver in use: nouveau'; then
 	echo 'slx-gfx-nouveau'
 fi
