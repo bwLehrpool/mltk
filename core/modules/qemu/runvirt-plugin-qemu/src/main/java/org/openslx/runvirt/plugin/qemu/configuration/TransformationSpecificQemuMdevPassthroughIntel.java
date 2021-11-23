@@ -30,6 +30,11 @@ public class TransformationSpecificQemuMdevPassthroughIntel
 	private static final String NAME = "QEMU mediated device passthrough [Intel]";
 
 	/**
+	 * Path to the UEFI rom file for Intel GVT-g instances.
+	 */
+	private static final String INTEL_GVT_G_UEFI_ROMFILE = "/usr/share/qemu/vbios_gvt_uefi.rom";
+
+	/**
 	 * Creates a new Intel mediated device passthrough transformation for Libvirt/QEMU virtualization
 	 * configurations.
 	 * 
@@ -116,6 +121,12 @@ public class TransformationSpecificQemuMdevPassthroughIntel
 			config.addQemuCmdlnArgument( "device.hostdev0.x-igd-opregion=on" );
 			config.addQemuCmdlnArgument( "-set" );
 			config.addQemuCmdlnArgument( "device.hostdev0.driver=vfio-pci-nohotplug" );
+
+			// set Intel specific rom file for GVT-g if UEFI loader is used
+			if ( config.getOsLoader() != null && !config.getOsLoader().isEmpty() ) {
+				config.addQemuCmdlnArgument( "-set" );
+				config.addQemuCmdlnArgument( "device.hostdev0.romfile=" + INTEL_GVT_G_UEFI_ROMFILE );
+			}
 
 			// disable all software video devices by disable them
 			for ( Video videoDevice : config.getVideoDevices() ) {
