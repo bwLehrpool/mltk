@@ -90,11 +90,6 @@
       <scope>compile</scope>
     </dependency>
     <dependency>
-      <groupId>com.google.code.gson</groupId>
-      <artifactId>gson</artifactId>
-      <version>2.8.8</version>
-    </dependency>
-    <dependency>
       <groupId>com.ginsberg</groupId>
       <artifactId>junit5-system-exit</artifactId>
       <version>1.0.0</version>
@@ -232,14 +227,5 @@
         <version>3.0.0</version>
       </plugin>
     </plugins>
-    <testResources>
-		<testResource>
-			<directory>${basedir}/src/test/resources</directory>
-			<includes>
-				<include>libvirt/xml/*</include>
-				<include>qemu/firmware/*</include>
-			</includes>
-		</testResource>
-	</testResources>
   </build>
 </project>

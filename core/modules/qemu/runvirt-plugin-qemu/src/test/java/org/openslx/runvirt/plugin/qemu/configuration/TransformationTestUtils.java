@@ -2,11 +2,9 @@ package org.openslx.runvirt.plugin.qemu.configuration;
 
 import static org.junit.jupiter.api.Assertions.fail;
 
+import org.openslx.firmware.QemuFirmwareTestResources;
 import org.openslx.libvirt.domain.Domain;
-import org.openslx.libvirt.xml.LibvirtXmlDocumentException;
-import org.openslx.libvirt.xml.LibvirtXmlSerializationException;
-import org.openslx.libvirt.xml.LibvirtXmlTestResources;
-import org.openslx.libvirt.xml.LibvirtXmlValidationException;
+import org.openslx.libvirt.domain.DomainTest;
 import org.openslx.runvirt.plugin.qemu.cmdln.CommandLineArgs;
 import org.openslx.runvirt.plugin.qemu.cmdln.CommandLineArgs.CmdLnOption;
 import org.openslx.runvirt.plugin.qemu.cmdln.CommandLineArgsException;
@@ -15,7 +13,7 @@ import org.openslx.runvirt.plugin.qemu.cmdln.CommandLineArgsTest;
 public class TransformationTestUtils
 {
 	// @formatter:off
-	public static final String DEFAULT_FW_PATH      = TransformationTestResources.getQemuFirmwareSpecPath();
+	public static final String DEFAULT_FW_PATH      = QemuFirmwareTestResources.getQemuFirmwareSpecPath();
 	public static final String DEFAULT_VM_NAME      = "archlinux";
 	public static final String DEFAULT_VM_UUID      = "4ec504d5-5eac-482f-a344-dbf1dd4956c8";
 	public static final String DEFAULT_VM_DSPLNAME  = "Archlinux";
@@ -110,16 +108,7 @@ public class TransformationTestUtils
 
 	public static Domain getDomain( String fileName )
 	{
-		Domain domain = null;
-
-		try {
-			domain = new Domain( LibvirtXmlTestResources.getLibvirtXmlStream( fileName ) );
-		} catch ( LibvirtXmlDocumentException | LibvirtXmlSerializationException | LibvirtXmlValidationException e ) {
-			fail( "Cannot prepare requested Libvirt domain XML file from the resources folder: "
-					+ e.getLocalizedMessage() );
-		}
-
-		return domain;
+		return DomainTest.getDomain( fileName );
 	}
 
 	public static Domain getDefaultDomain()
