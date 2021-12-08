@@ -21,6 +21,9 @@ function cleanup_container_mount()
 
 function prepare_container_mount() 
 {
+	# required SLX_PXE_SERVER_IP
+	source "$openslx_config"
+
 	local image_uuid="$BIND_MOUNT_SOURCE"
 	local openslx_config="/opt/openslx/config"
 
@@ -32,17 +35,16 @@ function prepare_container_mount()
 	echo "MOUNT_TARGET=${BIND_MOUNT_TARGET}" > "${data_container_mount_info}"
 	echo "MOUNT_OPTION=${BIND_MOUNT_OPTION}" >> "${data_container_mount_info}"
 
-	# get SLX_PXE_SERVER_IP (sat ip)
-	source "$openslx_config"
-	curl --silent ${SLX_PXE_SERVER_IP}/vmchooser/lecture/${image_uuid}/imagemeta --output "$data_container_metadata"
+	writelog "Request ImageMeta: Server: ${SLX_PXE_SERVER_IP} ImageId: ${image_uuid}"
+	http_code=$(curl --silent --write-out '%{http_code}' ${SLX_PXE_SERVER_IP}/vmchooser/lecture/${image_uuid}/imagemeta --output "$data_container_metadata")
 
-	retval=$?
-	[ "$retval" != "0" ] && writelog "+ request for data container metadata not successful" && return $retval
-
-	if [[ -z "$VOLUME_MOUNT_INFO" ]]; then
-		VOLUME_MOUNT_INFO+="${data_container_dir}"
+	if [ "$http_code" == "200" ]; then
+		writelog "...request success!"
+		VOLUME_MOUNT_INFO+="${data_container_dir} "
+		return 0
 	else
-		VOLUME_MOUNT_INFO+=" ${data_container_dir}"
+		writelog "+ ...request failed!" 
+		return 1 
 	fi
 }
 
@@ -70,7 +72,7 @@ function prepare_default_mount()
 		writelog "+ no bind mount mapping for letter $BIND_MOUNT_SOURCE found!"
 		continue
 	else
-		BIND_MOUNT_STRING+=" --mount type=bind,\\\"source=${NETSHARE_DIR[$BIND_MOUNT_SOURCE]}\\\",target=$BIND_MOUN  T_TARGET"
+		BIND_MOUNT_STRING+=" --mount type=bind,\\\"source=${NETSHARE_DIR[$BIND_MOUNT_SOURCE]}\\\",target=$BIND_MOUNT_TARGET"
 	fi
 }
 
@@ -92,18 +94,16 @@ for (( index=0; index < "$BIND_MOUNT_COUNT"; index++ )); do
 		continue
 	fi
 
-	if [[ -z "$MOUNT_TYPE" || "$MOUNT_TYPE" == "DEFAULT" ]]; then
+	if [[ "$MOUNT_TYPE" == "CONTAINER_IMAGE" ]]; then
+		writelog "+ prepare metadate for data container"
+		prepare_container_mount
+	else
+		# mount_type in json is "DEFAULT" or unset("null")
 		writelog "+ prepare bind mount option with SOURCE=$BIND_MOUNT_SOURCE (label) and target=$BIND_MOUNT_TARGET"
 		prepare_default_mount
 		continue
-	elif [[ "$MOUNT_TYPE" == "CONTAINER_IMAGE" ]]; then
-		writelog "+ prepare docker volume"
-		prepare_container_mount
 	fi
 
-	if [[ -n "$VOLUME_MOUNT_INFO" ]]; then
-		add_cleanup cleanup_gio_mount
-	fi 
 done
 
 if [[ -n "${BIND_MOUNT_STRING}" ]]; then
@@ -112,6 +112,7 @@ if [[ -n "${BIND_MOUNT_STRING}" ]]; then
 fi
 
 if [[ -n "${VOLUME_MOUNT_INFO}" ]]; then
+	add_cleanup cleanup_gio_mount
 	writelog "+ write VOLUME_MOUNT_INFO=${VOLUME_MOUNT_INFO} in config"
 	echo "VOLUME_MOUNT_INFO=\"${VOLUME_MOUNT_INFO}\"" >> ${USER_CONTAINER_CONFIG}
 fi
