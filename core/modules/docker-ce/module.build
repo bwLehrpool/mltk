@@ -1,0 +1,70 @@
+#!/bin/bash
+
+module_init() {
+	local i url sigfile file hash
+	declare -a apts
+	[ "$SYS_DISTRIBUTION" = "ubuntu" ] || [ "$SYS_DISTRIBUTION" = "debian" ] || return 0
+	# Forcefully add docker repo
+	apts=(
+		"https://download.docker.com/linux/${SYS_DISTRIBUTION}/gpg deb [arch=$(dpkg --print-architecture) signed-by=%FILE%] https://download.docker.com/linux/$SYS_DISTRIBUTION $(lsb_release -cs) stable"
+		"https://nvidia.github.io/nvidia-docker/gpgkey https://nvidia.github.io/nvidia-docker/${SYS_DISTRIBUTION}$(lsb_release -rs)/nvidia-docker.list"
+	)
+	for i in "${apts[@]}"; do
+		url="${i%% *}"
+		hash="$( echo "$i" | md5sum | cut -c1-10 )"
+		sigfile="/usr/share/keyrings/docker-${hash}.gpg"
+		[ -s "$sigfile" ] && continue
+		curl -fsSL "$url" | gpg --dearmor -o "$sigfile" \
+			|| perror "Could not download docker gpg key from $url"
+		url="${i#* }"
+		file="/etc/apt/sources.list.d/docker-${hash}.list"
+		[ -s "$file" ] && continue
+		if [[ "${url}" == http* ]]; then
+			download "$url" "$file"
+			sed -i "s/^deb/deb [signed-by=${sigfile}]/" "$file"
+		else
+			echo "${url//%FILE%/$sigfile}" > "$file"
+		fi
+	done
+	apt-get update
+}
+
+build() {
+	local service
+	for service in docker containerd; do
+		systemctl disable "${service}.service" || perror "Could not disable $service"
+	done
+	systemctl enable "docker.socket" || perror "Could not enable docker.socket activation"
+	# Plugin binary
+	download_untar "https://github.com/ad-freiburg/docker-no-trivial-root/releases/download/v0.1.0/docker-no-trivial-root_x86_64.tar.bz2" \
+		"$MODULE_WORK_DIR/src"
+	mkdir -p "$MODULE_BUILD_DIR/usr/sbin"
+	mv "$MODULE_WORK_DIR/src/docker-no-trivial-root_x86_64/docker-no-trivial-root" \
+		"$MODULE_BUILD_DIR/usr/sbin/docker-no-trivial-root" \
+		|| perror "Cannot move docker-no-trivial-root"
+	chmod +x "$MODULE_BUILD_DIR/usr/sbin/docker-no-trivial-root"
+	chown 0:0 "$MODULE_BUILD_DIR/usr/sbin/docker-no-trivial-root"
+	# Patch systemd service
+	mkdir -p "$MODULE_BUILD_DIR/etc/systemd/system"
+	sed -r 's/^(ExecStart=.*dockerd) (.*)$/\1 --authorization-plugin=no-trivial-root \2/' \
+		"/lib/systemd/system/docker.service" > "$MODULE_BUILD_DIR/etc/systemd/system/docker.service" \
+		|| perror "Could not patch docker.service"
+	# That weird range stuff
+	local item
+	for item in subuid subgid; do
+		awk -F: 'BEGIN {
+				max=0
+				found=0
+			} {
+				if ($1=="dockremap")
+					found=1
+				if ($2>max)
+					max=($2)
+				print $0
+			} END {
+				if (!found)
+					print "dockremap:"max+65536":65536"
+			}' "/etc/${item}" > "${MODULE_BUILD_DIR}/etc/${item}" \
+				|| perror "Could not patch /etc/$item"
+	done
+}

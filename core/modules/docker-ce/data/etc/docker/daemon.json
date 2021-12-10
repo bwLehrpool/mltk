@@ -1,0 +1,5 @@
+{
+	"data-root": "/tmp/virt/docker",
+	"storage-driver": "overlay2",
+	"userns-remap": "default"
+}
