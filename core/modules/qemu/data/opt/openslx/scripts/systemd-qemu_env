@@ -47,8 +47,10 @@ if passthrough_mdev_enabled; then
 	fi
 
 	# load required kernel modules for mediated device passthrough
-	modprobe "vfio-mdev" || { slxlog --echo "qemu" "Could not load 'vfio-mdev' kernel modul!"; exit 3; }
-	modprobe "kvmgt" || { slxlog --echo "qemu" "Could not load 'kvmgt' kernel modul!"; exit 4; }
+	modprobe "vfio-mdev" 2> /dev/null \
+		|| modprobe "mdev" \
+		|| { slxlog --echo "qemu" "Could not load vfio mdev kernel module!"; exit 3; }
+	modprobe "kvmgt" || { slxlog --echo "qemu" "Could not load 'kvmgt' kernel module!"; exit 4; }
 
 	# get Intel integrated GPU mediated device for passthrough
 	pt_mdev_device="$(passthrough_mdev_device_get_intel_igd)"
