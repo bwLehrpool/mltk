@@ -274,6 +274,22 @@ setup_graphics() {
 			EOF
 			;;
 	esac
+	local vram max_vram exists
+	# VM_MEM in MB
+	max_vram="$(( (VM_MEM / 4) * 1024 ))"
+	(( max_vram > 2097152 )) && max_vram=2097152
+	vram=$( < "${TMPCONFIG}"  grep -m1 -i '^svga\.graphicsMemoryKB' \
+		| sed -r 's/^[^=]+//;s/^(\s|=|")*//;s/(\s|")+$//' )
+	existing="$vram"
+	if [ -z "$vram" ] || (( vram > max_vram )); then
+		vram="$max_vram"
+	fi
+	(( vram < 131072 )) && vram=131072
+	if [ -z "$existing" ]; then
+		echo 'svga.graphicsMemoryKB = "'"$vram"'"' >> "${TMPCONFIG}"
+	else
+		sed -i 's/^svga\.graphicsMemoryKB.*$/svga.graphicsMemoryKB = "'"$vram"'"/' "${TMPCONFIG}"
+	fi
 	
 	# Killing duplicate lines (output much nicer than sort -u):
 	awk '!a[$0]++' "${TMPCONFIG}" > "${TMPCONFIG}.tmp" && mv -f "${TMPCONFIG}.tmp" "${TMPCONFIG}"
