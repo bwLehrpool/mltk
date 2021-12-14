@@ -31,9 +31,12 @@ setup_sound() {
 }
 
 set_sound_pulse() {
+	local param
 	writelog --quiet "Setting up volume to '$VOL' via pactl..."
-	pactl set-sink-mute @DEFAULT_SINK@ 0
-	pactl set-sink-volume @DEFAULT_SINK@ "$VOL"
+	for param in {0..9} @DEFAULT_SINK@; do
+		pactl set-sink-mute "$param" 0
+		pactl set-sink-volume "$param" "$VOL"
+	done
 }
 
 set_sound_alsa() {
