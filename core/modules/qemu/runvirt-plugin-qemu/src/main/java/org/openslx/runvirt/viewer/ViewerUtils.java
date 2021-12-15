@@ -9,7 +9,8 @@ import org.apache.commons.exec.PumpStreamHandler;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.io.output.ByteArrayOutputStream;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 /**
  * Utils for viewing displays of virtual machines.
@@ -22,7 +23,7 @@ public class ViewerUtils
 	/**
 	 * Reference to the global logger for this class.
 	 */
-	private static final Logger LOGGER = Logger.getLogger( ViewerUtils.class );
+	private static final Logger LOGGER = LogManager.getLogger( ViewerUtils.class );
 
 	/**
 	 * Synchronously executes a viewer program specified by a command line call.
