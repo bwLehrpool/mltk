@@ -67,4 +67,9 @@ build() {
 			}' "/etc/${item}" > "${MODULE_BUILD_DIR}/etc/${item}" \
 				|| perror "Could not patch /etc/$item"
 	done
+	# Workaround for https://github.com/NVIDIA/nvidia-docker/issues/1399
+	mkdir -p "${MODULE_BUILD_DIR}/etc/nvidia-container-runtime"
+	sed -r 's#^ldconfig\s*=.*$#ldconfig = "/sbin/ldconfig"#' "/etc/nvidia-container-runtime/config.toml" \
+		> "${MODULE_BUILD_DIR}/etc/nvidia-container-runtime/config.toml" \
+		|| perror "Could not patch nvidia-container config.toml"
 }
