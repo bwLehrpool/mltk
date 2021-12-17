@@ -37,7 +37,6 @@ public class ViewerUtils
 	 * @return result of the executed viewer program from the standard output.
 	 * @throws ViewerException failed to execute the viewer program.
 	 */
-	@SuppressWarnings( "deprecation" )
 	public static String executeViewer( String viewerProgram, String[] viewerArguments ) throws ViewerException
 	{
 		final CommandLine viewerCommandLine = new CommandLine( viewerProgram );
