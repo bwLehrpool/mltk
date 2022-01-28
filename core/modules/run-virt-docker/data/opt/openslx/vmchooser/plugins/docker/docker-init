@@ -22,9 +22,12 @@ load_image () {
 		pv -cN "Image Transfer" < $VM_DISKFILE_RO | docker load -q > $TMP_FILE
 		echo "+ $(cat $TMP_FILE)"
 
-		local REPO_TAG=$(head -n 1 $TMP_FILE | cut -d" " -f3)
-		# rename image 
-		docker tag "$REPO_TAG" "$CONTAINER_IMAGE_NAME"
+		# repotags in docker-archive optional, so the load output can be
+		# "Loaded image ID: sha256:<DIGES>" OR "Loaded image: <RepoTag>"
+		local repotag=$(head -n 1 $TMP_FILE | awk -F ': ' '{print $2}')
+		# rename image and remove old tag
+		writelog "docker tag $repotag $CONTAINER_IMAGE_NAME"
+		docker tag "$repotag" "$CONTAINER_IMAGE_NAME"
 		rm -f -- "$TMP_FILE"
 	
 	elif [[ "$CONTAINER_IMAGE_CONTEXT" == "DOCKERFILE" || "$CONTAINER_IMAGE_CONTEXT" == "GIT_REPO" ]]; then
@@ -56,11 +59,13 @@ function load_container_image()
 	pv -cN "Image Transfer" < $DATA_CONTAINER_DNBD3_IMAGE | docker load -q > $TMP_FILE
 	retval=$?
 	echo "+ $(cat $TMP_FILE)"
-	local REPO_TAG=$(head -n 1 $TMP_FILE | cut -d" " -f3)
+
+	# repotags in docker-archive optional, so the load output can be
+	# "Loaded image ID: sha256:<DIGES>" OR "Loaded image: <RepoTag>"
+	local repotag=$(head -n 1 $TMP_FILE | awk -F ': ' '{print $2}')
 	# rename image and remove old tag
-	writelog "docker tag $REPO_TAG $CONTAINER_IMAGE_TAG"
-	docker tag "$REPO_TAG" "$CONTAINER_IMAGE_TAG"
-	docker rmi "$REPO_TAG" > /dev/null
+	writelog "docker tag $repotag $CONTAINER_IMAGE_TAG"
+	docker tag "$repotag" "$CONTAINER_IMAGE_TAG"
 	rm -f -- "$TMP_FILE"
 	return $retval
 }
