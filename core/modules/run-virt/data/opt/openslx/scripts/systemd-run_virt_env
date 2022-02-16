@@ -166,6 +166,21 @@ echo "1" >/proc/sys/net/ipv4/conf/nat1/forwarding
 echo "1" >/proc/sys/net/ipv4/conf/br0/forwarding 2>/dev/null
 # iptables masquerade rule is now inserted by /opt/openslx/iptables/rules.d/50-virt-nat1-masquerading
 
+# Whitelist all additionally bridged nics for forwarding
+extra=
+echo "#!/bin/ash" > "/tmp/nic-forward.tmp"
+for nic in /sys/class/net/br-nic-*; do
+	[ -d "$nic" ] || continue
+	extra=1
+	echo "iptables -A FORWARD -i ${nic##*/} -j ACCEPT"
+	echo "iptables -A FORWARD -o ${nic##*/} -j ACCEPT"
+done >> "/tmp/nic-forward.tmp"
+if [ -n "$extra" ]; then
+	chmod +x "/tmp/nic-forward.tmp"
+	mv "/tmp/nic-forward.tmp" "/opt/openslx/iptables/rules.d/10-forward-additional-nics"
+else
+	unlink "/tmp/nic-forward.tmp"
+fi
 
 # creating and configuring vsw2
 brctl addbr vsw2
