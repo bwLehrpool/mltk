@@ -283,7 +283,7 @@ if [ -n "$islocal" ]; then
 	adduser dnbd3 fuse
 	# Start service, is not symlinked when not in proxy mode
 	systemctl --no-block start dnbd3-proxy.service
-	if [ -d /dev/dnbd0 ] && [ "$( cat /sys/block/dnbd0/net/rid )" -gt 0 ]; then
+	if [ -b /dev/dnbd0 ] && [ "$( cat /sys/block/dnbd0/net/rid )" -gt 0 ]; then
 		# give it some time to start
 		usleep 500000
 		# add the server
