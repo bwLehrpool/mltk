@@ -9,4 +9,8 @@ build() {
 
 post_copy() {
 	chmod -R go-rwx "${TARGET_BUILD_DIR}/etc/ssh"
+
+	if [ -n "$MLTK_INSTALL" ] && [ -e "${TARGET_BUILD_DIR}/etc/issue.net" ]; then
+		sed -i "s/Mini/Maxi/g" "${TARGET_BUILD_DIR}/etc/issue.net"
+	fi
 }
