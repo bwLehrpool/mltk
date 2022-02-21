@@ -1,0 +1,10 @@
+[Unit]
+Description=Setup bridges for addition network interfaces
+Wants=systemd-udevd.service
+After=systemd-udev-settle.service systemd-udevd.service
+Before=network.target
+
+[Service]
+Type=oneshot
+ExecStart=/opt/openslx/scripts/systemd-bridge_additional_nics
+RemainAfterExit=true

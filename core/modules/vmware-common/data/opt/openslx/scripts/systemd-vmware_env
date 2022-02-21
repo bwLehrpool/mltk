@@ -66,15 +66,14 @@ vmnetif () {
 		vmnet_create "$vmnet"
 	done
 	# Set the vmware interface to 9000 too, as br0 will use the smallest of all slave devices
-	[ "x$SLX_JUMBO_FRAMES" = "xyes" ] && ip link set dev vmnet0 mtu 9000
+	[ "$SLX_JUMBO_FRAMES" = "yes" ] && ip link set dev vmnet0 mtu 9000
 	# setup bridge (vmnet0), nat (vmnet1) and software defined networking (vmnet2) interfaces
 	brctl addif br0 vmnet0
 	brctl addif nat1 vmnet1
 	brctl addif vsw2 vmnet2
 	# 2) see if we should bridge additional interfaces
-	NICS=
 	if [ "$SLX_BRIDGE_OTHER_NICS" = "yes" ]; then
-		# These will have been set up in our init
+		# These will have been set up in our init, or by bridge-other-nics.service
 		NICS=$( ls -1 /sys/class/net | grep '^br-nic-' | cut -c 8- )
 		vmnet=10
 		for nic in $NICS; do
@@ -88,8 +87,8 @@ vmnetif () {
 			vmnet="$(( vmnet + 1 ))"
 		done
 	fi
-	# Printergui rules etc.
-	systemctl --no-block restart openslx-iptables.service
+	# trigger reload of iptables stuff (it's using inotify)
+	touch /opt/openslx/iptables/rules.d/empty
 }
 
 vmblock () {

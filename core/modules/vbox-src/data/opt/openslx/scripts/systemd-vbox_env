@@ -21,6 +21,8 @@ VBOX_BASE_DIR="/usr/lib/virtualbox"
 VBOX_KMOD_DIR="/lib/modules/vbox"
 VBOX_MANAGE="${VBOX_BASE_DIR}/VBoxManage"
 
+. /opt/openslx/config
+
 # Runtime critical checks first
 # VBoxManage should be under /usr/lib/virtualbox
 if ! [ -d "${VBOX_BASE_DIR}" -o -x "${VBOX_MANAGE}" -o -d "${VBOX_KMOD_DIR}" ]; then
@@ -54,10 +56,11 @@ mkdir -p "/tmp/virt/virtualbox" -m 1777
 # reload udev rules since aufs'ing the layer on top do not trigger its inotify watch
 udevadm control --reload
 
-# pretty dumb you can just create host-only interfaces,
+# pretty dumb, you can only create host-only interfaces,
 # but not assign a specific name/number
 ${VBOX_MANAGE} hostonlyif create
 ip link set dev vboxnet0 up
+[ "$SLX_JUMBO_FRAMES" = "yes" ] && ip link set dev vboxnet0 mtu 9000
 brctl addif br0 vboxnet0
 
 ${VBOX_MANAGE} hostonlyif create
@@ -67,5 +70,24 @@ brctl addif nat1 vboxnet1
 ${VBOX_MANAGE} hostonlyif create
 ip link set dev vboxnet2 up
 brctl addif vsw2 vboxnet2
+
+if [ "$SLX_BRIDGE_OTHER_NICS" = "yes" ]; then
+	# These will have been set up in our init, or by bridge-other-nics.service
+	NICS=$( ls -1 /sys/class/net | grep '^br-nic-' | cut -c 8- )
+	vboxnet=3
+	for nic in $NICS; do
+		if ! [ "$nic" -gt 0 ] && ! [ "$nic" -eq 0 ]; then
+			slxlog "vbox-other-nics" "NaN: br-nic-X has X='$nic'"
+			continue
+		fi
+		# create vboxnet10 - vboxnetN for these
+		${VBOX_MANAGE} hostonlyif create
+		brctl addif "br-nic-${nic}" "vboxnet${vboxnet}"
+		vboxnet="$(( vboxnet + 1 ))"
+	done
+fi
+
+# trigger reload of iptables stuff (it's using inotify)
+touch /opt/openslx/iptables/rules.d/empty
 
 exit 0
