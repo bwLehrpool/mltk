@@ -77,6 +77,7 @@ echo -n "..."
 cp /opt/openslx/config /tmp/udhcpclog /opt/openslx/config.tgz.list \
 	/tmp/xsession-log-* \
 	/tmp/remote_log_check-* \
+	/opt/openslx/pam/slx-ldap.d/* \
 	static/ 2> /dev/null
 echo -n "."
 
@@ -108,6 +109,7 @@ for tool in $TOOLS; do
 	echo -n "."
 done
 
+brctl show > "generated/brctl-show-out" 2> "generated/brctl-show-err"
 ip a > "generated/ip-a-out" 2> "generated/ip-a-err"
 echo -n "."
 
