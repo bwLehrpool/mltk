@@ -37,6 +37,10 @@ cat > /etc/lightdm/qt-lightdm-greeter.conf.d/13-loginrpc.conf <<END
 rpc-port = 7551
 END
 
+if [ "$driver" = "intel" ]; then
+	sed "s/%DRIVER%/${driver}/g" "/opt/openslx/remote-access/xorg-virtual.conf" > "/etc/X11/xorg.conf.d/16-remote-access-${driver}-virtual.conf"
+fi
+
 # Currently the zaphod head solution on intel can create a mysterious
 # problem where the cursor turns into an X and everything stops working
 # disable any warnings and just let the screen enter standby
