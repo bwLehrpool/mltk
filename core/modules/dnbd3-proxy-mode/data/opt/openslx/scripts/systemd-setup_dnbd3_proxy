@@ -27,6 +27,10 @@ if [ "$SLX_RUNMODE_MODULE" != "dnbd3" ]; then
 	mingb="$SLX_DNBD3_MIN_GB"
 fi
 
+# This should never exist at bootup, but to be sure, try to remove it
+# so we don't assume local caching in the dnbd3-server startup script
+rmdir /mnt/dnbd3 2> /dev/null
+
 # Log error to server and local file in /run.
 # The main startup script will check whether this file is > 0 bytes
 # and start in errormsg-mode.
@@ -60,7 +64,7 @@ if ! mkdir -p "${DNBD3_CONF_DIR}"; then
 fi
 
 # We prefer ID45 for storage (if >= 10GB), otherwise
-# fallback to /tmp if it's persistent and >= 10GB.
+# fallback to /tmp if it's not in RAM and >= 10GB.
 # For local caching, /tmp is never used.
 d="/opt/openslx/persistent"
 dsd="$(disksize "$d")"
@@ -283,24 +287,6 @@ if [ -n "$islocal" ]; then
 	adduser dnbd3 fuse
 	# Start service, is not symlinked when not in proxy mode
 	systemctl --no-block start dnbd3-proxy.service
-	if [ -b /dev/dnbd0 ] && [ "$( cat /sys/block/dnbd0/net/rid )" -gt 0 ]; then
-		# give it some time to start
-		usleep 500000
-		# add the server
-		if ! dnbd3-client -A "127.0.0.1:$DNBD3_PORT" -d /dev/dnbd0; then
-			echo "Cannot add localhost to dnbd0" >&2
-		else
-			for i in 1 2 3 4 5 ""; do
-				echo | busybox timeout 1 busybox nc 127.0.0.1 "$DNBD3_PORT" && break
-				echo "port wait fail #$i"
-				[ -z "$i" ] && break
-				sleep 1
-			done
-			if ! dnbd3-client -s "127.0.0.1:$DNBD3_PORT" -d /dev/dnbd0; then
-				echo "Cannot switch dnbd0 to localhost" >&2
-			fi
-		fi
-	fi
 fi
 
 exit 0
