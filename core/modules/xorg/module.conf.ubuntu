@@ -59,13 +59,14 @@ REQUIRED_CONTENT_PACKAGES="
 			xserver-xorg-input-libinput$UBUNTU_XORG_PKG_SUFFIX
 			xserver-xorg-input-synaptics$UBUNTU_XORG_PKG_SUFFIX
 			xserver-xorg-input-wacom$UBUNTU_XORG_PKG_SUFFIX
-			xserver-xorg-video-fbdev$UBUNTU_XORG_PKG_SUFFIX
 			xserver-xorg-video-amdgpu$UBUNTU_XORG_PKG_SUFFIX
-			xserver-xorg-video-radeon$UBUNTU_XORG_PKG_SUFFIX
+			xserver-xorg-video-fbdev$UBUNTU_XORG_PKG_SUFFIX
+			xserver-xorg-video-intel$UBUNTU_XORG_PKG_SUFFIX
 			xserver-xorg-video-nouveau$UBUNTU_XORG_PKG_SUFFIX
+			xserver-xorg-video-qxl$UBUNTU_XORG_PKG_SUFFIX
+			xserver-xorg-video-radeon$UBUNTU_XORG_PKG_SUFFIX
 			xserver-xorg-video-vesa$UBUNTU_XORG_PKG_SUFFIX
 			xserver-xorg-video-vmware$UBUNTU_XORG_PKG_SUFFIX
-			xserver-xorg-video-qxl$UBUNTU_XORG_PKG_SUFFIX
 			@xserver-xorg-input-mouse$UBUNTU_XORG_PKG_SUFFIX
 			@xserver-xorg-video-ati$UBUNTU_XORG_PKG_SUFFIX
 			@xserver-xorg-video-openchrome$UBUNTU_XORG_PKG_SUFFIX
