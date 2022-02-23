@@ -286,7 +286,7 @@ if [ -n "$islocal" ]; then
 	chown dnbd3:dnbd3 /mnt/dnbd3
 	adduser dnbd3 fuse
 	# Start service, is not symlinked when not in proxy mode
-	systemctl --no-block start dnbd3-proxy.service
+	systemctl --no-block start dnbd3-proxy.service dnbd3-local-stage4.service
 fi
 
 exit 0

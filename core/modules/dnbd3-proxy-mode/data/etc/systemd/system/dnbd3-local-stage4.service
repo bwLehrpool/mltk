@@ -1,0 +1,9 @@
+[Unit]
+Description=add local DNBD3 proxy to dnbd0 for caching
+Requires=dnbd3-proxy.service
+After=dnbd3-proxy.service
+
+[Service]
+Type=oneshot
+ExecStart=/opt/openslx/scripts/systemd-dnbd3_local_stage4
+RemainAfterExit=true
