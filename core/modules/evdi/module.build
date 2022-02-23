@@ -1,0 +1,16 @@
+#!/bin/bash
+
+fetch_source() {
+       autoclone
+}
+
+build() {
+       local dir
+       cde "${MODULE_WORK_DIR}/src/evdi/module"
+       make -C "$KERNEL_HEADERS_DIR" M=$(pwd) \
+               || perror "Could not make .ko"
+       dir="${MODULE_BUILD_DIR}/lib/modules/${TARGET_KERNEL_LONG}/extra"
+       mkdir -p "$dir"
+       cp evdi.ko "$dir/" \
+               || perror "Couldnotopcy"
+}
