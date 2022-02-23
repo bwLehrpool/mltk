@@ -38,7 +38,14 @@ rpc-port = 7551
 END
 
 if [ "$driver" = "intel" ]; then
+	# This only works for very old i915 chips that don't support modesetting
 	sed "s/%DRIVER%/${driver}/g" "/opt/openslx/remote-access/xorg-virtual.conf" > "/etc/X11/xorg.conf.d/16-remote-access-${driver}-virtual.conf"
+fi
+# For everything else, we use th evdi kernel module to add a virtual output
+if insmod "/lib/modules/$(uname -r)/kernel/extra/evdi.ko" || modprobe evdi; then
+	echo "evdi virtual display interface loaded"
+else
+	echo "evdi not found. virtual display not available."
 fi
 
 # Currently the zaphod head solution on intel can create a mysterious
