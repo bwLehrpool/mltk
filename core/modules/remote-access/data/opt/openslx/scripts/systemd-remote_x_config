@@ -42,7 +42,8 @@ if [ "$driver" = "intel" ]; then
 	sed "s/%DRIVER%/${driver}/g" "/opt/openslx/remote-access/xorg-virtual.conf" > "/etc/X11/xorg.conf.d/16-remote-access-${driver}-virtual.conf"
 fi
 # For everything else, we use th evdi kernel module to add a virtual output
-if insmod "/lib/modules/$(uname -r)/kernel/extra/evdi.ko" || modprobe evdi; then
+if insmod "/lib/modules/$(uname -r)/kernel/extra/evdi.ko" initial_device_count=1 \
+		|| modprobe evdi; then
 	echo "evdi virtual display interface loaded"
 else
 	echo "evdi not found. virtual display not available."
