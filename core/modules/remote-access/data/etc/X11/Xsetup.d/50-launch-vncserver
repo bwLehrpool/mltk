@@ -29,11 +29,6 @@
 	# dd since busybox head doesn't know -c
 	passwd="$( < /dev/urandom  tr -c -d 'a-zA-Z0-9#&/=()[]{}' | dd bs=8 count=1 status=none )"
 	printf "%s" "$passwd" > "/tmp/vnc-passwd"
-	url="http://${SLX_PXE_SERVER_IP}/slx-admin/api.php?do=remoteaccess"
-	curl -s -S -L --retry 4 --retry-connrefused --max-time 3 --retry-max-time 10 \
-		--data-urlencode "password=$passwd" \
-		--data-urlencode "vncport=$vnc_port" \
-		"$url" > /dev/null
 	(
 		# Make a copy of xauth, so if the xserver restarts, we'll use the old one and fail to connect
 		if [ -n "$XAUTHORITY" ]; then
@@ -60,6 +55,17 @@
 		done
 	) &> "/tmp/x11vnc-log-$$" &
 	vncpid=$!
+	# Delay this a bit until x11vnc is ready, and since we might potentially have had a race
+	# with the ~poweron event, which would reset the password in the database.
+	(
+		url="http://${SLX_PXE_SERVER_IP}/slx-admin/api.php?do=remoteaccess"
+		sleep 6
+		[ -d "/proc/${vncpid}" ] || exit 1 # Something is wrong, bail
+		curl -s -S -L --retry 4 --retry-connrefused --max-time 3 --retry-max-time 10 \
+			--data-urlencode "password=$passwd" \
+			--data-urlencode "vncport=$vnc_port" \
+			"$url" > /dev/null
+	) &
 	gotone=false
 	vmvnc=false
 	idle=0
