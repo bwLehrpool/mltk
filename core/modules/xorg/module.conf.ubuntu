@@ -82,3 +82,6 @@ REQUIRED_CONTENT_PACKAGES="
 			@xserver-xorg-video-s3$UBUNTU_XORG_PKG_SUFFIX
 			@xserver-xorg-video-tdfx$UBUNTU_XORG_PKG_SUFFIX
 "
+REQUIRED_DEB_PACKAGES="
+	https://launchpad.net/~ernstp/+archive/ubuntu/mesarc/+build/23224488/+files/libgl1-mesa-dri_22.0.0~rc3+git2203042220.716ca39489b~f~mesarc5_amd64.deb
+"

@@ -44,6 +44,13 @@ build() {
 			find . -type f -name "*_drv.so" -exec cp {} "${MODULE_BUILD_DIR}/usr/lib/xorg/modules/drivers" \;
 		done
 	fi
+	# Extra .deb packages
+	local deb dir
+	for deb in $REQUIRED_DEB_PACKAGES; do
+		dir="${MODULE_WORK_DIR}/${deb##*/}"
+		download "$deb" "$dir"
+		apt install -y "$dir" || perror "apt install $dir failed."
+	done
 }
 
 post_copy() {
