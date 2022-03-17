@@ -218,8 +218,8 @@ patch_aufs() {
 	if [ "$KERNEL_MAJOR" = "3" ]; then
 		git clone "git://aufs.git.sourceforge.net/gitroot/aufs/${AUFS}-standalone.git" || perror "Cloning ${AUFS} failed."
 	else
-		git clone "git://github.com/sfjro/${AUFS}-standalone.git" || perror "Cloning ${AUFS} failed."
-		#git clone "git://github.com/bnied/${AUFS}-standalone.git" || perror "Cloning ${AUFS} failed."
+		git clone "https://github.com/sfjro/${AUFS}-standalone.git" || perror "Cloning ${AUFS} failed."
+		#git clone "https://github.com/bnied/${AUFS}-standalone.git" || perror "Cloning ${AUFS} failed."
 	fi
 	# get the needed version
 	cde "${MODULE_WORK_DIR}/${AUFS}-standalone"
