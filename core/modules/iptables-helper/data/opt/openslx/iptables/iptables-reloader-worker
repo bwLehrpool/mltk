@@ -72,6 +72,7 @@ reload_rules () {
 	local DISABLED="/opt/openslx/iptables/rules.d/disabled/"
 	for file in /opt/openslx/iptables/rules.d/*; do
 		[ -f "$file" ] || continue
+		[ -s "$file" ] || continue
 		if [ ! -x "$file" ]; then
 			slxlog "firewall-script-exec" "The firewall script '$file' is not executable (+x), moving to disabled/"
 			mkdir -p "$DISABLED"
