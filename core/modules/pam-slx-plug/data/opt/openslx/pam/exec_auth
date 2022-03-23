@@ -7,6 +7,17 @@ read -r USER_PASSWORD > /dev/null 2>&1
 readonly USER_PASSWORD
 [ -z "$USER_PASSWORD" ] && echo "No password given." && exit 1
 
+log() {
+	echo "$*" | systemd-cat -t exec_auth
+}
+
+slxlog=$( which slxlog )
+slxlog() {
+	[ "$1" = "--echo" ] && shift
+	$slxlog "$@"
+	log "$@"
+}
+
 USER_NAME="$PAM_USER"
 readonly PAM_USER
 
@@ -72,7 +83,7 @@ readonly USER_UID REAL_ACCOUNT USER_NAME
 
 # Confirm caps matches!
 if [ "$USER_NAME" != "$PAM_USER" ]; then
-	echo "Capitalization mismatch: '$PAM_USER' vs. '$USER_NAME'" >&2
+	log "Capitalization mismatch: '$PAM_USER' vs. '$USER_NAME'"
 	exit 1
 fi
 

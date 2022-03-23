@@ -84,6 +84,7 @@ run_auth() {
 		sleep "$retries" &> /dev/null # lazy END handling
 	done
 	BINDDN=$(extract_field "dn" "$SEARCH_ANON")
+	log "ldap search for $PAM_USER return code $RET, result $BINDDN"
 	[ -z "$BINDDN" ] && BINDDN=$(extract_field "distinguishedName" "$SEARCH_ANON")
 	[ -z "$BINDDN" ] && return 1
 	# User exists
@@ -135,6 +136,7 @@ run_auth() {
 		esac
 		sleep "$retries"
 	done
+	log "LDAP bind for '$BINDDN' as $PAM_USER returned $RET"
 	[ "$RET" = 0 ] || return 1
 	USER_UID=$(extract_field "uidNumber" "$SEARCH_USER" "$SEARCH_ANON")
 	if [ -z "$USER_UID" ]; then
