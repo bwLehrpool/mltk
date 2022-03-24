@@ -12,15 +12,18 @@ if [ -d "/mnt/dnbd3" ] && [ -b /dev/dnbd0 ] \
 			echo "WARN: Cannot add localhost to dnbd0" >&2
 		fi
 	fi
-	for i in 1 2 3 4 5 6 7; do
-		echo | busybox timeout 1 busybox nc 127.0.0.1 "$DNBD3_PORT" && break
-		echo "WARN: port wait fail #$i"
+	# Call this repeatedly - this will keep resetting the RTT values to
+	# prevent switching away from localhost for some time, which can
+	# sometimes happen during bootup, if the system is so busy that the
+	# local dnbd3 proxy replies slower than some upstream server on the
+	# network, which is not that unlikely if the data is not cached
+	# locally yet.
+	for i in 1 2 4 8 16 32 64 128; do
+		dnbd3-client -s "127.0.0.1:$DNBD3_PORT" -d /dev/dnbd0 &> /dev/null
 		usleep ${i}00000 # tenths of a second
 	done
-	if ! dnbd3-client -s "127.0.0.1:$DNBD3_PORT" -d /dev/dnbd0; then
-		echo "ERROR: Cannot switch dnbd0 to localhost" >&2
-		exit 1
-	fi
+	# One last time without swallowing any errors
+	dnbd3-client -s "127.0.0.1:$DNBD3_PORT" -d /dev/dnbd0
 fi
 
 exit 0
