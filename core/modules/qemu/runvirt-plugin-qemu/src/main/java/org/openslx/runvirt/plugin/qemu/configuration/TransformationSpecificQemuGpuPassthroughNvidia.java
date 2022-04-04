@@ -233,9 +233,11 @@ public class TransformationSpecificQemuGpuPassthroughNvidia
 				config.setFeatureKvmHiddenState( true );
 			}
 
-			// disable all software video devices by disable them
-			for ( Video videoDevice : config.getVideoDevices() ) {
-				videoDevice.disable();
+			// disable all software video devices if device passthrough debug mode is not enabled
+			if ( !args.isDebugDevicePassthroughEnabled() ) {
+				for ( Video videoDevice : config.getVideoDevices() ) {
+					videoDevice.disable();
+				}
 			}
 
 			// force SPICE graphics to listen on local address for looking-glass-client

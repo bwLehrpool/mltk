@@ -142,6 +142,70 @@ public class CommandLineArgsTest
 	}
 
 	@Test
+	@DisplayName( "Test the parsing of the enabled debug device passthrough command line option (short version)" )
+	public void testCmdlnOptionDebugDevicePassthroughEnabledShort() throws CommandLineArgsException
+	{
+		final String[] args = {
+				CMDLN_PREFIX_OPTION_SHORT + CmdLnOption.DEBUG_PTH.getShortOption(),
+				CMDLN_TEST_DEBUG_ON
+		};
+
+		CommandLineArgs cmdLn = new CommandLineArgs( args );
+
+		assertTrue( cmdLn.isDebugDevicePassthroughEnabled() );
+	}
+
+	@Test
+	@DisplayName( "Test the parsing of the enabled debug device passthrough command line option (long version)" )
+	public void testCmdlnOptionDebugDevicePassthroughEnabledLong() throws CommandLineArgsException
+	{
+		final String[] args = {
+				CMDLN_PREFIX_OPTION_LONG + CmdLnOption.DEBUG_PTH.getLongOption(),
+				CMDLN_TEST_DEBUG_ON
+		};
+
+		CommandLineArgs cmdLn = new CommandLineArgs( args );
+
+		assertTrue( cmdLn.isDebugDevicePassthroughEnabled() );
+	}
+
+	@Test
+	@DisplayName( "Test the parsing of the disabled debug device passthrough command line option (short version)" )
+	public void testCmdlnOptionDebugDevicePassthroughDisabledShort() throws CommandLineArgsException
+	{
+		final String[] argsDebugPthOff = {
+				CMDLN_PREFIX_OPTION_SHORT + CmdLnOption.DEBUG_PTH.getShortOption(),
+				CMDLN_TEST_DEBUG_OFF
+		};
+
+		final String[] argsDebugPthMissing = {};
+
+		CommandLineArgs cmdLnDebugPthOff = new CommandLineArgs( argsDebugPthOff );
+		CommandLineArgs cmdLnDebugPthMissing = new CommandLineArgs( argsDebugPthMissing );
+
+		assertFalse( cmdLnDebugPthOff.isDebugDevicePassthroughEnabled() );
+		assertFalse( cmdLnDebugPthMissing.isDebugDevicePassthroughEnabled() );
+	}
+
+	@Test
+	@DisplayName( "Test the parsing of the disabled debug device passthrough command line option (long version)" )
+	public void testCmdlnOptionDebugDevicePasshtroughDisabledLong() throws CommandLineArgsException
+	{
+		final String[] argsDebugPthOff = {
+				CMDLN_PREFIX_OPTION_LONG + CmdLnOption.DEBUG_PTH.getLongOption(),
+				CMDLN_TEST_DEBUG_OFF
+		};
+
+		final String[] argsDebugMissing = {};
+
+		CommandLineArgs cmdLnDebugPthOff = new CommandLineArgs( argsDebugPthOff );
+		CommandLineArgs cmdLnDebugPthMissing = new CommandLineArgs( argsDebugMissing );
+
+		assertFalse( cmdLnDebugPthOff.isDebugDevicePassthroughEnabled() );
+		assertFalse( cmdLnDebugPthMissing.isDebugDevicePassthroughEnabled() );
+	}
+
+	@Test
 	@DisplayName( "Test the parsing of the firmware path command line option (short version)" )
 	public void testCmdlnOptionFirmwareShort() throws CommandLineArgsException
 	{

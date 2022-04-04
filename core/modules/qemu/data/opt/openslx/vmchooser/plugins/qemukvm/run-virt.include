@@ -73,11 +73,15 @@ run_plugin() {
 		gsettings set "${GSETTINGS_SCHEMA_NAME_PREFIX}.vm:${GSETTINGS_SCHEMA_PATH_PREFIX}/vm/" "resize-guest" "1"
 	fi
 
+	# set device passthrough debug mode
+	debug_pth="false"
+
 	# call the Libvirt Java tool to finalize configuration and start VM
 	declare -rg VIRTCMD="java"
 	VIRTCMDOPTS=( "-jar" "${QEMU_PLUGIN_DIR}/runvirt-plugin-qemu.jar" )
 
 	notempty DEBUG             && VIRTCMDOPTS+=( "-debug"       "${DEBUG}" )
+	notempty debug_pth         && VIRTCMDOPTS+=( "-debugpth"    "${debug_pth}" )
 	notempty firmware_path     && VIRTCMDOPTS+=( "-firmware"    "${firmware_path}" )
 	notempty VM_CLEANNAME      && VIRTCMDOPTS+=( "-vmname"      "${VM_CLEANNAME}" )
 	notempty VM_DISPLAYNAME    && VIRTCMDOPTS+=( "-vmdsplname"  "${VM_DISPLAYNAME}" )

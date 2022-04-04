@@ -161,6 +161,17 @@ public class CommandLineArgs
 	}
 
 	/**
+	 * Returns the state of the command line option {@link CmdLnOption#DEBUG_PTH}.
+	 * 
+	 * @return state of the command line option {@link CmdLnOption#DEBUG_PTH}.
+	 */
+	public boolean isDebugDevicePassthroughEnabled()
+	{
+		final String debugArg = this.getArgument( CmdLnOption.DEBUG_PTH );
+		return ( "true".equals( debugArg ) ) ? true : false;
+	}
+
+	/**
 	 * Returns the argument of the command line option {@link CmdLnOption#FIRMWARE}.
 	 * 
 	 * @return argument of the command line option {@link CmdLnOption#FIRMWARE}.
@@ -437,6 +448,7 @@ public class CommandLineArgs
 		// @formatter:off
 		HELP        ( 'h', "help",        0, "" ),
 		DEBUG       ( 'b', "debug",       1, "Enable or disable debug mode" ),
+		DEBUG_PTH   ( 'j', "debugpth",    1, "Enable or disable device passthrough debug mode" ),
 		FIRMWARE    ( 'x', "firmware",    1, "Path to QEMU firmware specifications directory" ),
 		VM_CFGINP   ( 'i', "vmcfginp",    1, "File name of an existing and filtered Libvirt domain XML configuration file" ),
 		VM_CFGOUT   ( 'o', "vmcfgout",    1, "File name to output a finalized Libvirt domain XML configuration file" ),

@@ -199,7 +199,7 @@ public class App
 
 		// create specific viewer to display Libvirt VM
 		final Viewer vmViewer;
-		if ( cmdLn.isNvidiaGpuPassthroughEnabled() ) {
+		if ( cmdLn.isNvidiaGpuPassthroughEnabled() && !cmdLn.isDebugDevicePassthroughEnabled() ) {
 			// viewer for GPU passthrough (framebuffer access) is required
 			vmViewer = new ViewerLookingGlassClient( vm, hypervisor, cmdLn.isDebugEnabled() );
 		} else {

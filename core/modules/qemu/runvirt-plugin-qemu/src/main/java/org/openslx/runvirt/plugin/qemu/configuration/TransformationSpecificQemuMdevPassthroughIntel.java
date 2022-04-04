@@ -128,9 +128,11 @@ public class TransformationSpecificQemuMdevPassthroughIntel
 				config.addQemuCmdlnArgument( "device.hostdev0.romfile=" + INTEL_GVT_G_UEFI_ROMFILE );
 			}
 
-			// disable all software video devices by disable them
-			for ( Video videoDevice : config.getVideoDevices() ) {
-				videoDevice.disable();
+			// disable all software video devices if device passthrough debug mode is not enabled
+			if ( !args.isDebugDevicePassthroughEnabled() ) {
+				for ( Video videoDevice : config.getVideoDevices() ) {
+					videoDevice.disable();
+				}
 			}
 
 			// enable OpenGL on all SPICE graphics devices
