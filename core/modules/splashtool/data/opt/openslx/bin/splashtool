@@ -131,9 +131,9 @@ else
 		ppm="${ppm}.gz"
 	fi
 	if [ "${ppm%.gz}" != "${ppm}" ]; then
-		ppm_size="$( < "$ppm"  zcat | head -n 5 | grep -v '^#' | sed -n 2p )"
+		ppm_size="$( < "$ppm"  zcat | head -n 5 | grep -a -v '^#' | sed -n 2p )"
 	else
-		ppm_size="$( < "$ppm"  head -n 5 | grep -v '^#' | sed -n 2p )"
+		ppm_size="$( < "$ppm"  head -n 5 | grep -a -v '^#' | sed -n 2p )"
 	fi
 	if [ -z "$ppm_size" ]; then
 		echo "Invalid ppm? Could not extract dimensions" >&2
