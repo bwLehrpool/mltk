@@ -129,31 +129,32 @@ echo "$RAM MB RAM"
 # 5) 64bit virtualization support
 #
 VT="UNSUPPORTED"
+CPU_VENDOR=$( grep -m1 '^vendor_id\s*:' /proc/cpuinfo | awk '{print $3}' )
 VIRTTYPE=$(grep -m1 '^flags\s*:' /proc/cpuinfo | grep -wo -e svm -e vmx)
-[ -n "$VIRTTYPE" ] && modprobe msr
-echo "Virtualization technology: $VIRTTYPE"
+[ -n "$CPU_VENDOR" ] && modprobe msr
+echo "CPUID: $CPU_VENDOR"
 
-if [ "$VIRTTYPE" = "vmx" ]; then    # intel
-	BIT1=$(rdmsr --bitfield 0:0 0x3a 2>/dev/null || echo "fail")
-	BIT2=$(rdmsr --bitfield 2:2 0x3a 2>/dev/null || echo "fail")
-	if [ "$BIT1" = "fail" -o "$BIT2" = "fail" ]; then
+if [ "$CPU_VENDOR" = "GenuineIntel" ]; then
+	BIT1="$( rdmsr --bitfield 0:0 0x3a 2>/dev/null || echo "fail" )"
+	BIT2="$( rdmsr --bitfield 2:2 0x3a 2>/dev/null || echo "fail" )"
+	if [ "$BIT1" = "fail" ] || [ "$BIT2" = "fail" ]; then
 		VT="UNKNOWN"
-	elif [ "$BIT1" = "0" -o "$BIT2" = "1" ]; then
-		VT="ENABLED"
-	else
+	elif [ "$BIT1" = "1" ] && [ "$BIT2" = "0" ]; then
 		VT="DISABLED"
+	elif [ "$VIRTTYPE" = "vmx" ]; then
+		VT="ENABLED"
 	fi
-elif [ "$VIRTTYPE" = "svm" ]; then  # amd
-	BIT=$(rdmsr --bitfield 4:4 0xc0010114 2>/dev/null || echo "fail")
+elif [ "$CPU_VENDOR" = "AuthenticAMD" ]; then
+	BIT="$( rdmsr --bitfield 4:4 0xc0010114 2>/dev/null || echo "fail" )"
 	if [ "$BIT" = "fail" ]; then
 		VT="UNKNOWN"
-	elif [ "$BIT" = "0" ]; then
-		VT="ENABLED"
-	else
+	elif [ "$BIT" = "1" ]; then
 		VT="DISABLED"
+	elif [ "$VIRTTYPE" = "svm" ]; then
+		VT="ENABLED"
 	fi
 fi
-echo "$VIRTTYPE is $VT"
+echo "KVM support is $VT"
 
 ################################################################################
 # 6) ID44 partition size
