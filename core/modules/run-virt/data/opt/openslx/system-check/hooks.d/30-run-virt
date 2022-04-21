@@ -15,19 +15,18 @@ elif [ "$HW_KVM" = "UNSUPPORTED" ]; then
 fi
 
 if [ -n "$HW_MBRAM" ] && [ "$HW_MBRAM" -lt 3400 ]; then
-  GB=$(( ( HW_MBRAM + 300 ) / 1024 ))
+	GB=$(( ( HW_MBRAM + 300 ) / 1024 ))
 	echo "slx-virt-lowmemory|${GB}"
 fi
 
-if [ -n "$SLX_VM_NFS" ] && ! systemctl status mount-vm-store >/dev/null; then
+if [ -n "$SLX_VM_NFS" ] && systemctl is-failed mount-vm-store.service; then
 	echo 'slx-virt-vmstore-fail'
 fi
 
-# TODO: when native sessions will be rolled out, we should always
-# check if an ID44 partition is present (to back the base OS).
+# Jambo-specific: They mount an NFS share here, so no ID44 doesn't matter
 if fs_path_ismountpoint /tmp/virt; then
 	exit 0
-fi 
+fi
 
 if [ "$HW_ID44" = "0" ]; then
 	echo 'slx-virt-noid44'
