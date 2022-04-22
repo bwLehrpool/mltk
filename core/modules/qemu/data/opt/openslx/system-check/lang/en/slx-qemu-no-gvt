@@ -1,0 +1,2 @@
+* GVT-g is enabled for this machine, but the CPU doesn't support it.
+  QEMU-VMs will not be able to use accelerated graphics.

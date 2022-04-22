@@ -1,0 +1,5 @@
+#!/bin/ash
+
+if grep -qF enable_gvt=1 /proc/cmdline && dmesg | grep -q "Unsupported.*GVT.*disabled"; then
+	echo "slx-qemu-no-gvt"
+fi

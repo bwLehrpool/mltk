@@ -1,0 +1,2 @@
+* GVT-g ist für diesen Host aktiviert, jedoch unterstützt die CPU diese Funktion nicht.
+  QEMU-VMs werden keine Grafikbeschleunigung nutzen können.
