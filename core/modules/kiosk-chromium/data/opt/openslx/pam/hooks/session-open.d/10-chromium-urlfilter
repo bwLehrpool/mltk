@@ -2,10 +2,9 @@
 #^ SOURCED, actually running in ash
 
 format_urls() {
-	local url scheme host path chost
-	while [ $# -ne 0 ]; do
-		url="$1"
-		shift
+	local url scheme host path chost arr
+	readarray -t -d ' ' arr < <( printf "%s" "$@" )
+	for url in "${arr[@]}"; do
 		# extract scheme and remove it from url if needed
 		scheme="${url%%://*}"
 		if [ "$scheme" != "$url" ]; then
@@ -27,7 +26,9 @@ format_urls() {
 		# transform into chromium syntax
 		# We don't support arbitrary wildcards in the host part
 		chost="${host##*\*}"
-		if [ "$host" != "$chost" ]; then
+		if [ "$host" = "*" ]; then
+			chost="*"
+		elif [ "$host" != "$chost" ]; then
 			# host contains wildcard '*', use everything
 			# after last * in host
 			if [ "${chost:0:1}" = "." ]; then
@@ -64,19 +65,22 @@ main() {
 		rm -f -- "$url_policy_file"
 		return
 	fi
+	if [ -z "$SLX_BROWSER_BLACKLIST" ]; then
+		SLX_BROWSER_BLACKLIST="*"
+	fi
 	# Create file
 	echo "{" > "$url_policy_file"
 	if [ -n "$SLX_BROWSER_BLACKLIST" ]; then
-		echo -e '\tURLBlacklist: ' >> "$url_policy_file"
-		format_urls $SLX_BROWSER_BLACKLIST \
-			| jq -Rs 'rtrimstr("\n") | split("\n")' >> "$url_policy_file"
-		[ -n "$SLX_BROWSER_WHITELIST" ] && echo ',' >> "$url_policy_file"
-	fi
+		echo -e '\t"URLBlocklist": '
+		format_urls "$SLX_BROWSER_BLACKLIST" \
+			| jq -Rs 'rtrimstr("\n") | split("\n")'
+		[ -n "$SLX_BROWSER_WHITELIST" ] && echo ','
+	fi >> "$url_policy_file"
 	if [ -n "$SLX_BROWSER_WHITELIST" ]; then
-		echo -e '\tURLWhitelist: ' >> "$url_policy_file"
-		format_urls $SLX_BROWSER_WHITELIST \
-			| jq -Rs 'rtrimstr("\n") | split("\n")' >> "$url_policy_file"
-	fi
+		echo -e '\t"URLAllowlist": '
+		format_urls "$SLX_BROWSER_WHITELIST" \
+			| jq -Rs 'rtrimstr("\n") | split("\n")'
+	fi >> "$url_policy_file"
 	echo '}' >> "$url_policy_file"
 }
 
@@ -85,3 +89,4 @@ if [ "${PAM_SERVICE//autologin/}" != "$PAM_SERVICE" ] && [ "$PAM_TTY" = ":0" ]; 
 	main
 fi
 true
+
