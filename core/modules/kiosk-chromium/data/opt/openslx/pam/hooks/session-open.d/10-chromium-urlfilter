@@ -1,6 +1,8 @@
 #!/bin/bash
 #^ SOURCED, actually running in ash
 
+# Protip: Comment out while editing, but DO NOT FORGET TO RE-ENABLE
+bash <<"EOF"
 format_urls() {
 	local url scheme host path chost arr
 	readarray -t -d ' ' arr < <( printf "%s" "$@" )
@@ -88,5 +90,6 @@ if [ "${PAM_SERVICE//autologin/}" != "$PAM_SERVICE" ] && [ "$PAM_TTY" = ":0" ]; 
 	# autologin of some sort
 	main
 fi
+EOF
 true
 
