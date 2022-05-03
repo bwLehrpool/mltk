@@ -4,4 +4,5 @@ REQUIRED_CONTENT_PACKAGES="
 	docker-ce
 	docker-ce-cli
 	nvidia-container-toolkit
+	docker-compose
 "
