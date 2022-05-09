@@ -78,6 +78,7 @@ for nic in /sys/class/net/*; do
 	if [ "$SLX_DHCP_OTHER_NICS" = "yes" ]; then
 		# DHCP.
 		echo "Starting DHCP service for ${ifname}..."
+		ip link set dev "${ifname}" up
 		systemctl --no-block start "dhcpc@${ifname}.service"
 	fi
 done
