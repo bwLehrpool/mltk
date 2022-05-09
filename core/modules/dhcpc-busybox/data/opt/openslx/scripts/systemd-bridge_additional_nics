@@ -5,46 +5,81 @@
 
 . /opt/openslx/config
 
-# do nothing if not netbooted
-[ -z "$SLX_PXE_NETIF" ] && exit 0
-# or feature disabled
-[ "$SLX_BRIDGE_OTHER_NICS" != "yes" ] && exit 0
+# hack, should be sent by slx-admin (2022-05-09)
+[ "$SLX_RUNMODE_MODULE" = "dnbd3" ] && SLX_DHCP_OTHER_NICS="yes"
+
+# all features disabled
+[ "$SLX_BRIDGE_OTHER_NICS" != "yes" ] \
+	&& [ "$SLX_DHCP_OTHER_NICS" != "yes" ] \
+	&& exit 0
+
+declare -a slaves
+readarray -s 1 -t slaves < <( brctl show | awk '{print $NF}' )
+
+is_slave() {
+	for i in "${slaves[@]}"; do
+		[ "$i" == "$1" ] && return 0
+	done
+	return 1
+}
 
 declare -g id=1
 for nic in /sys/class/net/*; do
+	ifname="${nic##*/}"
 	# The presence of this symlink pointing to the physical device
-	# seems to be the better way to detect them.
-	[ -h "${nic}/device" ] || continue
-
+	# seems to be a good way to detect real/physical intefaces.
+	if ! [ -h "${nic}/device" ]; then
+		echo "Skipping ${ifname}, not physical NIC"
+		continue
+	fi
 	# do not handle the primary interface
-	[ "$SLX_PXE_NETIF" = "${nic##*/}" ] && continue
-
-	# physical nic found, create a bridge with the same MAC
-	bridge="br-nic-${id}"
-	mac="$(cat "${nic}/address")"
-	if ! [[ $mac =~ ^([0-9a-f]{2}:){5}[0-9a-f]{2}$ ]]; then
-		echo "'$mac' does not seem like a valid MAC address."
+	if [ "$SLX_PXE_NETIF" = "${ifname}" ]; then
+		echo "Skipping ${ifname}, is boot interface"
+		continue
+	fi
+	# already part of a bridge?
+	if is_slave "${ifname}"; then
+		echo "Skipping ${ifname}, already part of a bridge"
 		continue
 	fi
 
-	(
-	set -e
-	brctl addbr "$bridge"
-	brctl stp "$bridge" 0
-	ip link set addr "$mac" "$bridge"
-	ip link set dev "${nic##*/}" up
-	brctl addif "$bridge" "${nic##*/}"
-	ip link set dev "$bridge" up
-	)
-	ret=$?
-	if [ "$ret" != 0 ]; then
-		echo "Failed to setup additional bridge '$bridge' for '$nic'."
-		brctl delbr "$bridge"
-		continue
-	fi
+	if [ "$SLX_BRIDGE_OTHER_NICS" = "yes" ]; then
+		# bridge
+		# create a bridge with the same MAC
+		bridge="br-nic-${id}"
+		echo "Bridging ${ifname} via ${bridge}..."
+		mac="$(cat "${nic}/address")"
+		if ! [[ $mac =~ ^([0-9a-f]{2}:){5}[0-9a-f]{2}$ ]]; then
+			echo "'$mac' does not seem like a valid MAC address." >&2
+			continue
+		fi
 
-	# all fine, increase counter and continue
-	(( id++ ))
+		(
+		set -e
+		brctl addbr "$bridge"
+		brctl stp "$bridge" 0
+		ip link set addr "$mac" "$bridge"
+		ip link set dev "${ifname}" up
+		brctl addif "$bridge" "${ifname}"
+		ip link set dev "$bridge" up
+		)
+		ret=$?
+		if [ "$ret" != 0 ]; then
+			echo "Failed to setup additional bridge '$bridge' for '$ifname'." >&2
+			brctl delbr "$bridge"
+			continue
+		fi
+		# all fine, increase counter
+		(( id++ ))
+		# also, replace ifname with bridge name, in case we do DHCP below
+		ifname="$bridge"
+	fi
+	# DHCP?
+	if [ "$SLX_DHCP_OTHER_NICS" = "yes" ]; then
+		# DHCP.
+		echo "Starting DHCP service for ${ifname}..."
+		systemctl --no-block start "dhcpc@${ifname}.service"
+	fi
 done
 
 exit 0
