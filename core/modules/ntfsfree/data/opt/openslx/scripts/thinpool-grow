@@ -1,6 +1,7 @@
 #!/bin/bash
 
 MODE=
+DO_EXIT=
 case "$1" in
 	--*)
 		MODE="${1:2}"
@@ -31,6 +32,7 @@ if [ "$MODE" = "wait" ]; then
 	}
 
 	debug_submit() {
+		[ -n "$DO_EXIT" ] && return
 		[ -s "$DEBUG_FILE" ] || return
 		slxlog --sync "id44-grow" "ID44 remaining space monitoring" "$DEBUG_FILE"
 		debug_reset
@@ -114,11 +116,17 @@ unlock() {
 	fi
 }
 
+term_hook() {
+	DO_EXIT=1
+	exit 1
+}
+
 exit_hook() {
 	debug_submit
 	[ -n "$HAVE_LOCK" ] && unlock
 }
 
+trap term_hook TERM INT
 trap exit_hook EXIT
 
 # Try to grow via NTFS volume
@@ -314,7 +322,7 @@ elif [ "$MODE" = "wait" ]; then
 	# Listen for dm events which might signal low_watermark hits,
 	# grow if necessary
 	next=
-	while true; do
+	while [ -z "$DO_EXIT" ]; do
 		if lock; then
 			if is_space_running_out; then
 				if do_resize; then
