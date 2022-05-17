@@ -30,7 +30,10 @@ bash <<"HEREDOC"
     done
 
     rm -f -- "$TF" "$XRANDR" "$TMP"
-    curl --data "uuid=$UUID" --data "type=~screens" "${POSTDATA[@]}" "$SLX_REMOTE_LOG"
+    # Note, the report is sent only on the first X startup, and we actually use the event server-side
+    # to determine when we reach the graphical login screen for simple performance measurements, so
+    # keep that in mind if you ever fiddle around here.
+    curl -m 4 -sS --data "uuid=$UUID" --data "type=~screens" "${POSTDATA[@]}" "$SLX_REMOTE_LOG"
 
 HEREDOC
 ) &
