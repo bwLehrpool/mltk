@@ -67,7 +67,8 @@ main() {
 		rm -f -- "$url_policy_file"
 		return
 	fi
-	if [ -z "$SLX_BROWSER_BLACKLIST" ]; then
+	re='^\s*$'
+	if [[ $SLX_BROWSER_BLACKLIST =~ $re ]]; then
 		SLX_BROWSER_BLACKLIST="*"
 	fi
 	# Create file
