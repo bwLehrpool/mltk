@@ -78,6 +78,7 @@ cp /opt/openslx/config /tmp/udhcpclog /opt/openslx/config.tgz.list \
 	/tmp/xsession-log-* \
 	/tmp/remote_log_check-* \
 	/opt/openslx/pam/slx-ldap.d/* \
+	/opt/openslx/vmchooser/config/udhcpd-nat1.conf* \
 	static/ 2> /dev/null
 echo -n "."
 
