@@ -74,12 +74,14 @@ for srv in $SLX_NTP_SERVER 0.de.pool.ntp.org; do
 done
 echo -n "..."
 
-cp /opt/openslx/config /tmp/udhcpclog /opt/openslx/config.tgz.list \
+cp /tmp/udhcpclog /opt/openslx/config.tgz.list \
+	/etc/resolv.conf
 	/tmp/xsession-log-* \
 	/tmp/remote_log_check-* \
 	/opt/openslx/pam/slx-ldap.d/* \
 	/opt/openslx/vmchooser/config/udhcpd-nat1.conf* \
 	static/ 2> /dev/null
+sed -r 's/^([^=]*PASS[^=]*)=.*$/\1=<removed>/' "/opt/openslx/config" > "static/config"
 echo -n "."
 
 for file in /home/*/.xsession-errors; do
