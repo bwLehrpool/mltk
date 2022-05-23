@@ -30,7 +30,7 @@ reload_rules () {
 	done
 
 	# No change? Do nothing...
-	if [ -s "${ALL_RULES}" ] && [ -s "${ALL_RULES}.new" ] && diff "${ALL_RULES}" "${ALL_RULES}.new"; then
+	if [ -s "${ALL_RULES}" ] && [ -s "${ALL_RULES}.new" ] && cmp "${ALL_RULES}" "${ALL_RULES}.new"; then
 		echo "$1 NOCHANGE"
 		rm -rf -- "${ALL_RULES}.new" "$WAIT"
 		exit 0
