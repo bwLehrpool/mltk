@@ -36,6 +36,8 @@ rebuild_resolv_conf () {
 	# Also this will not run resolvconf update.d... No idea if we should still do so...
 	[ -L "/etc/resolv.conf" ] || return 0
 	[ "$(readlink -f "/etc/resolv.conf")" = "${RESOLV_CONF}" ] || return 0
+	# Fake file to merge in search domains from /opt/openslx/config
+	echo "search $SLX_NET_SEARCH" > "/run/network/zzzzz-openslx.resolv"
 	# Use extglob trickery to make sure br0/$primary stuff comes first
 	# Then print them in a first-come-first-served manner.
 	# Print nameserver entries one per line, print only first domain value,
@@ -171,11 +173,11 @@ case "$1" in
 			sed -i "s/^\(SLX_PXE_CLIENT_IP=\).*$/\1'$ip'/" /opt/openslx/config
 			# Write DOMAIN and SEARCH to /opt/openslx/config if empty
 			if [ -z "$SLX_NET_DOMAIN" ] && [ -n "$domain" ]; then
-				sed -i "/^SLX_NET_DOMAIN=/d" /opt/openslx/config
+				sed -i "s/^SLX_NET_DOMAIN=/# &/" /opt/openslx/config
 				echo "SLX_NET_DOMAIN='$domain'" >> /opt/openslx/config
 			fi
 			if [ -z "$SLX_NET_SEARCH" ] && [ -n "$search" ]; then
-				sed -i "/^SLX_NET_SEARCH=/d" /opt/openslx/config
+				sed -i "s/^SLX_NET_SEARCH=/# &/" /opt/openslx/config
 				echo "SLX_NET_SEARCH='$search'" >> /opt/openslx/config
 			fi
 			# Same for WINS servers
