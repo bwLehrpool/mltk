@@ -44,19 +44,22 @@ done
 [ -z "$NTPSRV" ] && NTPSRV="0.0.0.0"
 [ -z "${SLX_NET_WINS}" ] && SLX_NET_WINS=$(getips "$SLX_NET_DOMAIN")
 [ -z "${SLX_NET_WINS}" ] && SLX_NET_WINS="0.0.0.0"
-sed "s#%DNSSERVER%#${SLX_DNS}#;s#%DOMAIN%#${SLX_NET_DOMAIN}#;s#%SEARCH%#${SLX_NET_SEARCH}#;s#%WINS%#${SLX_NET_WINS}#;s#%NTPSERVER%#${NTPSRV}#" "${DHCP_NAT_CONF}.template" > "${DHCP_NAT_CONF}.tmp"
+sed "s#%DNSSERVER%#${SLX_DNS}#;s#%DOMAIN%#${SLX_NET_DOMAIN}#;s#%SEARCH%#${SLX_NET_SEARCH}#;s#%WINS%#${SLX_NET_WINS}#;s#%NTPSERVER%#${NTPSRV}#" "${DHCP_NAT_CONF}.template" > "${DHCP_NAT_CONF}.$$"
 
 # Make sure the primary vm running (we most likely never run more than one at a time anyways) always gets the same ip
-echo "static_lease $(echo "$MACADDRPREFIX:$MACADDRSUFFIX" | sed 's/%VMID%/01/') 192.168.101.20" >> "${DHCP_NAT_CONF}.tmp"
+echo "static_lease $(echo "$MACADDRPREFIX:$MACADDRSUFFIX" | sed 's/%VMID%/01/') 192.168.101.20" >> "${DHCP_NAT_CONF}.$$"
 
 mkdir -p /var/lib/udhcpd
 
-if [ -s "${DHCP_NAT_CONF}" ] && cmp -s "${DHCP_NAT_CONF}.tmp" "${DHCP_NAT_CONF}"; then
-	# Same, nothing to do
-	rm -f -- "${DHCP_NAT_CONF}.tmp"
+if [ -s "${DHCP_NAT_CONF}" ] && cmp -s "${DHCP_NAT_CONF}.$$" "${DHCP_NAT_CONF}"; then
+	# Files are the same, nothing to do
+	rm -f -- "${DHCP_NAT_CONF}.$$"
+elif [ -s "${DHCP_NAT_CONF}" ] && [ "${DHCP_NAT_CONF}.$$" -ot "${DHCP_NAT_CONF}" ]; then
+	# Lost race
+	rm -f -- "${DHCP_NAT_CONF}.$$"
 else
 	# Changed, replace and restart
-	mv -f -- "${DHCP_NAT_CONF}.tmp" "${DHCP_NAT_CONF}"
+	mv -f -- "${DHCP_NAT_CONF}.$$" "${DHCP_NAT_CONF}"
 	echo "NAT1 dhcpd config changed; restarting service..."
 	systemctl --no-block try-restart run-virt-dhcpd.service
 fi
