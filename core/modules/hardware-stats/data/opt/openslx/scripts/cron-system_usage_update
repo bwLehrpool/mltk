@@ -75,7 +75,24 @@ if $full; then
 		# TODO JSON support arrived recently, port after base system is updated from 18.04
 		# Try to get the package id reading, use core temps as fallback
 		set -- "$@" "--data-urlencode" "cputemp=$( sensors | tr 'A-Z' 'a-z' \
-			| awk 'BEGIN{p=0;pc=0;c=0;cc=0} {if ($1 == "package" && substr($4, 1, 1) == "+") {gsub("[^0-9.]", "", $4); p += $4; pc++} if ($1 ~ /^core/ && substr($3, 1, 1) == "+") {gsub("[^0-9.]", "", $3); c += $3; cc++} } END{if (pc > 0) print (p / pc); else if (cc > 0) print (c / cc);}' )"
+			| awk 'BEGIN{p=0;pc=0;c=0;cc=0;tctl=0} {
+					if ($1 == "package" && substr($4, 1, 1) == "+") {
+						gsub("[^0-9.]", "", $4);
+						p += $4;
+						pc++;
+					} else if ($1 ~ /^core/ && substr($3, 1, 1) == "+") {
+						gsub("[^0-9.]", "", $3);
+						c += $3;
+						cc++;
+					} else if ($1 ~ /^tctl:/ && substr($2, 1, 1) == "+") {
+						gsub("[^0-9.]", "", $2);
+						tctl = $2;
+					}
+			} END {
+				if (pc > 0) print (p / pc);
+				else if (cc > 0) print (c / cc);
+				else if (tctl > 0) print (tctl);
+			}' )"
 	fi
 fi
 
