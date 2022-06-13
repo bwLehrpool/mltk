@@ -2,18 +2,16 @@
 
 
 fetch_source() {
-	[ -s "${MODULE_WORK_DIR}/src/driver.zip" ] && return 0
+	[ -s "${MODULE_WORK_DIR}/src/driver.tar.gz" ] && return 0
 	rm -rf -- "${MODULE_WORK_DIR}/src"
 	mkdir -p "${MODULE_WORK_DIR}/src"
-	download "${REQUIRED_ARCHIVE}" "${MODULE_WORK_DIR}/src/driver.zip"
+	download "${REQUIRED_ARCHIVE}" "${MODULE_WORK_DIR}/src/driver.tar.gz"
 }
 
 build() {
 	cde "${MODULE_WORK_DIR}/src/"
-	# Initial archive is zip
-	unzip -j -o "${MODULE_WORK_DIR}/src/driver.zip" || perror "Could not extract initial driver.zip"
 	# Then we have two tgz, 32bit and 64bit
-	tar -x -f *${X86_64_I386}*.tar* --wildcards '*/sic*' || perror "Could not extract binaries from inner tar"
+	tar -x -f driver.tar.gz --wildcards '*/sic*' || perror "Could not extract binaries from inner tar"
 
 	mkdir -p "${MODULE_BUILD_DIR}/usr/bin"
 	find . -name "sic*" -type f -executable -exec cp {} "${MODULE_BUILD_DIR}/usr/bin" \; \
