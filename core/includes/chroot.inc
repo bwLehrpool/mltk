@@ -91,7 +91,7 @@ chroot_prepare_mounts() {
 
 	# Newer kernels (5.x) cannot have upperdir as subdirectory of lowerdir - tmpfs
 	mkdir -p "${CHROOT_TMPFS}"
-	mount -t tmpfs -o size=2G chrootupper "${CHROOT_TMPFS}" || perror "Could not mount tmpfs as upperdir"
+	mount -t tmpfs -o size=4G chrootupper "${CHROOT_TMPFS}" || perror "Could not mount tmpfs as upperdir"
 	mkdir -p "${CHROOT_UPPER_TMPFS}" || perror "Could not create ${CHROOT_UPPER_TMPFS}"
 	rsync -axHAX "${CHROOT_UPPERDIR}/" "${CHROOT_UPPER_TMPFS}/" || perror "Could not put upperdir into upupdir"
 
