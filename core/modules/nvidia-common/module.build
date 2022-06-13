@@ -39,13 +39,21 @@ build() {
 		local KMOD_LOG="/var/log/nvidia-installer.kmod.log"
 		pinfo "Ready to chroot - may take some time."
 		chroot_run "${builddir}" <<-EOF
+		echo "Removing nvidia from /proc/modules so we can build on hosts with nvidia (....)"
+		ln -nfs /usr/bin/true /usr/sbin/lsmod
+		grep -v nvidia /proc/modules > /tmp/modules
+		mount --bind /tmp/modules /proc/modules
+
 		/NVIDIA/nvidia-installer --no-nouveau-check --no-network --no-backup --no-rpms --no-runlevel-check \
 				--no-distro-scripts --no-cc-version-check --no-x-check --no-precompiled-interface --silent \
+				--kernel-modules-only --skip-module-unload --no-kernel-module-source --skip-depmod \
+				--no-nvidia-modprobe \
 				--log-file-name="$KMOD_LOG" --kernel-source-path "/$KERNEL_HEADERS_DIR"
 
 		grep -qE "$KMOD_ERROR" "$KMOD_LOG" \
 			|| /NVIDIA/nvidia-installer --no-nouveau-check --no-network --no-backup --no-rpms --no-runlevel-check \
 				--no-distro-scripts --no-cc-version-check --no-x-check --no-precompiled-interface --silent \
+				--skip-module-unload --no-kernel-module-source --skip-depmod --no-nvidia-modprobe \
 				--no-kernel-module
 
 		exit 0 # Fake it since it will try to load the module and probably fail
