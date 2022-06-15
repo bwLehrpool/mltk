@@ -46,7 +46,7 @@ build() {
 
 		/NVIDIA/nvidia-installer --no-nouveau-check --no-network --no-backup --no-rpms --no-runlevel-check \
 				--no-distro-scripts --no-cc-version-check --no-x-check --no-precompiled-interface --silent \
-				--kernel-modules-only --skip-module-unload --no-kernel-module-source --skip-depmod \
+				--skip-module-unload --no-kernel-module-source --skip-depmod \
 				--no-nvidia-modprobe \
 				--log-file-name="$KMOD_LOG" --kernel-source-path "/$KERNEL_HEADERS_DIR"
 
