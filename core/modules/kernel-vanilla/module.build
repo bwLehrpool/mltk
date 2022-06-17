@@ -27,9 +27,14 @@ fetch_source() {
 	# Fetch all the firmware
 	if ! [ -s "./fw/Makefile" ]; then
 		rm -rf -- "./fw"
-		git clone --depth 1 "git://git.kernel.org/pub/scm/linux/kernel/git/firmware/linux-firmware.git" "./fw" \
+		git clone --depth 1 "https://git.kernel.org/pub/scm/linux/kernel/git/firmware/linux-firmware.git" "./fw" \
 			|| perror "Could not clone linux-firmware repo."
 		rm -rf -- ./fw/LICENSE.* ./fw/*.txt
+	fi
+	if ! [ -s "./sof/install.sh" ]; then
+		rm -rf -- "./sof"
+		git clone --depth 1 "https://github.com/thesofproject/sof-bin.git" "./sof" \
+			|| perror "Could not clone SOF"
 	fi
 
 	# Kernel - cached or freshly fetched
@@ -56,7 +61,7 @@ fetch_kernel_source() {
 		pinfo "Trying to update existing clone"
 		cde ksrc
 		git pull || perror "Could not pull already checked out repo"
-		cd ..
+		cde ..
 	else
 		rm -rf "./ksrc"
 		git clone --depth 1 "${REQUIRED_GIT}" -b "v${REQUIRED_KERNEL}"  ksrc || perror "Could not clone kernel git."
@@ -81,7 +86,6 @@ fetch_kernel_source() {
 		git apply < "$patch" || perror "Could not apply $patch"
 		echo "$patch" >> "patches-done"
 	done
-	cd -
 }
 
 build() {
@@ -128,8 +132,13 @@ build() {
 
 	# copy most recent firmware
 	cde "${MODULE_WORK_DIR}"
-	mkdir -p "${MODULE_BUILD_DIR}/lib/firmware"
+	mkdir -p "${MODULE_BUILD_DIR}/lib/firmware/intel"
 	cp -r ./fw/* "${MODULE_BUILD_DIR}/lib/firmware/" || perror "Could not copy linux-firmware to '${MODULE_BUILD_DIR}/lib/firmware/'"
+	cde sof
+	FW_DEST="${MODULE_BUILD_DIR}/lib/firmware/intel" \
+		TOOLS_DEST="${MODULE_BUILD_DIR}/usr/bin" \
+		./install.sh v2.1.x/v2.1.1 || perror "Installing sof firmware failed"
+	cde ..
 
 	# copy kernel to build
 	cp ksrc/arch/x86/boot/bzImage "${MODULE_BUILD_DIR}/kernel" || perror "Could not copy bzImage"
@@ -212,7 +221,7 @@ patch_aufs() {
 	local KERNEL_MAJOR=${REQUIRED_KERNEL%%.*}
 	local AUFS="aufs${KERNEL_MAJOR}"
 	pinfo "Cloning ${AUFS} standalone git"
-	cd "${MODULE_WORK_DIR}"
+	cde "${MODULE_WORK_DIR}"
 	[ -d "${AUFS}-standalone/.git" ] && rm -rf "${AUFS}-standalone"		# if already there, kill it.
 	# git: --depth 1 won't work here due to later "checkout origin/branch"
 	if [ "$KERNEL_MAJOR" = "3" ]; then
