@@ -1,6 +1,87 @@
 #!/bin/bash
 
-FILE=$(find /mnt/vmstore -type f -printf "%s\t%p\n" | sort -n | tail -n 1 | awk '{print $2}')
+showmsg() {
+	if [ -n "$DISPLAY" ]; then
+		zenity --error --text "$*" &> /dev/null && return 0
+		xmessage "$*" &> /dev/null && return 0
+	fi
+	echo "$*"
+}
 
-exec speedcheck "$FILE"
+mountpoint=
+servers=
+start=
+file=
+nfs=
 
+while (( $# > 0 )); do
+	case "$1" in
+		--start)
+			start="$2"
+			shift
+			;;
+		--nfs)
+			nfs=1
+			;;
+		--file)
+			file="$2"
+			shift
+			;;
+		--servers)
+			servers="$2"
+			shift
+			;;
+		*)
+			break
+			;;
+	esac
+	shift
+done
+
+if [ -z "$file" ]; then
+	if mountpoint; then
+		file=$( find /mnt/vmstore -type f -printf "%s\t%p\n" | sort -n | tail -n 1 | awk '{print $2}' )
+	else
+		showmsg "Not using NFS, cannot test automatically"
+		exit 1
+	fi
+else
+	if [ -n "$nfs" ]; then
+		file=$( find /mnt/vmstore/"$file"* -type f -printf "%s\t%p\n" | sort -n | tail -n 1 | awk '{print $2}' )
+	else
+		if [ -z "$servers" ]; then
+			. /opt/openslx/config
+			servers="$SLX_DNBD3_SERVERS"
+		fi
+		mountpoint="/tmp/speedtest-$$-$RANDOM"
+		mkdir "$mountpoint"
+		if ! dnbd3-fuse -S -h "$servers" -i "$file" "$mountpoint"; then
+			showmsg "Cannot start dnb3-fuse from $servers"
+			exit 1
+		fi
+		if ! mountpoint "$mountpoint"; then
+			showmsg "is not mountpoint"
+			exit 1
+		fi
+	fi
+fi
+
+if [ -z "$file" ]; then
+	showmsg "Cannot test, no image found"
+	exit 1
+fi
+
+if [ -n "$start" ]; then
+	now="$( date +%s )"
+	diff="$(( start - now ))"
+	(( diff > 120 )) && diff=0
+	if (( diff > 0 )); then
+		echo "Waiting $diff seconds for synchronized start"
+		sleep "$diff"
+	fi
+fi
+
+speedcheck --auto "$file"
+
+[ -n "$mountpoint" ] && fusermount -u "$mountpoint"
+exit 0
