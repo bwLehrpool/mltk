@@ -55,7 +55,12 @@ else
 		fi
 		mountpoint="/tmp/speedtest-$$-$RANDOM"
 		mkdir "$mountpoint"
-		if ! dnbd3-fuse -S -h "$servers" -i "$file" "$mountpoint"; then
+		rid="${file##*:}"
+		if [ "$rid" = "$file" ] || ! [ "$rid" -gt 0 ]; then
+			rid=0
+		fi
+		file="${file%:*}"
+		if ! dnbd3-fuse -S -h "$servers" -i "$file" -r "$rid" "$mountpoint"; then
 			showmsg "Cannot start dnb3-fuse from $servers"
 			exit 1
 		fi
