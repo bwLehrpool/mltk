@@ -155,27 +155,23 @@ if [ -n "$islocal" ]; then
 else
 
 	# Proxy mode
-	DNBD3_SPARSE="false"
+	DNBD3_SPARSE="true"
 	DNBD3_PRETEND_CLIENT="false"
 	DNBD3_BGR="false"
 	DNBD3_BGR_MIN_CLIENTS=0
 	DNBD3_LOOKUP="false"
 	DNBD3_AUTOFREE="18h"
-	DNBD3_SERVER_PENALTY=2000 # no BGR = don't like other servers connecting so much
+	DNBD3_SERVER_PENALTY=3000 # no BGR = don't like other servers connecting so much
 	if [ -n "${SLX_DNBD3_BGR}" ]; then
 		DNBD3_BGR="true"
 		DNBD3_SERVER_PENALTY=500 # much better
 		# Only do chained lookup of image if we're a global proxy with BGR
 		[ -z "${SLX_DNBD3_WHITELIST}" ] && DNBD3_LOOKUP="true"
 	fi
-	if [ -n "${SLX_DNBD3_SPARSE}" ]; then
-		DNBD3_SPARSE="true"
-	fi
 	# Determine if we need sparse mode, or override BGR
-	if ! [ "$disksize" -gt 120 ]; then
+	if ! [ "$disksize" -gt 200 ]; then
 		# less than 120GiB or NaN, force
-		[ "$DNBD3_BGR" = "true" ] && slxlog -s -e "dnbd3-setup-small" "Cache partition < 120GiB, forcing background replication OFF and sparse mode ON"
-		DNBD3_SPARSE="true"
+		[ "$DNBD3_BGR" = "true" ] && slxlog -s -e "dnbd3-setup-small" "Cache partition < 200GiB, forcing background replication OFF and sparse mode ON"
 		DNBD3_BGR="false"
 		DNBD3_SERVER_PENALTY=5000
 		DNBD3_LOOKUP="false"
@@ -192,9 +188,7 @@ else
 
 	rm -f "/opt/openslx/iptables/rules.d/99-dnbd3"
 	# now create iptables helper rules
-	if [ -n "${SLX_DNBD3_WHITELIST}" ] && [ "${SLX_DNBD3_WHITELIST%/*}" != "${SLX_DNBD3_WHITELIST}" ]; then
-		# XXX: Remove the second check above after ~ 2018-10-01 -- it's a workaround for broken slx-admin
-		# that won't properly calculate CIDR notion resulting in a severely locked down proxy :(
+	if [ -n "${SLX_DNBD3_WHITELIST}" ]; then
 		DNBD3_IPTABLES_CONF="$(mktemp)"
 		echo '#!/bin/ash' > "${DNBD3_IPTABLES_CONF}"
 		for CIDR in ${SLX_DNBD3_WHITELIST} ${SLX_KCL_SERVERS}; do
