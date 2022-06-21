@@ -166,10 +166,13 @@ kernel_build_id() {
 # Get path of kernel config zu base this kernel on; empty if none exists
 kernel_config_base() {
 	local src
-	src="/boot/config-$(uname -r)"
-	if [ -s "$src" ]; then
-		echo "$src"
-	elif [ -f "/proc/config.gz" ]; then
+	for src in "/boot/config-mltk" "/boot/config-$(uname -r)"; do
+		if [ -s "$src" ]; then
+			echo "$src"
+			return 0
+		fi
+	done
+	if [ -f "/proc/config.gz" ]; then
 		zcat "/proc/config.gz" > "${ROOT_DIR}/tmp/kernel-config"
 		echo "${ROOT_DIR}/tmp/kernel-config"
 	fi
