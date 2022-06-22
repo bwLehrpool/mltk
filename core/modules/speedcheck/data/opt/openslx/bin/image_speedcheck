@@ -13,12 +13,16 @@ servers=
 start=
 file=
 nfs=
+mode="--auto"
 
 while (( $# > 0 )); do
 	case "$1" in
 		--start)
 			start="$2"
 			shift
+			;;
+		--console)
+			mode="--console"
 			;;
 		--nfs)
 			nfs=1
@@ -87,7 +91,7 @@ if [ -n "$start" ]; then
 	fi
 fi
 
-speedcheck --auto "$file"
+speedcheck "$mode" "$file"
 
 [ -n "$mountpoint" ] && fusermount -u "$mountpoint"
 exit 0
