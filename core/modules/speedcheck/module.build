@@ -12,7 +12,7 @@ build() {
 
 	pinfo "Running cmake"
 
-	cmake "$SRCDIR" || perror "'cmake $SRCDIR' failed."
+	cmake -DCMAKE_BUILD_TYPE=Release "$SRCDIR" || perror "'cmake $SRCDIR' failed."
 	make || perror "'make' failed."
 
 	cd - > /dev/null
