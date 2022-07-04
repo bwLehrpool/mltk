@@ -44,6 +44,7 @@ $(safesource "${VMWARE_PLUGIN_DIR}/vmware.conf")
 # Determine maximum hw version
 gmax="$( grep -m 1 -F '.product.version' /etc/vmware/config | grep -oE '[0-9]+\.[0-9.]+' | head -n 1 )"
 case "$gmax" in
+	16.2.*) gmax=19 ;;
 	16.*) gmax=18 ;;
 	15.5.*|15.1.*) gmax=16 ;;
 	*)
