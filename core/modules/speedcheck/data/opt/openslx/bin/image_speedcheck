@@ -10,6 +10,7 @@ showmsg() {
 
 mountpoint=
 servers=
+sticky=
 start=
 file=
 nfs=
@@ -43,42 +44,67 @@ while (( $# > 0 )); do
 done
 
 if [ -z "$file" ]; then
-	if mountpoint; then
+	. /opt/openslx/config
+	if mountpoint /mnt/vmstore; then
 		file=$( find /mnt/vmstore -type f -printf "%s\t%p\n" | sort -n | tail -n 1 | awk '{print $2}' )
+		nfs=1
+	elif [ -s "/tmp/vmchooser-benchmark" ] || [ -s "/tmp/vmchooser2/vmchooser2.xml" ] \
+		|| curl -m 5 -L "$SLX_VMCHOOSER_BASE_URL/list" > "/tmp/vmchooser-benchmark"; then
+			xml="/tmp/vmchooser-benchmark"
+			[ -s "$xml" ] || xml="/tmp/vmchooser2/vmchooser2.xml"
+			file="$( xmlstarlet sel -T -t -v "//settings/eintrag/image_name/@param" "$xml" | head -n 1 )"
+			nfs=
 	else
-		showmsg "Not using NFS, cannot test automatically"
+		showmsg "Could not automatically determine any image name, specify one via --file as relative path"
 		exit 1
 	fi
 else
 	if [ -n "$nfs" ]; then
-		file=$( find /mnt/vmstore/"$file"* -type f -printf "%s\t%p\n" | sort -n | tail -n 1 | awk '{print $2}' )
-	else
-		if [ -z "$servers" ]; then
-			. /opt/openslx/config
-			servers="$SLX_DNBD3_SERVERS"
-		fi
-		mountpoint="/tmp/speedtest-$$-$RANDOM"
-		mkdir "$mountpoint"
-		rid="${file##*:}"
-		if [ "$rid" = "$file" ] || ! [ "$rid" -gt 0 ]; then
-			rid=0
-		fi
-		file="${file%:*}"
-		if ! dnbd3-fuse -S -h "$servers" -i "$file" -r "$rid" "$mountpoint"; then
-			showmsg "Cannot start dnb3-fuse from $servers"
-			exit 1
-		fi
-		if ! mountpoint "$mountpoint"; then
-			showmsg "is not mountpoint"
-			exit 1
-		fi
-		file="${mountpoint}/img"
+		file="$( find /mnt/vmstore/"$file"* -type f -printf "%s\t%p\n" | sort -n | tail -n 1 | awk '{print $2}' )"
 	fi
 fi
 
 if [ -z "$file" ]; then
 	showmsg "Cannot test, no image found"
 	exit 1
+fi
+
+if [ -n "$nfs" ]; then
+	if ! [ -s "$file" ]; then
+		showmsg "Cannot access '$file'"
+		exit 1
+	fi
+else
+	if [ -z "$servers" ]; then
+		. /opt/openslx/config
+		servers="$SLX_DNBD3_SERVERS"
+		if [ "$servers" = "127.0.0.1" ]; then
+			# don't use local caching for this test
+			servers="$( awk '$1 != "127.0.0.1:5003" {printf("%s ", $1)}' "/sys/block/dnbd0/net/alt_servers" )"
+			if [ -z "$servers" ]; then
+				# poor man's way to convert \n to ' '
+				servers="$( echo $( cut -c2- "/etc/dnbd3-server/alt-servers" ) )"
+			fi
+		fi
+	else
+		sticky="-S"
+	fi
+	mountpoint="/tmp/speedtest-$$-$RANDOM"
+	mkdir "$mountpoint"
+	rid="${file##*:}"
+	if [ "$rid" = "$file" ] || ! [ "$rid" -gt 0 ]; then
+		rid=0
+	fi
+	file="${file%:*}"
+	if ! dnbd3-fuse $sticky -h "$servers" -i "$file" -r "$rid" "$mountpoint"; then
+		showmsg "Cannot start dnbd3-fuse from $servers"
+		exit 1
+	fi
+	if ! mountpoint "$mountpoint"; then
+		showmsg "is not mountpoint"
+		exit 1
+	fi
+	file="${mountpoint}/img"
 fi
 
 if [ -n "$start" ]; then
