@@ -20,7 +20,7 @@ import com.ginsberg.junit.exit.ExpectSystemExitWithStatus;
 public class AppTest
 {
 	@BeforeAll
-	private static void setUp()
+	public static void setUp()
 	{
 		// disable logging with log4j
 		Configurator.setRootLevel( Level.OFF );
