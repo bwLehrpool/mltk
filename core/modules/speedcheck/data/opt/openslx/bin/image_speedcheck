@@ -47,22 +47,41 @@ if [ -z "$file" ]; then
 	. /opt/openslx/config
 	if mountpoint /mnt/vmstore; then
 		file=$( find /mnt/vmstore -type f -printf "%s\t%p\n" | sort -n | tail -n 1 | awk '{print $2}' )
-		nfs=1
+		[ -z "$SLX_VM_DNBD3" ] && nfs=1
 	elif [ -s "/tmp/vmchooser-benchmark" ] || [ -s "/tmp/vmchooser2/vmchooser2.xml" ] \
-		|| curl -m 5 -L "$SLX_VMCHOOSER_BASE_URL/list" > "/tmp/vmchooser-benchmark"; then
-			xml="/tmp/vmchooser-benchmark"
-			[ -s "$xml" ] || xml="/tmp/vmchooser2/vmchooser2.xml"
-			file="$( xmlstarlet sel -T -t -v "//settings/eintrag/image_name/@param" "$xml" | head -n 1 )"
-			nfs=
+			|| curl -m 5 -L "$SLX_VMCHOOSER_BASE_URL/list" > "/tmp/vmchooser-benchmark"; then
+		xml="/tmp/vmchooser-benchmark"
+		[ -s "$xml" ] || xml="/tmp/vmchooser2/vmchooser2.xml"
+		file="$( xmlstarlet sel -T -t -v "//settings/eintrag/image_name/@param" "$xml" | head -n 1 )"
+		if [ -n "$nfs" ]; then
+			showmsg "--nfs given, but NFS not enabled/mounted."
+			exit 1
+		fi
 	else
 		showmsg "Could not automatically determine any image name, specify one via --file as relative path"
 		exit 1
 	fi
+	rid=0
 else
+	# Extract rid from name:rid format (if any), then remove from $file
+	rid="${file##*:}"
+	if [ "$rid" = "$file" ] || ! [ "$rid" -gt 0 ]; then
+		# No rid in filename
+		rid=0
+	else
+		# Found rid, remove from $file
+		file="${file%:*}"
+	fi
 	if [ -n "$nfs" ]; then
 		file="$( find /mnt/vmstore/"$file"* -type f -printf "%s\t%p\n" | sort -n | tail -n 1 | awk '{print $2}' )"
 	fi
 fi
+
+# Common intermediate format; relative to mount point (if any), get rid of any ./ prefix
+file="${file#/mnt/vmstore/}"
+file="${file#/}"
+file="${file#.}"
+file="${file#/}"
 
 if [ -z "$file" ]; then
 	showmsg "Cannot test, no image found"
@@ -70,6 +89,8 @@ if [ -z "$file" ]; then
 fi
 
 if [ -n "$nfs" ]; then
+	# For NFS, make absolute again
+	file="/mnt/vmstore/${file}"
 	if ! [ -s "$file" ]; then
 		showmsg "Cannot access '$file'"
 		exit 1
@@ -91,11 +112,6 @@ else
 	fi
 	mountpoint="/tmp/speedtest-$$-$RANDOM"
 	mkdir "$mountpoint"
-	rid="${file##*:}"
-	if [ "$rid" = "$file" ] || ! [ "$rid" -gt 0 ]; then
-		rid=0
-	fi
-	file="${file%:*}"
 	if ! dnbd3-fuse $sticky -h "$servers" -i "$file" -r "$rid" "$mountpoint"; then
 		showmsg "Cannot start dnbd3-fuse from $servers"
 		exit 1
