@@ -113,6 +113,10 @@ echo "router=$router" >> /run/network.conf
 echo "BRIDGE=$BRIDGE" >> /run/network.conf
 echo "UID=$UID" >> /run/network.conf
 
+# Workaround some buggy e1000e versions that crap themselves if we start doing stuff right after
+# the interface state changed to up
+sleep 1
+
 udhcpc $PARAM -O hostname -O ntpsrv -O domain -O search -O dns -t 5 -T 3 -A 4 -s "/inc/udhcpc-trigger" -f -n -q -i "$BRIDGE"
 URET=$?
 # if these were empty before, udhcpc might have filled them in
