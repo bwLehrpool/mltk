@@ -29,7 +29,9 @@ mkdir -p "/run/openslx"
 . /opt/openslx/bin/slx-tools
 dev_find_partitions &> /dev/null # Preload function
 
-# Check what to do
+# Check what to do. Currently triggered by:
+# setup-partitions.service (Mini and Maxi, for swap, linux, persistent)
+# setup-temp.service (Mini only, for ID44 /tmp)
 while (( $# > 0 )); do
 	case "$1" in
 		--tmp) DO_TMP=1 ;;
