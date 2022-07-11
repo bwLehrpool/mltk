@@ -307,6 +307,10 @@ finalize_hardware() {
 	# Disable space check warnings
 	sed -i '/^mainMem.freeSpaceCheck/Id' "${TMPCONFIG}"
 	echo 'mainMem.freeSpaceCheck = "FALSE"' >> "${TMPCONFIG}"
+	# Need this to avoid VMware requiring as much free space in /tmp/virt as we have vmem
+	# and no swap. Should never happen because of zram swap, but hey...
+	sed -i '/^mainMem.backing/Id' "${TMPCONFIG}"
+	echo 'mainMem.backing = "swap"' >> "${TMPCONFIG}"
 
 	# Fix keymap fuckup when leaving VM
 	sed -i '/^mks.x.resetModMap/Id' "${TMPCONFIG}"
