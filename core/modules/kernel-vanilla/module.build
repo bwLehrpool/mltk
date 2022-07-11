@@ -132,7 +132,8 @@ build() {
 
 	# copy most recent firmware
 	cde "${MODULE_WORK_DIR}"
-	mkdir -p "${MODULE_BUILD_DIR}/lib/firmware/intel"
+	mkdir -p "${MODULE_BUILD_DIR}/lib/firmware/intel" "${MODULE_BUILD_DIR}/usr/bin"
+	rm -rf -- "${MODULE_BUILD_DIR}/lib/firmware/intel/sof" "${MODULE_BUILD_DIR}/lib/firmware/intel/sof-tplg"
 	cp -r ./fw/* "${MODULE_BUILD_DIR}/lib/firmware/" || perror "Could not copy linux-firmware to '${MODULE_BUILD_DIR}/lib/firmware/'"
 	cde sof
 	FW_DEST="${MODULE_BUILD_DIR}/lib/firmware/intel" \
