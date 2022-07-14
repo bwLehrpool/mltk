@@ -183,6 +183,11 @@ build() {
 	# /usr/lib/vmware-ovftool/vmware.eula
 	# If it cannot open these files (as we deleted them) it will crash with a SIGABRT (signal 6)
 	# coming from an uncaught exeception in libglibmm's file_get_contents
+	# Patch vmware-vmx to always enable USB autoconnect for VMs
+	if [[ "${OFFICIAL_VERSION}" = 16.2.* ]]; then
+		gcc -o "${MODULE_WORK_DIR}/patsch" "${MODULE_DIR}/usb-patch.c" || perror "USB patscher build failed"
+		"${MODULE_WORK_DIR}/patsch" "${MODULE_BUILD_DIR}/usr/lib/vmware/bin/vmware-vmx" || perror "Patsching vmware-vmx failed"
+	fi
 }
 
 post_copy() {
