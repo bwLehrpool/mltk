@@ -185,7 +185,7 @@ build() {
 	# coming from an uncaught exeception in libglibmm's file_get_contents
 	# Patch vmware-vmx to always enable USB autoconnect for VMs
 	if [[ "${OFFICIAL_VERSION}" = 16.2.* ]]; then
-		gcc -o "${MODULE_WORK_DIR}/patsch" "${MODULE_DIR}/usb-patch.c" || perror "USB patscher build failed"
+		gcc -o "${MODULE_WORK_DIR}/patsch" "${MODULE_DIR}/usb-patcher.c" || perror "USB patscher build failed"
 		"${MODULE_WORK_DIR}/patsch" "${MODULE_BUILD_DIR}/usr/lib/vmware/bin/vmware-vmx" || perror "Patsching vmware-vmx failed"
 	fi
 }
