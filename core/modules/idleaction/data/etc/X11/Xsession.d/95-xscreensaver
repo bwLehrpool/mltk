@@ -34,6 +34,8 @@ if command -v xscreensaver; then
 	elif ! [ "$SBY" -ge 0 ]; then # isNumeric?
 		SBY=0
 	fi
+	# Guest session/auto login, don't lock
+	[ "$GUEST_SESSION" = "True" ] && NEVER_LOCK=True
 	# If web based login, we can't authenticate again as we don't have the password - never lock
 	if [ -z "$NEVER_LOCK" ]; then
 		usrname="$( < "/etc/passwd"  awk -v "uid=$UID" -F ':' '$3 == uid {print $5; exit}' )"

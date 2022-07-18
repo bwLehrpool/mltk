@@ -2,6 +2,8 @@
 
 . /opt/openslx/config
 
+export GUEST_SESSION=True
+
 GUESTDIR="/opt/openslx/lightdm/autologin.d"
 if [ -d "$GUESTDIR" ]; then
 	for file in $GUESTDIR/*; do
