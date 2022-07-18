@@ -243,14 +243,14 @@ write_user_data() {
 	gexp="$( printf "%s" "${PAM_USER}" | sed 's/[][$^\.*]/\\&/g' )" # Basic regexp
 	if ! grep -q "^${gexp}:" /etc/passwd; then
 		# create a random 6digit UID
-		LOOPS=0
-		while [ "$LOOPS" -lt 5 ]; do
+		LOOPS=10
+		while [ "$LOOPS" -gt 0 ]; do
 			USER_UID="$(( 100000 + RANDOM % 100000 ))"
-			# check existence of this UID, if its free, use it
+			# check existence of this UID, if it's free, use it
 			getent passwd "$USER_UID" || break
-			let LOOPS++
+			let LOOPS--
 		done
-		if [ "$LOOPS" -eq 5 ]; then
+		if [ "$LOOPS" -eq 0 ]; then
 			# could not find an empty random 6-digit UID, so we will use demo's UID...
 			USER_UID="$(id -u demo)"
 			[ -z "$USER_UID" ] && echo "Could not use UID of 'demo' as a fallback, aborting..." && exit 1
