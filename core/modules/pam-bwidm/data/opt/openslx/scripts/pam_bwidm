@@ -238,6 +238,7 @@ auth_user() {
 
 write_user_data() {
 	# auth succeeded, create and map a local user to this bwIDM user
+	local gexp LOOPS usrname
 	echo "Login for '$USER_USERNAME' on '$USER_ORGANISATION' succeeded."
 	gexp="$( printf "%s" "${PAM_USER}" | sed 's/[][$^\.*]/\\&/g' )" # Basic regexp
 	if ! grep -q "^${gexp}:" /etc/passwd; then
@@ -256,7 +257,9 @@ write_user_data() {
 		fi
 
 		# we have a uid, gid, lets just create the local user now
-		echo "${PAM_USER}:x:${USER_UID}:${USER_GID}:${PAM_USER}:/home/${PAM_USER}:/bin/bash" >> /etc/passwd
+		# mark with @ecp or @browser
+		usrname="${PAM_USER}@${mode}"
+		echo "${PAM_USER}:x:${USER_UID}:${USER_GID}:${usrname}:/home/${PAM_USER}:/bin/bash" >> /etc/passwd
 	fi
 	exit 0
 }
