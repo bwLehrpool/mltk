@@ -1,0 +1,6 @@
+[General]
+exec=/opt/openslx/pvs2/force-logout.sh
+caption=Sitzung beenden
+tooltip=Sitzung sofort beenden
+type=menu
+async=true
