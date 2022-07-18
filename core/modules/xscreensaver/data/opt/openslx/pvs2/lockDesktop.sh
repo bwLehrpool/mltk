@@ -1,25 +1,22 @@
 #!/bin/ash
 
-# Problem: While any application (e.g. VMware) is holding the mouse and
-# keyboard grab, xscreensaver couldn't grab them, so it will ignore the
-# locking request. Without the keyboard grab, all input would still go
-# to the vmware window below the black screen, which is, you know, bad,
-# since you cannot enter your password to unlock the workstation again.
+[ -z "$UID" ] && UID="$( id -u )"
 
-# So we minimize vmware, lock the screen, and then restore vmware.
-# TODO: Add other virtualizers (vbox, kvm) later if needed.
-WINDOWS=$(xdotool search --onlyvisible --class vmplayer)
-for window in $WINDOWS; do
-	xdotool windowminimize $window
-done
-# move mouse pointer to the center of the screen to avoid some problems with ghost clicks
-xdotool mousemove --sync --polar 0 0
+usrname="$( < "/etc/passwd"  awk -v "uid=$UID" -F ':' '$3 == uid {print $5; exit}' )"
+# Yes, this really checks if $usrname ends in @browser, and sets NEVER_LOCK to true if so
+if [ "${usrname%"@browser"}" != "${usrname}" ]; then
+	xmessage "Web-Basierte Logins koennen die Sitzung leider nicht sperren."
+	exit 0
+else
+	. /opt/openslx/config
+	if [ -n "$SLX_EXAM" ]; then
+		xmessage "Im Klausurmodus nicht moeglich"
+		exit 0
+	fi
+fi
 
-# now actually lock
+# Any mouse-ungrab logic is embedded in our modded xscreensaver now,
+# via external ungrab script
+
 xscreensaver-command --lock
-
-# above lock call is blocking, so now xscreensaver should be active - let's restore vmware
-for window in $WINDOWS; do
-	xdotool windowmap $window
-done
 

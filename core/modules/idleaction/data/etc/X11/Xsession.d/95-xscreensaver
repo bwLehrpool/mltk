@@ -3,6 +3,7 @@
 if command -v xscreensaver; then
 	DPMS=False
 	AUTOLOCK=True
+	NEVER_LOCK=
 	secsToTime() {
 		local NUM SECS MINS HRS
 		NUM="$1"
@@ -23,6 +24,7 @@ if command -v xscreensaver; then
 	if [ -n "${SLX_EXAM}" ]; then
 		SLX_SCREEN_SAVER_GRACE_TIME=
 		AUTOLOCK=False
+		NEVER_LOCK=True
 		SBY=0
 		SVR=0
 	elif [ -z "$SBY" ]; then
@@ -31,6 +33,12 @@ if command -v xscreensaver; then
 		SBY=60
 	elif ! [ "$SBY" -ge 0 ]; then # isNumeric?
 		SBY=0
+	fi
+	# If web based login, we can't authenticate again as we don't have the password - never lock
+	if [ -z "$NEVER_LOCK" ]; then
+		usrname="$( < "/etc/passwd"  awk -v "uid=$UID" -F ':' '$3 == uid {print $5; exit}' )"
+		# Yes, this really checks if $usrname ends in @browser, and sets NEVER_LOCK to true if so
+		[ "${usrname%"@browser"}" != "${usrname}" ] && NEVER_LOCK=True
 	fi
 	# Create config value for standby timeout
 	if [ "$SBY" -gt 0 ]; then
@@ -79,7 +87,7 @@ EOF
 	# HACK: This env vars prevent xscreensaver from ever locking
 	# Only one would be needed but set both in case one of them
 	# gets removed in the future.
-	if [ -n "$SLX_EXAM" ]; then
+	if [ -n "$NEVER_LOCK" ]; then
 		export RUNNING_UNDER_GDM="not really but yea"
 		export WAYLAND_DISPLAY="none, haha"
 	fi
