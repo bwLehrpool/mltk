@@ -1,0 +1,7 @@
+[Unit]
+Description=Apply general system tweaks
+
+[Service]
+ExecStart=/opt/openslx/scripts/systemd-general_system_tweaks
+Type=oneshot
+RemainAfterExit=true

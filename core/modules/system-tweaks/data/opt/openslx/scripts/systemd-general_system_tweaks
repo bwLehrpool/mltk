@@ -1,0 +1,19 @@
+#!/bin/ash
+
+# General stuff
+
+# Breaks performance with certain workloads, so disable.
+# See https://unix.stackexchange.com/a/185172 for details and further references
+echo never > /sys/kernel/mm/transparent_hugepage/defrag
+echo 0 > /sys/kernel/mm/transparent_hugepage/khugepaged/defrag
+# New player in town doing pretty much the same, tame it
+echo 1 > /proc/sys/vm/compaction_proactiveness # default 20
+
+# run-parts-like stuff
+DIR="$0.d"
+if [ -d "$DIR" ]; then
+	for file in "$DIR"/*; do
+		[ -x "$file" ] && "$file"
+	done
+fi
+exit 0
