@@ -233,20 +233,8 @@ setup_vnc() {
 # Serial, parallel: Empty, nothing is being currently set. TODO later.
 
 setup_graphics() {
-	# Graphics, GPU: 3D used to be enabled (even if vmware doesn't support the chip) if we whitelisted it.
-	# Now it does cause any troubles, so we always activate it. Keeping the code because who knows
-	# if we might need it again one day :)
-	if true || isset SLX_VMWARE_3D; then
-		writelog "FORCE3D set - overriding 3D in vmx file."
-		echo 'mks.gl.allowBlacklistedDrivers = "TRUE"'	>> "${TMPCONFIG}"
-#		# We override... play safe and cap the hwVersion to 10, since some i915 chips goofed up with 12
-#		# Investigate if we might have to do this in other cases where we don't override
-#		if grep -qi '^mks.enable3d.*true' "${TMPCONFIG}"; then
-#			vmw_cap_hw_version "10"
-#		fi
-	else
-		writelog "FORCE3D not set - 3D will only work if GPU/driver is whitelisted by vmware."
-	fi
+	# Force 3D on every gpu
+	echo 'mks.gl.allowBlacklistedDrivers = "TRUE"'	>> "${TMPCONFIG}"
 	
 	# Disable DPI scaling information passing via vmware tools
 	sed -i '/^gui.applyHostDisplayScaling/Id' "${TMPCONFIG}"
@@ -274,25 +262,28 @@ setup_graphics() {
 			EOF
 			;;
 	esac
-	local vram max_vram exists
-	# VM_MEM in MB
-	max_vram="$(( (VM_MEM / 4) * 1024 ))"
-	(( max_vram > 2097152 )) && max_vram=2097152
-	vram=$( < "${TMPCONFIG}"  grep -m1 -i '^svga\.graphicsMemoryKB' \
-		| sed -r 's/^[^=]+//;s/^(\s|=|")*//;s/(\s|")+$//' )
-	existing="$vram"
-	if [ -z "$vram" ] || (( vram > max_vram )); then
-		vram="$max_vram"
+	if (( VM_HW_VERSION >= 11 )); then
+		# Pimp VGPU memory if not set, or restrict if too large
+		local vram max_vram exists
+		# VM_MEM in MB
+		max_vram="$(( (VM_MEM / 4) * 1024 ))"
+		(( max_vram > 2097152 )) && max_vram=2097152
+		vram=$( < "${TMPCONFIG}"  grep -m1 -i '^svga\.graphicsMemoryKB' \
+			| sed -r 's/^[^=]+//;s/^(\s|=|")*//;s/(\s|")+$//' )
+		existing="$vram"
+		if [ -z "$vram" ]; then # Nothing, default to half of max
+			vram="$(( vram / 2 ))"
+		elif (( vram > max_vram )); then # Explicitly set, cap if too excessive
+			vram="$max_vram"
+		fi
+		(( vram < 131072 )) && vram=131072
+		VM_MEM="$(( VM_MEM - ( (vram / 4096) * 4 ) + 128 ))"
+		if [ -z "$existing" ]; then
+			echo 'svga.graphicsMemoryKB = "'"$vram"'"' >> "${TMPCONFIG}"
+		else
+			sed -i 's/^svga\.graphicsMemoryKB.*$/svga.graphicsMemoryKB = "'"$vram"'"/' "${TMPCONFIG}"
+		fi
 	fi
-	(( vram < 131072 )) && vram=131072
-	if [ -z "$existing" ]; then
-		echo 'svga.graphicsMemoryKB = "'"$vram"'"' >> "${TMPCONFIG}"
-	else
-		sed -i 's/^svga\.graphicsMemoryKB.*$/svga.graphicsMemoryKB = "'"$vram"'"/' "${TMPCONFIG}"
-	fi
-	
-	# Killing duplicate lines (output much nicer than sort -u):
-	awk '!a[$0]++' "${TMPCONFIG}" > "${TMPCONFIG}.tmp" && mv -f "${TMPCONFIG}.tmp" "${TMPCONFIG}"
 }
 
 finalize_hardware() {
@@ -335,13 +326,16 @@ write_final_vmx() {
 	setup_optical_drives
 	setup_floppies
 	setup_serial
+	setup_graphics # Graphics might reduce available VRAM
 	setup_vcpu_ram
 	setup_usb
 	[ "x$HGFS_DISABLED" = "xFALSE" ] && setup_shared_folders
 	setup_isolation
-	setup_graphics
 	[[ " $SLX_REMOTE_VNC " == *" vmware "* ]] && setup_vnc
 	finalize_hardware
+
+	# Killing duplicate lines (output much nicer than sort -u):
+	awk '!a[$0]++' "${TMPCONFIG}" > "${TMPCONFIG}.tmp" && mv -f "${TMPCONFIG}.tmp" "${TMPCONFIG}"
 
 	# At last: Let's copy it to $VM_CONF_DIR/run-vmware.conf
 	if cp -p "${TMPCONFIG}" "${VM_RUN_FILE}"; then
