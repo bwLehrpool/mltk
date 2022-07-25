@@ -272,7 +272,7 @@ setup_graphics() {
 			| sed -r 's/^[^=]+//;s/^(\s|=|")*//;s/(\s|")+$//' )
 		existing="$vram"
 		if [ -z "$vram" ]; then # Nothing, default to half of max
-			vram="$(( vram / 2 ))"
+			vram="$(( max_vram / 2 ))"
 		elif (( vram > max_vram )); then # Explicitly set, cap if too excessive
 			vram="$max_vram"
 		fi
