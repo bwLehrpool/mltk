@@ -1,13 +1,21 @@
 #!/bin/bash
 fetch_source() {
 	autoclone
-	git -C "${MODULE_WORK_DIR}/src/qemu" submodule update --init || perror "Failed to init and update submodules!"
+	git -C "${MODULE_WORK_DIR}/src/qemu" submodule update --init \
+		|| perror "Failed to init and update submodules!"
 
-	# patch EDK2 version to retrieve EDK2 submodules
-	git -C "${MODULE_WORK_DIR}/src/qemu/roms/edk2" checkout edk2-stable202108 || perror "Failed to checkout new EDK2 version!"
-	git -C "${MODULE_WORK_DIR}/src/qemu" commit -a -m "Update EDK2 to 08.2021 release" || perror "Failed to update EDK2 version!"
+	local ver="$(( cat "${MODULE_WORK_DIR}/src/qemu/VERSION" ))"
+	ver="${ver%%.*}"
+	if (( ver == 7 )); then
+		# patch EDK2 version to retrieve EDK2 submodules
+		git -C "${MODULE_WORK_DIR}/src/qemu/roms/edk2" checkout edk2-stable202108 \
+			|| perror "Failed to checkout new EDK2 version!"
+		git -C "${MODULE_WORK_DIR}/src/qemu" commit -a -m "Update EDK2 to 08.2021 release" \
+			|| perror "Failed to update EDK2 version!"
+	fi
 
-	git -C "${MODULE_WORK_DIR}/src/qemu" submodule update --recursive || perror "Failed to update submodules recursivly!"
+	git -C "${MODULE_WORK_DIR}/src/qemu" submodule update --recursive \
+		|| perror "Failed to update submodules recursivly!"
 }
 
 build() {
