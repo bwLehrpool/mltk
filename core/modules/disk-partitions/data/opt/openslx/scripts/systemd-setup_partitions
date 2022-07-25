@@ -29,6 +29,9 @@ mkdir -p "/run/openslx"
 . /opt/openslx/bin/slx-tools
 dev_find_partitions &> /dev/null # Preload function
 
+HAVE_TEMP=
+HAVE_SWAP=
+
 # Check what to do. Currently triggered by:
 # setup-partitions.service (Mini and Maxi, for swap, linux, persistent)
 # setup-temp.service (Mini only, for ID44 /tmp)
@@ -210,10 +213,34 @@ if [ -n "$DO_SWAP" ]; then
 	HAVE_SWAP=no
 	for PART_DEV in $(dev_find_partitions "82" "0657fd6d-a4ab-43c4-84e5-0933c84b4f4f"); do
 		if swapon "$PART_DEV" -p 10; then
-			HAVE_SWAP=yes # low priority, in case we have zram swap, prefer that)
+			HAVE_SWAP=yes # low priority, in case we have zram swap, prefer that
 			echo -e "$PART_DEV\tswap\t\tswap\t\tdefaults\t 0 0" >> "/etc/fstab"
 		fi
 	done
+	# If swap is small/none, and we have a large enough thinpool ("MaxiLinux"), add swap there
+	# Determine non-zram swap size (KB)
+	disk_swap="$( gawk 'BEGIN{a=0} $1 ~ /^\/dev\// && $1 !~ /^\/dev\/zram/ {a+= $3} END{print a}' /proc/swaps )"
+	if (( disk_swap < 4096000 )) && [ -b "/dev/mapper/pool" ] \
+			&& [ "$( dmsetup table /dev/mapper/pool | awk '{print $3}' )" = "thin-pool" ]; then
+		pool_size="$( blockdev --getsize64 /dev/mapper/pool )"
+		pool_size=$(( pool_size / (1024*1024) )) # byte to mb
+		if (( pool_size >= 39000 )); then
+			thin_size=$(( ( pool_size - 30000 ) / 5 ))
+			(( thin_size > 16000 )) && thin_size=16000 # max 16GB
+			thin_size="$(( thin_size * 1000 * 2 ))" # to 512byte sectors
+			if ! dmsetup message /dev/mapper/pool 0 "create_thin 82"; then
+				slxlog --echo "partition-swap-thin" "Cannot create_thin for additional swap"
+			elif ! dmsetup create "thin-swap" <<<"0 $thin_size thin /dev/mapper/pool 82"; then
+				slxlog --echo "partition-swap-thin" "Cannot create thin device for additional swap"
+			elif ! mkswap /dev/mapper/thin-swap; then
+				slxlog --echo "partition-swap-thin" "Cannot mkswap on thin-swap"
+			elif ! swapon -p 9 /dev/mapper/thin-swap; then
+				slxlog --echo "partition-swap-thin" "Cannot swapon thin-swap"
+			else
+				HAVE_SWAP=yes # finally, success
+			fi
+		fi
+	fi
 fi
 
 if [ -n "$DO_TMP" ]; then
@@ -325,16 +352,16 @@ fi
 
 mount -a
 
-if [ -n "$DO_TMP" ]; then
-	# Make tmpfs if nothing could be mounted for /tmp
-	# 2016-10-12: Use a sane size of 66% which should be generous enough and prevent the machine from
-	# just crashing if RAM is too full. We previously hugely oversized since vmware wants at least as
-	# much free space as the VMs RAM; however, this requirement can be disabled with a vmx setting,
-	# which we're now doing.
-	if [ "$HAVE_TEMP" = "no" ]; then
-		mount_temp -t tmpfs -o size=66% none
-		slxlog "partition-temp" "Running /tmp on tmpfs only!" "$PARTITION_FILE"
-	fi
+# HAVE_* will be empty if the according cmdline option was not passed.
+
+# Make tmpfs if nothing could be mounted for /tmp
+# 2016-10-12: Use a sane size of 66% which should be generous enough and prevent the machine from
+# just crashing if RAM is too full. We previously hugely oversized since vmware wants at least as
+# much free space as the VMs RAM; however, this requirement can be disabled with a vmx setting,
+# which we're now doing.
+if [ "$HAVE_TEMP" = "no" ]; then
+	mount_temp -t tmpfs -o size=66% none
+	slxlog "partition-temp" "Running /tmp on tmpfs only!" "$PARTITION_FILE"
 fi
 
 if [ "$HAVE_SWAP" = "no" ]; then
