@@ -18,23 +18,27 @@
 
 #############################################################################
 
+# Already done?
+if grep -q '^/dev/zram' "/proc/swaps"; then
+	echo "Already have zram swap, bailing out"
+	exit 0
+fi
 
 # Add zram swap
-# Some older ubuntu kernels had a problem here, see https://bugs.launchpad.net/ubuntu/+source/linux-lts-raring/+bug/1217189
-# So make sure you're up to date
 
-make_swap () {
-	[ $# -ne 3 ] && echo "make_swap: Wrong parameter count $#" && return 1
-	local USE="$1"
-	local DEV="$2"
-	local STREAMS="$3"
-	echo "$USE" > "/sys/block/zram${DEV}/disksize" || return 1
-	[ -n "$STREAMS" ] && echo "$STREAMS" > "/sys/block/zram${DEV}/max_comp_streams"
-	(
-		mkswap "/dev/zram${DEV}"
-		swapon "/dev/zram${DEV}" -p 1000 # high priority (in case we have hdd swap 0x82, prefer zram)
-	) &
-}
+# Determine non-zram swap size
+disk_swap="$( gawk 'BEGIN{a=0} $1 ~ /^\/dev\// && $1 !~ /^\/dev\/zram/ {a+= $3} END{print a}' /proc/swaps )"
+
+# If zswap is available and we have a swap partition on disk, do not add
+# zram swap, as having a tiered swap doesn't make sense then.
+# Use a sensible lower bound here, if we have a tiny swap partition, still use zram
+if [ "$disk_swap" -ge 2048000 ]; then # ~2 GB (in KB)
+	echo "Not setting up zram swap as swap partition is in use."
+	echo 1 > /sys/module/zswap/parameters/enabled
+	exit 0
+fi
+
+echo 0 > /sys/module/zswap/parameters/enabled
 
 # Count physical CPUs
 CPUS=$(cat /sys/devices/system/cpu/cpu*/topology/thread_siblings_list | sort -u | wc -l) # cat for *
@@ -60,6 +64,21 @@ elif ! modprobe zram "num_devices=$DEVS"; then
 	echo "ERROR: Could not load zram module"
 	exit 1
 fi
+
+# Go for it
+
+make_swap () {
+	[ $# -ne 3 ] && echo "make_swap: Wrong parameter count $#" && return 1
+	local USE="$1"
+	local DEV="$2"
+	local STREAMS="$3"
+	echo "$USE" > "/sys/block/zram${DEV}/disksize" || return 1
+	[ -n "$STREAMS" ] && echo "$STREAMS" > "/sys/block/zram${DEV}/max_comp_streams"
+	(
+		mkswap "/dev/zram${DEV}"
+		swapon "/dev/zram${DEV}" -p 1000 # high priority (in case we have hdd swap 0x82, prefer zram)
+	) &
+}
 
 TOTAL=$(grep ^MemTotal /proc/meminfo | awk '{print $2}')
 USE=$(( TOTAL / ( 2 * DEVS ) ))
