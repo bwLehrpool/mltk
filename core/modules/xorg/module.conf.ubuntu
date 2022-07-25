@@ -82,6 +82,3 @@ REQUIRED_CONTENT_PACKAGES="
 			@xserver-xorg-video-s3$UBUNTU_XORG_PKG_SUFFIX
 			@xserver-xorg-video-tdfx$UBUNTU_XORG_PKG_SUFFIX
 "
-REQUIRED_DEB_PACKAGES="
-	http://132.230.4.17/stuff/libgl1-mesa-dri_22.0.0.deb
-"
