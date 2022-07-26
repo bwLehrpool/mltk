@@ -33,8 +33,9 @@ set_virt_memory() {
 
 	# Calculare amount of memory for the VM. Be generous if diff is written to HDD.
 	# First, determine how much should be left to the host system. Minimum is 1GB.
-	local min=1024
-	local reserve max
+	local min=1000
+	local base=750
+	local reserve max disk_swap
 	if $TMPDIR_IN_RAM; then
 		# tmp in RAM, so reserve a lot for the system since that is where the HDD diff goes.
 		reserve=65
@@ -43,19 +44,25 @@ set_virt_memory() {
 		# We have a backing store for the HDD diff, be generous
 		if lsmod | grep -q '^nvidia'; then
 			# With nvidia cards, the host needs a bit more RAM.
-			max=2800
-			reserve=28
+			max=2900
+			reserve=20
 		else
-			max=1800
-			reserve=21
+			max=2000
+			reserve=8
 		fi
 	fi
+	# Non-zram swap (KB)
+	disk_swap="$( gawk 'BEGIN{a=0} $1 ~ /^\/dev\// && $1 !~ /^\/dev\/zram/ {a+= $3} END{print a}' /proc/swaps )"
+	if (( disk_swap > 2500000 )); then # > 2.5GB
+		reserve=$(( (reserve * 3) / 4 ))
+		max=$(( max - 200 ))
+	fi
 
-	# Calculate absulute amount of RAM that should stay available to the host
-	reserve="$(( ( HOST_MEM_TOTAL * reserve ) / 100 ))"
+	# Calculate absolute amount of RAM that should stay available to the host
+	reserve="$(( ( (HOST_MEM_TOTAL - 4000) * reserve ) / 100 + base ))"
 	# Respect some upper and lower bounds for the host amount
-	[ "$reserve" -lt "$min" ] && reserve="$min"
-	[ "$reserve" -gt "$max" ] && reserve="$max"
+	(( reserve >= min )) || reserve="$min"
+	(( reserve <= max )) || reserve="$max"
 
 	# Get a result which can be divided by 4
 	declare -g VM_MEM="$(( ( ( HOST_MEM_TOTAL - reserve ) / 4 ) * 4 ))"
