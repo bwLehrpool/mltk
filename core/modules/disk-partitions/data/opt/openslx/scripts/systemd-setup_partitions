@@ -29,6 +29,7 @@ mkdir -p "/run/openslx"
 . /opt/openslx/bin/slx-tools
 dev_find_partitions &> /dev/null # Preload function
 
+logfile=
 HAVE_TEMP=
 HAVE_SWAP=
 
@@ -228,15 +229,17 @@ if [ -n "$DO_SWAP" ]; then
 			thin_size=$(( ( pool_size - 30000 ) / 5 ))
 			(( thin_size > 16000 )) && thin_size=16000 # max 16GB
 			thin_size="$(( thin_size * 1000 * 2 ))" # to 512byte sectors
-			if ! dmsetup message /dev/mapper/pool 0 "create_thin 82"; then
-				slxlog --echo "partition-swap-thin" "Cannot create_thin for additional swap"
-			elif ! dmsetup create "thin-swap" <<<"0 $thin_size thin /dev/mapper/pool 82"; then
-				slxlog --echo "partition-swap-thin" "Cannot create thin device for additional swap"
-			elif ! mkswap /dev/mapper/thin-swap; then
-				slxlog --echo "partition-swap-thin" "Cannot mkswap on thin-swap"
-			elif ! swapon -p 9 /dev/mapper/thin-swap; then
-				slxlog --echo "partition-swap-thin" "Cannot swapon thin-swap"
+			gettmp "logfile"
+			if ! dmsetup message "/dev/mapper/pool" 0 "create_thin 82" &> "$logfile"; then
+				slxlog --echo "partition-swap-thin" "Cannot create_thin for additional swap" "$logfile"
+			elif ! dmsetup create "thin-swap" <<<"0 $thin_size thin /dev/mapper/pool 82"  &> "$logfile"; then
+				slxlog --echo "partition-swap-thin" "Cannot create thin device for additional swap" "$logfile"
+			elif ! mkswap "/dev/mapper/thin-swap"  &> "$logfile"; then
+				slxlog --echo "partition-swap-thin" "Cannot mkswap on thin-swap" "$logfile"
+			elif ! swapon -dpages -p 9 "/dev/mapper/thin-swap"  &> "$logfile"; then
+				slxlog --echo "partition-swap-thin" "Cannot swapon thin-swap" "$logfile"
 			else
+				echo "Added swap in thinpool"
 				HAVE_SWAP=yes # finally, success
 			fi
 		fi
