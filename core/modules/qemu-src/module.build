@@ -6,7 +6,7 @@ fetch_source() {
 
 	local ver="$(( cat "${MODULE_WORK_DIR}/src/qemu/VERSION" ))"
 	ver="${ver%%.*}"
-	if (( ver == 7 )); then
+	if (( ver == 6 )); then
 		# patch EDK2 version to retrieve EDK2 submodules
 		git -C "${MODULE_WORK_DIR}/src/qemu/roms/edk2" checkout edk2-stable202108 \
 			|| perror "Failed to checkout new EDK2 version!"
