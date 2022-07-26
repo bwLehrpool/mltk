@@ -278,7 +278,7 @@ setup_graphics() {
 		fi
 		(( vram < 131072 )) && vram=131072
 		# Subtract a querter of VRAM from main RAM to be safe
-		VM_MEM="$(( VM_MEM - (vram / 4096) ))"
+		VM_MEM="$(( VM_MEM - ( (vram / 4096) / 4 ) * 4 ))"
 		if [ -z "$existing" ]; then
 			echo 'svga.graphicsMemoryKB = "'"$vram"'"' >> "${TMPCONFIG}"
 		else
