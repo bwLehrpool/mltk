@@ -51,6 +51,7 @@ REQUIRED_CONTENT_PACKAGES="
 			libgbm1
 			libwayland-client0
 			libwayland-server0
+			mesa-utils
 			xkb-data
 			x11-xkb-utils
 			x11-xserver-utils
