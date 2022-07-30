@@ -4,7 +4,7 @@ fetch_source() {
 	git -C "${MODULE_WORK_DIR}/src/qemu" submodule update --init \
 		|| perror "Failed to init and update submodules!"
 
-	local ver="$(( cat "${MODULE_WORK_DIR}/src/qemu/VERSION" ))"
+	local ver="$( cat "${MODULE_WORK_DIR}/src/qemu/VERSION" )"
 	ver="${ver%%.*}"
 	if (( ver == 6 )); then
 		# patch EDK2 version to retrieve EDK2 submodules
