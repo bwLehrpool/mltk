@@ -1,13 +1,14 @@
 #!/bin/bash
 REQUIRED_CONTENT_PACKAGES="
 		cups
+		cups-core-drivers
 		cups-daemon
 		cups-filters
-		cups-core-drivers
 		cups-filters-core-drivers
 		ghostscript
 		hplip
 		libgs9-common
+		printer-driver-postscript-hp
 "
 REQUIRED_DIRECTORIES+="
 	/usr/share/color
