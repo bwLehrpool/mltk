@@ -142,9 +142,11 @@ autoclone () {
 			if [ -n "$branch" ]; then
 				git clone --depth 1 -b "$branch" "$url" "$dstdir/$dst" && break
 				pwarning "[Try $i] Could not clone $url branch $branch"
+				sleep 2
 			else
 				if ! git clone "$url" "$dstdir/$dst"; then
 					pwarning "[Try $i] Could not clone $url"
+					sleep 2
 				elif [ -n "$checkout" ]; then
 					git -C "$dstdir/$dst" checkout "$checkout" && break
 					perror "Could not checkout $checkout from $url"
