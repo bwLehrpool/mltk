@@ -20,7 +20,7 @@ function runscript_visibility()
 	case "$VISIBILITY" in
 	0)	# 0=hidden
 		logger "openslx utility: runscript_visibility: Starting script $SCRIPT hidden(${VISIBILITY}): $USERPART"
-		$USERPART "$SCRIPT"
+		DISPLAY=:0.0 XAUTHORITY="${XAUTHORITY}" $USERPART "$SCRIPT"
 		;;
 	1)	# 1=normal
 		get_xauthfile
