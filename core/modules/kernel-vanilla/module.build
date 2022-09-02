@@ -79,7 +79,7 @@ fetch_kernel_source() {
 	# Other patches
 	local patch
 	cde "$MODULE_WORK_DIR/ksrc"
-	for patch in "${MODULE_DIR}/patches/"*; do
+	for patch in "${MODULE_DIR}/patches/"*${TARGET_KERNEL_SHORT%.*}*; do
 		[ -f "$patch" ] || continue
 		grep -q -F "$patch" "patches-done" && continue
 		pinfo "Applying $(basename "$patch")"
