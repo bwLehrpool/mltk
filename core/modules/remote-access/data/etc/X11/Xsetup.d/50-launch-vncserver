@@ -3,6 +3,7 @@
 [ -z "$SLX_KCL_SERVERS" ] && . /opt/openslx/config
 
 [ "$DISPLAY" = :0 ] && [ -n "$SLX_REMOTE_VNC" ] && bash <<"BLUBB" &
+	. /opt/openslx/config
 	# TODO If we support multiple parallel sessions in the future, we need dedicated
 	# ports for each session for both, the VNC and the RPC port.
 	vnc_port="${SLX_REMOTE_VNC_PORT:-5900}"
