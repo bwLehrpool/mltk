@@ -41,6 +41,10 @@ if [ "$driver" = "intel" ]; then
 	# This only works for very old i915 chips that don't support modesetting
 	sed "s/%DRIVER%/${driver}/g" "/opt/openslx/remote-access/xorg-virtual.conf" > "/etc/X11/xorg.conf.d/16-remote-access-${driver}-virtual.conf"
 fi
+
+# Do NOT use evdi for now, makes 3D slow on some nvidias, completely breaks vmware output on some intels
+exit 0
+
 # For everything else, we use th evdi kernel module to add a virtual output
 if insmod "/lib/modules/$(uname -r)/kernel/extra/evdi.ko" initial_device_count=1 \
 		|| modprobe evdi; then

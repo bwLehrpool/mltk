@@ -69,6 +69,7 @@
 	gotone=false
 	vmvnc=false
 	idle=0
+	stepcount=0
 	# In case of stale entry
 	# TODO: This sucks anyways performance-wise for VMware, maybe remove?
 	iptables -t nat -D PREROUTING -p tcp --dport "$vnc_port" -j REDIRECT --to-ports 5901
@@ -79,6 +80,22 @@
 			idle=0
 		else
 			idle=$(( idle + 1 ))
+		fi
+		if $gotone; then
+			# As soon as someone is connected, "blank" the screen by setting brightness to zero.
+			# This doesn't seem to affect the framebuffer, luckily
+			# Let's see how well this works in practice. :-(
+			if (( stepcount == 0 )); then
+				declare -a args
+				args=()
+				for o in $( xrandr | grep -E '^[A-Z0-9-]+ connected.*[0-9]+x[0-9]+' | awk '{print $1}' ); do
+					args+=( "--output" "$o" "--brightness" "0" )
+				done
+				xrandr "${args[@]}"
+			fi
+			if (( stepcount++ > 3 )); then
+				stepcount=0
+			fi
 		fi
 		if $gotone && [ "$idle" -gt 120 ]; then # 120 * 5 = 10 mins
 			kill "$vncpid"
