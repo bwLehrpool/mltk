@@ -34,7 +34,7 @@ set_virt_memory() {
 	# Calculare amount of memory for the VM. Be generous if diff is written to HDD.
 	# First, determine how much should be left to the host system. Minimum is 1GB.
 	local min=1000
-	local base=750
+	local base=777
 	local reserve max disk_swap
 	if $TMPDIR_IN_RAM; then
 		# tmp in RAM, so reserve a lot for the system since that is where the HDD diff goes.
@@ -48,7 +48,7 @@ set_virt_memory() {
 			reserve=20
 		else
 			max=2000
-			reserve=8
+			reserve=9
 		fi
 	fi
 	# Non-zram swap (KB)
