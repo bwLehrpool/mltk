@@ -4,6 +4,15 @@
 
 [ -n "$SLX_REMOTE_VNC" ] || exit 0 # Nothing to do
 
+# Force modesetting driver on newer intel models
+vendor="$( < /proc/cpuinfo sed 's/\s//g' | awk -F: '$1 == "vendor_id" {print $2; exit}' )"
+cpufamily="$( < /proc/cpuinfo sed 's/\s//g' | awk -F: '$1 == "cpufamily" {print $2; exit}' )"
+model="$( < /proc/cpuinfo sed 's/\s//g' | awk -F: '$1 == "model" {print $2; exit}' )"
+
+if [ "$vendor" = "GenuineIntel" ] && [ "$cpufamily" -eq 6 ] && [ "$model" -gt 60 ]; then
+	rm -- "/usr/lib/xorg/modules/drivers/intel_drv.so"
+fi
+
 # Disable all input drivers
 cp "/opt/openslx/remote-access/xorg-noinput.conf" "/etc/X11/xorg.conf.d/16-remote-access-noinput.conf"
 
