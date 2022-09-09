@@ -14,6 +14,12 @@ build () {
 			> "${MODULE_BUILD_DIR}/etc/systemd/system/systemd-${svc}.service" \
 			|| perror "Could not remove umount.target from $svc"
 	done
+	mkdir -p "${MODULE_BUILD_DIR}/lib/udev"
+	for f in /lib/udev/hwdb.bin /etc/udev/hwdb.bin; do
+		[ -f "$f" ] || continue
+		cp "$f" "${MODULE_BUILD_DIR}/lib/udev/hwdb.bin" || perror "Copy $f failed"
+		break
+	done
 }
 
 post_copy() {
