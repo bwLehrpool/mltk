@@ -1,3 +1,3 @@
 #!/bin/sh
 
-exec /opt/openslx/bin/pavucontrol-slx -t 5
+exec /opt/openslx/bin/pavucontrol-slx
