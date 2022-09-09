@@ -42,11 +42,18 @@ haveged --pidfile /tmp/haveged.pid # Tries to put it in /run by default, which d
 
 # IMPORTANT - check if kernel modules in initrams match kernel version
 BASEDIR="/lib/modules/$(uname -r)/kernel/drivers"
-for dir in gpu hid; do
-	if ! [ -d "$BASEDIR/$dir" ]; then
-		echo "0" > /proc/sys/kernel/printk
-		reset
-		cat <<WARNING
+found=
+for dir in gpu hid net; do
+	if [ -d "$BASEDIR/$dir" ]; then
+		found=1
+		break
+	fi
+done
+
+if [ -z "$found" ]; then
+	echo "0" > /proc/sys/kernel/printk
+	reset
+	cat <<WARNING
 +
 +
 +
@@ -69,11 +76,10 @@ for dir in gpu hid; do
 +
 + + + + + + + + + + + + + +
 WARNING
-		while true; do
-			read some garbage
-		done
-	fi
-done
+	while true; do
+		read some garbage
+	done
+fi
 
 # preparations for mounting stage3.2
 FUTURE_ROOT="/dev/shm/uniontmp"
