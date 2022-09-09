@@ -28,10 +28,10 @@ else
 fi
 if [ -z "$UUID" ]; then
 	if [ "${#MAC}" -ne 17 ]; then
-		MAC="$( grep -Eo '(?<=ipv4.if=)\S+' /proc/cmdline )"
+		MAC="$( grep -Po '(?<=ipv4.if=)\S+' /proc/cmdline )"
 	fi
 	if [ "${#MAC}" -ne 17 ]; then
-		MAC="$( grep -Eo '(?<=BOOTIF=01-)\S+' /proc/cmdline )"
+		MAC="$( grep -Po '(?<=BOOTIF=01-)\S+' /proc/cmdline )"
 	fi
 	if [ "${#MAC}" -ne 17 ]; then
 		echo "Getting MAC from /proc/cmdline failed, using 'ip a'..."
