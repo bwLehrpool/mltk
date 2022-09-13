@@ -107,6 +107,7 @@ if [ -x "$ADDON_MOUNT_POINT/addon-init" ]; then
 fi
 if ! grep -q -F '/opt/openslx/mnt/stage4' '/proc/mounts'; then
 	echo "Running ldconfig"
+	killall ldconfig ldconfig.real # Stop any running instance, we have new data now
 	ldconfig 2> /dev/null || ldconfig.real 2> /dev/null
 	echo "ldconfig completed"
 fi
