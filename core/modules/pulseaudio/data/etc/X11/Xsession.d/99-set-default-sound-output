@@ -9,4 +9,7 @@ if [ -n "$SLX_PREFERRED_SOUND_OUTPUT" ] \
 		/opt/openslx/bin/pavucontrol-slx -o "$SLX_PREFERRED_SOUND_OUTPUT"
 	) &
 fi
+# run the background daemon that increases volume for everything
+/opt/openslx/bin/pavucontrol-slx -w &
+
 true
