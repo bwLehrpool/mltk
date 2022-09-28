@@ -96,6 +96,9 @@ if $full; then
 	fi
 fi
 
+# Bail out if we already sent the shutdown event to server
+# Do this right before the curl call to minimize odds for a race condition
+[ -e /run/openslx/shutdown.mutex ] && exit 0
 curl --retry 3 --retry-connrefused -m 6 -s --data-urlencode "type=~runstate" --data-urlencode "uuid=$UUID" --data-urlencode "used=$USED" \
 	--data-urlencode "user=$Name" --data-urlencode "tmpsize=$TMP_SIZE" --data-urlencode "tmpfree=$TMP_FREE" \
 	--data-urlencode "id45size=$ID45_SIZE" --data-urlencode "id45free=$ID45_FREE" \

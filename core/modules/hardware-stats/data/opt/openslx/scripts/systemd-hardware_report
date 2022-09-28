@@ -58,6 +58,8 @@ report_hardware_info() {
 	if ! python3 /opt/openslx/system-check/collect_hw_info_json.py -p > "$jsonfile"; then
 		echo -n "" > "$jsonfile"
 	fi
+	# Bail out if a shutdown was triggered and submitted in the meantime
+	[ -e /run/openslx/shutdown.mutex ] && exit 0
 	# just assume the uuid/mac dumped are valid here (its checked often enough :))
 	echo -n "Submitting to '$SLX_REMOTE_LOG' ... "
 	curl --retry 4 --retry-connrefused --max-time 5 --retry-max-time 15 \
