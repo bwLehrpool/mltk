@@ -213,7 +213,8 @@ copy_kernel () {
 
 	[ -d "${KERNEL_DIR}" ] || mkdir -p "${KERNEL_DIR}"
 
-	cp "${ROOT_DIR}/tmp/work/kernel/build/kernel" "${KERNEL_DIR}" || perror "Could not copy '${ROOT_DIR}/tmp/work/kernel/build/kernel' to '${KERNEL_DIR}'"
+	cp "${ROOT_DIR}/tmp/work/kernel/build/kernel" "${KERNEL_DIR}/" || perror "Could not copy '${ROOT_DIR}/tmp/work/kernel/build/kernel' to '${KERNEL_DIR}'"
+	cp "${ROOT_DIR}/tmp/work/kernel/ksrc/.config" "${KERNEL_DIR}/config"
 
 	# kernel has 0600 perms since ubuntu 14.04, change that once we copied it
 	chmod +r "${KERNEL_DIR}/kernel"
