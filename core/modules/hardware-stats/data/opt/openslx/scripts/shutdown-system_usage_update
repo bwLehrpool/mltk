@@ -1,5 +1,8 @@
 #!/bin/ash
 
+# Already done/running? Consider success
+mkdir /run/openslx/shutdown.mutex || exit 0
+
 . /opt/openslx/config
 [ -z "$SLX_REMOTE_LOG" ] && exit 0
 
@@ -7,6 +10,7 @@ UUID=$(cat /etc/system-uuid)
 
 [ -z "$UUID" ] && exit 1
 
-curl --retry 3 --retry-connrefused --max-time 3 --retry-max-time 10 -s --data-urlencode "type=~poweroff" --data-urlencode "uuid=$UUID" \
+curl --retry 3 --retry-connrefused --max-time 3 --retry-max-time 10 -s \
+	--data-urlencode "type=~poweroff" --data-urlencode "uuid=$UUID" \
 	"$SLX_REMOTE_LOG"
 
