@@ -38,8 +38,19 @@ fi
 
 if [ -n "$SLX_VMCHOOSER_TAB" ] && (( SLX_VMCHOOSER_TAB >= 0 && SLX_VMCHOOSER_TAB <= 2 )) 2>/dev/null; then
 	TAB="$SLX_VMCHOOSER_TAB"
-elif [ "$HW_MBRAM" -lt 3000 ]; then # Check RAM size; if it's not that much, default to the native linux sessions
+elif (( HW_MBRAM < 5000 )); then # Check RAM size; if it's not that much, default to the native linux sessions
 	TAB=0
+	# Only force if we have a "real" desktop
+	name=
+	for i in xfce xfce4 kde KDE plasma kde5; do
+		i="/usr/share/xsessions/${i}.desktop"
+		[ -f "$i" ] || continue
+		name="$( grep -oP '(?<=^Name=).*' "$i" )"
+		break
+	done
+	if [ -n "$name" ]; then
+		EXTRA+=( "--force-tab" "--default" "$name" )
+	fi
 else
 	TAB=2
 fi
