@@ -1,4 +1,4 @@
-#!/bin/ash
+#!/bin/bash
 
 # This script launches the real vmchooser (vmchooser.real)
 # It's here to pass the XML URL, coming from
@@ -6,6 +6,7 @@
 
 . /opt/openslx/config
 unset MEM URL ERRMSG EXTRA TAB HW_MBRAM HW_ID44
+declare -a EXTRA
 
 if [ -n "$SLX_VMCHOOSER_BASE_URL" ]; then
 	URL="$SLX_VMCHOOSER_BASE_URL"
@@ -20,9 +21,9 @@ fi
 URLS_CONF="/opt/openslx/vmchooser/config/resource_urls.conf"
 if [ -s "$URLS_CONF" ]; then
 	. "$URLS_CONF"
-	[ -n "$url_list" ] && EXTRA="$EXTRA --url-list $url_list"
-	[ -n "$url_news" ] && EXTRA="$EXTRA --url-news $url_news"
-	[ -n "$url_help" ] && EXTRA="$EXTRA --url-help $url_help"
+	[ -n "$url_list" ] && EXTRA+=( "--url-list" "$url_list" )
+	[ -n "$url_news" ] && EXTRA+=( "--url-news" "$url_news" )
+	[ -n "$url_help" ] && EXTRA+=( "--url-help" "$url_help" )
 fi
 
 [ -s "/run/hwinfo" ] && . "/run/hwinfo"
@@ -35,7 +36,7 @@ if [ -n "$HW_ID44" ] && ! [ "$HW_ID44" -gt 9000 ]; then # Use negation so NaN ->
 	HW_MBRAM=$(( ( HW_MBRAM * 3 ) / 4 ))
 fi
 
-if [ -n "$SLX_VMCHOOSER_TAB" ] && [ "$SLX_VMCHOOSER_TAB" -ge 0 -a "$SLX_VMCHOOSER_TAB" -le 2 ] 2>/dev/null; then
+if [ -n "$SLX_VMCHOOSER_TAB" ] && (( SLX_VMCHOOSER_TAB >= 0 && SLX_VMCHOOSER_TAB <= 2 )) 2>/dev/null; then
 	TAB="$SLX_VMCHOOSER_TAB"
 elif [ "$HW_MBRAM" -lt 3000 ]; then # Check RAM size; if it's not that much, default to the native linux sessions
 	TAB=0
@@ -43,27 +44,27 @@ else
 	TAB=2
 fi
 
-[ -n "$SLX_VMCHOOSER_TEMPLATES" ] && EXTRA="$EXTRA --template-mode $SLX_VMCHOOSER_TEMPLATES"
-[ -n "$SLX_VMCHOOSER_FORLOCATION" ] && EXTRA="$EXTRA --location-mode $SLX_VMCHOOSER_FORLOCATION"
-[ "$HW_KVM" != "ENABLED" ] && EXTRA="$EXTRA --no-vtx"
+[ -n "$SLX_VMCHOOSER_TEMPLATES" ] && EXTRA+=( "--template-mode" "$SLX_VMCHOOSER_TEMPLATES" )
+[ -n "$SLX_VMCHOOSER_FORLOCATION" ] && EXTRA+=( "--location-mode" "$SLX_VMCHOOSER_FORLOCATION" )
+[ "$HW_KVM" != "ENABLED" ] && EXTRA+=( "--no-vtx" )
 if [ -n "$SLX_EXAM" ]; then
-	EXTRA="$EXTRA --exam-mode"
+	EXTRA+=( "--exam-mode" )
 elif [ -n "$SLX_AUTOSTART_UUID" ]; then
 	SLX_EXAM_START="$SLX_AUTOSTART_UUID"
 fi
 if [ -z "$SLX_NO_PVS" ]; then
-	EXTRA="$EXTRA --pvs"
-	if [ "x$SLX_PVS_DEFAULT" = "xON" ] || [ "x$SLX_PVS_HYBRID" = "xyes" ]; then
+	EXTRA+=( "--pvs" )
+	if [ "$SLX_PVS_DEFAULT" = "ON" ] || [ "$SLX_PVS_HYBRID" = "yes" ]; then
 		# Config option says checked by default, or this is hybrid manager
-		EXTRA="$EXTRA --pvs-checked"
+		EXTRA+=( "--pvs-checked" )
 	elif grep -q -F -x -e "tutorIP=$SLX_PXE_CLIENT_IP" -e "tutorIP=$SLX_DHCP_CLIENT_IP" "/opt/openslx/pvs2/pvs2.ini"; then
 		# This IP is a tutor, also autoconnect
-		EXTRA="$EXTRA --pvs-checked"
+		EXTRA+=( "--pvs-checked" )
 	fi
 fi
 
 if [ -z "${SLX_AUTOLOGIN%OFF}" ] && [ -n "$SLX_VMCHOOSER_TIMEOUT" ] && [ "$SLX_VMCHOOSER_TIMEOUT" -gt 0 ]; then
-	EXTRA="$EXTRA --autoquit $SLX_VMCHOOSER_TIMEOUT"
+	EXTRA+=( "--autoquit" "$SLX_VMCHOOSER_TIMEOUT" )
 fi
 
 # Delay autologin a bit to prevent the old vm process still cleaning up while trying to
@@ -78,13 +79,12 @@ if /opt/openslx/lightdm/is-autologin-enabled && [ -s "/run/openslx/session-kille
 fi
 
 if [ -n "$SLX_LOCATIONS" ]; then
-	EXTRA="$EXTRA --locations $SLX_LOCATIONS"
+	EXTRA+=( "--locations" "$SLX_LOCATIONS" )
 fi
 
 if [ -n "$SLX_SCREEN_SAVER_TIMEOUT" ]; then
-	EXTRA="$EXTRA --allow-screensaver-disable"
+	EXTRA+=( "--allow-screensaver-disable" )
 fi
 
-# No quotes around $EXTRA!
-exec vmchooser.real "$@" --url "$URL" --fullscreen --tab "$TAB" --start-uuid "$SLX_EXAM_START" $EXTRA
+exec vmchooser.real "$@" --url "$URL" --fullscreen --tab "$TAB" --start-uuid "$SLX_EXAM_START" "${EXTRA[@]}"
 
