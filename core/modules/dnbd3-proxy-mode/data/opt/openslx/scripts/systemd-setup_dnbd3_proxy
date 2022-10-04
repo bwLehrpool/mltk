@@ -214,16 +214,17 @@ else
 	else
 		W="0"
 	fi
+	# Uptime >10hrs, or we might reboot multiple times if $H is > last $H
 	cat > "/etc/cron.d/dnbd3-reboot" <<EOF
 # OpenSLX: Reboot proxy at night
 SHELL=/bin/ash
 PATH=/usr/sbin:/usr/bin:/sbin:/bin:/opt/openslx/sbin:/opt/openslx/bin
 
-$M $H	* * $W	root	reboot
+$M $H	* * $W	root	[ "\$(grep -oEm1 '^[0-9]+' /proc/uptime) -lt 36000 ] || reboot
 EOF
 	#
 
-fi
+fi # end local caching or proxy mode
 
 rm -f "${DNBD3_CONF_DIR}/server.conf"
 # Refer to http://git.openslx.org/dnbd3.git/tree/conf for configuration options
