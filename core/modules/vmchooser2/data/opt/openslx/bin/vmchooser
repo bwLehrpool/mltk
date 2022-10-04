@@ -36,7 +36,7 @@ if [ -n "$HW_ID44" ] && ! [ "$HW_ID44" -gt 9000 ]; then # Use negation so NaN ->
 	HW_MBRAM=$(( ( HW_MBRAM * 3 ) / 4 ))
 fi
 
-if [ -n "$SLX_VMCHOOSER_TAB" ] && (( SLX_VMCHOOSER_TAB >= 0 && SLX_VMCHOOSER_TAB <= 2 )) 2>/dev/null; then
+if [ -n "$SLX_VMCHOOSER_TAB" ] && [ "$SLX_VMCHOOSER_TAB" -ge 0 ] && [ "$SLX_VMCHOOSER_TAB" -le 2 ] 2>/dev/null; then
 	TAB="$SLX_VMCHOOSER_TAB"
 elif (( HW_MBRAM < 5000 )); then # Check RAM size; if it's not that much, default to the native linux sessions
 	TAB=0
