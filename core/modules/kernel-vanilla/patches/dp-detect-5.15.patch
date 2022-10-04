@@ -1,14 +1,13 @@
 diff --git a/drivers/gpu/drm/drm_dp_dual_mode_helper.c b/drivers/gpu/drm/drm_dp_dual_mode_helper.c
-index 3ea53bb67..6147da983 100644
+index 3ea53bb67d3b..bd61e20770a5 100644
 --- a/drivers/gpu/drm/drm_dp_dual_mode_helper.c
 +++ b/drivers/gpu/drm/drm_dp_dual_mode_helper.c
-@@ -63,23 +63,42 @@
+@@ -63,23 +63,45 @@
  ssize_t drm_dp_dual_mode_read(struct i2c_adapter *adapter,
  			      u8 offset, void *buffer, size_t size)
  {
-+	int ret;
 +	u8 zero = 0;
-+	char *tmpbuf;
++	char *tmpbuf = NULL;
 +	/*
 +	 * As sub-addressing is not supported by all adaptors,
 +	 * always explicitly read from the start and discard
@@ -28,20 +27,22 @@ index 3ea53bb67..6147da983 100644
  			.addr = DP_DUAL_MODE_SLAVE_ADDRESS,
  			.flags = I2C_M_RD,
 -			.len = size,
--			.buf = buffer,
 +			.len = size + offset,
-+			.buf = NULL,
+ 			.buf = buffer,
  		},
  	};
--	int ret;
+ 	int ret;
  
-+	tmpbuf = kmalloc(size + offset, GFP_KERNEL);
-+	if (!tmpbuf)
-+		return -ENOMEM;
++	if (offset) {
++		tmpbuf = kmalloc(size + offset, GFP_KERNEL);
++		if (!tmpbuf)
++			return -ENOMEM;
 +
-+	msgs[1].buf = tmpbuf;
++		msgs[1].buf = tmpbuf;
++	}
++
  	ret = i2c_transfer(adapter, msgs, ARRAY_SIZE(msgs));
-+	if (ret == ARRAY_SIZE(msgs))
++	if (tmpbuf)
 +		memcpy(buffer, tmpbuf + offset, size);
 +
 +	kfree(tmpbuf);
@@ -49,7 +50,7 @@ index 3ea53bb67..6147da983 100644
  	if (ret < 0)
  		return ret;
  	if (ret != ARRAY_SIZE(msgs))
-@@ -208,18 +227,6 @@ enum drm_dp_dual_mode_type drm_dp_dual_mode_detect(const struct drm_device *dev,
+@@ -208,18 +230,6 @@ enum drm_dp_dual_mode_type drm_dp_dual_mode_detect(const struct drm_device *dev,
  	if (ret)
  		return DRM_DP_DUAL_MODE_UNKNOWN;
  
@@ -68,7 +69,7 @@ index 3ea53bb67..6147da983 100644
  	ret = drm_dp_dual_mode_read(adapter, DP_DUAL_MODE_ADAPTOR_ID,
  				    &adaptor_id, sizeof(adaptor_id));
  	drm_dbg_kms(dev, "DP dual mode adaptor ID: %02x (err %zd)\n", adaptor_id, ret);
-@@ -233,11 +240,10 @@ enum drm_dp_dual_mode_type drm_dp_dual_mode_detect(const struct drm_device *dev,
+@@ -233,11 +243,10 @@ enum drm_dp_dual_mode_type drm_dp_dual_mode_detect(const struct drm_device *dev,
  				return DRM_DP_DUAL_MODE_TYPE2_DVI;
  		}
  		/*
@@ -83,7 +84,7 @@ index 3ea53bb67..6147da983 100644
  			drm_err(dev, "Unexpected DP dual mode adaptor ID %02x\n", adaptor_id);
  
  	}
-@@ -343,10 +349,8 @@ EXPORT_SYMBOL(drm_dp_dual_mode_get_tmds_output);
+@@ -343,10 +352,8 @@ EXPORT_SYMBOL(drm_dp_dual_mode_get_tmds_output);
   * @enable: enable (as opposed to disable) the TMDS output buffers
   *
   * Set the state of the TMDS output buffers in the adaptor. For
