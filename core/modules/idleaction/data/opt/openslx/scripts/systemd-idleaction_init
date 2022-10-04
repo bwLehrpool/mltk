@@ -1,5 +1,9 @@
 #!/bin/ash
 
+# Called to calculate the next wakeup of this machine. Should be called whenever
+# it might make sense to update this, e.g. right after boot, when entering/leaving
+# standby, and when shutting down.
+
 if [ "$1" = "test" ]; then
 	shift
 	TEST=1
@@ -12,7 +16,7 @@ fi
 
 # Figure out the next rtcwake
 SCHEDULE="$SCHEDULE $SLX_WAKEUP_SCHEDULE"
-if [ "x$1" = "xsuspend" ]; then
+if [ "$1" = "suspend" ]; then
 	# If we're about to suspend, consider reboot and shutdown too - we
 	# need to wake up to execute these
 	SCHEDULE="$SCHEDULE $SLX_SHUTDOWN_SCHEDULE $SLX_REBOOT_SCHEDULE"
