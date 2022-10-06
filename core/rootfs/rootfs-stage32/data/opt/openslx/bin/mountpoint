@@ -1,0 +1,3 @@
+#!/bin/ash
+
+exec slx-tools fs_path_ismountpoint "$@"
