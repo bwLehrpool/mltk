@@ -1,5 +1,7 @@
 [Unit]
 Description=Management OpenSSH Daemon for OpenSLX
+After=systemd-tmpfiles-setup.service
+After=network.target
 
 [Service]
 ExecStartPre=-/opt/openslx/scripts/systemd-mgmt_sshd_fw
