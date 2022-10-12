@@ -58,6 +58,7 @@ build() {
 
 		exit 0 # Fake it since it will try to load the module and probably fail
 		EOF
+		rm -f -- "${builddir}/usr/sbin/lsmod" # Don't want this outside the container
 		if grep -qE "$KMOD_ERROR" "${builddir}${KMOD_LOG}"; then
 			pwarning "Could not compile all kernel modules: $( grep -E "$KMOD_ERROR" "${builddir}${KMOD_LOG}" )"
 			perror "Bailing out..."
