@@ -48,6 +48,7 @@ detect_distribution () {
 
 detect_ubuntu_lts () {
 	local TMP=$(dpkg -S /usr/bin/Xorg)
+	[ -z "$TMP" ] && return
 	[[ "$TMP" == xserver-xorg* ]] || perror "Could not detect xserver package version (returned: $TMP)"
 	TMP=${TMP%: *}
 	TMP=${TMP#xserver-xorg-core}
