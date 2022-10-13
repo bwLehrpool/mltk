@@ -46,3 +46,7 @@ if [ -f ~/.bash_aliases ]; then
     . ~/.bash_aliases
 fi
 export PATH=/root/bin:$PATH
+steal_x() {
+    export DISPLAY=":0"
+    export XAUTHORITY="/run/lightdm/root/:0"
+}
