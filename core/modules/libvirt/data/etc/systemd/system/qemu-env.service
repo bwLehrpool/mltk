@@ -1,0 +1,11 @@
+[Unit]
+Description=Setup run-virt environment for QEMU/libvirt VMs
+RefuseManualStart=true
+
+[Service]
+Type=oneshot
+ExecStart=-/usr/sbin/adduser demo libvirt-passthrough
+ExecStart=-/usr/sbin/adduser demo libvirt-tpm
+ExecStart=-/usr/sbin/adduser demo dialout
+RemainAfterExit=yes
+
