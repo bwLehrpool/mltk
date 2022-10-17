@@ -220,7 +220,7 @@ else
 SHELL=/bin/ash
 PATH=/usr/sbin:/usr/bin:/sbin:/bin:/opt/openslx/sbin:/opt/openslx/bin
 
-$M $H	* * $W	root	[ "\$(grep -oEm1 '^[0-9]+' /proc/uptime) -lt 36000 ] || reboot
+$M $H	* * $W	root	[ "\$(grep -oEm1 '^[0-9]+' /proc/uptime)" -lt 36000 ] || reboot
 EOF
 	#
 
