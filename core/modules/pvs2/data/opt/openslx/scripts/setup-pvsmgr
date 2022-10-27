@@ -17,7 +17,7 @@ counter=0
 
 while [ $timediff -gt 3 ]; do
 	start="$(date +%s)"
-	/opt/openslx/bin/pvsmgr "$CONF" "$@"
+	/opt/openslx/bin/pvsmgr "$CONF" "$@" &> "/tmp/xsession-log-pvsmgr-$(date +%s)-$$"
 	ret=$?
 	[ "$ret" == "0" ] && break
 	end="$(date +%s)"

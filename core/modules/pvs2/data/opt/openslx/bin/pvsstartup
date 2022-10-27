@@ -15,6 +15,7 @@ DIR=$(mktemp -d)
 [ -n "$DIR" ] && cd "$DIR"
 
 ulimit -c unlimited
+exec &> "/tmp/xsession-log-pvsclient-$(date +%s)-$$"
 
 while [ $timediff -gt 3 ]; do
 	start="$(date +%s)"
@@ -23,7 +24,7 @@ while [ $timediff -gt 3 ]; do
 	end="$(date +%s)"
 	[ "$ret" = 139 ] && for c in core*; do
 		[ -f "$c" ] || continue
-		tar ckzf "cmp-${c}.tgz" "$c"
+		tar ckzf "cmp-${c}.tgz" "$c" "/opt/openslx/.mltk/pvs2.git" "/etc/issue"
 		curl -m 3 -H "Expect:" -f -s -S -F "file=@cmp-${c}.tgz;filename=report" "$URL" &> /dev/null
 		rm -f -- "$c" "cmp-${c}.tgz"
 	done
