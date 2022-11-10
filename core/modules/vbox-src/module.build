@@ -5,6 +5,7 @@ vbox_build_id() {
 		echo "$REQUIRED_VBOX_VERSION"
 		gcc --version 2>&1
 		echo "${TARGET_KERNEL_LONG}"
+		echo "2" # incrase this in case something relevant changes in this build script
 		grep -E '^(# )?CONFIG_' "${KERNEL_HEADERS_DIR}/.config"
 	} | md5sum | cut -c1-32
 }
@@ -69,10 +70,18 @@ build() (
 			--disable-java				\
 			--disable-python			\
 			--disable-libvpx			\
+			--disable-libopus			\
+			--enable-vnc            \
+			--disable-udptunnel     \
 			--with-linux="${KERNEL_HEADERS_DIR}"	\
-			--out-path="${VBOX_BUILD_DIR}"	\
+			--out-base-dir="${VBOX_BUILD_DIR}"	\
 				|| perror "'configure' failed."
-
+		# Newer version SUCK because they ignore --with-linux and require KERN_DIR to be set,
+		# and forthermode require it to end in "<version>/build", so we need to create a symlink *facepalm*
+		mkdir -p "kernel/${KERNEL_VERSION_LONG}"
+		ln -s "${KERNEL_HEADERS_DIR}" "kernel/${KERNEL_VERSION_LONG}/build" \
+			|| perror "Kernel symlink fail ('${KERNEL_HEADERS_DIR}' <- 'kernel/${KERNEL_VERSION_LONG}/build')"
+		export KERN_DIR="$( readlink -f "kernel" )/${KERNEL_VERSION_LONG}/build"
 		# Limit job count - can easily OOM
 		num="$( awk '$1 == "MemTotal:" { print int(0.25 + $2 / (1024*1024)) }' /proc/meminfo )"
 		(( num > CPU_CORES )) && num="$CPU_CORES"
@@ -81,6 +90,8 @@ build() (
 		# copy the LocalConfig.kmk to the build dir to be more LSB-compliant
 		cp "${MODULE_DIR}/LocalConfig.kmk" "${VBOX_BUILD_DIR}" || \
 			perror "Failed to cp LocalConfig.kmk to build dir"
+		cp "${MODULE_DIR}/LocalConfig.kmk" "${VBOX_BUILD_DIR}/../" || \
+			perror "Failed to cp LocalConfig.kmk to build/../ dir"
 		kmk -j "$num" all || perror "Failed to execute 'kmk'."
 
 		# check the generated build directory, use BUILD_PLATFORM_ARCH defined in env.sh

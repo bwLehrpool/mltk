@@ -4,6 +4,7 @@ REQUIRED_INSTALLED_PACKAGES="
 	makeself
 	nasm
 	genisoimage
+	glslang-tools
 	libcurl4-openssl-dev
 	libcap-dev
 	libdevmapper-dev
@@ -18,6 +19,7 @@ REQUIRED_INSTALLED_PACKAGES="
 	libopus-dev
 	usbutils
 	xsltproc
+	yasm
 "
 # These are required for building 32-bit guest additions on 64-bit systems
 REQUIRED_INSTALLED_PACKAGES_X64_X86="
