@@ -107,8 +107,8 @@ set_hardware_limits() {
 	# use HW_CORES not HW_THREADS since virtualbox does not
 	# seem to handle hyperthreading all too well...
 	declare -g CPU_CORES="${HW_CORES:-1}"
-	[ "${CPU_CORES}" -gt "{MAXCORES}" ] && CPU_CORES="${MAXCORES}"
-	[ "${VM_MEM}" -gt "${MAXMEM}" ] && VM_MEM="${MAXMEM}"
+	(( CPU_CORES > MAXCORES )) && CPU_CORES="${MAXCORES}"
+	(( VM_MEM > MAXMEM )) && VM_MEM="${MAXMEM}"
 
 	# currently not used, keep the VRAMSize setting from the uploaded configuration
 	declare -rg GUESTVRAM=$MAXVRAM
@@ -116,7 +116,7 @@ set_hardware_limits() {
 	# check if shared folders should be activated according
 	# to SHARE_REMAP_MODE set by /opt/openslx/inc/shares
 	VBOX_SHARED_FOLDERS=
-	if [ "x$SHARED_FOLDERS" != "xFALSE" ] && [ "$SHARE_REMAP_MODE" -gt 1 ]; then
+	if [ "${SHARED_FOLDERS^^}" = "TRUE" ] && (( SHARE_REMAP_MODE > 1 )); then
 		declare -rg VBOX_SHARED_FOLDERS="1"
 	fi
 	return 0
