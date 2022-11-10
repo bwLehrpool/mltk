@@ -22,22 +22,26 @@ VBOX_KMOD_DIR="/lib/modules/vbox"
 VBOX_MANAGE="${VBOX_BASE_DIR}/VBoxManage"
 
 . /opt/openslx/config
+exit_code=0
 
 # Runtime critical checks first
 # VBoxManage should be under /usr/lib/virtualbox
-if ! [ -d "${VBOX_BASE_DIR}" -o -x "${VBOX_MANAGE}" -o -d "${VBOX_KMOD_DIR}" ]; then
+if ! [ -d "${VBOX_BASE_DIR}" ] || [ -x "${VBOX_MANAGE}" ] || [ -d "${VBOX_KMOD_DIR}" ]; then
 	echo "Failed to find VirtualBox installation at expected paths."
 	exit 1
 fi
 
 # load vbox kernel modules
-cd "${VBOX_KMOD_DIR}"
-for MOD in *; do
-	if ! insmod "${MOD}"; then
-		slxlog "vbox-setup" "Loading of ${MOD} failed."
-		exit 1
-	fi
-done
+if ! cd "${VBOX_KMOD_DIR}"; then
+	exit_code=1
+else
+	for MOD in *; do
+		if ! lsmod | grep -q "^${MOD%%.*} " && ! insmod "${MOD}"; then
+			slxlog "vbox-setup" "Loading of ${MOD} failed."
+			exit_code=1
+		fi
+	done
+fi
 
 # check/create vboxusers group
 getent group vboxusers || addgroup --system vboxusers
@@ -58,29 +62,37 @@ udevadm control --reload
 
 # pretty dumb, you can only create host-only interfaces,
 # but not assign a specific name/number
-${VBOX_MANAGE} hostonlyif create
-ip link set dev vboxnet0 up
-[ "$SLX_JUMBO_FRAMES" = "yes" ] && ip link set dev vboxnet0 mtu 9000
-brctl addif br0 vboxnet0
+if ! [ -e "/sys/class/net/vboxnet0" ]; then
+	${VBOX_MANAGE} hostonlyif create || exit_code=1
+	ip link set dev vboxnet0 up
+	[ "$SLX_JUMBO_FRAMES" = "yes" ] && ip link set dev vboxnet0 mtu 9000
+	brctl addif br0 vboxnet0 || exit_code=1
+fi
 
-${VBOX_MANAGE} hostonlyif create
-ip link set dev vboxnet1 up
-brctl addif nat1 vboxnet1
+if ! [ -e "/sys/class/net/vboxnet1" ]; then
+	${VBOX_MANAGE} hostonlyif create || exit_code=1
+	ip link set dev vboxnet1 up
+	brctl addif nat1 vboxnet1 || exit_code=1
+fi
 
-${VBOX_MANAGE} hostonlyif create
-ip link set dev vboxnet2 up
-brctl addif vsw2 vboxnet2
+if ! [ -e "/sys/class/net/vboxnet2" ]; then
+	${VBOX_MANAGE} hostonlyif create || exit_code=1
+	ip link set dev vboxnet2 up
+	brctl addif vsw2 vboxnet2 || exit_code=1
+fi
 
 if [ "$SLX_BRIDGE_OTHER_NICS" = "yes" ]; then
 	# These will have been set up in our init, or by bridge-other-nics.service
-	NICS=$( ls -1 /sys/class/net | grep '^br-nic-' | cut -c 8- )
 	vboxnet=3
-	for nic in $NICS; do
-		if ! [ "$nic" -gt 0 ] && ! [ "$nic" -eq 0 ]; then
+	for nic in /sys/class/net/br-nic-*; do
+		nic="${nic##*-}"
+		if ! [ "$nic" -ge 0 ]; then
 			slxlog "vbox-other-nics" "NaN: br-nic-X has X='$nic'"
 			continue
 		fi
-		# create vboxnet10 - vboxnetN for these
+		# Already done?
+		[ -e "/sys/class/net/vboxnet${vboxnet}" ] && continue
+		# create vboxnet3 - vboxnetN for these
 		${VBOX_MANAGE} hostonlyif create
 		brctl addif "br-nic-${nic}" "vboxnet${vboxnet}"
 		vboxnet="$(( vboxnet + 1 ))"
@@ -90,4 +102,4 @@ fi
 # trigger reload of iptables stuff (it's using inotify)
 touch /opt/openslx/iptables/rules.d/empty
 
-exit 0
+exit "$exit_code"
