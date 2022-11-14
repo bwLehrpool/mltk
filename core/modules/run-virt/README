@@ -157,6 +157,8 @@ Note that this is a floppy, not the cloud, so you're limited to 1.44MB of storag
 
 Hook to set up read or write access to image. Here, only *.inc type hooks make sense, since they're
 expected to set either VM_DISKFILE_RO or VM_DISKFILE_RW, depending on desired access.
+You should only ever set one of the two variables, as it is undefined what the individual
+virtualizer plugins will do if both variables are set.
 
 # pre-exec.d/
 
