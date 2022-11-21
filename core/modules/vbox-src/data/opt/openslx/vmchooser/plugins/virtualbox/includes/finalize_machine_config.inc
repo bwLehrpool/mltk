@@ -27,34 +27,34 @@ setup_disk_image() {
 	# "attach" VBOX_HDD_UUID (either the snapshot's or the disk's)
 	# NOTE: exactly one <AttachedDevice> node should be present in the downloaded xml
 	set_attr \
-		"/VirtualBox/Machine/StorageControllers/StorageController/AttachedDevice/Image" \
+		"/VirtualBox/Machine//StorageControllers/StorageController/AttachedDevice/Image" \
 		"uuid" "{${VBOX_HDD_UUID}}"
 }
 
 setup_floppies() {
 	# add storage controller and 2 floppies to it
-	if ! node_exists '/VirtualBox/Machine/StorageControllers/StorageController[@name="Floppy"]'; then
+	if ! node_exists '/VirtualBox/Machine//StorageControllers/StorageController[@name="Floppy"]'; then
 		add_node \
-			"/VirtualBox/Machine/StorageControllers" "StorageController" \
+			"/VirtualBox/Machine//StorageControllers" "StorageController" \
 			"name=Floppy" \
 			"type=I82078" \
 			"PortCount=1" \
 			"useHostIOCache=true"
 	fi
 	add_node \
-		'/VirtualBox/Machine/StorageControllers/StorageController[@name="Floppy"]' "AttachedDevice" \
+		'/VirtualBox/Machine//StorageControllers/StorageController[@name="Floppy"]' "AttachedDevice" \
 		"type=Floppy" \
 		"hotpluggable=false" \
 		"port=0" \
 		"device=0"
 	if notempty FLOPPY_0; then
 		add_node \
-			'/VirtualBox/Machine/StorageControllers/StorageController[@name="Floppy"]/AttachedDevice[@device="0"]' \
+			'/VirtualBox/Machine//StorageControllers/StorageController[@name="Floppy"]/AttachedDevice[@device="0"]' \
 			"HostDrive" \
 			"src=${FLOPPY_0}"
 	fi
 	add_node \
-		'/VirtualBox/Machine/StorageControllers/StorageController[@name="Floppy"]' "AttachedDevice" \
+		'/VirtualBox/Machine//StorageControllers/StorageController[@name="Floppy"]' "AttachedDevice" \
 		"type=Floppy" \
 		"hotpluggable=false" \
 		"port=0" \
@@ -62,7 +62,7 @@ setup_floppies() {
 
 	# add the slx floppy to the second drive
 	add_node \
-		'/VirtualBox/Machine/StorageControllers/StorageController/AttachedDevice[@device="1"]' "Image" \
+		'/VirtualBox/Machine//StorageControllers/StorageController/AttachedDevice[@device="1"]' "Image" \
 		"uuid={${SLX_FLOPPY_UUID}}"
 }
 
@@ -73,13 +73,13 @@ setup_optical_drives() {
 	fi
 	local controller='StorageController[@type="AHCI"]'
 	local devnum=1
-	if node_exists '/VirtualBox/Machine/StorageControllers/'"$controller"; then
+	if node_exists '/VirtualBox/Machine//StorageControllers/'"$controller"; then
 		# TODO validating port count...
 		writelog "AHCI controller found, will add CDROMs to it."
 	else
 		writelog "Adding SATA controller for CDROMs."
 		add_node \
-			"/VirtualBox/Machine/StorageControllers" "StorageController" \
+			"/VirtualBox/Machine//StorageControllers" "StorageController" \
 			"name=SATA-CDROM" \
 			"type=AHCI" \
 			"PortCount=1" \
@@ -91,7 +91,7 @@ setup_optical_drives() {
 	for cdrom in $CDROM_0 $CDROM_1; do
 		writelog "Adding passthrough CDROM"
 		add_node \
-			'/VirtualBox/Machine/StorageControllers/'"$controller" "AttachedDevice" \
+			'/VirtualBox/Machine//StorageControllers/'"$controller" "AttachedDevice" \
 			"type=DVD" \
 			"passthrough=true" \
 			"hotpluggable=false" \
@@ -99,7 +99,7 @@ setup_optical_drives() {
 			"device=$devnum"
 		(( devnum ++ ))
 		add_node \
-			'/VirtualBox/Machine/StorageControllers/'"$controller"'/AttachedDevice[@type="DVD"]' "HostDrive" \
+			'/VirtualBox/Machine//StorageControllers/'"$controller"'/AttachedDevice[@type="DVD"]' "HostDrive" \
 			"src=${cdrom}"
 	done
 }

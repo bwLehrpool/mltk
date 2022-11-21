@@ -49,7 +49,7 @@ prepare_disk_image_ro() {
 	# TODO handle other formats...
 	# finally "register" the snapshot in the MediaRegistry
 	xmlstarlet ed -L -N x="http://www.virtualbox.org/" \
-		-s "//x:VirtualBox/x:Global/x:MediaRegistry/x:HardDisks/x:HardDisk[@uuid='{${HDD_UUID}}']" \
+		-s "/x:VirtualBox/x:Global/x:MediaRegistry/x:HardDisks/x:HardDisk[@uuid='{${HDD_UUID}}']" \
 		-t elem -n "HardDisk" --var newnode '$prev' \
 		-i '$newnode' -t attr -n "uuid" -v "{${SNAPSHOT_UUID}}" \
 		-i '$newnode' -t attr -n "location" -v "${VBOX_SNAPSHOT_DIR}/{${SNAPSHOT_UUID}}.vdi" \
@@ -88,7 +88,7 @@ prepare_disk_image() {
 
 	# add the hard disk element to the "global" VirtualBox.xml
 	xmlstarlet ed -L -N x="http://www.virtualbox.org/" \
-		-s "//x:VirtualBox/x:Global/x:MediaRegistry/x:HardDisks" \
+		-s "/x:VirtualBox/x:Global/x:MediaRegistry/x:HardDisks" \
 		-t elem -n "HardDisk" --var newnode '$prev' \
 		-i '$newnode' -t attr -n "uuid" -v "{${HDD_UUID}}" \
 		-i '$newnode' -t attr -n "location" -v "$VBOX_HDD_LINK" \
