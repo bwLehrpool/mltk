@@ -75,7 +75,7 @@ done
 echo -n "..."
 
 cp /tmp/udhcpclog /opt/openslx/config.tgz.list \
-	/etc/resolv.conf
+	/etc/resolv.conf \
 	/tmp/xsession-log-* \
 	/tmp/remote_log_check-* \
 	/opt/openslx/pam/slx-ldap.d/* \
