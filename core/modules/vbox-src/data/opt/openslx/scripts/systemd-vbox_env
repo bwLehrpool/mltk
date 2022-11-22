@@ -26,7 +26,7 @@ exit_code=0
 
 # Runtime critical checks first
 # VBoxManage should be under /usr/lib/virtualbox
-if ! [ -d "${VBOX_BASE_DIR}" ] || [ -x "${VBOX_MANAGE}" ] || [ -d "${VBOX_KMOD_DIR}" ]; then
+if ! [ -d "${VBOX_BASE_DIR}" ] || ! [ -x "${VBOX_MANAGE}" ] || ! [ -d "${VBOX_KMOD_DIR}" ]; then
 	echo "Failed to find VirtualBox installation at expected paths."
 	exit 1
 fi
