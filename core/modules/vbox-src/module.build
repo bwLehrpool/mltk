@@ -70,7 +70,6 @@ build() (
 			--disable-java				\
 			--disable-python			\
 			--disable-libvpx			\
-			--disable-libopus			\
 			--enable-vnc            \
 			--disable-udptunnel     \
 			--with-linux="${KERNEL_HEADERS_DIR}"	\
