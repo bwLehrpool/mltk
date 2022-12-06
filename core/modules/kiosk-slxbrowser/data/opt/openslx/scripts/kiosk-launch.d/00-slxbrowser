@@ -40,6 +40,10 @@ else
 	OPTS+=("--fullscreen")
 fi
 
+if [ -n "$SLX_BROWSER_ZOOM" ]; then
+	OPTS+=( "--zoom" "$SLX_BROWSER_ZOOM" )
+fi
+
 # HACK: give whatever enough time to whatever it does properly
 sleep 1
 

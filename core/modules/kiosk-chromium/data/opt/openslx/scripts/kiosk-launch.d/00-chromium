@@ -77,6 +77,14 @@ if [ -z "$SLX_BROWSER_INTERACTIVE" ]; then
 	fi
 fi
 
+if [ -n "$SLX_BROWSER_ZOOM" ]; then
+	v="${SLX_BROWSER_ZOOM}"
+	while [ "${#v}" -lt 3 ]; do
+		v="0$v"
+	done
+	chromium_args+=( "--force-device-scale-factor" "${v:0:-2}.${v:${#v}-2}" )
+fi
+
 if [ -n "$SLX_BROWSER_RELOAD_SECS" ] && [ "$SLX_BROWSER_RELOAD_SECS" -gt 0 ]; then
 	(
 	wid=
