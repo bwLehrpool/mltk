@@ -1,9 +1,9 @@
 #!/bin/bash
 REQUIRED_CONTENT_PACKAGES="
 			dbus
+			dbus-bin
 			dbus-x11
-"
-REQUIRED_FILES+="
+			dbus-daemon
 "
 REQUIRED_DIRECTORIES="
 			/usr/share/dbus-1

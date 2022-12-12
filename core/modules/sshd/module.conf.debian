@@ -1,0 +1,4 @@
+#!/bin/bash
+REQUIRED_CONTENT_PACKAGES="
+	openssh-server
+"

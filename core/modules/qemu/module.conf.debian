@@ -1,0 +1,10 @@
+#!/bin/bash
+
+REQUIRED_INSTALLED_PACKAGES="
+	maven
+	default-jdk-headless
+"
+
+REQUIRED_CONTENT_PACKAGES="
+	jq
+"

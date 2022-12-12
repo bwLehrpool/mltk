@@ -1,7 +1,6 @@
 #!/bin/bash
 REQUIRED_INSTALLED_PACKAGES="
 	cmake
-	libqt5gui5
 	libqt5svg5-dev
 	libqt5x11extras5-dev
 	qt5-qmake
@@ -9,11 +8,12 @@ REQUIRED_INSTALLED_PACKAGES="
 	qtbase5-dev-tools
 	qttools5-dev
 	qttools5-dev-tools
-	qttranslations5-l10n
 "
 
 REQUIRED_CONTENT_PACKAGES="
+	gnome-icon-theme
 	libqt5gui5
 	libqt5svg5
+	qt5ct
 	qttranslations5-l10n
 "

@@ -1,0 +1,18 @@
+#!/bin/bash
+
+REQUIRED_INSTALLED_PACKAGES="
+	lxqt-build-tools
+	libpulse-dev
+"
+
+REQUIRED_CONTENT_PACKAGES="
+	alsa-tools
+	alsa-utils
+	alsa-topology-conf
+	libasound2
+	libasound2-data
+	libasound2-plugins
+	libpulse0
+	pulseaudio
+	pulseaudio-utils
+"

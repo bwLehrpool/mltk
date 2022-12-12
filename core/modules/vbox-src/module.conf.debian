@@ -4,6 +4,7 @@ REQUIRED_INSTALLED_PACKAGES="
 	makeself
 	nasm
 	genisoimage
+	glslang-tools
 	libcurl4-openssl-dev
 	libcap-dev
 	libdevmapper-dev
@@ -18,11 +19,15 @@ REQUIRED_INSTALLED_PACKAGES="
 	libopus-dev
 	usbutils
 	xsltproc
+	yasm
+"
+REQUIRED_CONTENT_PACKAGES="
+	usb.ids
 "
 # These are required for building 32-bit guest additions on 64-bit systems
 REQUIRED_INSTALLED_PACKAGES_X64_X86="
 	libc6-dev-i386
-	lib32gcc1
+	lib32gcc-s1
 	lib32stdc++6
 	gcc-multilib
 	g++-multilib

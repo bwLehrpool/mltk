@@ -5,9 +5,13 @@ module_init() {
 	declare -a apts
 	[ "$SYS_DISTRIBUTION" = "ubuntu" ] || [ "$SYS_DISTRIBUTION" = "debian" ] || return 0
 	# Forcefully add docker repo
+	local vers="$SYS_VERSION"
+	# XXX HACK - currently 12 is still testing, so we get "n/a"
+	# and then, there is no release for it yet at nvidia. So use debian 11 repo.
+	[ "$vers" = "n/a" ] && vers=11
 	apts=(
 		"https://download.docker.com/linux/${SYS_DISTRIBUTION}/gpg deb [arch=$(dpkg --print-architecture) signed-by=%FILE%] https://download.docker.com/linux/$SYS_DISTRIBUTION $(lsb_release -cs) stable"
-		"https://nvidia.github.io/nvidia-docker/gpgkey https://nvidia.github.io/nvidia-docker/${SYS_DISTRIBUTION}$(lsb_release -rs)/nvidia-docker.list"
+		"https://nvidia.github.io/nvidia-docker/gpgkey https://nvidia.github.io/nvidia-docker/${SYS_DISTRIBUTION}${vers}/nvidia-docker.list"
 	)
 	for i in "${apts[@]}"; do
 		url="${i%% *}"

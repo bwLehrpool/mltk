@@ -1,0 +1,8 @@
+#!/bin/bash
+REQUIRED_CONTENT_PACKAGES="
+	containerd.io
+	docker-ce
+	docker-ce-cli
+	nvidia-container-toolkit
+	docker-compose
+"

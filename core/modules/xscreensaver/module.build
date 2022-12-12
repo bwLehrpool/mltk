@@ -28,7 +28,7 @@ build() {
 
 	pinfo "Building bwlp-screensaver"
 
-	cmake "$SRCDIR/bwlp-screensaver" || perror "'cmake $SRCDIR/bwlp-screensaver' failed."
+	cmake -DCMAKE_BUILD_TYPE=Release "$SRCDIR/bwlp-screensaver" || perror "'cmake $SRCDIR/bwlp-screensaver' failed."
 	make || perror "'make' failed."
 }
 

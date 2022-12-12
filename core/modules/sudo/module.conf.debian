@@ -2,3 +2,6 @@
 REQUIRED_CONTENT_PACKAGES="
 	sudo
 "
+REQUIRED_DIRECTORIES="
+	/usr/libexec/sudo
+"
