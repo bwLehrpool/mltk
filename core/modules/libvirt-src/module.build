@@ -28,7 +28,7 @@ build() {
 
 	# install meson (>= 0.54.0) since packaged version is too old
 	# not 0.60 as of now, https://github.com/mesonbuild/meson/issues/9472
-	pip3 install "meson==0.55.0"
+	pip3 install "meson==0.56.0"
 
 	meson build \
 		--prefix="/usr" \
