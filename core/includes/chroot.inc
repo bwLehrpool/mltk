@@ -146,8 +146,23 @@ chroot_gen_autoexec() {
 		#  system environment!                                #
 		#                                                     #
 		#######################################################
+		export LD_PRELOAD=/bla.so
 		echo "chroot started successfully."
 	EOF
+
+	# Preload bullshit for close_range
+	gcc -xc - -o "${CHROOT_MOUNTDIR}/bla.so" -shared <<-PUFF
+		#include <unistd.h>
+		int close_range(unsigned int a, unsigned int b, int c)
+		{
+			if (b - a > 1000) b = a + 1000;
+			for (unsigned int i = a; i < b; ++i) {
+				close(i);
+			}
+			return 0;
+		}
+	PUFF
+	[ -s "${CHROOT_MOUNTDIR}/bla.so" ] || exit 12
 
 	# dump the piped input to it
 	cat >> "${CHROOT_MOUNTDIR}/autoexec.bat"
