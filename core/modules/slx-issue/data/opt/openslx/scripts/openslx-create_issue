@@ -29,7 +29,7 @@ declare -rg OUTFILE=/etc/issue
 # get_dmi_info <class>
 get_dmi_info() {
 	[ -n "$1" ] || return
-	echo $(dmidecode -s $1 | grep -vP "unknown|filled|^#")
+	echo $(dmidecode -s "$1" | grep -vP "unknown|filled|^#")
 }
 # Replace known variables and determine maximum line length
 MAX=0
@@ -38,11 +38,11 @@ while IFS='' read -r line || [ -n "$line" ]; do
 	tst="${line//"%minspace%"/}"
 	tst="${tst//"%space%"/}"
 	len=${#tst}
-	[ "$len" -gt "$MAX" ] && MAX=$len
+	(( len > MAX )) && MAX=$len
 	echo "$line"
 done < "$INFILE" > "$TMPFILE"
-player=$(< /etc/vmware/config grep -m1 '^product.version' | awk -F= '{print $2}')
-kernel=$(uname -r)
+player=$( < "/etc/vmware/config"  grep -m1 '^product.version' | awk -F= '{print $2}')
+kernel=$( uname -r )
 system_manufacturer="$(get_dmi_info system-manufacturer)"
 [ -z "$system_manufacturer" ] && system_manufacturer="$(get_dmi_info baseboard-manufacturer)"
 system_product="$(get_dmi_info system-product-name)"
@@ -52,7 +52,7 @@ system="$system_manufacturer $system_product"
 
 # Support the boot interface name eventually saved as SLX_PXE_NETIF
 # from the new dracut-based stage3, fallback to old eth0 if not set
-linkspeed=$(cat /sys/class/net/${SLX_PXE_NETIF:-eth0}/speed)
+linkspeed=$( cat "/sys/class/net/${SLX_PXE_NETIF:-eth0}/speed" )
 
 # Detect if the system is backed by a disk
 if slx-tools fs_path_isvolatile /tmp; then
@@ -68,7 +68,7 @@ netboot="$(grep -oP '(?<=slxbase=boot/)\S+' /proc/cmdline | tr '/' ' ')"
 netboot="${netboot^m}"
 netboot="${netboot^^l}"
 
-virtualbox="$( . /usr/lib/virtualbox/scripts/generated.sh; echo $VBOX_VERSION_STRING )"
+virtualbox="$( . "/usr/lib/virtualbox/scripts/generated.sh"; echo "$VBOX_VERSION_STRING" )"
 
 cat >> "$TMPFILE" <<EOF
 System model:%space% $system
@@ -96,7 +96,7 @@ fi
 echo "" >> "$TMPFILE"
 
 # Crop to console width
-[ "$MAX" -lt 80 ] && MAX=80
+(( MAX < 80 )) && MAX=80
 export TERM=linux
 T="$( tput cols 2> /dev/console < /dev/console )"
 [ -z "$T" ] && T="$( tput cols 2> /dev/tty1 < /dev/tty1 )"
@@ -105,7 +105,7 @@ if [ -z "$T" ]; then
 	[ -z "$T" ] && T="$( stty size 2> /dev/tty1 < /dev/tty1 )"
 	T="${T#* }"
 fi
-[ -n "$T" ] && [ "$T" -le "$MAX" ] && MAX=$(( T - 1 ))
+[ -n "$T" ] && (( T <= MAX )) && MAX=$(( T - 1 ))
 unset TERM
 
 # Fix up spacing for right-aligned text
@@ -117,10 +117,11 @@ while IFS='' read -r line || [ -n "$line" ]; do
 		while true; do
 			tst=${line/"%space%"/"$space"}
 			tst2=${tst/"%minspace%"/"$space"}
-			if [ "${#tst2}" -ge "$MAX" ]; then
+			if (( ${#tst2} >= MAX )); then
+				(( ${#space} < 2 )) && space="  "
 				line="${tst/"%minspace%"/"${space:0:-2}"}"
 				break
-			elif [ "${#space}" -gt 0 ] && [ "$(( MAX - ${#tst2} ))" -ge "${#space}" ]; then
+			elif (( ${#space} > 0 )) && (( MAX - ${#tst2} >= ${#space} )); then
 				space="$space$space"
 			else
 				space=" $space"
