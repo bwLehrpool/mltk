@@ -9,7 +9,7 @@ setup_virtual_floppy() {
 	# create floppy disk file + filesystem
 	dd "if=/dev/zero" "of=${SLX_FLOPPY_IMG}" count=1440 bs=1024
 	chmod 0600 "${SLX_FLOPPY_IMG}"
-	mkfs.fat "${SLX_FLOPPY_IMG}" || mkfs.vfat "${SLX_FLOPPY_IMG}" || mkdosfs "${SLX_FLOPPY_IMG}"
+	mkfs.fat "${SLX_FLOPPY_IMG}" || mkdosfs "${SLX_FLOPPY_IMG}"
 	
 	if [ -s "${TMPHOME}/.openslx/shares" ]; then
 		$(safesource "${TMPHOME}/.openslx/shares")
@@ -184,9 +184,9 @@ setup_virtual_floppy() {
 ## MAIN ##
 # Sanity checks #
 # Check if we have any filesystem tool
-if ! check_dep --oneof mkfs.fat mkfs.vfat mkdosfs; then
+if ! check_dep --oneof mkfs.fat mkdosfs; then
 	# no tools found in minilinux, this means no floppy/openslx.exe will be supported
-	slxlog "virt-fstool-missing" "Could not find any of 'mkfs.fat', 'mkfs.vfat', 'mkdosfs'!"
+	slxlog "virt-fstool-missing" "Could not find any of 'mkfs.fat', 'mkdosfs'!"
 	writelog "Could not find any filesystem-related tools to create the floppy's filesystem with!"
 	error_user "Konnte kein virtuelles Floppy anlegen! Setzen der Auflösung oder Einhängen von Netzwerkfreigaben werden nicht funktionieren. Bitte kontaktieren Sie den Support."
 	# still continue as this is not really critical
