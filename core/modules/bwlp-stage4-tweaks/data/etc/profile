@@ -18,6 +18,12 @@ if [ -n "$PWENT" ]; then
 fi
 unset PWENT
 
+if [ -L "/bin" ]; then
+	export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/opt/openslx/sbin:/opt/openslx/bin
+else
+	export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/openslx/sbin:/opt/openslx/bin
+fi
+
 # If running interactively, then:
 if [ "${PS1-}" ]; then
 
