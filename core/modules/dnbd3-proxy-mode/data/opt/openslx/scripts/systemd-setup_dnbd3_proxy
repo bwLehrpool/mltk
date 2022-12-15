@@ -150,7 +150,7 @@ if [ -n "$islocal" ]; then
 
 	# Use DNBD3 servers from openslx config and then patch it to say localhost
 	add_alt_server '-' ${SLX_DNBD3_SERVERS}
-	sed -i "s/^SLX_DNBD3_SERVERS=.*$/SLX_DNBD3_SERVERS='127.0.0.1'/" '/opt/openslx/config'
+	sed -i "s/^SLX_DNBD3_SERVERS=.*$/SLX_DNBD3_SERVERS='127.0.0.1'/;s/^SLX_DNBD3_FALLBACK=.*$/SLX_DNBD3_FALLBACK='${SLX_DNBD3_SERVERS} ${SLX_DNBD3_FALLBACK}'/" '/opt/openslx/config'
 
 else
 
