@@ -25,7 +25,7 @@ module_init() {
 		[ -s "$sigfile" ] && continue
 		curl -fsSL "$url" > "$sigfile" \
 			|| perror "Could not download docker gpg key from $url"
-		if grep -qF '---BEGIN' "$sigfile"; then
+		if grep -qF -- '---BEGIN' "$sigfile"; then
 			mv "$sigfile" "${sigfile}.asc"
 			sigfile="${sigfile}.asc"
 		else
