@@ -8,26 +8,40 @@ module_init() {
 	local vers="$SYS_VERSION"
 	# XXX HACK - currently 12 is still testing, so we get "n/a"
 	# and then, there is no release for it yet at nvidia. So use debian 11 repo.
-	[ "$vers" = "n/a" ] && vers=11
+	local codename="$(lsb_release -cs)"
+	if [ "$vers" = "n/a" ]; then
+		vers=11
+		codename="buster"
+	fi
 	apts=(
-		"https://download.docker.com/linux/${SYS_DISTRIBUTION}/gpg deb [arch=$(dpkg --print-architecture) signed-by=%FILE%] https://download.docker.com/linux/$SYS_DISTRIBUTION $(lsb_release -cs) stable"
+		"https://download.docker.com/linux/${SYS_DISTRIBUTION}/gpg deb [arch=$(dpkg --print-architecture)] https://download.docker.com/linux/$SYS_DISTRIBUTION $codename stable"
 		"https://nvidia.github.io/nvidia-docker/gpgkey https://nvidia.github.io/nvidia-docker/${SYS_DISTRIBUTION}${vers}/nvidia-docker.list"
 	)
 	for i in "${apts[@]}"; do
+		# First part is GPG signing key URL
 		url="${i%% *}"
 		hash="$( echo "$i" | md5sum | cut -c1-10 )"
-		sigfile="/usr/share/keyrings/docker-${hash}.gpg"
+		sigfile="/etc/apt/trusted.gpg.d/docker-${hash}"
 		[ -s "$sigfile" ] && continue
-		curl -fsSL "$url" | gpg --dearmor -o "$sigfile" \
+		curl -fsSL "$url" > "$sigfile" \
 			|| perror "Could not download docker gpg key from $url"
+		if grep -qF '---BEGIN' "$sigfile"; then
+			mv "$sigfile" "${sigfile}.asc"
+			sigfile="${sigfile}.asc"
+		else
+			mv "$sigfile" "${sigfile}.gpg"
+			sigfile="${sigfile}.gpg"
+		fi
+		# Cut away first part (URL to GPG)
 		url="${i#* }"
 		file="/etc/apt/sources.list.d/docker-${hash}.list"
 		[ -s "$file" ] && continue
 		if [[ "${url}" == http* ]]; then
+			# Start with http, assume this is the URL for a sources.list file
 			download "$url" "$file"
-			sed -i "s/^deb/deb [signed-by=${sigfile}]/" "$file"
 		else
-			echo "${url//%FILE%/$sigfile}" > "$file"
+			# Otherwise, assume it's a line for a sources.list
+			echo "$url" > "$file"
 		fi
 	done
 	apt-get update
