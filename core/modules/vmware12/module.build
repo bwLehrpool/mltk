@@ -152,7 +152,7 @@ build() {
 			[ -s "\$KMOD" ] || perror "Kmod \$KMOD does not exist"
 			[ ! -d "\${SHORT}-only" ] && tar xf "\$KMOD"
 			[ ! -d "\${SHORT}-only" ] && perror "untar of \$KMOD failed."
-			cde "\${SHORT}-only"
+			cd "\${SHORT}-only" || exit 1
 			if ! patch -p1 < "\$file"; then
 				cd ..
 				rm -rf -- "\${SHORT}-only"
