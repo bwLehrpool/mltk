@@ -55,18 +55,16 @@ chroot_init_overlayfs() {
 # Helper function to setup the directory structure
 chroot_prepare_dirs() {
 	# first check if CHROOT_TEMPDIR exists
+	local i
 	if [ -d "${CHROOT_TEMPDIR}" ]; then
-		# try to umount and rmdir CHROOT_MOUNTDIR
-		umount "${CHROOT_MOUNTDIR}" 2>/dev/null
-		if [ -d "${CHROOT_MOUNTDIR}" ]; then
-			rmdir "${CHROOT_MOUNTDIR}" || perror "Could not remove CHROOT_MOUNTDIR '${CHROOT_MOUNTDIR}', meaning it has stuff in it. Aborting..."
-		fi
-
-		# try to umount and rmdir CHROOT_BINDDIR
-		umount "${CHROOT_BINDDIR}" 2>/dev/null
-		if [ -d "${CHROOT_BINDDIR}" ]; then
-		 	rmdir "${CHROOT_BINDDIR}" || perror "Could not remove CHROOT_BINDDIR '${CHROOT_BINDDIR}', meaning it has stuff in it. Aborting..."
-		fi
+		for i in "${CHROOT_MOUNTDIR}" "${CHROOT_BINDDIR}" "${CHROOT_TMPFS}"; do
+			# try to umount and rmdir
+			pdebug "Unmounting ${i}"
+			umount "${i}"
+			if [ -d "${i}" ]; then
+				rmdir "${i}" || perror "Could not remove CHROOT_MOUNTDIR '${i}', meaning it has stuff in it. Aborting..."
+			fi
+		done
 	fi
 
 	mkdir -p "${CHROOT_TEMPDIR}" || perror "Could not create base directory for mount directories $CHROOT_TEMPDIR."
@@ -80,20 +78,21 @@ chroot_prepare_dirs() {
 # - make an overlay from CHROOT_LOWERDIR CHROOT_UPPERDIR
 # - bind mount additional pseudo-fs (as given in CHROOT_BINDMOUNTS)
 chroot_prepare_mounts() {
-	# first mount / on CHROOT_BINDDIR and remount read-only
-	mount -o bind "${CHROOT_LOWERDIR}" "${CHROOT_BINDDIR}" \
-			|| perror "Could not bind-mount CHROOT_LOWERDIR '$CHROOT_LOWERDIR' to CHROOT_BINDDIR '$CHROOT_BINDDIR'."
-	mount -o remount,ro,bind "${CHROOT_BINDDIR}"		|| perror "Could not remount CHROOT_BINDDIR '$CHROOT_BINDDIR' read-only."
-
-	# check that it really is read-only
-	[ "x$(mount | grep -E "^/ on ${CHROOT_BINDDIR}" | grep -v '\(.*ro.*\)')" != "x" ] \
-			&& perror "CHROOT_BINDDIR '${CHROOT_BINDDIR}' is not read-only! Aborting..."
-
 	# Newer kernels (5.x) cannot have upperdir as subdirectory of lowerdir - tmpfs
 	mkdir -p "${CHROOT_TMPFS}"
 	mount -t tmpfs -o size=4G chrootupper "${CHROOT_TMPFS}" || perror "Could not mount tmpfs as upperdir"
 	mkdir -p "${CHROOT_UPPER_TMPFS}" || perror "Could not create ${CHROOT_UPPER_TMPFS}"
 	rsync -axHAX "${CHROOT_UPPERDIR}/" "${CHROOT_UPPER_TMPFS}/" || perror "Could not put upperdir into upupdir"
+
+	# lastly, mount / on CHROOT_BINDDIR and remount read-only
+	# do NOT mount anything else after this, as you'd get duplicate entries in /proc/mounts
+	mount -o bind "${CHROOT_LOWERDIR}" "${CHROOT_BINDDIR}" \
+			|| perror "Could not bind-mount CHROOT_LOWERDIR '$CHROOT_LOWERDIR' to CHROOT_BINDDIR '$CHROOT_BINDDIR'."
+	mount -o remount,ro,bind "${CHROOT_BINDDIR}"		|| perror "Could not remount CHROOT_BINDDIR '$CHROOT_BINDDIR' read-only."
+
+	# check that it really is read-only
+	< /proc/mounts  gawk -v want="${CHROOT_BINDDIR}" '{if ( $2 == want && $4 ~ /(^|,)ro($|,)/ ) ok=1} END {if (ok == 1) exit 0; exit 1}' \
+			|| perror "CHROOT_BINDDIR '${CHROOT_BINDDIR}' is not read-only! Aborting..."
 
 	# Note: The overlay fs mount syntax seems to be changed between Ubuntu 14.04.2 and 14.04.3 (Kernel 3.13 and 3.19). Instead of
 	# checking overlay-modinfo (which may fail if overlayfs is not incorporated as module) or kernel versions, we simply try to
@@ -108,13 +107,10 @@ chroot_prepare_mounts() {
 			perror "Could not mkdir overlayfs workdir $CHROOT_WORKDIR for new overlayfs mount syntax."
 		fi
 		# Now we try to mount the overlayfs in the new fashion:
-		lsof -n > /tmp/bbboboboooo
-		set -x
 		mount -v -t "${OVERLAYFS_NAME}" "${OVERLAYFS_NAME}" \
 			-o lowerdir="${CHROOT_BINDDIR}",upperdir="${CHROOT_UPPER_TMPFS}",workdir="${CHROOT_WORKDIR}" \
 					"${CHROOT_MOUNTDIR}" \
 				|| perror "Could not mount (overlayfs) $CHROOT_BINDDIR, $CHROOT_UPPER_TMPFS, ${CHROOT_WORKDIR} to $CHROOT_MOUNTDIR."
-		set +x
 		pinfo "New overlayfs mount syntax has worked, commencing."
 	done
 
@@ -212,6 +208,9 @@ chroot_run() {
 
 	local CHROOT_WORKDIR="${CHROOT_TMPFS}/workdir-$MODULE"
 	local CHROOT_UPPER_TMPFS="${CHROOT_TMPFS}/upperdir-$MODULE"
+	local debugdir="${ROOT_DIR}/tmp/debug-chroot-$MODULE"
+	umount "$debugdir" 2> /dev/null
+	rmdir "$debugdir" 2> /dev/null
 
 	# init overlayfs
 	chroot_init_overlayfs || perror "Failed to initialize overlayfs with $?."
@@ -228,15 +227,20 @@ chroot_run() {
 	exec 0>&8		# This redirection is used for debugging within a chroot
 	chroot --userspec root:root "${CHROOT_MOUNTDIR}" /autoexec.bat
 	local RET=$?
+	#local i
+	#for i in $CHROOT_BINDMOUNTS; do
+	#	umount -lf "${CHROOT_MOUNTDIR}/$i"
+	#done
+	#umount -lf "${CHROOT_MOUNTDIR}"
 	if [ "$RET" -eq 0 ]; then
 		pinfo "chroot executed '${CHROOT_MOUNTDIR}/autoexec.bat' succeeded."
 		if rsync -axHAX "${CHROOT_UPPER_TMPFS}/" "${CHROOT_UPPERDIR}/"; then
-			umount -l -f "${CHROOT_UPPER_TMPFS}" || pwarning "Cannot umount $CHROOT_UPPER_TMPFS"
+			umount -l -f "${CHROOT_TMPFS}" || pwarning "Cannot umount $CHROOT_TMPFS"
 		else
 			pwarning "Could not properly rsync UPPER_TMPFS to UPPERDIR. tmpfs at '${CHROOT_UPPER_TMPFS}' will not be unmounted for further inspection."
 		fi
 	else
-		perror "Failed to run '$CHROOT_MOUNTDIR/autoexec.bat' inside the chroot to '$CHROOT_MOUNTDIR' with error code: $RET. You can examine the upperdir at $CHROOT_UPPER_TMPFS. It's a tmpfs that hasn't been unmounted."
+		perror "Failed to run '/autoexec.bat' inside the chroot '$CHROOT_MOUNTDIR' with error code: $RET. You can examine the upperdir at ${CHROOT_UPPER_TMPFS}. It's a tmpfs that hasn't been unmounted."
 	fi
 
 	# handle whiteouts
@@ -264,32 +268,6 @@ chroot_check_mount_point() {
 	fi
 }
 
-# Helper to umount the given path
-chroot_umount() {
-	[ "$#" -eq 1 ] || perror "'chroot_umount' called with $# arguments, only 1 accepted."
-	local MOUNT="$1"
-
-	# check if MOUNT is mounted
-	if ! chroot_check_mount_point "${MOUNT}"; then
-		# still mounted
-		if umount "${MOUNT}"; then
-			pdebug "Successfully umounted '${MOUNT}'."
-		else
-			pwarning "Could not umount '${MOUNT}'! Trying again..."
-			# now it gets ugly
-			for i in $(seq 1 5); do
-				umount -l "${MOUNT}" && return 0
-				sleep 1
-			done
-			perror "Could not umount '${MOUNT}' after 5 tries! This shouldn't happen. Check your scripts."
-		fi
-	else
-		pdebug "'${MOUNT}' is not mounted."
-	fi
-
-	# better be safe than sorry
-}
-
 # Helper to cleanup the temporary mounts
 chroot_cleanup_mounts() {
 	local exe FILE pid tries
@@ -313,7 +291,8 @@ chroot_cleanup_mounts() {
 	for i in "" "" "" "-l" "-lf"; do
 		ok=true
 		for mnt in $(awk -v "dir=^${CHROOT_TEMPDIR}" '{if ($2 ~ dir) print $2}' /proc/mounts); do
-			[ "$mnt" = "$CHROOT_UPPER_TMPFS" ] && continue
+			[ "${mnt%/}" = "${CHROOT_TMPFS%/}" ] && continue
+			pdebug "Unmounting $mnt"
 			umount $i "$mnt" || ok=false
 		done
 		$ok && break
