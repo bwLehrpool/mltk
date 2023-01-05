@@ -1,0 +1,16 @@
+#!/bin/ash
+# radically simplified version of the original script vmplayer by VMware Inc.
+PREFIX=/usr/lib/vmware # depends on the vmware location
+
+# HACK: Let the OpenGL driver report s3tc capability even if not present, so 3D will be enabled
+export force_s3tc_enable=true
+
+# Turn off "helpful" DE features
+export APPMENU_DISPLAY_BOTH=1
+export UBUNTU_MENUPROXY=0
+export GNOME_DISABLE_CRASH_DIALOG=1
+
+PROG=$(basename $0)
+
+exec "$PREFIX/bin/$PROG" "$@"
+
