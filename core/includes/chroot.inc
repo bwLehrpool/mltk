@@ -227,6 +227,7 @@ chroot_run() {
 	exec 0>&8		# This redirection is used for debugging within a chroot
 	chroot --userspec root:root "${CHROOT_MOUNTDIR}" /autoexec.bat
 	local RET=$?
+	unlink "${CHROOT_MOUNTDIR}/bla.so"
 	#local i
 	#for i in $CHROOT_BINDMOUNTS; do
 	#	umount -lf "${CHROOT_MOUNTDIR}/$i"
