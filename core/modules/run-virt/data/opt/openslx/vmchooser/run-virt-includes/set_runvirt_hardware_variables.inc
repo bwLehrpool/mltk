@@ -44,8 +44,8 @@ set_virt_memory() {
 		# We have a backing store for the HDD diff, be generous
 		if lsmod | grep -q '^nvidia'; then
 			# With nvidia cards, the host needs a bit more RAM.
-			max=2900
-			reserve=20
+			max=3300
+			reserve=18
 		else
 			max=2000
 			reserve=9
