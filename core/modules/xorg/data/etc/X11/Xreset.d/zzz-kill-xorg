@@ -1,0 +1,7 @@
+# Sometimes, maybe 1 out of 20 times, ligtdm will register
+# a session ending, call Xreset, and then.... The xserver
+# will not exit and hang around.
+# No clue why, no motivation to debug, but add this workaround
+# for now. This was observed with bot, Ubuntu 20.04 and Debian 12.
+
+lsof -n "/tmp/.X11-unix/X${DISPLAY#:}" | awk '$1 == "Xorg" {print $2}' | xargs kill
