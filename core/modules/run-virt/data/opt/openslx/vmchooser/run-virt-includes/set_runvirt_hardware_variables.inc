@@ -48,7 +48,7 @@ set_virt_memory() {
 			reserve=18
 		else
 			max=2000
-			reserve=9
+			reserve=10
 		fi
 	fi
 	# Non-zram swap (KB)

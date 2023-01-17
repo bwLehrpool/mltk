@@ -271,14 +271,14 @@ setup_graphics() {
 		vram=$( < "${TMPCONFIG}"  grep -m1 -i '^svga\.graphicsMemoryKB' \
 			| sed -r 's/^[^=]+//;s/^(\s|=|")*//;s/(\s|")+$//' )
 		existing="$vram"
-		if [ -z "$vram" ]; then # Nothing, default to half of max
-			vram="$(( max_vram / 2 ))"
+		if [ -z "$vram" ]; then # Nothing, default to third of max
+			vram="$(( max_vram / 3 ))"
 		elif (( vram > max_vram )); then # Explicitly set, cap if too excessive
 			vram="$max_vram"
 		fi
 		(( vram < 131072 )) && vram=131072
-		# Subtract a querter of VRAM from main RAM to be safe
-		VM_MEM="$(( VM_MEM - ( (vram / 4096) / 4 ) * 4 ))"
+		# Subtract half of VRAM from main RAM to be safe
+		VM_MEM="$(( VM_MEM - ( (vram / 2048) / 4 ) * 4 ))"
 		if [ -z "$existing" ]; then
 			echo 'svga.graphicsMemoryKB = "'"$vram"'"' >> "${TMPCONFIG}"
 		else
