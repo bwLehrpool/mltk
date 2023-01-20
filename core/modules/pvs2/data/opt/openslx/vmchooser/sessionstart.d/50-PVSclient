@@ -47,9 +47,8 @@ else
 	pvsstartup $PVSCONFIG &
 fi
 
-# Finally, handle hybrid mode where the pvsmgr is launched on the second desktop
-# alongside the actual vm. (make sure this is a VSESSION!)
-if [ "$SESSION_TYPE" == "VSESSION" ]; then
+# Finally, handle hybrid mode where the pvsmgr is launched on the second desktop.
+if [ "$SLX_PVS_HYBRID" == "yes" ]; then
 	{
 		wt="PVS2 Manager"
 		pvsmgr "$PVSCONFIG" --manager-only &
