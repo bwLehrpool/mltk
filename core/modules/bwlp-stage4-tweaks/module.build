@@ -1,0 +1,7 @@
+#!/bin/bash
+
+post_copy() {
+	# This speeds up glibc stuff a bit, see
+	# https://blog.packagecloud.io/set-environment-variable-save-thousands-of-system-calls/
+	add_env TZ ":/etc/localtime"
+}
