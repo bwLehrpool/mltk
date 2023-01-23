@@ -21,10 +21,13 @@ add_key_value () {
 	[ -z "$TARGET_BUILD_DIR" ] && perror "No TARGET_BUILD_DIR set. Aborting for safety."
 	local FILE="$TARGET_BUILD_DIR/$1"
 	local KEY="$2"
-	local VALUE="$(echo "$3" | sed "s/'/\\\\'/g")" # \\\\\\\\\\\\\\\\\\\\\\ßß
+	local VALUE="${3//\'/\'\\\'\'}" # \\\\\\\\\\\\\\\\\\\\\\ßß Escape ' as '\''
 	if [ -s "$FILE" ]; then
 		local CURRENT="$(grep -E "^\s*$KEY=.*$" "$FILE" | awk -F '=' '{$1=""; printf $0}' | itrim)"
-		[ -n "$CURRENT" -a "'$VALUE'" != "$CURRENT" ] && perror "Cannot set $KEY to '$VALUE' as it is already set to $CURRENT"
+		[ -n "$CURRENT" ] \
+			&& [ "'$VALUE'" != "$CURRENT" ] \
+			&& [ "$3" != "$CURRENT" ] \
+			&& perror "Cannot set $KEY to '$3' as it is already set to '$CURRENT'"
 		[ -n "$CURRENT" ] && return 0
 	fi
 	mkdir -p "$(dirname "$FILE")"
