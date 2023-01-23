@@ -50,6 +50,7 @@ build() {
 		--enable-libudev \
 		--enable-brlapi \
 		--enable-tpm \
+		--disable-werror \
 		--audio-drv-list="pa,alsa" \
 		--enable-modules || perror "'configure' failed."
 	make || perror "'make' failed."
