@@ -26,6 +26,8 @@ build() {
 	local DSTDIR="${MODULE_BUILD_DIR}"
 	cde "${SRCDIR}"
 
+	sed -i '/-Wdeprecated-declarations/d' meson.build
+
 	# install meson (>= 0.54.0) since packaged version is too old
 	# not 0.60 as of now, https://github.com/mesonbuild/meson/issues/9472
 	pip3 install "meson==0.56.0"
