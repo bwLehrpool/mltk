@@ -3,6 +3,7 @@ Description=Update /etc/issue
 After=tmp.target
 Before=getty-pre.target getty.target shutdown.target
 DefaultDependencies=no
+Conflicts=shutdown.target
 
 [Service]
 Type=oneshot
