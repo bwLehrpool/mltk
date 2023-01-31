@@ -140,4 +140,5 @@ fi
 wait $nss_pid
 
 # finally exec to chromium
+exec chromium "${chromium_args[@]}"
 exec chromium-browser "${chromium_args[@]}"
