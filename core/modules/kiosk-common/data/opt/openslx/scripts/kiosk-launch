@@ -31,8 +31,8 @@ fi
 # any mess left around by failed attempts below
 #
 #### Don't fork anything into background after this point
-#
-declare -rg BASE_JOBS="$(jobs -p)"
+# Convert \n to spaces using echo
+declare -rg BASE_JOBS="$( echo $(jobs -p) )"
 
 kill_jobs() {
 	local j
