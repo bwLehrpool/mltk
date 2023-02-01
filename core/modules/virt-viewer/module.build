@@ -9,7 +9,7 @@ build() {
 	cde "${SRCDIR}"
 
 	# install meson (>= 0.54.0) since packaged version is too old
-	pip3 install "meson>=0.54.0"
+	pip3 install "meson==0.56.0"
 
 	# save original path content before modifying path variable
 	local PATH_OLD="${PATH}"
