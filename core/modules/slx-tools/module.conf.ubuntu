@@ -1,0 +1,5 @@
+#!/bin/bash
+
+REQUIRED_CONTENT_PACKAGES="
+	libnss3-tools
+"
