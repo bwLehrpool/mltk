@@ -1,7 +1,9 @@
 #!/bin/bash -- sourced
 # prepares and run chromium as kiosk browser
 
-command -v chromium-browser || return 0
+command -v chromium \
+	|| command -v chromium-browser \
+	|| return 0
 
 # clear state of previous sessions
 if [ "$(whoami)" = "demo" ]; then
