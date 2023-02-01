@@ -141,6 +141,8 @@ fi
 # Wait until cert store is fully populated
 wait $nss_pid
 
+chromium_args+=( "$SLX_BROWSER_URL" )
+
 # finally exec to chromium
 exec chromium "${chromium_args[@]}"
 exec chromium-browser "${chromium_args[@]}"
