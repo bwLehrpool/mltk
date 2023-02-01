@@ -600,6 +600,7 @@ process_module() {
 
 post_process_target() {
 	local TOOL_STR="$TOOL_STR post_process_target:"
+	local i
 
 	if [ -z "$MLTK_INSTALL" ]; then
 		# traditional minilinux approach
@@ -609,7 +610,12 @@ post_process_target() {
 		ldconfig -v -r "${TARGET_BUILD_DIR}"
 
 		# run depmod to generate the final modules.* files
+		pinfo "Running depmod for '${TARGET_KERNEL_LONG}'"
 		depmod -b "${TARGET_BUILD_DIR}" -a "${TARGET_KERNEL_LONG}"
+		pinfo "Running glib-compile-schemas"
+		for i in /usr/local/share/glib-2.0/schemas/ /usr/share/glib-2.0/schemas/; do
+			glib-compile-schemas "${TARGET_BUILD_DIR}/$i"
+		done
 		return 0
 	fi
 
@@ -659,8 +665,14 @@ post_process_target() {
 
 	# finish by running ldconfig for the running system (when processing non-addons).
 	if [ ! -e "${TARGET_DIR}/.addon" ]; then
+		pinfo "Running ldconfig"
 		ldconfig -v
+		pinfo "Running depmod for '${TARGET_KERNEL_LONG}'"
 		depmod -a "${TARGET_KERNEL_LONG}"
+		pinfo "Running glib-compile-schemas"
+		for i in /usr/local/share/glib-2.0/schemas/ /usr/share/glib-2.0/schemas/; do
+			glib-compile-schemas "$i"
+		done
 	fi
 }
 
