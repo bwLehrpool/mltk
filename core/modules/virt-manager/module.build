@@ -10,9 +10,9 @@ build() {
 
 	# Work-aound newer setuptools requirement
 	grep -qF 'py_modules' "setup.py" || sed -i '/^distutils.core.setup/a py_modules=[],' "setup.py"
-	python3 setup.py configure --default-hvs qemu,lxc --default-graphics spice || perror "'setup.py configure' failed."
+	python3 setup.py configure --prefix /usr/local --default-hvs qemu,lxc --default-graphics spice || perror "'setup.py configure' failed."
 	python3 setup.py build || perror "'setup.py build' failed."
-	python3 setup.py --no-update-icon-cache --no-compile-schemas install --root "${DSTDIR}" --no-compile -O0 || perror "'setup.py install' failed."
+	python3 setup.py --no-update-icon-cache --no-compile-schemas install --prefix /usr/local --root "${DSTDIR}" --no-compile -O0 || perror "'setup.py install' failed."
 }
 
 post_copy() {
