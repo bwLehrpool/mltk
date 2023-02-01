@@ -116,16 +116,11 @@ public class TransformationSpecificQemuMdevPassthroughIntel
 			mdevDevice.setMemoryFramebufferOn( true );
 			mdevDevice.setSource( mdevDeviceAddress );
 
-			// set Intel specific QEMU options that are not handeled by Libvirt yet
-			config.addQemuCmdlnArgument( "-set" );
-			config.addQemuCmdlnArgument( "device.hostdev0.x-igd-opregion=on" );
-			config.addQemuCmdlnArgument( "-set" );
-			config.addQemuCmdlnArgument( "device.hostdev0.driver=vfio-pci-nohotplug" );
-
-			// set Intel specific rom file for GVT-g if UEFI loader is used
 			if ( config.getOsLoader() != null && !config.getOsLoader().isEmpty() ) {
-				config.addQemuCmdlnArgument( "-set" );
-				config.addQemuCmdlnArgument( "device.hostdev0.romfile=" + INTEL_GVT_G_UEFI_ROMFILE );
+				// set Intel specific rom file for GVT-g if UEFI loader is used
+				config.addGvtg( INTEL_GVT_G_UEFI_ROMFILE );
+			} else {
+				config.addGvtg( null );
 			}
 
 			// disable all software video devices if device passthrough debug mode is not enabled
