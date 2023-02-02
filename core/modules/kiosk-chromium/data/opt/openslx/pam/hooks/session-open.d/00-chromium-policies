@@ -6,12 +6,15 @@
 # creates managed policy file, those settings cannot be changed by the user
 # (if he even gets to the settings dialog in the first place)
 create_chromium_policies() {
+	local bookmarkbar url
 	if [ -n "$SLX_BROWSER_BOOKMARKS" ]; then
 		bookmarkbar=true
 	else
 		bookmarkbar=false
 	fi
 
+	url=$( printf "%s" "$SLX_BROWSER_URL" | jq -R . )
+	mkdir -p "/etc/chromium-browser/policies/managed" "/etc/chromium/policies/managed"
 	cat <<- EOF > "/etc/chromium-browser/policies/managed/kiosk-mode.json"
 	{
 		"AutoFillEnabled": false,
@@ -20,15 +23,18 @@ create_chromium_policies() {
 		"DefaultBrowserSettingEnabled": true,
 		"DeviceAutoUpdateDisabled": true,
 		"DownloadRestrictions": 3,
-		"HomepageLocation": "$SLX_BROWSER_URL",
-		"NewTabPageLocation": "$SLX_BROWSER_URL",
+		"HomepageLocation": $url,
+		"NewTabPageLocation": "about:blank",
 		"PasswordManagerEnabled": false,
 		"RestoreOnStartup": 4,
-		"RestoreOnStartupURLs": "$SLX_BROWSER_URL",
+		"RestoreOnStartupURLs": $url,
 		"ShowAppsShortcutInBookmarkBar": false,
 		"TranslateEnabled": false
 	}
 	EOF
+	# Ubuntu uses chromium-browser, Debian chromium (...)
+	ln -nfs "/etc/chromium-browser/policies/managed/kiosk-mode.json" \
+		"/etc/chromium/policies/managed/kiosk-mode.json"
 }
 
 if [ "${PAM_SERVICE//autologin/}" != "$PAM_SERVICE" -a "$PAM_TTY" = ":0" ]; then
