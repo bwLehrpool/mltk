@@ -1,7 +1,0 @@
-[Unit]
-Description=Wait until DHCP for the primary NIC has finished
-Before=network.target
-
-[Service]
-Type=oneshot
-ExecStart=/opt/openslx/scripts/systemd-wait_primary_dhcp

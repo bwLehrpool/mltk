@@ -29,6 +29,22 @@ declare -rg RESOLV_CONF="/opt/openslx/resolv.conf"
 declare -rg THIS_RESOLV="/run/network/${interface}.resolv"
 declare -rg flag="/run/network/primary-dhcp.flag"
 
+if [ "$1" = "--lock-hostname-updates" ]; then
+	# If we change the hostname while Xorg is running, this might
+	# cause issues, depending on how it's set up. So we run this
+	# script with the lock argument to touch the flag file right
+	# before we try to launch lightdm/Xorg. In case the DHCP request
+	# is too slow, this means we'll run with the wrong hostname
+	# (potentially), but that's better than delaying the bootup
+	# unnecessarily.
+	# So also note that if you ever change this script's name/location
+	# (JUST DON'T), you'd need to update all call sites, i.e. the
+	# udhcpc startup script, and the lightdm service drop-in.
+	mkdir -p /run/network
+	touch "$flag"
+	exit 0
+fi
+
 shopt -s extglob
 
 rebuild_resolv_conf () {
@@ -186,7 +202,8 @@ case "$1" in
 				echo "SLX_NET_WINS='$wins'" >> /opt/openslx/config
 			fi
 			
-			# Only if network is not ready yet
+			# Only update hostname if network is not ready yet
+			# later on this might cause issues
 			if ! [ -e "$flag" ]; then
 				# Update hostname
 				if [ -z "$dns_fqdn" ] && [ -n "$domain" ] && [ -n "$hostname" ]; then
