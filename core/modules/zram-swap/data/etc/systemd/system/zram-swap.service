@@ -1,8 +1,11 @@
 [Unit]
 Description=Setup zram swap partitions if necessary
 DefaultDependencies=no
-Wants=swap.target
-Before=swap.target
+# Do NOT do this. This delays bootup by a lot, as swap.target
+# is a dependency of sysinit.target, which again is a dependency
+# of pretty much everything.
+#Wants=swap.target
+#Before=swap.target
 # As our script checks whether there are other swap partitions available...
 After=setup-partitions.service
 
