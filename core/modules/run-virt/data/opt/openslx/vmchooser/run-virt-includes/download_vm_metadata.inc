@@ -28,13 +28,13 @@ download_metadata_default() {
 	local TRIES WLOG TMPFILE RET ERRCODE CMDLINE
 	# Sanity checks
 	if ! check_dep curl; then
-		writelog "Could not find 'wget' in PATH: $PATH"
-		EXIT_TYPE="internal" EXIT_REASON="Fehlendes Dienstprogramm 'wget'!" cleanexit 1
+		writelog "Could not find 'curl' in PATH: $PATH"
+		EXIT_TYPE="internal" EXIT_REASON="Fehlendes Dienstprogramm 'curl'!" cleanexit 1
 	fi
 
 	# Try new unified .tar.gz way
 	TMPFILE="$TMPDIR/metadata.tgz"
-	WLOG="$TMPDIR/wget-metadata.log"
+	WLOG="$TMPDIR/curl-metadata.log"
 	CMDLINE=
 	curl --help | grep -q -- --retry-connrefused && CMDLINE="--retry-connrefused"
 	curl -L -o "$TMPFILE" -w '\nretval:%{http_code}\n' --retry 3 $CMDLINE --max-time 6 --retry-max-time 15 "${url_lecture_metadata}" &> "$WLOG"
