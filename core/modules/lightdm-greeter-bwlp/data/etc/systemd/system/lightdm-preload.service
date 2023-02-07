@@ -1,0 +1,10 @@
+[Unit]
+Description=Preload lightdm + greeter
+DefaultDependencies=no
+Conflicts=shutdown.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=true
+ExecStart=/opt/openslx/bin/loadfscache /sbin/lightdm
+ExecStart=/opt/openslx/bin/loadfscache /opt/openslx/bin/qt-lightdm-greeter
