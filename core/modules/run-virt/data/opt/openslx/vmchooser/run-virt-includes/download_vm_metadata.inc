@@ -48,7 +48,8 @@ download_metadata_default() {
 		rm -rf -- "$TMPFILE"
 		writelog "Extracting metadata.tgz failed. Cannot start VM."
 	else
-		writelog "Downloading metadata.tgz failed (HTTP $ERRCODE). Cannot start VM." "$WLOG"
+		writelog "Downloading metadata.tgz failed (RET=$RET, HTTP=$ERRCODE). Cannot start VM." "$WLOG"
+		slxlog "run-virt-vmx" "Downloading metadata.tgz failed (RET=$RET, HTTP=$ERRCODE). Cannot start VM." "$WLOG"
 	fi
 }
 
