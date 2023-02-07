@@ -1,0 +1,16 @@
+#!/bin/ash
+
+if ! [ -e "$1" ]; then
+	echo "Invalid file $1"
+	exit 1
+fi
+
+file="$1"
+
+cat "$file" &> /dev/null
+
+for i in $( ldd "$file" | awk '$2 == "=>" {print $3}' ); do
+	cat "$i" &> /dev/null
+done
+
+exit 0
