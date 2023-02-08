@@ -7,4 +7,5 @@ Conflicts=shutdown.target
 Type=oneshot
 RemainAfterExit=true
 ExecStart=/opt/openslx/bin/loadfscache /sbin/lightdm
+ExecStart=/opt/openslx/bin/loadfscache /usr/lib/xorg/Xorg
 ExecStart=/opt/openslx/bin/loadfscache /opt/openslx/bin/qt-lightdm-greeter
