@@ -105,6 +105,7 @@ build() {
 		else
 			local mode line name dev version
 			pinfo "Creating drm.cfg"
+			local regex='^<td[^>]*>([0-9A-F]{4})(\s+[0-9A-F]{4}\s+[0-9A-F]{4})?<'
 			mode=0
 			while read -r line; do
 				if [[ "$line" =~ '<a name="legacy_' ]]; then
@@ -113,10 +114,11 @@ build() {
 					mode=1
 				elif [[ "$mode" = 1 ]] && [[ "$line" =~ ^'<td' ]]; then
 					mode=2
-					name=$(echo "$line" | sed -r 's/^.*<td[^>]*>([^<]+)<.*$/\1/')
-				elif [[ "$mode" = 2 ]] && [[ "$line" =~ ^'<td'[^'>']*'>'[0-9A-F]{4}'<' ]]; then
+					#name=$(echo "$line" | sed -r 's/^.*<td[^>]*>([^<]+)<.*$/\1/')
+				elif [[ "$mode" = 2 ]] && [[ "$line" =~ $regex ]]; then
 					mode=0
-					dev=$(echo "$line" | sed -r 's/^.*<td[^>]*>([0-9A-Fa-f]{4})<.*$/\1/' | tr 'A-Z' 'a-z')
+					dev="${BASH_REMATCH[1]}"
+					dev="${dev~~}"
 					if [ -n "${pciids[$dev]}" ]; then
 						pdebug "$dev already handled"
 					else
