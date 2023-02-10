@@ -63,7 +63,7 @@ setup_dnbd3 () {
 	# give it a bit of time
 	usleep 250000
 	# check if we have the image
-	for TIMEOUT in 0.5 1 1 1 1 OUT; do
+	for TIMEOUT in 0.5 1 1 1 1 2 OUT; do
 		if [ -r "${DNBD3_MOUNT_POINT}/img" ]; then
 			VM_DISKFILE_REVISION="$(grep -m 1 "^Revision:" "${DNBD3_MOUNT_POINT}/status" | cut  -d" " -f2)"
 			VM_DISKFILE_RO="${DNBD3_MOUNT_POINT}/img"
@@ -71,7 +71,9 @@ setup_dnbd3 () {
 			add_cleanup "cleanup_dnbd3"
 			break
 		fi
-		[ "$TIMEOUT" = "OUT" ] || [ -e "$DNBD3_EXITFLAG" ] && break
+		if [ "$TIMEOUT" = "OUT" ] || [ -e "$DNBD3_EXITFLAG" ]; then
+			break
+		fi
 		sleep "$TIMEOUT"
 	done
 
