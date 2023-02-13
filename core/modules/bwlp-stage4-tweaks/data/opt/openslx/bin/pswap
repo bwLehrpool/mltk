@@ -1,20 +1,22 @@
-#!/bin/sh
+#!/bin/bash
 
 # Get current swap usage for all running processes
 # Erik Ljungstrom 27/05/2011
+# Sped up and ported to bash Simon Rettberg 13/02/2023
 OVERALL=0
-for PID in `find /proc/ -maxdepth 1 -type d -regex "/proc/[0-9]+" | cut -d / -f 3`; do
-	SUM=0
+for PID in $( find /proc/ -maxdepth 1 -type d -regex "/proc/[0-9]+" | cut -d / -f 3 ); do
 	DIR="/proc/$PID"
-	PROGNAME=`ps -p $PID -o comm --no-headers`
-	for SWAP in `grep ^Swap $DIR/smaps 2>/dev/null| awk '{ print $2 }'`; do
-		SUM=$(( $SUM + $SWAP ))
-	done
-	SUM=$(( $SUM / 1024 ))
-	[ "$SUM" -eq "0" ] && continue
+	SUM=$( < "$DIR/smaps"  awk -v sum=0 '$1 == "Swap:" || $1 == "SwapPss:" {sum += $2} END {print sum}' )
+	(( SUM /= 1024 ))
+	(( SUM == 0 )) && continue
+	PROGNAME=$( readlink "$DIR/exe" )
 	echo "$SUM MiB by PID=$PID - ($PROGNAME)"
-	OVERALL=$(( $OVERALL + $SUM ))
-done
+	(( OVERALL += SUM ))
+done 2> "/tmp/pswap.$$"
 
+other=$( grep -cF "/smaps" "/tmp/pswap.$$" ) \
+	&& echo "" && echo "$other process(es) of other users could not be accounted for"
+
+echo ""
 echo "Overall swap used: $OVERALL MiB"
 
