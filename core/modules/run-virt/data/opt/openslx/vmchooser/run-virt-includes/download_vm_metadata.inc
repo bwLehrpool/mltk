@@ -37,7 +37,7 @@ download_metadata_default() {
 	WLOG="$TMPDIR/curl-metadata.log"
 	CMDLINE=
 	curl --help | grep -q -- --retry-connrefused && CMDLINE="--retry-connrefused"
-	curl -L -o "$TMPFILE" -w '\nretval:%{http_code}\n' --retry 3 $CMDLINE --max-time 6 --retry-max-time 15 "${url_lecture_metadata}" &> "$WLOG"
+	curl -L -o "$TMPFILE" -w '\nretval:%{http_code}\n' --retry 3 $CMDLINE --max-time 8 --retry-max-time 15 "${url_lecture_metadata}" &> "$WLOG"
 	ERRCODE=$( awk -F: '{ if ($1 == "retval") print $2 }' "$WLOG" )
 	RET=$?
 	if [ "$RET" = 0 ] && [ -n "$ERRCODE" ] && [ "$ERRCODE" -ge 200 ] && [ "$ERRCODE" -lt 300 ]; then
@@ -48,8 +48,9 @@ download_metadata_default() {
 		rm -rf -- "$TMPFILE"
 		writelog "Extracting metadata.tgz failed. Cannot start VM."
 	else
-		writelog "Downloading metadata.tgz failed (RET=$RET, HTTP=$ERRCODE). Cannot start VM." "$WLOG"
-		slxlog "run-virt-vmx" "Downloading metadata.tgz failed (RET=$RET, HTTP=$ERRCODE). Cannot start VM." "$WLOG"
+		writelog "Downloading metadata.tgz failed (RET=$RET, HTTP=$ERRCODE). Cannot start VM.
+$( cat $WLOG )"
+		#
 	fi
 }
 
