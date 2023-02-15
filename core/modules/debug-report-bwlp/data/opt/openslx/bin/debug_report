@@ -1,17 +1,17 @@
 #!/bin/bash
 # bash because of {,} expansion
 
-TOOLS="
-	journalctl
+TOOLS=(
+	"journalctl -a"
 	systemctl
 	loginctl
-	lspci
+	"lspci -nn"
 	lsusb
 	lsmod
 	mount
 	dmesg
 	dmidecode
-"
+)
 
 URLS="
 	https://bwlp-masterserver.ruf.uni-freiburg.de/error_report.php
@@ -107,8 +107,8 @@ cp /run/openslx/*log* /run/openslx/dmsetup.state static/ 2> /dev/null
 cp -r /opt/openslx/.mltk static/ 2> /dev/null
 echo -n "."
 
-for tool in $TOOLS; do
-	$tool > "generated/${tool}-out" 2> "generated/${tool}-err"
+for tool in "${TOOLS[@]}"; do
+	$tool > "generated/${tool%% *}-out" 2> "generated/${tool%% *}-err"
 	echo -n "."
 done
 
@@ -142,6 +142,7 @@ echo -n "."
 if [ -z "$DISPLAY" ]; then
 	DISPLAY=:0
 	XAUTHORITY=$(ps a | grep " $DISPLAY " | grep -o -- '-auth.*$' | grep -m1 -v grep | awk '{print $2}')
+	[ -z "$XAUTHORITY" ] && [ -s "/run/lightdm/root/:0" ] && XAUTHORITY="/run/lightdm/root/:0"
 fi
 if [ -n "$XAUTHORITY" ]; then
 	export DISPLAY
