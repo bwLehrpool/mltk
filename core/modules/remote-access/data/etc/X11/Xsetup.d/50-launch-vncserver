@@ -60,7 +60,10 @@
 	# with the ~poweron event, which would reset the password in the database.
 	(
 		url="http://${SLX_PXE_SERVER_IP}/slx-admin/api.php?do=remoteaccess"
-		sleep 6
+		for _ in {1..20}; do
+			sleep 1
+			[ -e "/etc/cron.d/usage_stats" ] && break
+		done
 		[ -d "/proc/${vncpid}" ] || exit 1 # Something is wrong, bail
 		curl -s -S -L --retry 4 --retry-connrefused --max-time 3 --retry-max-time 10 \
 			--data-urlencode "password=$passwd" \

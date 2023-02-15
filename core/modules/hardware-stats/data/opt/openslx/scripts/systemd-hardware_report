@@ -62,12 +62,15 @@ report_hardware_info() {
 	# got everything, get the last infos
 	uptime=$(grep -oE '^[0-9]+' /proc/uptime)
 	echo -n "Submitting to '$SLX_REMOTE_LOG' ... "
-	curl --retry 4 --retry-connrefused --max-time 5 --retry-max-time 15 \
+	curl --retry 4 --retry-connrefused --max-time 8 --retry-max-time 15 \
 		--data-urlencode "type=~poweron" --data-urlencode "uuid=$uuid" --data-urlencode "macaddr=$HW_MAC" \
-		--data-urlencode "uptime=$uptime" --data-urlencode "realcores=$HW_CORES" --data-urlencode "vcores=$HW_THREADS" \
+		--data-urlencode "uptime=$uptime" --data-urlencode "realcores=$HW_CORES" \
+		--data-urlencode "vcores=$HW_THREADS" \
 		--data-urlencode "sockets=$HW_SOCKETS" --data-urlencode "mbram=$HW_MBRAM" \
-		--data-urlencode "kvmstate=$HW_KVM" --data-urlencode "cpumodel=$HW_CPUMODEL" --data-urlencode "id44mb=$HW_ID44" \
-		--data-urlencode "badsectors=$HW_BADSECTORS" --data-urlencode "systemmodel=$model" --data-urlencode "subnet=$subnet" \
+		--data-urlencode "kvmstate=$HW_KVM" --data-urlencode "cpumodel=$HW_CPUMODEL" \
+		--data-urlencode "id44mb=$HW_ID44" \
+		--data-urlencode "badsectors=$HW_BADSECTORS" --data-urlencode "systemmodel=$model" \
+		--data-urlencode "subnet=$subnet" \
 		--data-urlencode "runmode=$runmode" --data-urlencode "data@$hwreport" --data-urlencode "json@$jsonfile" \
 		"$SLX_REMOTE_LOG" | grep -q "RESULT=0"
 	local ret=$?
@@ -80,6 +83,7 @@ report_hardware_info() {
 	rm -f -- "$hwreport" "$jsonfile"
 	START=$(( $RANDOM % 5 ))
 	DELAY=$(( $RANDOM % 20 ))
+	# Do not move/rename this file, we check its existence in other scripts
 	cat > "/etc/cron.d/usage_stats" <<-EOF
 		# Update usage statistics on server
 		SHELL=/bin/sh

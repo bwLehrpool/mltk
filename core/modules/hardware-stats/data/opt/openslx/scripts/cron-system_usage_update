@@ -97,15 +97,18 @@ if $full; then
 fi
 
 # Bail out if we already sent the shutdown event to server
+# or if the cron-job hasn't been set up yet.
 # Do this right before the curl call to minimize odds for a race condition
-[ -e /run/openslx/shutdown.mutex ] && exit 0
-curl --retry 3 --retry-connrefused -m 6 -s --data-urlencode "type=~runstate" --data-urlencode "uuid=$UUID" --data-urlencode "used=$USED" \
-	--data-urlencode "user=$Name" --data-urlencode "tmpsize=$TMP_SIZE" --data-urlencode "tmpfree=$TMP_FREE" \
-	--data-urlencode "id45size=$ID45_SIZE" --data-urlencode "id45free=$ID45_FREE" \
-	--data-urlencode "swapsize=$SWAP_SIZE" --data-urlencode "swapfree=$SWAP_FREE" \
-	--data-urlencode "memsize=$MEM_SIZE" --data-urlencode "memfree=$MEM_FREE" \
-	"$@" \
-	"$SLX_REMOTE_LOG" > /dev/null 2>&1
+if [ -e "/etc/cron.d/usage_stats" ] && ! [ -e "/run/openslx/shutdown.mutex" ]; then
+	curl --retry 3 --retry-connrefused -m 6 -s --data-urlencode "type=~runstate" --data-urlencode "uuid=$UUID" \
+		--data-urlencode "used=$USED" \
+		--data-urlencode "user=$Name" --data-urlencode "tmpsize=$TMP_SIZE" --data-urlencode "tmpfree=$TMP_FREE" \
+		--data-urlencode "id45size=$ID45_SIZE" --data-urlencode "id45free=$ID45_FREE" \
+		--data-urlencode "swapsize=$SWAP_SIZE" --data-urlencode "swapfree=$SWAP_FREE" \
+		--data-urlencode "memsize=$MEM_SIZE" --data-urlencode "memfree=$MEM_FREE" \
+		"$@" \
+		"$SLX_REMOTE_LOG" > /dev/null 2>&1
+fi
 
 # Warn user if tmp or swap usage is high; system might crash soon
 
