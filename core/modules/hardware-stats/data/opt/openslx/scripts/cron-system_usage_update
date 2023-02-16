@@ -100,7 +100,8 @@ fi
 # or if the cron-job hasn't been set up yet.
 # Do this right before the curl call to minimize odds for a race condition
 if [ -e "/etc/cron.d/usage_stats" ] && ! [ -e "/run/openslx/shutdown.mutex" ]; then
-	curl --retry 3 --retry-connrefused -m 6 -s --data-urlencode "type=~runstate" --data-urlencode "uuid=$UUID" \
+	curl --retry 3 --retry-connrefused --connect-timeout 3 --max-time 15 --retry-max-time 20 -s \
+		--data-urlencode "type=~runstate" --data-urlencode "uuid=$UUID" \
 		--data-urlencode "used=$USED" \
 		--data-urlencode "user=$Name" --data-urlencode "tmpsize=$TMP_SIZE" --data-urlencode "tmpfree=$TMP_FREE" \
 		--data-urlencode "id45size=$ID45_SIZE" --data-urlencode "id45free=$ID45_FREE" \
