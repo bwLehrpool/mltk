@@ -25,6 +25,11 @@ declare -rg TMPFILE=$(mktemp -p /run/openslx)
 declare -rg OUTFILE=/etc/issue
 
 . /opt/openslx/config
+tries=0
+while [ -z "$SLX_PXE_CLIENT_IP" ] && (( tries++ < 10 )); do
+	sleep 1
+	. /opt/openslx/config
+done
 
 # get_dmi_info <class>
 get_dmi_info() {
@@ -65,8 +70,10 @@ tmpstatus="$(slx-tools fs_path_space /tmp | awk '{printf "%.1f", $2 / 1024 / 102
 # netboot version from cmdline, e.g. boot/bwlp/minilinux/1 to "MiniLinux 1"
 netboot="$(grep -oP '(?<=slxbase=boot/)\S+' /proc/cmdline | tr '/' ' ')"
 # capitalize 'm' & 'l'
-netboot="${netboot^m}"
-netboot="${netboot^^l}"
+netboot="${netboot//maxi/Maxi}"
+netboot="${netboot//mini/Mini}"
+netboot="${netboot//beta/Beta}"
+netboot="${netboot//linux/Linux}"
 
 virtualbox="$( . "/usr/lib/virtualbox/scripts/generated.sh"; echo "$VBOX_VERSION_STRING" )"
 
