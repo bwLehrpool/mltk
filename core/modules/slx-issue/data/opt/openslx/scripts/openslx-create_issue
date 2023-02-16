@@ -34,7 +34,7 @@ done
 # get_dmi_info <class>
 get_dmi_info() {
 	[ -n "$1" ] || return
-	echo $(dmidecode -s "$1" | grep -vP "unknown|filled|^#")
+	echo $(dmidecode -s "$1" | grep -vP "unknown|filled|system m|^#")
 }
 # Replace known variables and determine maximum line length
 MAX=0
