@@ -64,7 +64,7 @@ add_ips () {
 	[ -z "$1" -o -z "$2" -o -z "$port_def" -o -z "$4" ] && return 1
 	for ip in $2; do
 		port="${ip#*:}"
-		if (( port > 0 && port < 65536 )); then
+		if (( port > 0 && port < 65536 )) 2> /dev/null; then
 			ip="${ip%:*}"
 		else
 			port="$port_def"
