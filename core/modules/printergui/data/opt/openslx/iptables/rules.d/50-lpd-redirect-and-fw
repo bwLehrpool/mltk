@@ -1,17 +1,13 @@
 #!/bin/ash
 
-# Redirect from VM to lpd
-for br in br0 nat1 vsw2; do
-	[ -d "/sys/class/net/${br}/brif" ] || continue
-	devs=$(ls -1 "/sys/class/net/${br}/brif/")
-	for dev in $devs; do
-		case "$dev" in boot0|eth?|eth??|tun?|tun??) continue ;; esac
-		iptables -t nat -A PREROUTING -d 192.168.101.1 -p tcp --dport 515 -j REDIRECT --to-port 5515
-		iptables -t nat -A PREROUTING -d 192.169.101.1 -p tcp --dport 515 -j REDIRECT --to-port 5515
-		iptables -t nat -A PREROUTING -d 100.100.100.100 -p tcp --dport 515 -j REDIRECT --to-port 5515
-	done
-done
+# Redirect from VM to lpd - outside should not get routed anyways, so checking destination should
+# be enough
+iptables -t nat -A PREROUTING -d 192.168.101.1 -p tcp --dport 515 -j REDIRECT --to-port 5515
+iptables -t nat -A PREROUTING -d 192.169.101.1 -p tcp --dport 515 -j REDIRECT --to-port 5515
+iptables -t nat -A PREROUTING -d 100.100.100.100 -p tcp --dport 515 -j REDIRECT --to-port 5515
 # Close from outside
+iptables -A INPUT -s 192.168.101.0/24 -p tcp --dport 5515 -j ACCEPT
+iptables -A INPUT -p tcp --dport 5515 -j ACCEPT
 iptables -A INPUT -p tcp --dport 515 -j DROP
 exit 0
 
