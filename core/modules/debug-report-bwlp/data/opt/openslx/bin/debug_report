@@ -84,7 +84,7 @@ cp /tmp/udhcpclog /opt/openslx/config.tgz.list \
 sed -r 's/^([^=]*PASS[^=]*)=.*$/\1=<removed>/' "/opt/openslx/config" > "static/config"
 echo -n "."
 
-for file in /home/*/.xsession-errors; do
+for file in /root/.xsession-errors /home/*/.xsession-errors; do
 	[ -f "$file" ] || continue
 	cp "$file" "static/${file////_}" #/////////777-7-7
 done
