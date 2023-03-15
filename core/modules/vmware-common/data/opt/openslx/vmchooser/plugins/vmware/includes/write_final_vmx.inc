@@ -335,8 +335,17 @@ write_final_vmx() {
 	[[ " $SLX_REMOTE_VNC " == *" vmware "* ]] && setup_vnc
 	finalize_hardware
 
-	# Killing duplicate lines (output much nicer than sort -u):
-	awk '!a[$0]++' "${TMPCONFIG}" > "${TMPCONFIG}.tmp" && mv -f "${TMPCONFIG}.tmp" "${TMPCONFIG}"
+	# Killing duplicate entries; always keep last value:
+	awk -F= '{
+		b = $0;
+		gsub(/^[ \t]+|[ \t]+$/, "", $1);
+		gsub(/^[ \t]*[^ \t]+[ \t]*=[ \t]*|[ \t]+$/, "", b);
+		a[$1] = b;
+	}
+	END {
+		for (k in a) printf "%s = %s\n", k, a[k];
+	}' "${TMPCONFIG}" > "${TMPCONFIG}.tmp" \
+		&& mv -f "${TMPCONFIG}.tmp" "${TMPCONFIG}"
 
 	# At last: Let's copy it to $VM_CONF_DIR/run-vmware.conf
 	if cp -p "${TMPCONFIG}" "${VM_RUN_FILE}"; then
