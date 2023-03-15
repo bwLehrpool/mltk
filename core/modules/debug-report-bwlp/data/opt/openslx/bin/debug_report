@@ -19,14 +19,33 @@ URLS="
 	end
 "
 
+localReport=false
+errorDesc=
+
 if [ "$UID" != "0" ]; then
 	echo "Debug Reports können nur von root versendet werden" >&2
 	exit 1
 fi
 
-if [ "$1" = "--local" ]; then
-	localReport=true
-else
+while [ $# -gt 0 ]; do
+	case "$1" in
+	--local)
+		localReport=true
+		;;
+	--message)
+		errorDesc="$2"
+		shift
+		;;
+	esac
+	shift
+done
+
+if [ -z "$errorDesc" ] && ! [ -t 0 ]; then
+	echo "Keine Fehlerbeschreibung angegeben (--message '<ein text>')"
+	exit 1
+fi
+
+if ! $localReport; then
 	for URL in $URLS; do
 		if [ "$URL" = "end" ]; then
 			echo "Kann den Debug-Report-Server in Freiburg nicht erreichen. :-(" >&2
@@ -49,13 +68,17 @@ if ! cd /tmp/debug-report; then
 	exit 1
 fi
 
-cat > err-desc <<HEREEND
+if [ -n "$errorDesc" ]; then
+	printf "%s" "$errorDesc" > err-desc
+else
+	cat > err-desc <<-HEREEND
 
-# Bitte hier kurz eine passende Fehlerbeschreibung eingeben, anschließend
-# Strg+O, ENTER, Strg+X, ENTER drücken.
-HEREEND
+	# Bitte hier kurz eine passende Fehlerbeschreibung eingeben, anschließend
+	# Strg+O, ENTER, Strg+X, ENTER drücken.
+	HEREEND
 
-nano -w err-desc
+	nano -w err-desc
+fi
 
 if ! grep -vqE '(^$)|(^# )' err-desc; then
 	echo "Fehlerberichterstattung aufgrund leerer Beschreibung abgebrochen."
@@ -91,9 +114,13 @@ done
 
 echo -n "."
 
-FILES=$(find /tmp/vmware* /tmp/virt /tmp/vmchooser* -type f \( -name "*.log" -o -name "*.conf" -o -name "*.xml" -o -name "vmx" \) 2> /dev/null)
-if [ -n "$FILES" ]; then
-	tar ckf static/vm-related.tar $FILES
+mapfile -t -d '' FILES < <( find /tmp/vmware* /tmp/virt /tmp/vmchooser* \
+	-type f \
+	\( -name "*.log" -o -name "*.conf" -o -name "*.xml" -o -name "vmx" \) \
+	-print0 2> /dev/null )
+
+if (( ${#FILES[@]} > 0 )); then
+	tar ckf static/vm-related.tar "${FILES[@]}"
 fi
 
 echo -n "."
@@ -155,7 +182,11 @@ find generated/ -type f -name "*-err" -size 0 -delete > /dev/null 2>/dev/null
 
 echo "..fertig!"
 
-cd /tmp
+if ! cd /tmp; then
+	echo 'cd /tmp failed!?'
+	exit 1
+fi
+
 rm -f -- error-report.tar.gz
 
 if [ "$localReport" = "true" ]; then
