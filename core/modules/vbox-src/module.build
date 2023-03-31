@@ -77,10 +77,10 @@ build() (
 				|| perror "'configure' failed."
 		# Newer version SUCK because they ignore --with-linux and require KERN_DIR to be set,
 		# and forthermode require it to end in "<version>/build", so we need to create a symlink *facepalm*
-		mkdir -p "kernel/${KERNEL_VERSION_LONG}"
-		ln -s "${KERNEL_HEADERS_DIR}" "kernel/${KERNEL_VERSION_LONG}/build" \
-			|| perror "Kernel symlink fail ('${KERNEL_HEADERS_DIR}' <- 'kernel/${KERNEL_VERSION_LONG}/build')"
-		export KERN_DIR="$( readlink -f "kernel" )/${KERNEL_VERSION_LONG}/build"
+		mkdir -p "kernel/${TARGET_KERNEL_LONG}"
+		ln -nfs "${KERNEL_HEADERS_DIR}" "kernel/${TARGET_KERNEL_LONG}/build" \
+			|| perror "Kernel symlink fail ('${KERNEL_HEADERS_DIR}' <- 'kernel/${TARGET_KERNEL_LONG}/build')"
+		export KERN_DIR="$( readlink -f "kernel" )/${TARGET_KERNEL_LONG}/build"
 		# Limit job count - can easily OOM
 		num="$( awk '$1 == "MemTotal:" { print int(0.25 + $2 / (1024*1024)) }' /proc/meminfo )"
 		(( num > CPU_CORES )) && num="$CPU_CORES"
