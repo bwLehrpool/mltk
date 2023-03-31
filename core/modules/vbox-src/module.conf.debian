@@ -1,22 +1,23 @@
 REQUIRED_INSTALLED_PACKAGES="
-	kbuild
-	iasl
-	makeself
-	nasm
 	genisoimage
 	glslang-tools
-	libcurl4-openssl-dev
+	iasl
+	kbuild
 	libcap-dev
+	libcurl4-openssl-dev
 	libdevmapper-dev
-	libqt5opengl5-dev
 	libidl-dev
+	libopus-dev
+	libqt5opengl5-dev
 	libsdl1.2-dev
-	libxml2-dev
-	libxmu-dev
+	libvncserver-dev
 	libxcursor-dev
 	libxinerama-dev
+	libxml2-dev
+	libxmu-dev
 	libxrandr-dev
-	libopus-dev
+	makeself
+	nasm
 	usbutils
 	xsltproc
 	yasm
