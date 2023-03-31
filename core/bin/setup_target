@@ -66,7 +66,7 @@ initial_checks () {
 
 unset_required_vars () {
 	for VARNAME in ${!REQUIRED_*}; do
-		unset $VARNAME
+		unset "$VARNAME"
 	done
 }
 
@@ -166,14 +166,15 @@ read_build () {
 
 export_builds() {
 	[ ! -d "${ROOT_DIR}/var/builds" ] && perror "No ${ROOT_DIR}/var/builds, nothing to export."
-	if mount|grep -q ${ROOT_DIR}/var/builds; then
+	if mount | grep -q "${ROOT_DIR}/var/builds"; then
 		pwarning "${ROOT_DIR}/var/builds already exported! Ignoring..."
 		return 1;
 	fi
 	pinfo "Mounting ${ROOT_DIR}/var/builds to ${EXPORT_DIR}."
 	pinfo "This will make the local var/builds syncable from another machine."
 	[ ! -d "${EXPORT_DIR}" ] && mkdir -p "${EXPORT_DIR}"
-	mount --bind ${ROOT_DIR}/var/builds ${EXPORT_DIR} || perror "Failed to bind mount ${ROOT_DIR}/var/builds to ${EXPORT_DIR}"
+	mount --bind "${ROOT_DIR}/var/builds" "${EXPORT_DIR}" \
+		|| perror "Failed to bind mount ${ROOT_DIR}/var/builds to ${EXPORT_DIR}"
 }
 
 #
@@ -186,11 +187,13 @@ copy_files_with_deps () {
 	cde "$MODULE_BUILD_DIR"
 
 	local COPYFILES_LIST="${TARGET_BUILD_DIR}/opt/openslx/.mltk/${MODULE}.copy_files_with_deps"
+	local TESTFILE BIN ENTRY OPTIONAL FILENAME LIB LOCATION FILE OLD CLISTCOUNT
+	declare -a FILE_CANDIDATES=()
+	declare -a FINAL_LIST=()
 	rm -f -- "${COPYFILES_LIST}"
 
 	# from REQUIRED_BINARIES - follow symlinks and ldd the file
-	[ ! -z "${REQUIRED_BINARIES}" ] && pinfo "Gathering required binaries from config file..."
-	local OPTIONAL FILENAME
+	[ -n "${REQUIRED_BINARIES}" ] && pinfo "Gathering required binaries from config file..."
 	for FILENAME in ${REQUIRED_BINARIES}; do
 		if [[ "${FILENAME:0:1}" == "@" ]]; then
 			OPTIONAL="yes"
@@ -198,33 +201,31 @@ copy_files_with_deps () {
 		else
 			OPTIONAL="no"
 		fi
-		local FILE_CANDIDATES="$( find . -name "${FILENAME}" -a \( -type f -o -type l \) )"
-		local FINAL_LIST=""
+		mapfile -d '' -t FILE_CANDIDATES < <( find . -name "${FILENAME}" -a \( -type f -o -type l \) -print0 )
 		# Check result of find
-		if [ "$(echo "$FILE_CANDIDATES" | wc -l)" -gt 1 ]; then
+		if (( ${#FILE_CANDIDATES[@]} > 1 )); then
 			# More than one match for binary
-			pdebug "Candidates for $FILENAME are: $(echo $FILE_CANDIDATES)"
-			for FILE in $FILE_CANDIDATES; do
-				local TESTFILE="$(readlink -f "$FILE")"
+			pdebug "Candidates for $FILENAME are: ${FILE_CANDIDATES[*]}"
+			for FILE in "${FILE_CANDIDATES[@]}"; do
+				TESTFILE="$(readlink -f "$FILE")"
 				pdebug "  $FILE leads to $TESTFILE"
-				[ -f "$TESTFILE" -a -x "$TESTFILE" ] && FINAL_LIST="$FINAL_LIST $FILE"
+				[ -f "$TESTFILE" ] && [ -x "$TESTFILE" ] && FINAL_LIST+=( "$FILE" )
 			done
-			FINAL_LIST=$(trim "$FINAL_LIST")
-			if [ -z "$FINAL_LIST" ]; then
+			if (( ${#FINAL_LIST[@]} == 0 )); then
 				# Not found in build dir; if install mode, check if it's in the PKG_CONTENT_FILE
 				if [ -n "$MLTK_INSTALL" ]; then
 					# TODO: Might want to iterate over all the matches and check if at least one of them
 					# is +x
 					grep -q "/${FILENAME}\$" "$PKG_CONTENT_FILE" && continue
 				fi
-				perror "\tNo binary found for ${FILENAME}. None of the candidates ($FILE_CANDIDATES) is executable."
+				perror "\tNo binary found for ${FILENAME}. None of the candidates (${FILE_CANDIDATES[*]}) is executable."
 			fi
-			if [[ "$FINAL_LIST" == *" "* ]]; then
-				pdebug "Found more than one match for required file '$FILENAME': $FINAL_LIST"
+			if (( ${#FINAL_LIST[@]} > 1 )); then
+				pdebug "Found more than one match for required file '$FILENAME': ${FINAL_LIST[*]}"
 			else
 				pdebug "\tFound ${FILENAME} at ${FILE}"
 			fi
-		elif [ "$OPTIONAL" == "no" -a -z "$FILE_CANDIDATES" ]; then
+		elif [ "$OPTIONAL" == "no" ] && (( ${#FILE_CANDIDATES[@]} == 0 )); then
 			# No candidate
 			# Same as above: accept existing file in /
 			if [ -n "$MLTK_INSTALL" ]; then
@@ -233,14 +234,14 @@ copy_files_with_deps () {
 			perror "Could not find required binary $FILENAME"
 		else
 			# One candidate
-			local TESTFILE="$( readlink -f "$FILE_CANDIDATES" )"
+			TESTFILE="$( readlink -f "${FILE_CANDIDATES[0]}" )"
 			if [ -f "$TESTFILE" ] && [ -x "$TESTFILE" ]; then
-				FINAL_LIST="${FILE_CANDIDATES}"
+				FINAL_LIST=( "${FILE_CANDIDATES[0]}" )
 			elif [ "$OPTIONAL" = "no" ]; then
-				perror "No executable regular file found for '$FILENAME' (potential match was $(echo $FILE_CANDIDATES))"
+				perror "No executable regular file found for '$FILENAME' (potential match was ${FILE_CANDIDATES[0]})"
 			fi
 		fi
-		for FILE in $FINAL_LIST; do
+		for FILE in "${FINAL_LIST[@]}"; do
 			pdebug "* $FILE"
 			get_link_chain "${MODULE_BUILD_DIR}/${FILE}" "${MODULE_BUILD_DIR}" >> "${COPYFILES_LIST}"
 			get_dynamic_dependencies -l "${MODULE_BUILD_DIR}" "${FILE}" >> "${COPYFILES_LIST}"
@@ -251,15 +252,15 @@ copy_files_with_deps () {
 	# by looking for files named <libname>.so*
 	[ -n "$REQUIRED_LIBRARIES" ] && pinfo "Gathering required libraries from config file..."
 	for LIB in $REQUIRED_LIBRARIES; do
-		FILE_CANDIDATES=$(find . -name "${LIB}.so*")
-		if [ -z "$FILE_CANDIDATES" ]; then
+		mapfile -d '' -t FILE_CANDIDATES < <(find . -name "${LIB}.so*" -print0)
+		if (( ${#FILE_CANDIDATES[@]} == 0 )); then
 			if [ -n "$MLTK_INSTALL" ]; then
 				# TODO: Escape LIB and use a proper regex with -P
 				grep -qF "/${LIB}.so" "$PKG_CONTENT_FILE" && continue
 			fi
 			perror "Cannot find required library $LIB"
 		fi
-		for LOCATION in $FILE_CANDIDATES; do
+		for LOCATION in "${FILE_CANDIDATES[@]}"; do
 			pdebug "* $LOCATION"
 			get_link_chain "${MODULE_BUILD_DIR}/${LOCATION}" "${MODULE_BUILD_DIR}"  >> "${COPYFILES_LIST}"
 			get_dynamic_dependencies -l "${MODULE_BUILD_DIR}" "${LOCATION}" >> "${COPYFILES_LIST}"
@@ -268,16 +269,17 @@ copy_files_with_deps () {
 
 	# from REQUIRED_DIRECTORIES - recursively copy given dirs, look for files that seem to be an elf
 	# binary and do the symlink+ldd trick on them
-	[ ! -z "${REQUIRED_DIRECTORIES}" ] && pinfo "Gathering required directories from config file..."
+	[ -n "${REQUIRED_DIRECTORIES}" ] && pinfo "Gathering required directories from config file..."
 	local ENTRY=""
 	for ENTRY in ${REQUIRED_DIRECTORIES}; do
 		[[ "$ENTRY" == /* ]] || perror "All entries in REQUIRED_DIRECTORIES have to start with a slash '/', but $ENTRY does not!"
-		[ -e "$ENTRY" -a ! -d "$ENTRY" ] && perror "$ENTRY is not a directory in base system"
+		[ -e "$ENTRY" ] && [ ! -d "$ENTRY" ] && perror "$ENTRY is not a directory in base system"
 		pdebug "* $ENTRY"
 		if [ -d ".${ENTRY}" ]; then
 			ENTRY=".${ENTRY}"
 			echo "${ENTRY}" >> "${COPYFILES_LIST}"
-			for BIN in $(find "${ENTRY}" -type f -a \( -executable -o -name '*.so*' \) -a -not -name '*.a'); do
+			mapfile -d '' -t FILE_CANDIDATES < <(find "${ENTRY}" -type f -a \( -executable -o -name '*.so*' \) -a -not -name '*.a' -print0)
+			for BIN in "${FILE_CANDIDATES[@]}"; do
 				[ -f "$BIN" ] || continue
 				#pdebug "\tSearching libs for ${BIN}..."
 				get_link_chain "${MODULE_BUILD_DIR}/${BIN}" "${MODULE_BUILD_DIR}" >> "${COPYFILES_LIST}"
@@ -289,7 +291,7 @@ copy_files_with_deps () {
 	done
 
 	# from REQUIRED_FILES - these are assumed to be simple files, so only follow symlinks
-	[ ! -z "${REQUIRED_FILES}" ] && pinfo "Gathering required files from config file..."
+	[ -n "${REQUIRED_FILES}" ] && pinfo "Gathering required files from config file..."
 	for ENTRY in ${REQUIRED_FILES}; do
 		if [ "${ENTRY:0:1}" = "@" ]; then
 			ENTRY="${ENTRY:1}"
@@ -311,11 +313,11 @@ copy_files_with_deps () {
 		return
 	fi
 	# unchanged?
-	local OLD="${COPYFILES_LIST}.old"
+	OLD="${COPYFILES_LIST}.old"
 	if [ -s "$OLD" ] && cmp "$OLD" "$COPYFILES_LIST"; then
 		return
 	fi
-	local CLISTCOUNT=$(cat "$COPYFILES_LIST" | wc -l)
+	CLISTCOUNT=$( < "$COPYFILES_LIST"  wc -l )
 	pinfo "Copying $CLISTCOUNT files to '${TARGET_BUILD_DIR}'."
 	tarcopy "$(sort -u "$COPYFILES_LIST")" "${TARGET_BUILD_DIR}"
 	mv -f "$COPYFILES_LIST" "$OLD"
@@ -358,7 +360,7 @@ scan_target() {
 				perror "$base exists in multiple sub-targets and links to different modules\n1: $real\n2: ${MODULE_PATHS["$base"]}"
 			fi
 			MODULE_PATHS["$base"]="$real"
-		elif [ "${real#$TARGETS_BASEDIR}" != "$real" ]; then
+		elif [ "${real#"$TARGETS_BASEDIR"}" != "$real" ]; then
 			scan_target "$real"
 		else
 			perror "Unknown link in target '$dir': '$base' is '$real', neither target nor module"
@@ -410,11 +412,11 @@ generate_target_real() {
 	prepare_usr_split "${TARGET_BUILD_DIR}"
 
 	# if no arguments assume all.
-	if [ "x$1" = "x" -o "x$1" = "xall" ]; then
-		MODULES="${!MODULE_PATHS[@]}"
+	if [ -z "$1" ] || [ "$1" = "all" ]; then
+		MODULES="${!MODULE_PATHS[*]}"
 	else
 		# tools = arguments given
-		MODULES="$@"
+		MODULES="$*"
 	fi
 
 	pinfo "Activated modules in '${TARGET}':"
@@ -469,7 +471,7 @@ process_module_init() {
 process_module() {
 	# Parse arguments
 	[ "$#" -lt "1" ] && perror "process_module: want >= 1 param."
-	if [ "x$1" = "x--dep-of" ]; then
+	if [ "$1" = "--dep-of" ]; then
 		shift
 		local DEPOF=" $1"
 		shift
@@ -487,6 +489,7 @@ process_module() {
 	local TOOL_STR="[${MODULE}]"
 	local SOURCE_FLAG="${MODULE_WORK_DIR}/meta/fetched_source.flag"
 	local BUILD_FLAG="${MODULE_WORK_DIR}/meta/build_complete.flag"
+	local COPY_FLAG="${MODULE_WORK_DIR}/meta/copy_complete.flag"
 	local AUTOCLONE_FILE="${MODULE_WORK_DIR}/meta/repos"
 	local MD5FILE="${TARGET_BUILD_DIR}/opt/openslx/.mltk/${MODULE}.md5"
 	local PKG_CONTENT_FILE="${MODULE_WORK_DIR}/meta/list_package_contents"
@@ -498,23 +501,21 @@ process_module() {
 		return
 	fi
 	# Simple check for modified .build / .config, in which case we'll run a module clean first
-	if [ -f "$MD5FILE" ]; then
-		if ! md5sum --check "$MD5FILE"; then
-			# Mismatch
-			if [ "x$MODULE" = "xkernel" ]; then
-				pwarning " ** Kernel .build/.config changed, but won't autoclean."
-				pwarning " ** Check if cleaning should be done and use '-c kernel'"
-			else
-				pwarning "Module's .build/.config has changed, rebuilding!"
-				clean_module "${TARGET}:${MODULE}"
-			fi
-		elif [ ! -e "$SOURCE_FLAG" ] || [ ! -e "$BUILD_FLAG" ]; then
-			# One of the flags is missing, in this case delete the .md5 file
-			# which would prevent dependency copying etc. below
-			rm -f -- "$MD5FILE"
+	if [ -f "$MD5FILE" ] && ! md5sum --check "$MD5FILE"; then
+		# Mismatch
+		if [ "$MODULE" = "kernel" ]; then
+			pwarning " ** Kernel .build/.config changed, but won't autoclean."
+			pwarning " ** Check if cleaning should be done and use '-c kernel'"
+		else
+			pwarning "Module's .build/.config has changed, rebuilding!"
+			clean_module "${TARGET}:${MODULE}"
 		fi
 	fi
+	# Write new md5 file if not existent yet
 	mkdir -p "${TARGET_BUILD_DIR}/opt/openslx/.mltk" "${MODULE_WORK_DIR}/meta"
+	if ! [ -f "$MD5FILE" ]; then
+		md5sum "$MODULE_DIR/module".* > "$MD5FILE" || perror "Could not create $MD5FILE"
+	fi
 	cde "${MODULE_DIR}"
 	# Process module
 	pdebug "## Reading config of $MODULE"
@@ -523,7 +524,7 @@ process_module() {
 	mkdir -p "${MODULE_BUILD_DIR}" || perror "Could not create build dir"
 	prepare_usr_split "${MODULE_BUILD_DIR}"
 	# Check if this module has a dependency that wasn't built yet:
-	if [ ! -z "$REQUIRED_MODULES" ]; then
+	if [ -n "$REQUIRED_MODULES" ]; then
 		pdebug "$MODULE depends on ${REQUIRED_MODULES}...."
 		for DEP in $REQUIRED_MODULES; do
 			process_module --dep-of "${MODULE}${DEPOF}" "$DEP"
@@ -552,7 +553,7 @@ process_module() {
 		touch "$SOURCE_FLAG" || pwarning "Error setting source-flag"
 	fi
 	# Build
-	if [ ! -e "$BUILD_FLAG" ]; then
+	if ! [ -e "$BUILD_FLAG" ]; then
 		list_packet_files > "$PKG_CONTENT_FILE" || perror "Could not write packet content list to $PKG_CONTENT_FILE"
 		# Copy all required packages' contents to build dir, but not in install mode
 		if [ -z "$MLTK_INSTALL" ] && [ -s "$PKG_CONTENT_FILE" ]; then
@@ -568,7 +569,7 @@ process_module() {
 	# Remove *.la files as they might confuse libtool/linker of other tool packages
 	[ -d "${MODULE_BUILD_DIR}" ] && find "${MODULE_BUILD_DIR}" -name '*.la' -exec rm -f {} \;
 	# Only copy stuff from system or build dir if md5s didn't change
-	if [ ! -f "$MD5FILE" ]; then
+	if ! [ -e "$COPY_FLAG" ]; then
 		pinfo "## Copying files with dependencies"
 		cde "${MODULE_DIR}"
 		copy_files_with_deps
@@ -577,6 +578,7 @@ process_module() {
 			cde "${MODULE_DIR}"
 			copy_system_files
 		fi
+		touch "$COPY_FLAG" || pwarning "Error setting copy-flag"
 	fi
 	# Always copy static data
 	if [ -d "${MODULE_DIR}/data" ]; then
@@ -587,14 +589,12 @@ process_module() {
 	pinfo "## Post copy"
 	cde "${MODULE_DIR}"
 	post_copy
-	# Write new md5 file if not existent yet
-	if [ ! -f "$MD5FILE" ]; then
-		md5sum "$MODULE_DIR/module".* > "$MD5FILE" || perror "Could not create $MD5FILE"
-	fi
 	[ -s "$AUTOCLONE_FILE" ] && cp "$AUTOCLONE_FILE" "${TARGET_BUILD_DIR}/opt/openslx/.mltk/${MODULE}.git"
 	# Sanity checks
-	[ -e "$TARGET_BUILD_DIR/var/run" -a ! -L "$TARGET_BUILD_DIR/var/run" ] && perror "Messup datected: $TARGET_BUILD_DIR/var/run exists and is not a symlink!"
-	[ -e "$TARGET_BUILD_DIR/var/lock" -a ! -L "$TARGET_BUILD_DIR/var/lock" ] && perror "Messup datected: $TARGET_BUILD_DIR/var/lock exists and is not a symlink!"
+	[ -e "$TARGET_BUILD_DIR/var/run" ] &&  ! [ -L "$TARGET_BUILD_DIR/var/run" ] \
+		&& perror "Messup datected: $TARGET_BUILD_DIR/var/run exists and is not a symlink!"
+	[ -e "$TARGET_BUILD_DIR/var/lock" ] && ! [ -L "$TARGET_BUILD_DIR/var/lock" ] \
+		&& perror "Messup datected: $TARGET_BUILD_DIR/var/lock exists and is not a symlink!"
 	[ -n "$(ls -A "$TARGET_BUILD_DIR/run" 2>> /dev/null)" ] && perror "Messup detected: $TARGET_BUILD_DIR/run is not empty. You cannot place static files there, use /etc/tmpfiles.d instead!"
 }
 
@@ -683,9 +683,9 @@ clean_modules() {
 	TARGET_DIR="$( readlink -f "${TARGETS_BASEDIR}/${TARGET}" )"
 	scan_target "$TARGET_DIR"
 	TARGET_BUILD_DIR="${ROOT_DIR}/var/builds/${TARGET}"
-	[ -d $TARGET_DIR ] || perror "Given target directory does not exist: $TARGET_DIR"
+	[ -d "$TARGET_DIR" ] || perror "Given target directory does not exist: $TARGET_DIR"
 
-	if [ "x$1" = "x" -o "x$1" = "xall" ]; then
+	if [ -z "$1" ] || [ "$1" = "all" ]; then
 		if [[ "$TARGET" == *@* ]]; then
 			rm -rf -- "${TARGET_BUILD_DIR%@*}"@* || perror "Could not delete target build dirs for $TARGET"
 		else
@@ -733,7 +733,9 @@ clean_module() {
 # Recursively strip binaries and libraries in the given directory
 strip_recursive() {
 	local DIR="$1"
-	[ -n "$DIR" -a -d "$DIR" ] || perror "strip_recursive(): No such directory: '$DIR'"
+	if [ -z "$DIR" ] || ! [ -d "$DIR" ]; then
+		perror "strip_recursive(): No such directory: '$DIR'"
+	fi
 	# Will try to strip shell scripts too but shouldn't do any harm
 	# Ignore anything we compile ourselves so we have usable core dumps
 	find "$DIR" -type f \! -path "*openslx*bin*" -a \( -executable -o -name "*.so*" \) -exec strip {} \; 2> /dev/null
