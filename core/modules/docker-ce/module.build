@@ -13,6 +13,12 @@ module_init() {
 		vers=11
 		codename="buster"
 	fi
+	if [ "$SYS_DISTRIBUTION" = "debian" ]; then
+		# Brute force down to a valid version
+		while (( vers > 10 )) && ! curl -sSfL "https://nvidia.github.io/nvidia-docker/${SYS_DISTRIBUTION}${vers}/nvidia-docker.list" > /dev/null; do
+			(( vers-- ))
+		done
+	fi
 	apts=(
 		"https://download.docker.com/linux/${SYS_DISTRIBUTION}/gpg deb [arch=$(dpkg --print-architecture)] https://download.docker.com/linux/$SYS_DISTRIBUTION $codename stable"
 		"https://nvidia.github.io/nvidia-docker/gpgkey https://nvidia.github.io/nvidia-docker/${SYS_DISTRIBUTION}${vers}/nvidia-docker.list"
