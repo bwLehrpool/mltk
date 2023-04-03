@@ -195,6 +195,9 @@ setup_displays() {
 	fi
 	set_attr "/VirtualBox/Machine/Hardware/Display" "monitorCount" "${DISPLAY_COUNT}"
 	set_attr "/VirtualBox/Machine/Hardware/Display" "VRAMSize" "$vram_size"
+	# XXX 3D acceleration is very broken as of 7.0.6 - disable for now.
+	# Re-evaluate some time in the future
+	set_attr "/VirtualBox/Machine/Hardware/Display" "accelerate3D" "false"
 }
 
 finalize_machine_config() {
