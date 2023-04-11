@@ -99,7 +99,8 @@ run_plugin() {
 	notempty CDROM_1           && VIRTCMDOPTS+=( "-vmcdrom1"    "${CDROM_1}" )
 	notempty SERIAL0 && [ -w "${SERIAL0}" ] \
 	                           && VIRTCMDOPTS+=( "-vmserial0"   "${SERIAL0}" )
-	notempty PARALLEL0         && VIRTCMDOPTS+=( "-vmparallel0" "${PARALLEL0}" )
+	notempty PARALLEL0 && [ -w "${PARALLEL0}" ] \
+	                           && VIRTCMDOPTS+=( "-vmparallel0" "${PARALLEL0}" )
 	notempty pt_gpu_mdev_id    && VIRTCMDOPTS+=( "-vmilmdevid0" "${pt_gpu_mdev_id}" )
 
 	if [ "${SHARE_REMAP_MODE}" -gt 1 ]; then
