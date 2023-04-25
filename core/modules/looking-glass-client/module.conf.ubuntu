@@ -1,23 +1,25 @@
 #!/bin/bash
 REQUIRED_INSTALLED_PACKAGES="
-	gcc
-	pkg-config
-	gawk
 	binutils-dev
 	cmake
 	fonts-freefont-ttf
+	gawk
+	gcc
+	libegl-dev
 	libfontconfig1-dev
 	libgl-dev
 	libgles-dev
-	libegl-dev
 	libgmp-dev
+	libpulse-dev
+	libsamplerate0-dev
 	libspice-protocol-dev
-	nettle-dev
 	libx11-dev
-	libxpresent-dev
 	libxfixes-dev
-	libxkbcommon-x11-dev
 	libxi-dev
 	libxinerama-dev
+	libxkbcommon-x11-dev
+	libxpresent-dev
 	libxss-dev
+	nettle-dev
+	pkg-config
 "

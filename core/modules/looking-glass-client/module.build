@@ -11,8 +11,9 @@ build() {
 	mkdir -p "${SRCDIR}/client/build" || perror "Failed to create CMake build directory!"
 	cde "${SRCDIR}/client/build"
 
-	cmake -DENABLE_WAYLAND=no \
-		-DENABLE_X11=yes \
+	cmake -DENABLE_WAYLAND=OFF     \
+		-DENABLE_PIPEWIRE=OFF       \
+		-DENABLE_X11=ON             \
 		-DCMAKE_INSTALL_PREFIX=/usr \
 		../ || perror "'cmake' failed."
 	make || perror "'make' failed."
