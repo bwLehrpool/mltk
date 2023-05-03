@@ -5,6 +5,11 @@
 # Xreset - run as root after session exits
 #
 
+# Only run this if a session was actually started, as lightdm also calls
+# this script on every failed login attempt
+[ -e "/run/openslx/ldm-session-$DISPLAY" ] || exit 0
+rm -f -- "/run/openslx/ldm-session-$DISPLAY"
+
 export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/openslx/sbin:/opt/openslx/bin"
 
 PROGNAME=Xreset

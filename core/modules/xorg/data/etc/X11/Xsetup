@@ -3,9 +3,12 @@
 # /etc/X11/Xsetup
 #
 # Xsetup is executed once before the greeter starts (as root)
-# 
+#
 
 export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/openslx/sbin:/opt/openslx/bin"
+
+# Marker that a session actually started (Xreset)
+rm -f -- "/run/openslx/ldm-session-$DISPLAY"
 
 SESSIONDIR="/etc/X11/Xsetup.d"
 

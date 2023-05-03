@@ -1,0 +1,5 @@
+#!/bin/ash
+
+# Marker that a session started (Xreset)
+touch "/run/openslx/ldm-session-$DISPLAY"
+exit 0
