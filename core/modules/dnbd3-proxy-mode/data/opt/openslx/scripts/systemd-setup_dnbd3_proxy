@@ -160,7 +160,19 @@ else
 	DNBD3_BGR="false"
 	DNBD3_BGR_MIN_CLIENTS=0
 	DNBD3_LOOKUP="false"
-	DNBD3_AUTOFREE="18h"
+	# Delay deletion only if we're booted early
+	hour="$( date +%_H )"
+	hour="${hour# }"
+	if [ "$hour" -lt 7 ]; then
+		DNBD3_AUTOFREE=$(( 7 - hour ))
+	else
+		DNBD3_AUTOFREE=0
+	fi
+	# Wait some more on Sunday
+	if [ "$( date +%w )" = 0 ]; then
+		DNBD3_AUTOFREE=$(( DNBD3_AUTOFREE + 18 ))
+	fi
+
 	DNBD3_SERVER_PENALTY=3000 # no BGR = don't like other servers connecting so much
 	if [ -n "${SLX_DNBD3_BGR}" ]; then
 		DNBD3_BGR="true"
@@ -244,7 +256,7 @@ removeMissingImages=false
 uplinkTimeout=5000
 clientTimeout=15000
 pretendClient=${DNBD3_PRETEND_CLIENT}
-autoFreeDiskSpaceDelay=${DNBD3_AUTOFREE}
+autoFreeDiskSpaceDelay=${DNBD3_AUTOFREE}h
 
 [limits]
 maxPayload=10M
