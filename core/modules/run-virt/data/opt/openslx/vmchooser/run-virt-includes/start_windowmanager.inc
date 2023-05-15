@@ -32,54 +32,61 @@ start_wm() {
 		return 1
 	fi
 
-	# If it's the same, do nothing
-	is_wm_running "${dm}" && return 0
+	# run very simple taskbar in case user minimizes VM somehow and doesn't know Alt+Tab
+	if [ -z "$RUNVIRT_TASKBAR_PID" ] || ! kill -0 "$RUNVIRT_TASKBAR_PID"; then
+		fspanel &
+		declare -g RUNVIRT_TASKBAR_PID="$!"
+	fi
 
-	# start DM determined above
-	declare -a OPTS=()
-	case "${dm}" in
-	openbox|kwin|metacity)
-		OPTS+=( "--replace" )
-		;;
-	xfwm4)
-		OPTS+=( "--replace" "--compositor=off" )
-		;;
-	blackbox)
-		# Don't replace background, toolbar not always on top
-		OPTS+=( "-rc" "/opt/openslx/vmchooser/config/blackbox.rc" )
-		;;
-	fvwm2)
-		echo "EdgeScroll 0 0" > "${TMPDIR}/fvwm"
-		OPTS+=( "-replace" "-f" "${TMPDIR}/fvwm" )
-		;;
-	esac
-	stop_wm
-	writelog "Starting ${dm} ${OPTS[*]}."
-	declare -g RUNVIRT_DM="${dm}"
-	{
-		trap '[ -n "$wpid" ] && kill "$wpid"; exit' EXIT TERM INT
-		dc=0
-		while true; do
-			s="$( date +%s )"
-			"${RUNVIRT_DM}" "${OPTS[@]}" &> /dev/null &
-			wpid=$!
-			wait
-			ret=$?
-			wpid=
-			e="$( date +%s )"
-			duration="$(( e - s ))"
-			case "$ret" in
-			0|129|130|143) exit 0 ;;
-			esac
-			if [ "$duration" -ge 3 ]; then
-				dc=0
-			elif [ "$(( dc++ ))" -gt 5 ]; then
-				notify_user "$RUNVIRT_DM crasht immer wieder."
-				exit 1
-			fi
-		done
-	} &
-	declare -g RUNVIRT_DM_PID="$!"
+	# If it's the same, do nothing
+	if ! is_wm_running "${dm}"; then
+		# start DM determined above
+		declare -a OPTS=()
+		case "${dm}" in
+		openbox|kwin|metacity)
+			OPTS+=( "--replace" )
+			;;
+		xfwm4)
+			OPTS+=( "--replace" "--compositor=off" )
+			;;
+		blackbox)
+			# Don't replace background, toolbar not always on top
+			OPTS+=( "-rc" "/opt/openslx/vmchooser/config/blackbox.rc" )
+			;;
+		fvwm2)
+			echo "EdgeScroll 0 0" > "${TMPDIR}/fvwm"
+			OPTS+=( "-replace" "-f" "${TMPDIR}/fvwm" )
+			;;
+		esac
+		stop_wm
+		writelog "Starting ${dm} ${OPTS[*]}."
+		declare -g RUNVIRT_DM="${dm}"
+		{
+			trap '[ -n "$wpid" ] && kill "$wpid"; exit' EXIT TERM INT
+			dc=0
+			while true; do
+				s="$( date +%s )"
+				"${RUNVIRT_DM}" "${OPTS[@]}" &> /dev/null &
+				wpid=$!
+				wait
+				ret=$?
+				wpid=
+				e="$( date +%s )"
+				duration="$(( e - s ))"
+				case "$ret" in
+				0|129|130|143) exit 0 ;;
+				esac
+				if [ "$duration" -ge 3 ]; then
+					dc=0
+				elif [ "$(( dc++ ))" -gt 5 ]; then
+					notify_user "$RUNVIRT_DM crasht immer wieder."
+					exit 1
+				fi
+			done
+		} &
+		declare -g RUNVIRT_DM_PID="$!"
+	fi
+
 	if isempty HAVE_WM_CLEANUP_HOOK; then
 		add_cleanup stop_wm
 		declare -rg HAVE_WM_CLEANUP_HOOK=yes
@@ -94,12 +101,17 @@ is_wm_running() {
 }
 
 stop_wm() {
-	isempty RUNVIRT_DM_PID && return 0
-	kill "$RUNVIRT_DM_PID"
-	usleep 100000
-	kill -9 "$RUNVIRT_DM_PID"
-	declare -g RUNVIRT_DM_PID=
-	declare -g RUNVIRT_DM=
+	if ! isempty RUNVIRT_TASKBAR_PID; then
+		kill "$RUNVIRT_TASKBAR_PID"
+		declare -g RUNVIRT_TASKBAR_PID=
+	fi
+	if ! isempty RUNVIRT_DM_PID; then
+		kill "$RUNVIRT_DM_PID"
+		usleep 100000
+		kill -9 "$RUNVIRT_DM_PID"
+		declare -g RUNVIRT_DM_PID=
+		declare -g RUNVIRT_DM=
+	fi
 }
 
 ## MAIN ##
