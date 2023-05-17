@@ -14,7 +14,6 @@
 		xmodmap -e "keycode 187 ="
 		xmodmap -e "keycode 188 ="
 		xmodmap -e "keycode 26 = e E e E U20AC U20AC U20AC"
-		# TODO: ~
 		xmodmap -pke > "$modmap"
 	) &
 	. /opt/openslx/config
@@ -59,8 +58,7 @@
 		while true; do
 			s="$( date +%s )"
 			x0vncserver -fg -SecurityTypes VncAuth,TLSvnc -rfbauth "$t/tigervnc-passwd" -rfbport "$vnc_port" -localhost no -Log *:stdout:100 \
-				-AlwaysShared=true -DisconnectClients=false -MaxConnectionTime=0 -MaxDisconnectionTime=0 -MaxIdleTime=0 \
-				-RemapKeys=0xb4-\>0x401,0x5e-\>0x402,0x7e-\>0x403
+				-AlwaysShared=true -DisconnectClients=false -MaxConnectionTime=0 -MaxDisconnectionTime=0 -MaxIdleTime=0
 			e="$( date +%s )"
 			d="$(( e - s ))"
 			if [ "$d" -gt 5 ]; then
