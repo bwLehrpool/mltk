@@ -1,7 +1,5 @@
 #!/bin/bash
-REQUIRED_INSTALLED_PACKAGES="
-  x11vnc
-"
 REQUIRED_CONTENT_PACKAGES="
-  x11vnc
+  tigervnc-scraping-server
+  tigervnc-common
 "

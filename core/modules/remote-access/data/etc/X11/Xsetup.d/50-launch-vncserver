@@ -3,6 +3,20 @@
 [ -z "$SLX_KCL_SERVERS" ] && . /opt/openslx/config
 
 [ "$DISPLAY" = :0 ] && [ -n "$SLX_REMOTE_VNC" ] && bash <<"BLUBB" &
+	t="/tmp/remote-access-$DISPLAY"
+	mkdir -p "$t"
+	modmap="$( mktemp "$t/modmap.want" )"
+	tmpmap="$( mktemp "$t/modmap.have" )"
+	(
+		sleep 1
+		setxkbmap de
+		xmodmap -e "keycode 92 ="
+		xmodmap -e "keycode 187 ="
+		xmodmap -e "keycode 188 ="
+		xmodmap -e "keycode 26 = e E e E U20AC U20AC U20AC"
+		# TODO: ~
+		xmodmap -pke > "$modmap"
+	) &
 	. /opt/openslx/config
 	# TODO If we support multiple parallel sessions in the future, we need dedicated
 	# ports for each session for both, the VNC and the RPC port.
@@ -29,7 +43,8 @@
 	#exec &> /tmp/fooooooooooooo
 	# dd since busybox head doesn't know -c
 	passwd="$( < /dev/urandom  tr -c -d 'a-zA-Z0-9#&/=()[]{}' | dd bs=8 count=1 status=none )"
-	printf "%s" "$passwd" > "/tmp/vnc-passwd"
+	printf "%s" "$passwd" > "$t/vnc-passwd"
+	[ "$SLX_REMOTE_VNC" = "x11vnc" ] && chmod 0600 "$t/vnc-passwd"
 	(
 		# Make a copy of xauth, so if the xserver restarts, we'll use the old one and fail to connect
 		if [ -n "$XAUTHORITY" ]; then
@@ -39,11 +54,13 @@
 			trap 'exit 1' INT TERM
 			trap 'rm -f -- "$copy"' EXIT
 		fi
+		< "$t/vnc-passwd"  vncpasswd -f  > "$t/tigervnc-passwd"
 		fails=0
 		while true; do
 			s="$( date +%s )"
-			# skip keycode stuff fixes altgr for vmware
-			x11vnc -rfbport "$vnc_port" -shared -forever -noxrecord -xkb -capslock -skip_keycodes 92,187,188 -remap DEAD=gac,U20AC-EuroSign -passwd "$passwd"
+			x0vncserver -fg -SecurityTypes VncAuth,TLSvnc -rfbauth "$t/tigervnc-passwd" -rfbport "$vnc_port" -localhost no -Log *:stdout:100 \
+				-AlwaysShared=true -DisconnectClients=false -MaxConnectionTime=0 -MaxDisconnectionTime=0 -MaxIdleTime=0 \
+				-RemapKeys=0xb4-\>0x401,0x5e-\>0x402,0x7e-\>0x403
 			e="$( date +%s )"
 			d="$(( e - s ))"
 			if [ "$d" -gt 5 ]; then
@@ -54,7 +71,7 @@
 				[ "$fails" -gt 3 ] && usleep 333333
 			fi
 		done
-	) &> "/tmp/x11vnc-log-$$" &
+	) &> "$t/x11vnc-log-$$" &
 	vncpid=$!
 	# Delay this a bit until x11vnc is ready, and since we might potentially have had a race
 	# with the ~poweron event, which would reset the password in the database.
@@ -106,25 +123,29 @@
 			break
 		fi
 		# In case we access vmplayer via x11vnc; vmplayer won't leave the keymap alone >:(
-		# TODO: Currently everything needs to be set to DE for this to work - X11 and
-		# the OS in the VM.
-		#setxkbmap -query | grep -q '^layout:\s*de$' || \ # NO, always reports 'de'
-		setxkbmap de
+		xmodmap -pke > "$tmpmap"
+		if ! cmp -s "$tmpmap" "$modmap"; then
+			echo "$( date ) Reloading modmap" >> "$t/reload-log"
+			xmodmap "$modmap"
+		fi
+
 		# Check if we should redirect to vmware
-		if netstat -tnl | awk 'BEGIN{ e=1 } { if ($4 ~ /:5901$/) e=0 } END{ exit e }'; then
-			#enable
-			if ! $vmvnc; then
-				killall x11vnc
-				usleep 10000
-				iptables -t nat -I PREROUTING 1 -p tcp --dport "$vnc_port" -j REDIRECT --to-ports 5901
+		if [ "$SLX_REMOTE_VNC" != 'x11vnc' ]; then
+			if netstat -tnl | awk 'BEGIN{ e=1 } { if ($4 ~ /:5901$/) e=0 } END{ exit e }'; then
+				#enable
+				if ! $vmvnc; then
+					killall x0vncserver
+					usleep 10000
+					iptables -t nat -I PREROUTING 1 -p tcp --dport "$vnc_port" -j REDIRECT --to-ports 5901
+				fi
+				vmvnc=true
+			else
+				# disable
+				if $vmvnc; then
+					iptables -t nat -D PREROUTING -p tcp --dport "$vnc_port" -j REDIRECT --to-ports 5901
+				fi
+				vmvnc=false
 			fi
-			vmvnc=true
-		else
-			# disable
-			if $vmvnc; then
-				iptables -t nat -D PREROUTING -p tcp --dport "$vnc_port" -j REDIRECT --to-ports 5901
-			fi
-			vmvnc=false
 		fi
 	done
 	systemctl restart lightdm

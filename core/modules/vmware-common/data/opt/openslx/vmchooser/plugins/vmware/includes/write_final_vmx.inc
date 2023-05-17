@@ -220,7 +220,7 @@ setup_isolation() {
 }
 
 setup_vnc() {
-	local passwd="$( cat /tmp/vnc-passwd )"
+	local passwd="$( cat "/tmp/remote-access-$DISPLAY/vnc-passwd" )"
 	[ -z "$passwd" ] && return
 	cat >> "${TMPCONFIG}" <<-HEREEND
 	RemoteDisplay.vnc.enabled = "TRUE"
