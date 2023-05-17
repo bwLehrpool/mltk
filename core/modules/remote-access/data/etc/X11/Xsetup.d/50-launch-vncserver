@@ -5,8 +5,8 @@
 [ "$DISPLAY" = :0 ] && [ -n "$SLX_REMOTE_VNC" ] && bash <<"BLUBB" &
 	t="/tmp/remote-access-$DISPLAY"
 	mkdir -p "$t"
-	modmap="$( mktemp "$t/modmap.want" )"
-	tmpmap="$( mktemp "$t/modmap.have" )"
+	modmap="$t/modmap.want"
+	tmpmap="$t/modmap.have"
 	(
 		sleep 1
 		setxkbmap de
