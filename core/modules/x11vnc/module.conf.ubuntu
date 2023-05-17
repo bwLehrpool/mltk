@@ -2,5 +2,5 @@
 REQUIRED_CONTENT_PACKAGES="
   tigervnc-scraping-server
   tigervnc-common
-  tightvncpasswd
+  tigervnc-tools
 "
