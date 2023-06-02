@@ -10,8 +10,11 @@ download_metadata() {
 	declare -rg TMPCONFIG="$CONFDIR/vmx"
 
 	# Run hooks
-	if ! run_hooks "download" "$CONFDIR"; then
+	if run_hooks "download" "$CONFDIR"; then
+		writelog "Metadata download handled via hook."
+	else
 		# No hooks found
+		writelog "Downloading metadata via default method."
 		download_metadata_default
 	fi
 	[ -s "$TMPCONFIG" ] && return 0
