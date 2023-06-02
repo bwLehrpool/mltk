@@ -125,7 +125,7 @@ main() {
 
 
 	# Mark the end of generic run-virt part
-	writelog "Done with generic run-virt. Now loading virtualizer specific includes."
+	writelog "Done with generic run-virt. Now loading virtualizer-specific includes."
 	writelog "#################### Plugin init: $PLUGIN_ID ####################"
 
 	# NG: first include the hypervisor includes
