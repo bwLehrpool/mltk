@@ -289,8 +289,10 @@ safesource() {
 			fi
 			return 1
 		fi
-		echo "eval source ${FILE} ;"
-		echo "run_post_source ${FILE} ;"
+		echo "eval "
+		"$DEBUG" && echo "writelog 'Sourcing ${FILE}...' ;"
+		echo "source '${FILE}' ;"
+		echo "run_post_source '${FILE}' ;"
 
 	done
 	return 0
@@ -307,7 +309,8 @@ call_post_source() {
 			continue
 		fi
 		if notempty BASH_SOURCE[1]; then
-			RUN_POST_SOURCE[${BASH_SOURCE[1]}]+="$1 "
+			RUN_POST_SOURCE["${BASH_SOURCE[1]}"]+="$1 "
+			"$DEBUG" && writelog "Added post-source call '$1' for '${BASH_SOURCE[1]}'"
 			shift
 		else
 			writelog "Could not determine the sourced file calling ${FUNCNAME[0]}"
@@ -318,16 +321,17 @@ call_post_source() {
 # functions in the same order they were registered.
 run_post_source() {
 	[ $# -ne 1 ] && writelog "'${FUNCNAME[0]}' expects one argument only! $# given." && return 1
+	local TASK RET
+	"$DEBUG" && writelog "Running post-source hooks for ${1}..."
 	for TASK in ${RUN_POST_SOURCE["${1}"]}; do
 		# sanity checks
 		if ! is_function "$TASK"; then
 			writelog "\tRegistered function '$TASK' is not a function!"
 			return 1 # TODO maybe even cleanexit here as this seems very bad...
 		fi
-		# remove from stack before running it
-		RUN_POST_SOURCE["${1}"]="${RUN_POST_SOURCE[${1//${TASK}\ /\ }]}"
+		"$DEBUG" && writelog " - ${TASK}"
 		"${TASK}"
-		local -i RET=$?
+		RET=$?
 		if [ "$RET" -ne 0 ]; then
 			writelog "\tFailed to run post source '${TASK}' (Exit code: $RET)"
 			return "$RET"
