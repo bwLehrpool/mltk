@@ -19,7 +19,7 @@ setup_virtual_printer() {
 		SPOOLDIR="${TMPDIR}/printergui-${RANDOM}"
 		rm -rf -- "${SPOOLDIR}"
 		if ! mkdir -p "${SPOOLDIR}/${QUEUE}"; then
-			slxlog "virt-spooldir" "Could not create spool directory ($SPOOLDIR) for $USER - printing will not work!"
+			writelog "Could not mkdir -p '${SPOOLDIR}/${QUEUE}'"
 			notify_user "Drucksystem" "Das Drucksystem konnte nicht initialisiert werden. Druckfunktion nicht verfügbar."
 		fi
 		chmod 0700 "${SPOOLDIR}/${QUEUE}"
@@ -29,7 +29,9 @@ setup_virtual_printer() {
 	# TODO: externalize with something like runvirt.d (other parts might benefit from that too)
 	tcpsvd -E 192.168.101.1 5515 \
 		lpd "$SPOOLDIR" \
-		ash -c "/opt/openslx/scripts/run-virt_print '${USER}' \"${SPOOLDIR}/${QUEUE}/\$DATAFILE\"" &
+		ash -c "/opt/openslx/scripts/run-virt_print '${USER}' \"${SPOOLDIR}/${QUEUE}/\$DATAFILE\"" \
+		&> "${TMPDIR}/tcpsvd.log" \
+		&
 	
 	# PID to kill the process
 	declare -rg PID_LPD="$!"
@@ -41,7 +43,8 @@ setup_virtual_printer() {
 		# success even if it's not really working.
 	
 		if ! kill -0 "$PID_LPD"; then
-			slxlog "virt-lpd" "Could not start tcpsvd/lpd for virtual machine session"
+			writelog "Could not start tcpsvd/lpd for virtual machine session:"
+			writelog "$( cat "${TMPDIR}/tcpsvd.log" )"
 			notify_user "Drucksystem" "Das Drucksystem konnte nicht initialisiert werden. Druckfunktion nicht verfügbar."
 		fi
 	} &
