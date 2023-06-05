@@ -94,7 +94,7 @@
 	iptables -t nat -D PREROUTING -p tcp --dport "$vnc_port" -j REDIRECT --to-ports 5901
 	while [ -d "/proc/${vncpid}" ]; do
 		sleep 5
-		if netstat -tn | awk 'BEGIN{ e=1 } { if ($4 ~ /:590[0123]$/) e=0 } END{ exit e }'; then
+		if netstat -tn | awk 'BEGIN{ e=1 } { if ($4 ~ /:('$vnc_port'|5901)$/) e=0 } END{ exit e }'; then
 			gotone=true
 			idle=0
 		else
