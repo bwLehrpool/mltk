@@ -1,0 +1,6 @@
+#!/bin/bash
+REQUIRED_CONTENT_PACKAGES="
+  tigervnc-scraping-server
+  tigervnc-common
+  tigervnc-tools
+"

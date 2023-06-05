@@ -1,7 +1,7 @@
 #!/bin/bash
 REQUIRED_INSTALLED_PACKAGES="
-  x11vnc
+	x11vnc
 "
 REQUIRED_CONTENT_PACKAGES="
-  x11vnc
+	x11vnc
 "
