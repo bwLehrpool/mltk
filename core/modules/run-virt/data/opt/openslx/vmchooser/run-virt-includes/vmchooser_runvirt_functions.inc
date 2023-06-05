@@ -90,6 +90,11 @@ $BODY"
 declare -ag CLEANUP_TASKS=()
 add_cleanup() {
 	[ $# -lt 1 ] && writelog "'${FUNCNAME[0]}' needs at least one argument! $# given." && return
+	if [ "$BASHPID" != "$MAINPID" ]; then
+		writelog "WARNING: '${BASH_SOURCE[1]}:${FUNCNAME[1]}' tried to add cleanup hook '$1' in a subshell, this does not work... (main: $MAINPID, current: $BASHPID)"
+	else
+		writelog "Normal add_cleanup from '${BASH_SOURCE[1]}:${FUNCNAME[1]}' for '$1'"
+	fi
 	# check if the given function name is already used
 	while [ $# -ne 0 ]; do
 		if array_contains CLEANUP_TASKS "$1"; then
@@ -121,6 +126,11 @@ add_cleanup() {
 cleanexit() {
 	trap "" SIGHUP SIGINT SIGTERM EXIT
 	writelog "Cleanexit '$1' triggered by '${BASH_SOURCE[1]}:${FUNCNAME[1]}'"
+	if [ "$BASHPID" != "$MAINPID" ]; then
+		writelog "Running in a subshell, killing parent... (main: $MAINPID, current: $BASHPID)"
+		kill "$MAINPID"
+		exit 0
+	fi
 	usleep 250000
 	local TASK
 	if [ "${#CLEANUP_TASKS[@]}" -gt 0 ]; then
@@ -151,7 +161,7 @@ cleanexit() {
 
 	# Now see if we need to do the catch all error stuff
 	# if 0 given, exit 0
-	[ "x$1" = "x0" ] && exit 0
+	[ "$1" = "0" ] && exit 0
 	# if no code was given, exit 129
 	[ $# -eq 0 ] && writelog "Cleanexit called without arguments! Dev error?"
 
