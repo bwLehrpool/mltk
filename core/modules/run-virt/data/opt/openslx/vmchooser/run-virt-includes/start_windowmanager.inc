@@ -32,12 +32,6 @@ start_wm() {
 		return 1
 	fi
 
-	# run very simple taskbar in case user minimizes VM somehow and doesn't know Alt+Tab
-	if [ -z "$RUNVIRT_TASKBAR_PID" ] || ! kill -0 "$RUNVIRT_TASKBAR_PID"; then
-		fspanel &
-		declare -g RUNVIRT_TASKBAR_PID="$!"
-	fi
-
 	# If it's the same, do nothing
 	if ! is_wm_running "${dm}"; then
 		# start DM determined above
@@ -62,7 +56,10 @@ start_wm() {
 		writelog "Starting ${dm} ${OPTS[*]}."
 		declare -g RUNVIRT_DM="${dm}"
 		{
-			trap '[ -n "$wpid" ] && kill "$wpid"; exit' EXIT TERM INT
+			trap '' HUP
+			trap '[ -n "$wpid" ] && kill "$wpid"' EXIT
+			trap '[ -n "$wpid" ] && kill "$wpid"; exit 5' INT
+			trap '[ -n "$wpid" ] && kill "$wpid"; exit 6' TERM
 			dc=0
 			while true; do
 				s="$( date +%s )"
@@ -74,17 +71,26 @@ start_wm() {
 				e="$( date +%s )"
 				duration="$(( e - s ))"
 				case "$ret" in
-				0|129|130|143) exit 0 ;;
+				0|129|130|143)
+					writelog "WM exited normally"
+					exit 0 ;;
 				esac
 				if [ "$duration" -ge 3 ]; then
 					dc=0
 				elif [ "$(( dc++ ))" -gt 5 ]; then
 					notify_user "$RUNVIRT_DM crasht immer wieder."
+					writelog "$RUNVIRT_DM keeps crashing"
 					exit 1
 				fi
 			done
 		} &
 		declare -g RUNVIRT_DM_PID="$!"
+	fi
+
+	# run very simple taskbar in case user minimizes VM somehow and doesn't know Alt+Tab
+	if [ -z "$RUNVIRT_TASKBAR_PID" ] || ! kill -0 "$RUNVIRT_TASKBAR_PID"; then
+		( sleep 1; exec fspanel ) &
+		declare -g RUNVIRT_TASKBAR_PID="$!"
 	fi
 
 	if isempty HAVE_WM_CLEANUP_HOOK; then
