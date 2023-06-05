@@ -53,7 +53,7 @@
 			trap 'exit 1' INT TERM
 			trap 'rm -f -- "$copy"' EXIT
 		fi
-		< "$t/vnc-passwd"  vncpasswd -f  > "$t/tigervnc-passwd"
+		< "$t/vnc-passwd"  tigervncpasswd -f  > "$t/tigervnc-passwd"
 		fails=0
 		while true; do
 			s="$( date +%s )"
