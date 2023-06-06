@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# If this doesn't exist, we don't support running VMs, so this is pointless
+[ -s /opt/openslx/vmchooser/config/virtualization.conf ] || exit 0
+
 . /opt/openslx/config
 . /opt/openslx/vmchooser/config/virtualization.conf
 
@@ -59,8 +62,9 @@ elif [ -s "${DHCP_NAT_CONF}" ] && [ "${DHCP_NAT_CONF}.$$" -ot "${DHCP_NAT_CONF}"
 	rm -f -- "${DHCP_NAT_CONF}.$$"
 else
 	# Changed, replace and restart
-	mv -f -- "${DHCP_NAT_CONF}.$$" "${DHCP_NAT_CONF}"
 	echo "NAT1 dhcpd config changed; restarting service..."
+	diff -u "${DHCP_NAT_CONF}" "${DHCP_NAT_CONF}.$$"
+	mv -f -- "${DHCP_NAT_CONF}.$$" "${DHCP_NAT_CONF}"
 	systemctl --no-block try-restart run-virt-dhcpd.service
 fi
 
