@@ -20,12 +20,12 @@ if [ -n "${PACTL}" ]; then
 	time=2
 	# while [ $(su -c "pulseaudio --check" "${LOCALUSER}") ]; do
 	while [ -z "$(ps aux|grep /pulseaudio|grep -v grep)" ]; do
-		if [ "$x" -gt 30 ]; then
+		if [ "$time" -gt 30 ]; then
 			logger "openslx sound muter: Waited ${time} sec for pulseaudio, giving up."
 			break
 		fi
 		sleep ${time}; time=$((time + 2))
-		logger "openslx sound muter: Waited $x seconds for pulseaudio..."
+		logger "openslx sound muter: Waited $time seconds for pulseaudio..."
  	done
 else
 	SYSTEM=alsa
