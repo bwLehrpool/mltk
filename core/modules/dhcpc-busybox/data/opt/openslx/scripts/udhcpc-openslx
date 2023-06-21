@@ -201,18 +201,26 @@ case "$1" in
 				sed -i "/^SLX_NET_WINS=/d" /opt/openslx/config
 				echo "SLX_NET_WINS='$wins'" >> /opt/openslx/config
 			fi
-			
+
+			if [ -z "$dns_fqdn" ] && [ -n "$domain" ] && [ -n "$hostname" ]; then
+				# fallback to what the dhcp told us
+				dns_fqdn="${hostname}.${domain}"
+			fi
+			if [ -z "$dns_fqdn" ]; then
+				dns_fqdn="$( hostname -f )"
+			fi
+			if [ -z "$dns_fqdn" ]; then
+				if [ -s "/etc/hostname" ]; then
+					dns_fqdn="$( head -n 1 /etc/hostname )"
+				else
+					dns_fqdn="noname-${ip//./-}.invalid"
+				fi
+			fi
+
 			# Only update hostname if network is not ready yet
 			# later on this might cause issues
 			if ! [ -e "$flag" ]; then
 				# Update hostname
-				if [ -z "$dns_fqdn" ] && [ -n "$domain" ] && [ -n "$hostname" ]; then
-					# fallback to what the dhcp told us
-					dns_fqdn="${hostname}.${domain}"
-				fi
-				if [ -z "$dns_fqdn" ] && ! [ -s "/etc/hostname" ]; then
-					dns_fqdn="noname-${ip//./-}"
-				fi
 				# finally, if dns_fqdn was set to anything, apply it
 				if [ -n "$dns_fqdn" ]; then
 					dns_short="${dns_fqdn%%.*}"
