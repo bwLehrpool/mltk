@@ -202,25 +202,26 @@ case "$1" in
 				echo "SLX_NET_WINS='$wins'" >> /opt/openslx/config
 			fi
 
-			if [ -z "$dns_fqdn" ] && [ -n "$domain" ] && [ -n "$hostname" ]; then
-				# fallback to what the dhcp told us
-				dns_fqdn="${hostname}.${domain}"
-			fi
-			if [ -z "$dns_fqdn" ]; then
-				dns_fqdn="$( hostname -f )"
-			fi
-			if [ -z "$dns_fqdn" ]; then
-				if [ -s "/etc/hostname" ]; then
-					dns_fqdn="$( head -n 1 /etc/hostname )"
-				else
-					dns_fqdn="noname-${ip//./-}.invalid"
-				fi
-			fi
-
 			# Only update hostname if network is not ready yet
 			# later on this might cause issues
 			if ! [ -e "$flag" ]; then
-				# Update hostname
+				# Fallback for hostname
+				if [ -z "$dns_fqdn" ] && [ -n "$domain" ] && [ -n "$hostname" ]; then
+					# fallback to what the dhcp told us
+					dns_fqdn="${hostname}.${domain}"
+				fi
+				if [ -z "$dns_fqdn" ]; then
+					# Try currently set fqdn
+					dns_fqdn="$( hostname -f )"
+				fi
+				if [ -z "$dns_fqdn" ]; then
+					if [ -s "/etc/hostname" ]; then
+						dns_fqdn="$( head -n 1 /etc/hostname )"
+					else
+						# Final fallback, nothing valid found
+						dns_fqdn="noname-${ip//./-}.invalid"
+					fi
+				fi
 				# finally, if dns_fqdn was set to anything, apply it
 				if [ -n "$dns_fqdn" ]; then
 					dns_short="${dns_fqdn%%.*}"
@@ -237,7 +238,13 @@ case "$1" in
 				# Update /etc/issue for proper spacing
 				/opt/openslx/scripts/openslx-create_issue
 				touch "$flag"
-			fi # end "network not ready yet"
+				# end "network not ready yet"
+			else
+				# Network already going, make sure we don't change the primary hostname in /etc/hosts
+				hostname=
+				domain=
+				dns_fqdn=
+			fi
 			# Remove any stray addresses; we expect the primary interface to only have one
 			# address supplied via DHCP. We do this after adding the new one, obviously.
 			rem_list=$( ip -o addr show "$interface" | awk '{ for (i=1;i<NF;++i) if ($i == "inet") print $(i+1) }' | grep -v "^${ip}/" )
