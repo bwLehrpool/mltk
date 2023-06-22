@@ -185,7 +185,7 @@ main() {
 	# This will start the VM (no eval needed!)
 	writelog "---------- BEGIN VM command output ----------"
 	local retval
-	"${VIRTCMD}" "${VIRTCMDOPTS[@]}" >> "${LOGFILE}"
+	"${VIRTCMD}" "${VIRTCMDOPTS[@]}" &>> "${LOGFILE}"
 	retval=${?}
 	writelog "---------- END VM command output ----------"
 
