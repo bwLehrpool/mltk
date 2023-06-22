@@ -103,6 +103,10 @@ run_plugin() {
 	                           && VIRTCMDOPTS+=( "-vmparallel0" "${PARALLEL0}" )
 	notempty pt_gpu_mdev_id    && VIRTCMDOPTS+=( "-vmilmdevid0" "${pt_gpu_mdev_id}" )
 
+	if $debug; then
+		VIRTCMDOPTS+=( "-xmledit" )
+	fi
+
 	if [ "${SHARE_REMAP_MODE}" -gt 1 ]; then
 		notempty HOME_SHARE_PATH   && VIRTCMDOPTS+=( "-vmfssrc0"    "${HOME_SHARE_PATH}" )
 		notempty HOME_SHARE_NAME   && VIRTCMDOPTS+=( "-vmfstgt0"    "${HOME_SHARE_NAME}" )

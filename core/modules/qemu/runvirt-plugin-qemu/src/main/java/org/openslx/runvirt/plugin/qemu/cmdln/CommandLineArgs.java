@@ -436,6 +436,15 @@ public class CommandLineArgs
 	{
 		return this.getVmIlMdevId0() != null;
 	}
+	
+	/**
+	 * Returns whether the option for spawning a text editor with the final XML prior
+	 * to launching the VM should be opened.
+	 */
+	public boolean isXmlEditorSpawningEnabled()
+	{
+		return this.cmdLn.hasOption( CmdLnOption.XML_EDIT.shortOption );
+	}
 
 	/**
 	 * Command line options for the run-virt QEMU plugin (command line tool).
@@ -446,30 +455,32 @@ public class CommandLineArgs
 	public enum CmdLnOption
 	{
 		// @formatter:off
-		HELP        ( 'h', "help",        0, "" ),
+		XML_EDIT    ( '0', "xmledit",     0, "Spawn a text editor with the final XML before starting, so it can be edited"
+		                                   + " for testing and debugging purposes"),
+		VM_MAC0     ( 'a', "vmmac0",      1, "MAC address for the first network interface" ),
 		DEBUG       ( 'b', "debug",       1, "Enable or disable debug mode" ),
-		DEBUG_PTH   ( 'j', "debugpth",    1, "Enable or disable device passthrough debug mode" ),
-		FIRMWARE    ( 'x', "firmware",    1, "Path to QEMU firmware specifications directory" ),
-		VM_CFGINP   ( 'i', "vmcfginp",    1, "File name of an existing and filtered Libvirt domain XML configuration file" ),
-		VM_CFGOUT   ( 'o', "vmcfgout",    1, "File name to output a finalized Libvirt domain XML configuration file" ),
-		VM_NAME     ( 'n', "vmname",      1, "Name for the virtual machine" ),
-		VM_UUID     ( 'u', "vmuuid",      1, "UUID for the virtual machine" ),
-		VM_DSPLNAME ( 'd', "vmdsplname",  1, "Display name for the virtual machine" ),
-		VM_OS       ( 's', "vmos",        1, "Operating system running in the virtual machine" ),
 		VM_NCPUS    ( 'c', "vmncpus",     1, "Number of virtual CPUs for the virtual machine" ),
-		VM_MEM      ( 'm', "vmmem",       1, "Amount of memory for the virtual machine" ),
-		VM_HDD0     ( 'r', "vmhdd0",      1, "Disk image for the first HDD device" ),
+		VM_DSPLNAME ( 'd', "vmdsplname",  1, "Display name for the virtual machine" ),
+		VM_FSTGT0   ( 'e', "vmfstgt0",    1, "Target directory for first file system passthrough (shared folder)" ),
 		VM_FLOPPY0  ( 'f', "vmfloppy0",   1, "Disk image for the first floppy drive" ),
 		VM_FLOPPY1  ( 'g', "vmfloppy1",   1, "Disk image for the second floppy drive" ),
+		HELP        ( 'h', "help",        0, "" ),
+		VM_CFGINP   ( 'i', "vmcfginp",    1, "File name of an existing and filtered Libvirt domain XML configuration file" ),
+		DEBUG_PTH   ( 'j', "debugpth",    1, "Enable or disable device passthrough debug mode" ),
 		VM_CDROM0   ( 'k', "vmcdrom0",    1, "Disk image for the first CDROM drive" ),
 		VM_CDROM1   ( 'l', "vmcdrom1",    1, "Disk image for the second CDROM drive" ),
+		VM_MEM      ( 'm', "vmmem",       1, "Amount of memory for the virtual machine" ),
+		VM_NAME     ( 'n', "vmname",      1, "Name for the virtual machine" ),
+		VM_CFGOUT   ( 'o', "vmcfgout",    1, "File name to output a finalized Libvirt domain XML configuration file" ),
 		VM_PARALLEL0( 'p', "vmparallel0", 1, "Device for the first parallel port interface" ),
 		VM_SERIAL0  ( 'q', "vmserial0",   1, "Device for the first serial port interface" ),
-		VM_MAC0     ( 'a', "vmmac0",      1, "MAC address for the first network interface" ),
+		VM_HDD0     ( 'r', "vmhdd0",      1, "Disk image for the first HDD device" ),
+		VM_OS       ( 's', "vmos",        1, "Operating system running in the virtual machine" ),
 		VM_FSSRC0   ( 't', "vmfssrc0",    1, "Source directory for first file system passthrough (shared folder)" ),
-		VM_FSTGT0   ( 'e', "vmfstgt0",    1, "Target directory for first file system passthrough (shared folder)" ),
+		VM_UUID     ( 'u', "vmuuid",      1, "UUID for the virtual machine" ),
 		VM_FSSRC1   ( 'v', "vmfssrc1",    1, "Source directory for second file system passthrough (shared folder)" ),
 		VM_FSTGT1   ( 'w', "vmfstgt1",    1, "Target directory for second file system passthrough (shared folder)" ),
+		FIRMWARE    ( 'x', "firmware",    1, "Path to QEMU firmware specifications directory" ),
 		VM_NVGPUIDS0( 'y', "vmnvgpuids0", 2, "PCI device description and address for passthrough of the first Nvidia GPU. " +
 		                                     "The argument follow the pattern: " +
 				                               "\"<VENDOR ID>:<PRODUCT ID>,<PCI DOMAIN>:<PCI DEVICE>:<PCI DEVICE>.<PCI FUNCTION>\"" ),

@@ -1,8 +1,10 @@
 package org.openslx.runvirt.plugin.qemu;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.Arrays;
 
+import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.core.config.Configurator;
@@ -93,6 +95,10 @@ public class App
 			App.printUsage( cmdLn );
 			System.exit( 1 );
 		}
+		
+		if ( cmdLn.isDebugEnabled() || cmdLn.isDebugDevicePassthroughEnabled() ) {
+			Configurator.setRootLevel( Level.ALL );
+		}
 
 		// show help if 'help' command line option is set
 		if ( cmdLn.isHelpAquired() ) {
@@ -163,6 +169,30 @@ public class App
 			LOGGER.error( "Failed to finalize VM configuration file: " + e.getLocalizedMessage() );
 			hypervisor.close();
 			System.exit( 4 );
+		}
+
+		// spawn xml editor on final xml if desired
+		if ( cmdLn.isXmlEditorSpawningEnabled() ) {
+			try {
+				File tmp = File.createTempFile( "run-virt-qemu", ".xml" );
+				boolean ok = false;
+				while ( !ok ) {
+					config.toXml( tmp );
+					LOGGER.info( "Opening text editor for XML" );
+					EditorRunner.open( tmp.getAbsolutePath() );
+					try {
+						Domain nc = new Domain( tmp );
+						ok = true;
+						config = nc;
+					} catch ( LibvirtXmlSerializationException | LibvirtXmlDocumentException | LibvirtXmlValidationException e ) {
+						LOGGER.error( "Failed to create Domain from edited XML file", e );
+					}
+				}
+			} catch ( IOException e ) {
+				LOGGER.error( "Failed to create temp file for XML editing: " + e.getLocalizedMessage() );
+			} catch ( LibvirtXmlSerializationException e ) {
+				LOGGER.error( "Failed to write VM output temporary file" + e );
+			}
 		}
 
 		// write finalized configuration to file if output file is specified
