@@ -103,7 +103,7 @@ run_plugin() {
 	                           && VIRTCMDOPTS+=( "-vmparallel0" "${PARALLEL0}" )
 	notempty pt_gpu_mdev_id    && VIRTCMDOPTS+=( "-vmilmdevid0" "${pt_gpu_mdev_id}" )
 
-	if $debug; then
+	if $DEBUG; then
 		VIRTCMDOPTS+=( "-xmledit" )
 	fi
 
