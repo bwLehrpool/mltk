@@ -12,6 +12,7 @@ import org.openslx.libvirt.domain.device.HostdevPciDeviceAddress;
 import org.openslx.libvirt.domain.device.HostdevPciDeviceDescription;
 import org.openslx.libvirt.domain.device.Shmem;
 import org.openslx.libvirt.domain.device.Video;
+import org.openslx.libvirt.domain.device.Device;
 import org.openslx.libvirt.domain.device.Graphics.ListenType;
 import org.openslx.runvirt.plugin.qemu.cmdln.CommandLineArgs;
 import org.openslx.runvirt.plugin.qemu.virtualization.LibvirtHypervisorQemu;
@@ -212,12 +213,36 @@ public class TransformationSpecificQemuGpuPassthroughNvidia
 				final String errorMsg = "IOMMU support is not available on the hypervisor but required for GPU passthrough!";
 				throw new TransformationException( errorMsg );
 			}
+			// Check config for PCI addresses already in use
+			boolean inUse[] = new boolean[ 64 ];
+			inUse[0] = true;
+			inUse[1] = true;
+			for ( Device dev : config.getDevices() ) {
+				HostdevPciDeviceAddress target = dev.getPciTarget();
+				if ( target == null )
+					continue;
+				if ( target.getPciDomain() != 0 || target.getPciBus() != 0 )
+					continue; // Ignore non-primary bus
+				if ( target.getPciDevice() >= inUse.length )
+					continue;
+				inUse[target.getPciDevice()] = true;
+			}
+			// Use first free one. Usually 00:02:00 is primary VGA
+			int devAddr;
+			for ( devAddr = 0; devAddr < inUse.length; ++devAddr ) {
+				if ( !inUse[devAddr] )
+					break;
+			}
 
 			// passthrough PCI devices of the GPU
 			for ( final HostdevPciDeviceAddress pciDeviceAddress : pciDeviceAddresses ) {
 				final HostdevPci pciDevice = config.addHostdevPciDevice();
 				pciDevice.setManaged( true );
 				pciDevice.setSource( pciDeviceAddress );
+				if ( pciDeviceAddress.getPciFunction() == 0 && pciDeviceAddresses.size() > 1 ) {
+					pciDevice.setMultifunction( true );
+				}
+				pciDevice.setPciTarget( new HostdevPciDeviceAddress( 0, devAddr, pciDeviceAddress.getPciFunction() ) );
 			}
 
 			// add shared memory device for Looking Glass
