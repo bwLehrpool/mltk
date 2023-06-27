@@ -5,6 +5,7 @@ TOOLS=(
 	"journalctl -a"
 	systemctl
 	loginctl
+	lsiommu
 	"lspci -nn"
 	lsusb
 	lsmod
