@@ -1,0 +1,152 @@
+#!/bin/bash
+
+t="/tmp/remote-access-$DISPLAY"
+mkdir -p "$t"
+modmap="$t/modmap.want"
+tmpmap="$t/modmap.have"
+(
+	sleep 1
+	setxkbmap de
+	xmodmap -e "keycode 92 ="
+	xmodmap -e "keycode 187 ="
+	xmodmap -e "keycode 188 ="
+	xmodmap -e "keycode 26 = e E e E U20AC U20AC U20AC"
+	xmodmap -pke > "$modmap"
+) &
+. /opt/openslx/config
+# TODO If we support multiple parallel sessions in the future, we need dedicated
+# ports for each session for both, the VNC and the RPC port.
+vnc_port="${SLX_REMOTE_VNC_PORT:-5900}"
+if ! [ "$vnc_port" -gt 0 ] || ! [ "$vnc_port" -lt 65535 ]; then
+	vnc_port=5900
+fi
+srchost="$SLX_REMOTE_HOST_ACCESS"
+if [ -n "$srchost" ]; then
+	# IPTABLES
+	rule="/opt/openslx/iptables/rules.d/80-remote-access"
+	if ! [ -e "$rule" ]; then
+		(
+			echo "#!/bin/sh"
+			echo "iptables -A INPUT -s "'"'"$srchost"'"'" -p tcp --dport $vnc_port -j ACCEPT"
+			echo "iptables -A INPUT -s "'"'"$srchost"'"'" -p tcp --dport 7551 -j ACCEPT"
+			echo "iptables -A INPUT -p tcp --dport $vnc_port -j DROP"
+			echo "iptables -A INPUT -p tcp --dport 7551 -j DROP"
+		) > "$rule"
+		chmod +x "$rule"
+	fi
+fi
+#set -x
+#exec &> /tmp/fooooooooooooo
+# dd since busybox head doesn't know -c
+passwd="$( < /dev/urandom  tr -c -d 'a-zA-Z0-9#&/=()[]{}' | dd bs=8 count=1 status=none )"
+printf "%s" "$passwd" > "$t/vnc-passwd"
+[ "$SLX_REMOTE_VNC" = "x11vnc" ] && chmod 0600 "$t/vnc-passwd"
+(
+	# Make a copy of xauth, so if the xserver restarts, we'll use the old one and fail to connect
+	if [ -n "$XAUTHORITY" ]; then
+		copy="$( mktemp )"
+		cat "$XAUTHORITY" > "$copy"
+		export XAUTHORITY="$copy"
+		trap 'exit 1' INT TERM
+		trap 'rm -f -- "$copy"' EXIT
+	fi
+	< "$t/vnc-passwd"  tigervncpasswd -f  > "$t/tigervnc-passwd"
+	fails=0
+	while true; do
+		s="$( date +%s )"
+		x0vncserver -fg -SecurityTypes VncAuth,TLSvnc -rfbauth "$t/tigervnc-passwd" -rfbport "$vnc_port" -localhost no -Log "*:stdout:100" \
+			-AlwaysShared=true -DisconnectClients=false -MaxConnectionTime=0 -MaxDisconnectionTime=0 -MaxIdleTime=0
+		e="$( date +%s )"
+		d="$(( e - s ))"
+		if [ "$d" -gt 5 ]; then
+			fails=0
+		else
+			fails="$(( fails + 1 ))"
+			[ "$fails" -gt 10 ] && break
+			[ "$fails" -gt 3 ] && usleep 333333
+		fi
+	done
+) &> "$t/x11vnc-log-$$" &
+vncpid=$!
+# Delay this a bit until x11vnc is ready, and since we might potentially have had a race
+# with the ~poweron event, which would reset the password in the database.
+(
+	if [ -n "$SLX_REMOTE_LOG" ]; then
+		url="${SLX_REMOTE_LOG//=clientlog/=remoteaccess}"
+	elif [ -n "$SLX_PVS_CONFIG_URL" ]; then
+		url="${SLX_PVS_CONFIG_URL//=roomplanner/=remoteaccess}"
+	else
+		url="http://${SLX_PXE_SERVER_IP}/slx-admin/api.php?do=remoteaccess"
+	fi
+	for _ in {1..20}; do
+		sleep 1
+		[ -e "/etc/cron.d/usage_stats" ] && break
+	done
+	[ -d "/proc/${vncpid}" ] || exit 1 # Something is wrong, bail
+	curl -s -S -L --retry 4 --retry-connrefused --max-time 3 --retry-max-time 10 \
+		--data-urlencode "password=$passwd" \
+		--data-urlencode "vncport=$vnc_port" \
+		"$url" > /dev/null
+) &
+gotone=false
+vmvnc=false
+idle=0
+stepcount=0
+# In case of stale entry
+# TODO: This sucks anyways performance-wise for VMware, maybe remove?
+iptables -t nat -D PREROUTING -p tcp --dport "$vnc_port" -j REDIRECT --to-ports 5901
+while [ -d "/proc/${vncpid}" ]; do
+	sleep 5
+	if netstat -tn | awk 'BEGIN{ e=1 } { if ($4 ~ /:('"$vnc_port"'|5901)$/) e=0 } END{ exit e }'; then
+		gotone=true
+		idle=0
+	else
+		idle=$(( idle + 1 ))
+	fi
+	if $gotone; then
+		# As soon as someone is connected, "blank" the screen by setting brightness to zero.
+		# This doesn't seem to affect the framebuffer, luckily
+		# Let's see how well this works in practice. :-(
+		if (( stepcount == 0 )); then
+			declare -a args
+			args=()
+			for o in $( xrandr | grep -E '^[A-Z0-9-]+ connected.*[0-9]+x[0-9]+' | awk '{print $1}' ); do
+				args+=( "--output" "$o" "--brightness" "0" )
+			done
+			xrandr "${args[@]}"
+		fi
+		if (( stepcount++ > 3 )); then
+			stepcount=0
+		fi
+	fi
+	if $gotone && [ "$idle" -gt 120 ]; then # 120 * 5 = 10 mins
+		kill "$vncpid"
+		break
+	fi
+	# In case we access vmplayer via x11vnc; vmplayer won't leave the keymap alone >:(
+	xmodmap -pke > "$tmpmap"
+	if ! cmp -s "$tmpmap" "$modmap"; then
+		echo "$( date ) Reloading modmap" >> "$t/reload-log"
+		xmodmap "$modmap"
+	fi
+
+	# Check if we should redirect to vmware
+	if [ "$SLX_REMOTE_VNC" != 'x11vnc' ]; then
+		if netstat -tnl | awk 'BEGIN{ e=1 } { if ($4 ~ /:5901$/) e=0 } END{ exit e }'; then
+			#enable
+			if ! $vmvnc; then
+				killall x0vncserver
+				usleep 10000
+				iptables -t nat -I PREROUTING 1 -p tcp --dport "$vnc_port" -j REDIRECT --to-ports 5901
+			fi
+			vmvnc=true
+		else
+			# disable
+			if $vmvnc; then
+				iptables -t nat -D PREROUTING -p tcp --dport "$vnc_port" -j REDIRECT --to-ports 5901
+			fi
+			vmvnc=false
+		fi
+	fi
+done
+systemctl restart lightdm
