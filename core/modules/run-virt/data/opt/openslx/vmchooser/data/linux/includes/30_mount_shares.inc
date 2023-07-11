@@ -1,9 +1,10 @@
+#!/bin/bash sourced
+
 function mount_shares()
 {
 	for (( CONFIGROW = 1; CONFIGROW < ${#ROHSHARES[@]}; CONFIGROW++ )); do
 		SHAREPATH=$(echo "${ROHSHARES[CONFIGROW]}" | cut -f 1 -d$'\t')          # cifs- oder nfs-Share
-		SHARELETTER=$(echo "${ROHSHARES[CONFIGROW]}" | cut -f 2 -d$'\t' | \
-					sed 's/://g')					# Laufwerksbuchstabe ohne :
+		SHARELETTER=$(echo "${ROHSHARES[CONFIGROW]}" | cut -f 2 -d$'\t' | sed 's/://g')	# Laufwerksbuchstabe ohne :
 		SHARENAME=$(echo "${ROHSHARES[CONFIGROW]}" | cut -f 3 -d$'\t' | sed 's/ /_/g')	# Leerzeichen raus.
 		SHAREUSER=$(echo "${ROHSHARES[CONFIGROW]}" | cut -f 4 -d$'\t')		# Username, bei Userhome nicht vorhanden
 		SHAREPASS=$(echo "${ROHSHARES[CONFIGROW]}" | cut -f 5 -d$'\t')		# User-PW, bei Userhome nicht vorhanden
@@ -61,28 +62,31 @@ mnt_shares() {
 	
 	logger "openslx sharemapper: base system reaching; commencing."
 	
-	# REMAPMODE (remapMode):                0: None, 1 Native, 2 Native Fallback, 3 vmware
-	# CREATEMISSING (createMissingRemap):   0: Nichts tun, 1 xdg-Verzeichnisse
+	# REMAPMODE (remapMode):		0: None, 1 Native, 2 Native Fallback, 3 vmware
+	#					RemapMode 0 and 1 curr. treated equally, may deviate in the future
+	# CREATEMISSING (createMissingRemap):	0: Nichts tun, 1 xdg-Verzeichnisse
 	
 	case "$REMAPMODE" in
 		0)      logger "openslx sharemapper: remapMode 0 (do nothing) detected."
+			preliminaries_native
+			get_creds		# fills global var PW with (currently) decrypted password
+			get_shares		# fills array ROHSHARES; row 0 global infos from (shares-)CONFIGFILE,
+						# following rows:       column 1 share path, col 2 drive letter, col 3 share name,
+						#                       column 4 username, col 5 password.
+			mount_shares		# mounts shares given in array ROHSHARES.
 		        ;;
 		1)      logger "openslx sharemapper: remapMode 1 (native mode) detected."
 			preliminaries_native
-			get_creds               # fills global var PW with (currently) decrypted password
-			get_shares              # fills array ROHSHARES; row 0 global infos from (shares-)CONFIGFILE,
-						# following rows:       column 1 share path, col 2 drive letter, col 3 share name,
-						#                       column 4 username, col 5 password.
-			mount_shares            # mounts shares given in array ROHSHARES.
+			get_creds		# fills global var PW with (currently) decrypted password
+			get_shares 
+			mount_shares		# mounts shares given in array ROHSHARES.
 			;;
 		2)      logger "openslx sharemapper: remapMode 2 (fallback mode) detected."
 			preliminaries_native
-			get_creds               # fills global var PW with (currently) decrypted password
-			get_shares              # fills array ROHSHARES; row 0 global infos from (shares-)CONFIGFILE,
-			# following rows:       column 1 share path, col 2 drive letter, col 3 share name,
-			#                       column 4 username, col 5 password.
-			mount_shares            # mounts shares given in array ROHSHARES.
-			check_fallback          # checks for a mounted home and fallbacks to vmware share, if none found.
+			get_creds		# fills global var PW with (currently) decrypted password
+			get_shares		# fills array ROHSHARES; row 0 global infos from (shares-)CONFIGFILE,
+			mount_shares		# mounts shares given in array ROHSHARES.
+			check_fallback		# checks for a mounted home and fallbacks to vmware share, if none found.
 			;;
 		3)      logger "openslx sharemapper: remapMode 3 (vmware mode) detected."
 			preliminaries_vmware

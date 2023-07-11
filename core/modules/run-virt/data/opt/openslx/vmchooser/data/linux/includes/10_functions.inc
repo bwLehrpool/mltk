@@ -39,46 +39,45 @@ function mounter()
 			nfs)	AUSGANG=0
 				x=2
 				while ! mount $MOUNTPARAM "${MOUNTOPTS}" "$SHAREPATH" "$MOUNTDIR" 2>/dev/null 1>&2; do
-					logger "openslx sharemapper: could not mount ${SHAREPATH} to ${MOUNTDIR}, waited another $x seconds, retrying."
-					sleep $x
-					if [ "$x" -gt 6 ]; then
+					logger "openslx sharemapper: nfs: could not mount ${SHAREPATH} to ${MOUNTDIR}, waited $x seconds, retrying."
+					let x=x+2
+					if [ "$x" -gt 4 ]; then
 						AUSGANG=1
-						logger "openslx sharemapper: timeout, could not mount ${SHAREPATH} to ${MOUNTDIR}. mount.nfs installed?"
+						logger "openslx sharemapper: nfs: timeout, could not mount ${SHAREPATH} to ${MOUNTDIR} using ${MOUNTOPTS}. mount.nfs installed?"
 						break
 					fi
-					let x=x+2
+					sleep $x
 				done
-				[ "$AUSGANG" -eq 0 ] 	&& logger "openslx sharemapper: ${SHAREPATH} mounted to ${MOUNTDIR} (nfs)."	# Todo: Schöner schreiben:)
+				[ "$AUSGANG" -eq 0 ] 	&& logger "openslx sharemapper: nfs: ${SHAREPATH} mounted to ${MOUNTDIR} (nfs)."
 				;;
-			cifs)	AUSGANG=0
-				x=2
-				[ -n "$GLOBALDOMAIN" ] && MOUNTOPTS="${MOUNTOPTS},domain=$GLOBALDOMAIN"
+			cifs)	[ -n "$GLOBALDOMAIN" ] && MOUNTOPTS="${MOUNTOPTS},domain=$GLOBALDOMAIN"
 				for VERSION in $CIFSVERSIONS; do
+					x=0
 					AUSGANG=0
 					while ! mount $MOUNTPARAM "${VERSION}","${MOUNTOPTS}" "$SHAREPATH" "$MOUNTDIR" 2>/dev/null 1>&2; do
-						logger "openslx sharemapper: could not mount ${SHAREPATH} to ${MOUNTDIR}, waited another $x seconds, retrying."
-						sleep $x
+						logger "openslx sharemapper: cifs: could not mount ${SHAREPATH} to ${MOUNTDIR}, waited $x seconds, retrying."
+						let x=x+2
 						if [ "$x" -gt 4 ]; then
 							AUSGANG=1
-							logger "openslx sharemapper: timeout, could not mount ${SHAREPATH} to ${MOUNTDIR} cifs v${VERSION}."
+							logger "openslx sharemapper: cifs: timeout, could not mount ${SHAREPATH} to ${MOUNTDIR} using ${MOUNTOPTS}, cifs v${VERSION}."
 							break
 						fi
-						let x=x+2
+						sleep $x
 					done
 					[ "$AUSGANG" -eq 0 ] && break
 				done
-				[ "$AUSGANG" -eq 0 ]    && logger "openslx sharemapper: ${SHAREPATH} mounted to ${MOUNTDIR} (cifs $VERSION)."
+				[ "$AUSGANG" -eq 0 ]    && logger "openslx sharemapper: ${SHAREPATH} mounted to ${MOUNTDIR} using ${MOUNTOPTS}, cifs $VERSION."
 				;;
-			dav)    AUSGANG=0
-				x=2
-				while ! echo -e "${USER}\n${PASSWD}" | mount $MOUNTPARAM "$MOUNTOPTS" "$SHAREPATH" "$MOUNTDIR" 2>/dev/null 1>&2; do
-					logger "openslx sharemapper: could not mount ${SHAREPATH} to ${MOUNTDIR}, waited another $x seconds, retrying."
-					sleep x
+			dav)    while ! echo -e "${USER}\n${PASSWD}" | mount $MOUNTPARAM "$MOUNTOPTS" "$SHAREPATH" "$MOUNTDIR" 2>/dev/null 1>&2; do
+					x=2
+					AUSGANG=0
+					logger "openslx sharemapper: dav: could not mount ${SHAREPATH} to ${MOUNTDIR}, waited another $x seconds, retrying."
 					if [ "$x" -gt 4 ]; then
 						AUSGANG=1
-						logger "openslx sharemapper: timeout, could not mount ${SHAREPATH} to ${MOUNTDIR}. mount.davfs installed?"
+						logger "openslx sharemapper: dav: timeout, could not mount ${SHAREPATH} to ${MOUNTDIR} using ${MOUNTOPTS}. mount.davfs installed?"
 						break
 					fi
+					sleep $x
 					let x=x+2
 				done
 				;;
