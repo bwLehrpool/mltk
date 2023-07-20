@@ -27,6 +27,7 @@ import org.openslx.runvirt.plugin.qemu.configuration.TransformationGenericName;
 import org.openslx.runvirt.plugin.qemu.configuration.TransformationGenericParallelDevices;
 import org.openslx.runvirt.plugin.qemu.configuration.TransformationSpecificQemuSerialDevices;
 import org.openslx.runvirt.plugin.qemu.configuration.TransformationGenericUuid;
+import org.openslx.runvirt.plugin.qemu.configuration.TransformationGenericWrapperScript;
 import org.openslx.runvirt.plugin.qemu.configuration.TransformationSpecificQemuArchitecture;
 import org.openslx.runvirt.plugin.qemu.configuration.TransformationSpecificQemuFirmware;
 import org.openslx.runvirt.plugin.qemu.configuration.TransformationSpecificQemuGpuPassthroughNvidia;
@@ -162,6 +163,9 @@ public class App
 			transformationManager.register( new TransformationSpecificQemuGpuPassthroughNvidia( hypervisorQemu ), false );
 		}
 
+		// Needs to be last one since TransformationSpecificQemuArchitecture sets this too
+		transformationManager.register( new TransformationGenericWrapperScript(), true );
+
 		// finalize Libvirt VM configuration template
 		try {
 			transformationManager.transform();
@@ -202,9 +206,8 @@ public class App
 				final File xmlOutputFile = new File( xmlOutputFileName );
 				config.toXml( xmlOutputFile );
 			} catch ( NullPointerException | LibvirtXmlSerializationException e ) {
+				// We only call this for debugging purposes, don't bail out but log
 				LOGGER.error( "Failed to write VM output configuration file: " + e.getLocalizedMessage() );
-				hypervisor.close();
-				System.exit( 5 );
 			}
 		}
 
