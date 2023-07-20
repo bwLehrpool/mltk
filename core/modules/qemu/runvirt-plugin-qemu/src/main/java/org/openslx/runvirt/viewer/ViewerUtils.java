@@ -5,6 +5,7 @@ import java.nio.charset.StandardCharsets;
 
 import org.apache.commons.exec.CommandLine;
 import org.apache.commons.exec.DefaultExecutor;
+import org.apache.commons.exec.ExecuteException;
 import org.apache.commons.exec.PumpStreamHandler;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
@@ -57,18 +58,19 @@ public class ViewerUtils
 		viewerExecutor.setStreamHandler( viewerOutputStreamHandler );
 
 		// execute the viewer command as blocking process
+		final String viewerOuput;
 		try {
 			viewerExecutor.execute( viewerCommandLine );
 		} catch ( IOException e ) {
 			throw new ViewerException( "Failed to execute '" + viewerProgram + "': " + e.getLocalizedMessage() );
+		} finally {
+			// retrieve the content from the viewer's standard output
+			viewerOuput = viewerOutputStream.toString( StandardCharsets.UTF_8 );
+			IOUtils.closeQuietly( viewerOutputStream );
+
+			// log content from the viewer's standard output
+			ViewerUtils.LOGGER.debug( viewerOuput );
 		}
-
-		// retrieve the content from the viewer's standard output
-		final String viewerOuput = viewerOutputStream.toString( StandardCharsets.UTF_8 );
-		IOUtils.closeQuietly( viewerOutputStream );
-
-		// log content from the viewer's standard output
-		ViewerUtils.LOGGER.debug( viewerOuput );
 
 		return viewerOuput;
 	}
