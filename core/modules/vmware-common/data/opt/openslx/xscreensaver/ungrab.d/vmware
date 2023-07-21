@@ -4,28 +4,28 @@ wfile="/run/user/$(id -u)/vmwins"
 
 if [ "$1" = "pre" ]; then
 	# Find all vmware windows currently visible
-	WINDOWS=$(xdotool search --onlyvisible --class vmplayer)
+	WINDOWS="$( xdotool search --onlyvisible --class vmplayer )"
 	[ -z "$WINDOWS" ] && exit 0
 	for window in $WINDOWS; do
-		xdotool windowminimize $window
+		xdotool windowminimize "$window"
 		echo "$window" >> "$wfile" # Remember for later
 	done
 	# move mouse pointer around to avoid some problems with ghost clicks
-	# also this resets the idle time durr hurr
-	xdotool mousemove 0 0
+	xdotool mousemove --sync 0 0
+	usleep 10000
+	xdotool click 1
 	usleep 10000
 	xdotool mousemove --polar 0 0
-	usleep 10000
-	xdotool key "ctrl+alt+shift+super"
 	usleep 10000
 fi
 
 if [ "$1" = "post" ]; then
 	# let's restore vmware
-	WINDOWS=$(sort -u "$wfile")
+	WINDOWS="$( sort -u "$wfile" )"
 	for window in $WINDOWS; do
-		xdotool windowmap $window
+		xdotool windowmap "$window"
 	done
+	rm -f -- "$wfile"
 fi
 
 exit 0
