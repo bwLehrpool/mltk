@@ -8,7 +8,7 @@ while [ "$i" -gt 0 ]; do
     -cpu)
       case "$2" in
       host*|max*)
-        set -- "$@" -cpu "$2,host-phys-bits=off"
+        set -- "$@" -cpu "$2,host-phys-bits-limit=0x28"
         : "$(( i -= 2 ))"
         shift 2
         continue
