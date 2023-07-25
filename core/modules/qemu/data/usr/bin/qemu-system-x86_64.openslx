@@ -2,63 +2,13 @@
 
 bin="${0%.openslx}"
 
-allflags="$( "$bin" -cpu help | sed -En '/^Recognized CPUID flags:/,/^$/s/ +/,+/gp' | tail -n+2 | tr -d '\n' )"
-
-replace_params () {
-  modelname=
-  model=
-  family=
-  stepping=
-  vendor=
-  for i; do
-    shift
-    case "$i" in
-    migratable=*)
-      continue
-      ;;
-    model=*)
-      model=1
-      ;;
-    model-id=*)
-      modelname=1
-      ;;
-    family=*)
-      family=1
-      ;;
-    stepping=*)
-      stepping=1
-      ;;
-    vendor=*)
-      vendor=1
-      ;;
-    *)
-      ;;
-    esac
-    set -- "$@" "$i"
-  done
-  [ -z "$modelname" ] && set -- "$@" "model-id=$( awk '/^model name\s/ {print substr($0,index($0, ":")+2); exit}' /proc/cpuinfo )"
-  [ -z "$vendor" ] && set -- "$@" "vendor=$( awk '/^vendor_id\s/ {print substr($0,index($0, ":")+2); exit}' /proc/cpuinfo )"
-  [ -z "$model" ] && set -- "$@" "model=$( awk '$1$2 == "model:" {print $3; exit}' /proc/cpuinfo )"
-  [ -z "$family" ] && set -- "$@" "family=$( awk '$1$2$3 == "cpufamily:" {print $4; exit}' /proc/cpuinfo )"
-  [ -z "$stepping" ] && set -- "$@" "stepping=$( awk '$1$2 == "stepping:" {print $3; exit}' /proc/cpuinfo )"
-  printf "%s" "$*"
-}
-
 i="$#"
 while [ "$i" -gt 0 ]; do
   case "$1" in
     -cpu)
       case "$2" in
-      host|max)
-        set -- "$@" -cpu "Cascadelake-Server$allflags"
-        : "$(( i -= 2 ))"
-        shift 2
-        continue
-        ;;
       host*|max*)
-        params="${2#*,}"
-        params="$( set -f ; IFS=, ; replace_params $params )"
-        set -- "$@" -cpu "Cascadelake-Server,$params$allflags"
+        set -- "$@" -cpu "$2,host-phys-bits=off"
         : "$(( i -= 2 ))"
         shift 2
         continue
