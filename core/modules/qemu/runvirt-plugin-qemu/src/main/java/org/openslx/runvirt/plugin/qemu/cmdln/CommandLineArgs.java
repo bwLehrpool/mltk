@@ -11,6 +11,9 @@ import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.openslx.util.Util;
 
 /**
  * Command line argument parser for the run-virt QEMU plugin (command line tool).
@@ -20,6 +23,11 @@ import org.apache.commons.cli.ParseException;
  */
 public class CommandLineArgs
 {
+	/**
+	 * Instance of a logger to log messages.
+	 */
+	private static final Logger LOGGER = LogManager.getLogger( CommandLineArgs.class );
+
 	/**
 	 * Parser for parsing command line arguments.
 	 */
@@ -258,6 +266,43 @@ public class CommandLineArgs
 		return numCpus;
 	}
 
+	public List<List<Integer>> getCpuTopology()
+	{
+		String arg = this.getArgument( CmdLnOption.VM_CPU_TOPO );
+		if ( Util.isEmptyString( arg ) )
+			return null;
+		String[] scores = arg.split( ";" );
+		List<List<Integer>> retval = new ArrayList<>( scores.length );
+		for ( int c = 0; c < scores.length; ++c ) {
+			if ( Util.isEmptyString( scores[c] ) ) {
+				LOGGER.warn( "Could not parse CPU topology: empty group element" );
+				return null;
+			}
+			String[] coreThreads = scores[c].split( "," );
+			ArrayList<Integer> current = new ArrayList<>();
+			retval.add( current );
+			for ( int t = 0; t < coreThreads.length; ++t ) {
+				int from, to;
+				String[] fromTo = coreThreads[t].split( "-" );
+				if ( fromTo.length == 0 || fromTo.length > 2
+						|| Util.isEmptyString( fromTo[0] ) || ( fromTo.length > 1 && Util.isEmptyString( fromTo[1] ) ) ) {
+					LOGGER.warn( "Could not parse CPU topology: empty or malformed sibling element '" + coreThreads[t] + "'" );
+					return null;
+				}
+				from = Util.parseInt( fromTo[0], -1 );
+				to = fromTo.length == 2 ? Util.parseInt( fromTo[1], -1 ) : from;
+				if ( from == -1 || to == -1 || to < from ) {
+					LOGGER.warn( "Could not parse CPU topology sibling number '" + coreThreads[t] + "' from '" + scores[c] + "'" );
+					return null;
+				}
+				for ( int i = from; i <= to; ++i ) {
+					current.add( i );
+				}
+			}
+		}
+		return retval;
+	}
+
 	/**
 	 * Returns the argument of the command line option {@link CmdLnOption#VM_MEM}.
 	 * 
@@ -457,6 +502,8 @@ public class CommandLineArgs
 		// @formatter:off
 		XML_EDIT    ( '0', "xmledit",     0, "Spawn a text editor with the final XML before starting, so it can be edited"
 		                                   + " for testing and debugging purposes"),
+		VM_CPU_TOPO ( '1', "cputopo",     1, "Set pairs of CPUs belonging to the same thread, semi-colon separated."
+		                                   + " Each group can contain commas or dashes to mark ranges. E.g. 0,1;2-3;4;5;6;7;8,9,10,11" ),
 		VM_MAC0     ( 'a', "vmmac0",      1, "MAC address for the first network interface" ),
 		DEBUG       ( 'b', "debug",       1, "Enable or disable debug mode" ),
 		VM_NCPUS    ( 'c', "vmncpus",     1, "Number of virtual CPUs for the virtual machine" ),

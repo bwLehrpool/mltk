@@ -74,7 +74,13 @@ run_plugin() {
 	fi
 
 	# set device passthrough debug mode
-	debug_pth="false"
+	local debug_pth="false"
+
+	# Use cat here instead of redirect because of globbing
+	local cputhreads
+	cputhreads="$( cat /sys/devices/system/cpu/cpu*/topology/core_cpus_list | awk '!a[$1]{if(b)printf";";printf $1;a[$1]=1;b=1}' )"
+	# Try legacy name
+	[ -z "$cputhreads" ] && cputhreads="$( cat /sys/devices/system/cpu/cpu*/topology/thread_siblings_list | awk '!a[$1]{if(b)printf";";printf $1;a[$1]=1;b=1}' )"
 
 	# call the Libvirt Java tool to finalize configuration and start VM
 	declare -rg VIRTCMD="java"
@@ -89,7 +95,11 @@ run_plugin() {
 	notempty TMPCONFIG         && VIRTCMDOPTS+=( "-vmcfginp"    "${TMPCONFIG}" )
 	notempty vm_final_config   && VIRTCMDOPTS+=( "-vmcfgout"    "${vm_final_config}" )
 	notempty IMGUUID           && VIRTCMDOPTS+=( "-vmuuid"      "${IMGUUID}" )
-	notempty HW_CORES          && VIRTCMDOPTS+=( "-vmncpus"     "${HW_CORES}" )
+	if notempty cputhreads; then
+		VIRTCMDOPTS+=( "-cputopo"     "${cputhreads}" )
+	elif notempty HW_THREADS; then
+		VIRTCMDOPTS+=( "-vmncpus"     "${HW_THREADS}" )
+	fi
 	notempty VM_MEM            && VIRTCMDOPTS+=( "-vmmem"       "${VM_MEM}" )
 	notempty VM_MAC_ADDR       && VIRTCMDOPTS+=( "-vmmac0"      "${VM_MAC_ADDR}" )
 	notempty vm_diskfile       && VIRTCMDOPTS+=( "-vmhdd0"      "${vm_diskfile}" )

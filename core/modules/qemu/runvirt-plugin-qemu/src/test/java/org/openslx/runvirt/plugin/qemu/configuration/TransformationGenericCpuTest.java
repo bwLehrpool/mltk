@@ -30,12 +30,12 @@ public class TransformationGenericCpuTest
 		transformation.transform( config, args );
 
 		assertEquals( CpuMode.HOST_PASSTHROUGH, config.getCpuMode() );
-		assertEquals( CpuCheck.PARTIAL, config.getCpuCheck() );
+		assertEquals( CpuCheck.NONE, config.getCpuCheck() );
 
 		final int numDies = TransformationGenericCpu.CPU_NUM_DIES;
 		final int numSockets = TransformationGenericCpu.CPU_NUM_SOCKETS;
 		final int numCores = Integer.valueOf( TransformationTestUtils.DEFAULT_VM_NCPUS );
-		final int numThreads = TransformationGenericCpu.CPU_NUM_THREADS;
+		final int numThreads = 1;
 
 		final int numVCpus = numDies * numSockets * numCores * numThreads;
 
