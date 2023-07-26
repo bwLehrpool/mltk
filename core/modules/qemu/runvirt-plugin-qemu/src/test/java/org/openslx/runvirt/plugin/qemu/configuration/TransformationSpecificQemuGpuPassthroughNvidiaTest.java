@@ -29,7 +29,7 @@ import org.openslx.libvirt.xml.LibvirtXmlValidationException;
 import org.openslx.runvirt.plugin.qemu.cmdln.CommandLineArgs;
 import org.openslx.virtualization.configuration.transformation.TransformationException;
 
-class TransformationSpecificQemuGpuPassthroughNvidiaStub extends TransformationSpecificQemuGpuPassthroughNvidia
+class TransformationSpecificQemuGpuPassthroughNvidiaStub extends TransformationSpecificQemuPciPassthrough
 {
 	final String capabilityFileName;
 
@@ -87,13 +87,13 @@ public class TransformationSpecificQemuGpuPassthroughNvidiaTest
 		assertEquals( Shmem.Model.IVSHMEM_PLAIN, shmemDevice.getModel() );
 		assertEquals( BigInteger.valueOf( 67108864 ).toString(), shmemDevice.getSize().toString() );
 
-		if ( TransformationSpecificQemuGpuPassthroughNvidia.NVIDIA_PATCH ) {
-			assertEquals( TransformationSpecificQemuGpuPassthroughNvidia.HYPERV_VENDOR_ID,
+		if ( TransformationSpecificQemuPciPassthrough.NVIDIA_PATCH ) {
+			assertEquals( TransformationSpecificQemuPciPassthrough.HYPERV_VENDOR_ID,
 					config.getFeatureHypervVendorIdValue() );
 			assertTrue( config.isFeatureHypervVendorIdStateOn() );
 			assertTrue( config.isFeatureKvmHiddenStateOn() );
 		} else {
-			assertNotEquals( TransformationSpecificQemuGpuPassthroughNvidia.HYPERV_VENDOR_ID,
+			assertNotEquals( TransformationSpecificQemuPciPassthrough.HYPERV_VENDOR_ID,
 					config.getFeatureHypervVendorIdValue() );
 			assertFalse( config.isFeatureHypervVendorIdStateOn() );
 			assertFalse( config.isFeatureKvmHiddenStateOn() );
@@ -136,7 +136,7 @@ public class TransformationSpecificQemuGpuPassthroughNvidiaTest
 		assertNotNull( shmemDevices );
 		assertEquals( 0, shmemDevices.size() );
 
-		assertNotEquals( TransformationSpecificQemuGpuPassthroughNvidia.HYPERV_VENDOR_ID,
+		assertNotEquals( TransformationSpecificQemuPciPassthrough.HYPERV_VENDOR_ID,
 				config.getFeatureHypervVendorIdValue() );
 		assertFalse( config.isFeatureHypervVendorIdStateOn() );
 		assertFalse( config.isFeatureKvmHiddenStateOn() );

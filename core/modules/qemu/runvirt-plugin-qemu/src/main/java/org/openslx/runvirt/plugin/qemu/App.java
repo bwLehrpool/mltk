@@ -25,14 +25,14 @@ import org.openslx.runvirt.plugin.qemu.configuration.TransformationGenericInterf
 import org.openslx.runvirt.plugin.qemu.configuration.TransformationGenericMemory;
 import org.openslx.runvirt.plugin.qemu.configuration.TransformationGenericName;
 import org.openslx.runvirt.plugin.qemu.configuration.TransformationGenericParallelDevices;
-import org.openslx.runvirt.plugin.qemu.configuration.TransformationSpecificQemuSerialDevices;
 import org.openslx.runvirt.plugin.qemu.configuration.TransformationGenericUuid;
 import org.openslx.runvirt.plugin.qemu.configuration.TransformationGenericWrapperScript;
 import org.openslx.runvirt.plugin.qemu.configuration.TransformationSpecificQemuArchitecture;
 import org.openslx.runvirt.plugin.qemu.configuration.TransformationSpecificQemuFirmware;
-import org.openslx.runvirt.plugin.qemu.configuration.TransformationSpecificQemuGpuPassthroughNvidia;
 import org.openslx.runvirt.plugin.qemu.configuration.TransformationSpecificQemuGraphics;
 import org.openslx.runvirt.plugin.qemu.configuration.TransformationSpecificQemuMdevPassthroughIntel;
+import org.openslx.runvirt.plugin.qemu.configuration.TransformationSpecificQemuPciPassthrough;
+import org.openslx.runvirt.plugin.qemu.configuration.TransformationSpecificQemuSerialDevices;
 import org.openslx.runvirt.plugin.qemu.virtualization.LibvirtHypervisorQemu;
 import org.openslx.runvirt.plugin.qemu.virtualization.LibvirtHypervisorQemu.QemuSessionType;
 import org.openslx.runvirt.viewer.Viewer;
@@ -160,7 +160,7 @@ public class App
 			transformationManager.register( new TransformationSpecificQemuGraphics( hypervisorQemu ), true );
 			transformationManager.register( new TransformationSpecificQemuSerialDevices( hypervisorQemu ), true );
 			transformationManager.register( new TransformationSpecificQemuMdevPassthroughIntel( hypervisorQemu ), false );
-			transformationManager.register( new TransformationSpecificQemuGpuPassthroughNvidia( hypervisorQemu ), false );
+			transformationManager.register( new TransformationSpecificQemuPciPassthrough( hypervisorQemu ), false );
 		}
 
 		// Needs to be last one since TransformationSpecificQemuArchitecture sets this too

@@ -6,14 +6,14 @@ import java.util.List;
 
 import org.openslx.libvirt.capabilities.Capabilities;
 import org.openslx.libvirt.domain.Domain;
+import org.openslx.libvirt.domain.device.Device;
+import org.openslx.libvirt.domain.device.Graphics.ListenType;
 import org.openslx.libvirt.domain.device.GraphicsSpice;
 import org.openslx.libvirt.domain.device.HostdevPci;
 import org.openslx.libvirt.domain.device.HostdevPciDeviceAddress;
 import org.openslx.libvirt.domain.device.HostdevPciDeviceDescription;
 import org.openslx.libvirt.domain.device.Shmem;
 import org.openslx.libvirt.domain.device.Video;
-import org.openslx.libvirt.domain.device.Device;
-import org.openslx.libvirt.domain.device.Graphics.ListenType;
 import org.openslx.runvirt.plugin.qemu.cmdln.CommandLineArgs;
 import org.openslx.runvirt.plugin.qemu.virtualization.LibvirtHypervisorQemu;
 import org.openslx.runvirt.virtualization.LibvirtHypervisorException;
@@ -26,7 +26,7 @@ import org.openslx.virtualization.configuration.transformation.TransformationSpe
  * @author Manuel Bentele
  * @version 1.0
  */
-public class TransformationSpecificQemuGpuPassthroughNvidia
+public class TransformationSpecificQemuPciPassthrough
 		extends TransformationSpecific<Domain, CommandLineArgs, LibvirtHypervisorQemu>
 {
 	/**
@@ -37,7 +37,7 @@ public class TransformationSpecificQemuGpuPassthroughNvidia
 	/**
 	 * Vendor identifier of PCI devices from Nvidia.
 	 */
-	private static final int NVIDIA_PCI_VENDOR_ID = 0x10de;
+	public static final int NVIDIA_PCI_VENDOR_ID = 0x10de;
 
 	/**
 	 * Switch to turn patch for Nvidia GPU-Passthrough (enables Hyper-V enlightening) on or off to
@@ -71,9 +71,9 @@ public class TransformationSpecificQemuGpuPassthroughNvidia
 	 * 
 	 * @param hypervisor Libvirt/QEMU hypervisor.
 	 */
-	public TransformationSpecificQemuGpuPassthroughNvidia( LibvirtHypervisorQemu hypervisor )
+	public TransformationSpecificQemuPciPassthrough( LibvirtHypervisorQemu hypervisor )
 	{
-		super( TransformationSpecificQemuGpuPassthroughNvidia.NAME, hypervisor );
+		super( TransformationSpecificQemuPciPassthrough.NAME, hypervisor );
 	}
 
 	/**
@@ -115,13 +115,6 @@ public class TransformationSpecificQemuGpuPassthroughNvidia
 					throw new TransformationException( "Invalid vendor or device ID of the PCI device description!" );
 				}
 
-				// validate vendor ID
-				final int vendorId = deviceDescription.getVendorId();
-				if ( TransformationSpecificQemuGpuPassthroughNvidia.NVIDIA_PCI_VENDOR_ID != vendorId ) {
-					final String errorMsg = "Vendor ID '" + vendorId + "' of the PCI device is not from Nvidia!";
-					throw new TransformationException( errorMsg );
-				}
-
 				// parse PCI domain, PCI bus, PCI device and PCI function
 				final HostdevPciDeviceAddress parsedPciAddress = HostdevPciDeviceAddress.valueOf( pciIds.get( i + 1 ) );
 				if ( parsedPciAddress != null ) {
@@ -146,7 +139,7 @@ public class TransformationSpecificQemuGpuPassthroughNvidia
 			throw new TransformationException( "Virtualization configuration or input arguments are missing!" );
 		}
 
-		TransformationSpecificQemuGpuPassthroughNvidia.validateParseNvidiaPciIds( args.getVmNvGpuIds0() );
+		TransformationSpecificQemuPciPassthrough.validateParseNvidiaPciIds( args.getVmNvGpuIds0() );
 	}
 
 	/**
@@ -202,58 +195,53 @@ public class TransformationSpecificQemuGpuPassthroughNvidia
 		// validate configuration and input arguments
 		this.validateInputs( config, args );
 
+		// validate submitted PCI IDs
+		final List<HostdevPciDeviceAddress> pciDeviceAddresses = TransformationSpecificQemuPciPassthrough
+				.validateParseNvidiaPciIds( args.getVmNvGpuIds0() );
+
+		// check if IOMMU support is available on the host
+		if ( !this.getCapabilities().hasHostIommuSupport() ) {
+			final String errorMsg = "IOMMU support is not available on the hypervisor but required for GPU passthrough!";
+			throw new TransformationException( errorMsg );
+		}
+		// Check config for PCI addresses already in use
+		int inUse[] = new int[ 64 ];
+		inUse[0] = Integer.MAX_VALUE;
+		inUse[1] = Integer.MAX_VALUE;
+		for ( Device dev : config.getDevices() ) {
+			HostdevPciDeviceAddress target = dev.getPciTarget();
+			if ( target == null )
+				continue;
+			if ( target.getPciDomain() != 0 || target.getPciBus() != 0 )
+				continue; // Ignore non-primary bus
+			if ( target.getPciDevice() >= inUse.length )
+				continue;
+			inUse[target.getPciDevice()] = Integer.MAX_VALUE;
+		}
+
+		// passthrough PCI devices of the GPU
+		for ( final HostdevPciDeviceAddress pciDeviceAddress : pciDeviceAddresses ) {
+			final HostdevPci pciDevice = config.addHostdevPciDevice();
+			pciDevice.setManaged( true );
+			pciDevice.setSource( pciDeviceAddress );
+			if ( pciDeviceAddress.getPciFunction() == 0 && pciDeviceAddresses.size() > 1 ) {
+				pciDevice.setMultifunction( true );
+			}
+			int devAddr = getFreeAddr( inUse, pciDeviceAddress );
+			pciDevice.setPciTarget( new HostdevPciDeviceAddress( 0, devAddr, pciDeviceAddress.getPciFunction() ) );
+		}
+
 		// check if passthrough of Nvidia GPU takes place
 		if ( args.isNvidiaGpuPassthroughEnabled() ) {
-			// validate submitted PCI IDs
-			final List<HostdevPciDeviceAddress> pciDeviceAddresses = TransformationSpecificQemuGpuPassthroughNvidia
-					.validateParseNvidiaPciIds( args.getVmNvGpuIds0() );
-
-			// check if IOMMU support is available on the host
-			if ( !this.getCapabilities().hasHostIommuSupport() ) {
-				final String errorMsg = "IOMMU support is not available on the hypervisor but required for GPU passthrough!";
-				throw new TransformationException( errorMsg );
-			}
-			// Check config for PCI addresses already in use
-			boolean inUse[] = new boolean[ 64 ];
-			inUse[0] = true;
-			inUse[1] = true;
-			for ( Device dev : config.getDevices() ) {
-				HostdevPciDeviceAddress target = dev.getPciTarget();
-				if ( target == null )
-					continue;
-				if ( target.getPciDomain() != 0 || target.getPciBus() != 0 )
-					continue; // Ignore non-primary bus
-				if ( target.getPciDevice() >= inUse.length )
-					continue;
-				inUse[target.getPciDevice()] = true;
-			}
-			// Use first free one. Usually 00:02:00 is primary VGA
-			int devAddr;
-			for ( devAddr = 0; devAddr < inUse.length; ++devAddr ) {
-				if ( !inUse[devAddr] )
-					break;
-			}
-
-			// passthrough PCI devices of the GPU
-			for ( final HostdevPciDeviceAddress pciDeviceAddress : pciDeviceAddresses ) {
-				final HostdevPci pciDevice = config.addHostdevPciDevice();
-				pciDevice.setManaged( true );
-				pciDevice.setSource( pciDeviceAddress );
-				if ( pciDeviceAddress.getPciFunction() == 0 && pciDeviceAddresses.size() > 1 ) {
-					pciDevice.setMultifunction( true );
-				}
-				pciDevice.setPciTarget( new HostdevPciDeviceAddress( 0, devAddr, pciDeviceAddress.getPciFunction() ) );
-			}
-
 			// add shared memory device for Looking Glass
 			final Shmem shmemDevice = config.addShmemDevice();
 			shmemDevice.setName( "looking-glass" );
 			shmemDevice.setModel( Shmem.Model.IVSHMEM_PLAIN );
-			shmemDevice.setSize( TransformationSpecificQemuGpuPassthroughNvidia.calculateFramebufferSize() );
+			shmemDevice.setSize( TransformationSpecificQemuPciPassthrough.calculateFramebufferSize() );
 
 			// enable hypervisor shadowing to avoid error code 43 of Nvidia drivers in virtual machines
-			if ( TransformationSpecificQemuGpuPassthroughNvidia.NVIDIA_PATCH ) {
-				config.setFeatureHypervVendorIdValue( TransformationSpecificQemuGpuPassthroughNvidia.HYPERV_VENDOR_ID );
+			if ( TransformationSpecificQemuPciPassthrough.NVIDIA_PATCH ) {
+				config.setFeatureHypervVendorIdValue( TransformationSpecificQemuPciPassthrough.HYPERV_VENDOR_ID );
 				config.setFeatureHypervVendorIdState( true );
 				config.setFeatureKvmHiddenState( true );
 			}
@@ -273,5 +261,24 @@ public class TransformationSpecificQemuGpuPassthroughNvidia
 				graphicsSpiceDevice.setListenPort( GraphicsSpice.DEFAULT_PORT + i );
 			}
 		}
+	}
+
+	private int getFreeAddr( int[] inUse, HostdevPciDeviceAddress pciDeviceAddress )
+	{
+		// Use first free one. Usually 00:02:00 is primary VGA
+		int devAddr;
+		int firstFree = -1;
+		int lookup = (pciDeviceAddress.getPciDomain() << 16)
+				| (pciDeviceAddress.getPciBus() << 8)
+				| (pciDeviceAddress.getPciDevice());
+		for ( devAddr = 0; devAddr < inUse.length; ++devAddr ) {
+			if ( firstFree == -1 && inUse[devAddr] == 0 ) {
+				firstFree = devAddr;
+			} else if ( inUse[devAddr] == lookup ) {
+				return devAddr;
+			}
+		}
+		inUse[firstFree] = lookup;
+		return firstFree;
 	}
 }
