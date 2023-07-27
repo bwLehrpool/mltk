@@ -3,8 +3,6 @@
 
 # Prepare pam, nss and sssd configs as appropriate
 
-export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/openslx/sbin:/opt/openslx/bin"
-
 declare -a auth
 declare -a account
 declare -a session
@@ -13,6 +11,7 @@ declare -a dns
 
 # Add PAM and NSS modules for sssd
 add_sssd_modules() {
+	echo "Adding sssd config to nsswitch and pam"
 	auth+=("[success=%NUM% default=ignore] pam_sss.so use_first_pass")
 	account+=("[success=%NUM% new_authtok_reqd=done default=ignore] pam_sss.so")
 	nss+=("sss")
@@ -23,6 +22,7 @@ add_sssd_modules() {
 
 # Write a combined sssd config from all our /opt/openslx/pam/slx-ldap.d/* files
 write_sssd_config() {
+	echo "Writing slx-managed sssd config"
 	local file ok domains
 	local tmpfile=$(mktemp)
 	ok=0
@@ -44,6 +44,7 @@ write_sssd_config() {
 		. "$file"
 		[ -z "$LDAP_URI" ] && continue
 		[ -z "$LDAP_BASE" ] && continue
+		echo "... including $file"
 		ok=$(( ok + 1 ))
 		domains="${domains}, dom$ok"
 		cat >> "$tmpfile" <<-HERE
@@ -60,15 +61,20 @@ write_sssd_config() {
 		HERE
 		[ -n "$LDAP_CACERT" ] && echo "ldap_tls_cacert = $LDAP_CACERT" >> "$tmpfile"
 	done
-	[ "$ok" = 0 ] && return 1 # No config
+	if [ "$ok" = 0 ]; then
+		echo "Config is empty, aborting"
+		return 1 # No config
+	fi
 	mkdir -p "/etc/sssd"
 	chmod 0755 "/etc/sssd"
 	sed "s/%DOMAIN_LIST%/${domains#, }/" "${tmpfile}" > "/etc/sssd/sssd.conf"
 	chmod 0600 "/etc/sssd/sssd.conf"
 	rm -f -- "${tmpfile}"
+	echo "Done"
 	return 0 # OK
 }
 
+echo "Generating common generic pam and nsswitch entries..."
 # unix
 auth+=("[success=%NUM% default=ignore] pam_unix.so nodelay")
 account+=("[success=%NUM% new_authtok_reqd=done default=ignore] pam_unix.so")
@@ -85,6 +91,7 @@ fi
 
 # Insert kerberos before our auth module
 if [ -s "/etc/krb5.conf" ]; then
+	echo "Kerberos config exists, including pam module..."
 	auth+=("optional pam_krb5.so minimum_uid=1000 use_first_pass ccache=FILE:/run/user/krb5cc_%u_XXXXXX ccname_template=FILE:/run/user/krb5cc_%U_XXXXXX")
 	session+=("optional pam_krb5.so minimum_uid=1000")
 fi
@@ -96,6 +103,7 @@ auth+=("[success=%NUM% default=ignore] pam_exec.so quiet expose_authtok /opt/ope
 if systemctl is-enabled -q sssd.service && grep -q -e '^\s*id_provider' -e '^\s*auth_provider' "/etc/sssd/sssd.conf" \
 		&& ! grep -q -F '<slx-autogen>' "/etc/sssd/sssd.conf"; then
 	# sssd is configured and doesn't have our marker - just add pam and nss config but leave sssd.conf alone
+	echo "Found existing unmanaged sssd config - leaving alone an enabling"
 	add_sssd_modules
 elif ! systemctl show sssd.service | grep -q '^LoadError='; then
 	# We have sssd available and unconfigured, or marked with our config tag, <slx-autogen>
@@ -108,12 +116,14 @@ elif ! systemctl show sssd.service | grep -q '^LoadError='; then
 		session+=("optional pam_unix.so")
 	fi
 else
+	echo "Leaving sssd disabled"
 	session+=("optional pam_unix.so")
 fi
 
 # DNS
 dns+=("files" "cache")
 if systemctl is-enabled -q systemd-resolved; then
+	echo "resolved is enabled, including in nsswitch"
 	dns+=("resolve")
 fi
 dns+=("dns")
@@ -126,6 +136,7 @@ tmpfile=$(mktemp)
 
 # common-auth
 if grep -q '<slx-autogen>' "/etc/pam.d/common-auth"; then
+	echo "Writing common-auth..."
 	skip=$(( ${#auth[@]} + 1 ))
 	echo "# <slx-autogen> Generated $(date)" > "$tmpfile"
 	for line in "${auth[@]}"; do
@@ -145,6 +156,7 @@ fi
 
 # common-account
 if grep -q '<slx-autogen>' "/etc/pam.d/common-account"; then
+	echo "Writing common-account..."
 	skip=${#account[@]}
 	echo "# <slx-autogen> Generated $(date)" > "$tmpfile"
 	for line in "${account[@]}"; do
@@ -161,6 +173,7 @@ fi
 
 # common-session
 if grep -q '<slx-autogen>' "/etc/pam.d/common-session"; then
+	echo "Writing common-session..."
 	cat > "$tmpfile" <<-HERE
 		# <slx-autogen> Generated $(date)
 		session  required pam_permit.so
@@ -180,6 +193,7 @@ fi
 #
 # Write nsswitch.conf
 if grep -q '<slx-autogen>' "/etc/nsswitch.conf"; then
+	echo "Writing nsswitch.conf..."
 	cat > "/etc/nsswitch.conf" <<-HERE
 		# <slx-autogen> Generated $(date)
 		passwd:         ${nss[@]}

@@ -189,10 +189,14 @@ if ! has_hdd; then
 	wait_for_udev --hdd 4
 fi
 
+declare -A known=
 shopt -s extglob
 for disk in /dev/disk/by-path/!(*-part*|*-usb-*); do
-	[ -L "$disk" ] || continue
-	fdisk -l "$( readlink -f "$disk" )"
+	disk="$( readlink -f "$disk" )"
+	[ -b "$disk" ] || continue
+	[ -z "${known["$disk"]}" ] || continue
+	known["$disk"]=1
+	fdisk -l "$disk"
 done > "$PARTITION_FILE"
 shopt -u extglob
 if ! [ -s "$PARTITION_FILE" ]; then
@@ -203,6 +207,7 @@ cat "$PARTITION_FILE"
 
 if [ -n "$DO_LINUX" ]; then
 	# Put detected linux partitions (83) into /etc/fstab with "noauto"
+	echo "Adding existing linux partitions to fstab"
 	for PART_DEV in $(dev_find_partitions "83"); do
 		mkdir -p "/media/${PART_DEV#/dev/}"
 		echo -e "${PART_DEV}\t/media/${PART_DEV#/dev/}\tauto\t\tnoauto,noexec\t 0 0" >> "/etc/fstab"
@@ -211,6 +216,7 @@ fi
 
 if [ -n "$DO_SWAP" ]; then
 	# Check for standard swap partitions and make them available to the system
+	echo "Enabling existing swap partitions"
 	HAVE_SWAP=no
 	for PART_DEV in $(dev_find_partitions "82" "0657fd6d-a4ab-43c4-84e5-0933c84b4f4f"); do
 		if swapon -p 10 "$PART_DEV"; then
@@ -229,6 +235,7 @@ if [ -n "$DO_TMP" ]; then
 	# We use special non assigned partition type (id44) for harddisk scratch
 	# space, thus no normal filesystem will be incidentally deleted or
 	# corrupted
+	echo "Mounting ID44 temp partitions"
 	HAVE_TEMP=no
 	for PART_DEV in $(dev_find_partitions "44" "87f86132-ff94-4987-b250-444444444444"); do
 		# check for supported filesystem and formatter
@@ -245,6 +252,7 @@ fi
 
 if [ -n "$DO_PERSISTENT" ]; then
 	# special partition 45 (persistent scratch) to $MOUNT_POINT_45
+	echo "Mounting ID45 persistent partitions"
 	HAVE_PARTITION_45=no
 	get_mount_options "ext4" mopts
 	# try all the ID45 partitions until one succeeds, from large to small
@@ -323,6 +331,7 @@ fi # /persistent
 
 # finally, prepare the data subdir on persistent part
 if [ "$HAVE_PARTITION_45" = "yes" ]; then
+	echo "Fixing permissions on ID45 partition"
 	mkdir -p "$MOUNT_POINT_45/data"
 	chown 0:0  "${MOUNT_POINT_45}" "${MOUNT_POINT_45}/slx_lost+found" "${MOUNT_POINT_45}/data"
 	chmod 0700 "${MOUNT_POINT_45}/slx_lost+found"
@@ -342,6 +351,7 @@ mount -a
 # much free space as the VMs RAM; however, this requirement can be disabled with a vmx setting,
 # which we're now doing.
 if [ "$HAVE_TEMP" = "no" ]; then
+	# If --tmp wasn't requested HAVE_TEMP will be empty, so we don't end up here...
 	mount_temp -t tmpfs -o size=66% none
 	slxlog "partition-temp" "Running /tmp on tmpfs only!" "$PARTITION_FILE"
 fi
