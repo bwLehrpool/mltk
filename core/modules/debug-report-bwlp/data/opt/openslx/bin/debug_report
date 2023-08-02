@@ -1,6 +1,9 @@
 #!/bin/bash
 # bash because of {,} expansion
 
+export LANG=C.UTF-8
+export LC_ALL=C.UTF-8
+
 TOOLS=(
 	"journalctl -a"
 	systemctl
@@ -175,7 +178,11 @@ fi
 if [ -n "$XAUTHORITY" ]; then
 	export DISPLAY
 	export XAUTHORITY
-	xrandr --verbose > "generated/xrandr-out" 2> "generated/xrandr-err"
+	if timeout --help 2>&1 | grep -q -F -- '-k'; then
+		timeout -k 1 2 xrandr --verbose
+		else
+			timeout -s 9 3 xrandr --verbose
+		fi > "generated/xrandr-out" 2> "generated/xrandr-err"
 	echo -n "."
 fi
 
