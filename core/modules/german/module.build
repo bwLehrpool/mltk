@@ -39,7 +39,8 @@ build() {
 
 post_copy() {
 	for i in LANG LC_CTYPE LC_NUMERIC LC_TIME LC_COLLATE LC_MONETARY LC_MESSAGES LC_PAPER LC_NAME LC_ADDRESS LC_TELEPHONE LC_MEASUREMENT LC_IDENTIFICATION; do
-		add_env $i de_DE.UTF-8 || perror "$i: add_env function failed."
+		add_env "$i" "de_DE.UTF-8" || perror "$i: add_env function failed."
 	done
+	add_env "LANGUAGE" "de_DE:de"
 }
 
