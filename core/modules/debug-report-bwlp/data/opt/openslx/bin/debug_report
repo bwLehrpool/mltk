@@ -178,11 +178,11 @@ fi
 if [ -n "$XAUTHORITY" ]; then
 	export DISPLAY
 	export XAUTHORITY
-	if timeout --help 2>&1 | grep -q -F -- '-k'; then
+	if timeout --help 2>&1 | grep -q -F -- '--kill-after'; then
 		timeout -k 1 2 xrandr --verbose
-		else
-			timeout -s 9 3 xrandr --verbose
-		fi > "generated/xrandr-out" 2> "generated/xrandr-err"
+	else
+		timeout -s 9 3 xrandr --verbose
+	fi > "generated/xrandr-out" 2> "generated/xrandr-err"
 	echo -n "."
 fi
 
