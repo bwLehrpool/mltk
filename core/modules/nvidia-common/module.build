@@ -53,7 +53,8 @@ build() {
 		grep -qE "$KMOD_ERROR" "$KMOD_LOG" \
 			|| /NVIDIA/nvidia-installer --no-nouveau-check --no-backup --no-rpms \
 				--no-distro-scripts --no-cc-version-check --no-x-check --no-precompiled-interface --silent \
-				--skip-module-unload --no-kernel-module-source --no-nvidia-modprobe \
+				--skip-module-unload --no-kernel-module-source \
+				--no-nvidia-modprobe \
 				--no-kernel-module
 
 		exit 0 # Fake it since it will try to load the module and probably fail
