@@ -1,12 +1,12 @@
 #!/bin/bash
 
 pre_exec() {
-	[ -z "$MODULE_VERSION" ] && perror "Not run from an @ target"
+	[ -z "$TARGET_VERSION" ] && perror "Not run from an @ target"
 	local SRC SZ
-	SRC="${ROOT_DIR}/tmp/work/nvidia-common/build/$MODULE_VERSION"
-	[ -d "$SRC" ] || perror "nvidia-common did not build $MODULE_VERSION"
+	SRC="${ROOT_DIR}/tmp/work/nvidia-common/build/$TARGET_VERSION"
+	[ -d "$SRC" ] || perror "nvidia-common did not build $TARGET_VERSION"
 	SZ=$( du -sk "$SRC" | awk '{print $1}' )
-	(( SZ < 200000 )) && perror "nvidia-common for $MODULE_VERSION is less than 200MB, fishy"
+	(( SZ < 200000 )) && perror "nvidia-common for $TARGET_VERSION is less than 200MB, fishy"
 	# XXX Now we override the MODULE_BUILD_DIR, where mltk will then grab alle the required files from
 	MODULE_BUILD_DIR="$SRC"
 }
@@ -15,7 +15,7 @@ post_copy() {
 	# generate addon-required for this version
 	cat <<-EOF > "${TARGET_BUILD_DIR}/addon-required"
 		#!/bin/ash
-		[ "\$( cat /sys/module/nvidia/version )" = "$MODULE_VERSION" ]
+		[ "\$( cat /sys/module/nvidia/version )" = "$TARGET_VERSION" ]
 	EOF
 	chmod +x "${TARGET_BUILD_DIR}/addon-required"
 }

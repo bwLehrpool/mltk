@@ -413,7 +413,7 @@ generate_target_real() {
 	[[ "$TARGET" == "builds" || "$TARGET" == "modules" ]] && \
 		perror "Target directory cannot be named 'builds' or 'modules'."
 
-	pdebug "Generating '$TARGET_BUILD_DIR' for '$TARGET'"
+	pdebug "Generating '$TARGET_BUILD_DIR' for '$TARGET' $TARGET_VERSION"
 	mkdir -p "$TARGET_BUILD_DIR" || perror "Failed to create $TARGET_BUILD_DIR"
 	prepare_usr_split "${TARGET_BUILD_DIR}"
 
@@ -497,7 +497,7 @@ process_module() {
 	fi
 	local MODULE_BUILD_DIR="${MODULE_WORK_DIR}/build"
 	local MODULE_META_DIR="${MODULE_WORK_DIR}/meta"
-	local TOOL_STR="[${MODULE}]"
+	local TOOL_STR="[${MODULE}${TARGET_VERSION}]"
 	local SOURCE_FLAG="${MODULE_META_DIR}/fetched_source.flag"
 	local BUILD_FLAG="${MODULE_META_DIR}/build_complete.flag"
 	local COPY_FLAG="${MODULE_META_DIR}/copy_complete.flag"
@@ -736,8 +736,8 @@ clean_modules() {
 	done
 	cde "$TARGET_DIR"
 	for module in "$@"; do
-		if [[ "$MODULE" == *@ ]]; then
-			[ -z "$TARGET_VERSIONS" ] && perror "Found versioned module $MODULE in non-versioned target $TARGET"
+		if [[ "$module" == *@ ]]; then
+			[ -z "$TARGET_VERSIONS" ] && perror "Found versioned module $module in non-versioned target $TARGET"
 			for TARGET_VERSION in ${TARGET_VERSIONS}; do
 				TARGET_BUILD_DIR="${TARGET_BUILD_BASE}@${TARGET_VERSION}"
 				clean_module "${module}"
@@ -752,7 +752,7 @@ clean_modules() {
 clean_module() {
 	[ -z "$1" ] && perror "No module given on clean_module()"
 	[ -z "$TARGET" ] && perror "clean_module called with no active target"
-	pinfo "## clean_module $TARGET -> $1"
+	pinfo "## clean_module $TARGET $1$TARGET_VERSION"
 
 	local MODULE=$1
 	local MODULE_DIR="${MODULE_PATHS["${MODULE}"]}"
