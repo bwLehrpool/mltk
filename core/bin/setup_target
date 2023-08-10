@@ -314,7 +314,7 @@ copy_files_with_deps () {
 	fi
 	# unchanged?
 	OLD="${COPYFILES_LIST}.old"
-	if [ -s "$OLD" ] && cmp "$OLD" "$COPYFILES_LIST"; then
+	if [ -s "$OLD" ] && cmp -s "$OLD" "$COPYFILES_LIST"; then
 		return
 	fi
 	CLISTCOUNT=$( < "$COPYFILES_LIST"  wc -l )
@@ -386,12 +386,17 @@ generate_target() {
 	if [[ "$TARGET" == *@* ]]; then
 		VARNAME="${TARGET#*@}"
 		TARGET="${TARGET%@*}"
-		for VERSION in ${!VARNAME}; do
-			TARGET_BUILD_DIR="${ROOT_DIR}/var/builds/${TARGET}@${VERSION}"
+		declare -r TARGET_VERSIONS=${!VARNAME}
+		if [ -z "$TARGET_VERSIONS" ]; then
+			perror "Asked to build versioned target $TARGET with version list in $VARNAME, but $VARNAME is empty."
+		fi
+		for TARGET_VERSION in ${TARGET_VERSIONS}; do
+			TARGET_BUILD_DIR="${ROOT_DIR}/var/builds/${TARGET}@${TARGET_VERSION}"
 			generate_target_real "$@"
 		done
 	else
-		VERSION=
+		declare -r TARGET_VERSIONS=
+		declare -r TARGET_VERSION=
 		TARGET_BUILD_DIR="${ROOT_DIR}/var/builds/${TARGET}"
 		generate_target_real "$@"
 	fi
@@ -486,8 +491,12 @@ process_module() {
 	PROCESSED_MODULES="${PROCESSED_MODULES}!${MODULE}!"
 	local MODULE_DIR="${MODULE_PATHS["${MODULE}"]}"
 	local MODULE_WORK_DIR="${ROOT_DIR}/tmp/work/${MODULE}"
+	if [[ "$MODULE" == *@ ]]; then
+		[ -z "$TARGET_VERSION" ] && perror "Asked to build $MODULE in non-versioned target $TARGET"
+		MODULE_WORK_DIR+="-${TARGET_VERSION}"
+	fi
 	local MODULE_BUILD_DIR="${MODULE_WORK_DIR}/build"
-	local MODULE_META_DIR="${MODULE_WORK_DIR}/meta${VERSION}"
+	local MODULE_META_DIR="${MODULE_WORK_DIR}/meta"
 	local TOOL_STR="[${MODULE}]"
 	local SOURCE_FLAG="${MODULE_META_DIR}/fetched_source.flag"
 	local BUILD_FLAG="${MODULE_META_DIR}/build_complete.flag"
@@ -495,7 +504,6 @@ process_module() {
 	local AUTOCLONE_FILE="${MODULE_META_DIR}/repos"
 	local MD5FILE="${TARGET_BUILD_DIR}/opt/openslx/.mltk/${MODULE}.md5"
 	local PKG_CONTENT_FILE="${MODULE_META_DIR}/list_package_contents"
-	local VERSION # to protect from name collisions. TODO: Rename to TARGET_VERSION
 	if [ ! -d "${MODULE_DIR}" ]; then
 		if [ -z "$DEPOF" ]; then
 			perror "Module directory for '$MODULE' not found in ${TARGET_DIR}"
@@ -511,7 +519,7 @@ process_module() {
 			pwarning " ** Check if cleaning should be done and use '-c kernel'"
 		else
 			pwarning "Module's .build/.config has changed, rebuilding!"
-			clean_module "${TARGET}:${MODULE}"
+			clean_module "${MODULE}"
 		fi
 	fi
 	# Write new md5 file if not existent yet
@@ -642,8 +650,17 @@ post_process_target() {
 			# diff them to be sure they are the same?
 			system_file="${entry:1}"
 			target_file="${entry:2}"
-			if [ -e "$system_file" ] && cmp "$system_file" "$target_file"; then
-				echo "$target_file" >> "$RSYNC_EXCLUDE_LIST"
+			if [ -e "$system_file" ]; then
+				if [ -L "$system_file" ] && [ -L "$target_file" ]; then
+					# Two links with same destination? Skip
+					[ "$( readlink "$system_file" )" == "$( readlink "$target_file" )" ] \
+						&& echo "$target_file" >> "$RSYNC_EXCLUDE_LIST"
+				elif [ -L "$system_file" ] || [ -L "$target_file" ]; then
+					: # One is link, the other isn't, do not skip
+				elif cmp -s "$system_file" "$target_file"; then
+					# Two files with same contents? Skip
+					echo "$target_file" >> "$RSYNC_EXCLUDE_LIST"
+				fi
 			fi
 		done
 		pinfo "Calling ldconfig on overlay'ed ${TARGET_BUILD_DIR##*/}..."
@@ -685,14 +702,29 @@ clean_modules() {
 	shift
 	TARGET_DIR="$( readlink -f "${TARGETS_BASEDIR}/${TARGET}" )"
 	scan_target "$TARGET_DIR"
-	TARGET_BUILD_DIR="${ROOT_DIR}/var/builds/${TARGET}"
 	[ -d "$TARGET_DIR" ] || perror "Given target directory does not exist: $TARGET_DIR"
 
+	if [[ "$TARGET" == *@* ]]; then
+		VARNAME="${TARGET#*@}"
+		TARGET="${TARGET%@*}"
+		declare -r TARGET_VERSIONS=${!VARNAME}
+		if [ -z "$TARGET_VERSIONS" ]; then
+			perror "Asked to build versioned target $TARGET with version list in $VARNAME, but $VARNAME is empty."
+		fi
+	else
+		VARNAME=
+		declare -r TARGET_VERSIONS=
+	fi
+
+	TARGET_BUILD_BASE="${ROOT_DIR}/var/builds/${TARGET}"
+
 	if [ -z "$1" ] || [ "$1" = "all" ]; then
-		if [[ "$TARGET" == *@* ]]; then
-			rm -rf -- "${TARGET_BUILD_DIR%@*}"@* || perror "Could not delete target build dirs for $TARGET"
+		if [ -n "$TARGET_VERSIONS" ]; then
+			for TARGET_VERSION in ${TARGET_VERSIONS}; do
+				rm -rf -- "${TARGET_BUILD_BASE}@${TARGET_VERSION}" || perror "Could not delete target build dirs for $TARGET"
+			done
 		else
-			rm -rf -- "${TARGET_BUILD_DIR}" || perror "Could not delete target build dir for $TARGET"
+			rm -rf -- "${TARGET_BUILD_BASE}" || perror "Could not delete target build dir for $TARGET"
 		fi
 		# exclude kernel on "all"
 		unset 'MODULE_PATHS[kernel]'
@@ -704,18 +736,31 @@ clean_modules() {
 	done
 	cde "$TARGET_DIR"
 	for module in "$@"; do
-		clean_module "${TARGET}:${module}"
+		if [[ "$MODULE" == *@ ]]; then
+			[ -z "$TARGET_VERSIONS" ] && perror "Found versioned module $MODULE in non-versioned target $TARGET"
+			for TARGET_VERSION in ${TARGET_VERSIONS}; do
+				TARGET_BUILD_DIR="${TARGET_BUILD_BASE}@${TARGET_VERSION}"
+				clean_module "${module}"
+			done
+		else
+			TARGET_BUILD_DIR="${TARGET_BUILD_BASE}"
+			clean_module "${module}"
+		fi
 	done
 }
 
 clean_module() {
 	[ -z "$1" ] && perror "No module given on clean_module()"
-	pinfo "## clean_module $1"
+	[ -z "$TARGET" ] && perror "clean_module called with no active target"
+	pinfo "## clean_module $TARGET -> $1"
 
-	local TARGET=${1%%:*}
-	local MODULE=${1#*:}
+	local MODULE=$1
 	local MODULE_DIR="${MODULE_PATHS["${MODULE}"]}"
 	local MODULE_WORK_DIR="${ROOT_DIR}/tmp/work/${MODULE}"
+	if [[ "$MODULE" == *@ ]]; then
+		[ -z "$TARGET_VERSION" ] && perror "Asked to clean $MODULE in non-versioned target $TARGET"
+		MODULE_WORK_DIR+="-${TARGET_VERSION}"
+	fi
 
 	if ! [ -d "$MODULE_DIR" ]; then
 		pwarning "No such module '$MODULE' in current target '$TARGET'"
