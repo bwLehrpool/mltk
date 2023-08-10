@@ -391,6 +391,7 @@ generate_target() {
 			generate_target_real "$@"
 		done
 	else
+		VERSION=
 		TARGET_BUILD_DIR="${ROOT_DIR}/var/builds/${TARGET}"
 		generate_target_real "$@"
 	fi
@@ -486,13 +487,15 @@ process_module() {
 	local MODULE_DIR="${MODULE_PATHS["${MODULE}"]}"
 	local MODULE_WORK_DIR="${ROOT_DIR}/tmp/work/${MODULE}"
 	local MODULE_BUILD_DIR="${MODULE_WORK_DIR}/build"
+	local MODULE_META_DIR="${MODULE_WORK_DIR}/meta${VERSION}"
 	local TOOL_STR="[${MODULE}]"
-	local SOURCE_FLAG="${MODULE_WORK_DIR}/meta/fetched_source.flag"
-	local BUILD_FLAG="${MODULE_WORK_DIR}/meta/build_complete.flag"
-	local COPY_FLAG="${MODULE_WORK_DIR}/meta/copy_complete.flag"
-	local AUTOCLONE_FILE="${MODULE_WORK_DIR}/meta/repos"
+	local SOURCE_FLAG="${MODULE_META_DIR}/fetched_source.flag"
+	local BUILD_FLAG="${MODULE_META_DIR}/build_complete.flag"
+	local COPY_FLAG="${MODULE_META_DIR}/copy_complete.flag"
+	local AUTOCLONE_FILE="${MODULE_META_DIR}/repos"
 	local MD5FILE="${TARGET_BUILD_DIR}/opt/openslx/.mltk/${MODULE}.md5"
-	local PKG_CONTENT_FILE="${MODULE_WORK_DIR}/meta/list_package_contents"
+	local PKG_CONTENT_FILE="${MODULE_META_DIR}/list_package_contents"
+	local VERSION # to protect from name collisions. TODO: Rename to TARGET_VERSION
 	if [ ! -d "${MODULE_DIR}" ]; then
 		if [ -z "$DEPOF" ]; then
 			perror "Module directory for '$MODULE' not found in ${TARGET_DIR}"
@@ -512,7 +515,7 @@ process_module() {
 		fi
 	fi
 	# Write new md5 file if not existent yet
-	mkdir -p "${TARGET_BUILD_DIR}/opt/openslx/.mltk" "${MODULE_WORK_DIR}/meta"
+	mkdir -p "${TARGET_BUILD_DIR}/opt/openslx/.mltk" "${MODULE_META_DIR}"
 	if ! [ -f "$MD5FILE" ]; then
 		md5sum "$MODULE_DIR/module".* > "$MD5FILE" || perror "Could not create $MD5FILE"
 	fi
@@ -542,7 +545,7 @@ process_module() {
 	cde "${MODULE_DIR}"
 	# update kernel version variables before running a module, as the last one might have been the kernel...
 	get_kernel_version
-	# Execute pre_exec before anything else
+	# Execute pre_exec before anything else, might change some of the _DIR vars
 	pre_exec
 	cde "${MODULE_WORK_DIR}"
 	# Fetch source code
