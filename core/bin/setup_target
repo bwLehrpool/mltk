@@ -634,10 +634,10 @@ post_process_target() {
 	local RSYNC_DEST RSYNC_EXCLUDE_LIST entry filelist target_file system_file
 	# default dest and exclude list for non-addons
 	RSYNC_DEST='/'
-	RSYNC_EXCLUDE_LIST="$( mktemp )"
+	RSYNC_EXCLUDE_LIST="$( mktemp "${ROOT_DIR}/tmp/${TARGET}${TARGET_VERSION}-rsync-install-XXXXX" )"
 	# always exclude ld.so.cache, we handle that separately
-	echo 'etc/ld.so*' > "$RSYNC_EXCLUDE_LIST"
-	echo 'autoexec.bat' >> "$RSYNC_EXCLUDE_LIST"
+	echo '/etc/ld.so*' > "$RSYNC_EXCLUDE_LIST"
+	echo '/autoexec.bat' >> "$RSYNC_EXCLUDE_LIST"
 	if [ -e "${TARGET_DIR}/.addon" ]; then
 		# This is an addon, don't sync to / but to dedicated directory
 		RSYNC_DEST="/opt/openslx/addons/${TARGET_BUILD_DIR##*/}"
@@ -654,12 +654,12 @@ post_process_target() {
 				if [ -L "$system_file" ] && [ -L "$target_file" ]; then
 					# Two links with same destination? Skip
 					[ "$( readlink "$system_file" )" == "$( readlink "$target_file" )" ] \
-						&& echo "$target_file" >> "$RSYNC_EXCLUDE_LIST"
+						&& echo "$system_file" >> "$RSYNC_EXCLUDE_LIST"
 				elif [ -L "$system_file" ] || [ -L "$target_file" ]; then
 					: # One is link, the other isn't, do not skip
 				elif cmp -s "$system_file" "$target_file"; then
 					# Two files with same contents? Skip
-					echo "$target_file" >> "$RSYNC_EXCLUDE_LIST"
+					echo "$system_file" >> "$RSYNC_EXCLUDE_LIST"
 				fi
 			fi
 		done
