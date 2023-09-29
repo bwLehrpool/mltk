@@ -1,0 +1,40 @@
+#!/bin/bash
+
+. /opt/openslx/config
+
+[ -z "$SLX_NTP_SERVER" ] && exit 0
+
+declare -a cmd
+if command -v ntpdate &> /dev/null; then
+	cmd=( ntpdate )
+	ntpdate --help 2>&1 | grep -q '\s-B\s' && cmd+=( -B )
+	ntpdate --help 2>&1 | grep -q '\s-t\s' && cmd+=( -t 5 )
+elif command -v ntpdig &> /dev/null; then
+	cmd=( ntpdig )
+	ntpdig --help 2>&1 | grep -q '\s-s\s' && cmd+=( -s )
+	ntpdig --help 2>&1 | grep -q '\s-t\s' && cmd+=( -t 5 )
+	ntpdig --help 2>&1 | grep -q '\s-p\s' && cmd+=( -p 2 )
+elif busybox ntpd --help &> /dev/null; then
+	command -v timeout &> /dev/null && cmd=( timeout 5 )
+	cmd+=( busybox ntpd -q -n -p )
+fi
+
+# Random delay if not run on terminal
+[ -t 0 ] || sleep $(( RANDOM % 60 ))
+
+for srv in $SLX_NTP_SERVER; do
+	"${cmd[@]}" "$srv" || continue
+	# Success
+	echo "Time updated from NTP"
+	command -v hwclock &> /dev/null || exit 0
+	sleep 1
+	if [ "$SLX_BIOS_CLOCK" = "local" ]; then
+		hwclock -l -w || echo "... but could not set BIOS clock to localtime"
+	elif [ "$SLX_BIOS_CLOCK" = "utc" ]; then
+		hwclock -u -w || echo "... but could not set BIOS clock to UTC"
+	fi
+	exit 0
+done
+
+echo 'No NTP server reachable!'
+exit 1

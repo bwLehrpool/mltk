@@ -1,0 +1,7 @@
+# Sync time once a day; script includes a random startup delay
+# Avoid clients running for weeks to run out of sync with the server too much
+
+SHELL=/bin/sh
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/opt/openslx/sbin:/opt/openslx/bin
+
+19 1	* * *	root	/opt/openslx/scripts/cron-ntp
