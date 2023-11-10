@@ -1,4 +1,6 @@
 #!/bin/bash
-REQUIRED_CONTENT_PACKAGES="
-	fspanel
+REQUIRED_INSTALLED_PACKAGES="
+	libxpm-dev
+	libx11-dev
+	x11proto-core-dev
 "

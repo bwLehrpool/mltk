@@ -4,7 +4,10 @@ fetch_source() {
 }
 
 build() {
-	:
+	mkdir -p "${MODULE_BUILD_DIR}/opt/openslx/bin"
+	cde "${MODULE_DIR}/fspanel"
+	gcc -DHAVE_XPM -Wall -g -Os fspanel.c -o "${MODULE_BUILD_DIR}/opt/openslx/bin/fspanel" -lX11 -lXpm \
+		|| perror "Could not compile fspanel"
 }
 
 post_copy() {

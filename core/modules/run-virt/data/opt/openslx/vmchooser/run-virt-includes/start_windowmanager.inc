@@ -89,7 +89,7 @@ start_wm() {
 
 	# run very simple taskbar in case user minimizes VM somehow and doesn't know Alt+Tab
 	if [ -z "$RUNVIRT_TASKBAR_PID" ] || ! kill -0 "$RUNVIRT_TASKBAR_PID"; then
-		( sleep 1; exec fspanel ) &
+		( sleep 1; exec fspanel --background ) &
 		declare -g RUNVIRT_TASKBAR_PID="$!"
 	fi
 
