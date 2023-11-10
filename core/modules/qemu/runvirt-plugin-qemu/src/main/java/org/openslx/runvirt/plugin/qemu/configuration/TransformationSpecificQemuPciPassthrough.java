@@ -199,6 +199,9 @@ public class TransformationSpecificQemuPciPassthrough
 		final List<HostdevPciDeviceAddress> pciDeviceAddresses = TransformationSpecificQemuPciPassthrough
 				.validateParseNvidiaPciIds( args.getVmNvGpuIds0() );
 
+		if ( pciDeviceAddresses.isEmpty() )
+			return; // Nothing to do
+
 		// check if IOMMU support is available on the host
 		if ( !this.getCapabilities().hasHostIommuSupport() ) {
 			final String errorMsg = "IOMMU support is not available on the hypervisor but required for GPU passthrough!";
