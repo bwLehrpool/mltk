@@ -26,7 +26,10 @@ getresolvconf() {
 [ -z "${SLX_NET_SEARCH}" ] && SLX_NET_SEARCH="$( getresolvconf search )"
 # Do not use helper here and check (loosely) for IPv4
 declare -a dns
-dns=( $( awk '$1 == "nameserver" && $2 ~ "\\..*\\..*\\." {print $2}' /etc/resolv.conf ) )
+# sed any reference to localhost by our nat1 IP, in case we run something like
+# dnsmasq locally later on
+dns=( $( awk '$1 == "nameserver" && $2 ~ "\\..*\\..*\\." {print $2}' /etc/resolv.conf \
+	| sed 's/^127.*$/192.168.101.1/' ) )
 [ -z "${dns}" ] && dns=( $SLX_DNS )
 # Fallbacks
 [ -z "${dns}" ] && dns=( "8.8.8.8" "8.8.4.4" )
