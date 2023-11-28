@@ -22,10 +22,14 @@ getips () {
 getresolvconf() {
 	awk -vattr="$1"  '$1 == attr {for (i=2; i<=NF; i++) printf "%s ",$i}' /etc/resolv.conf
 }
-[ -z "${SLX_DNS}" ] && SLX_DNS="$( getresolvconf nameserver )"
 [ -z "${SLX_NET_DOMAIN}" ] && SLX_NET_DOMAIN="$( getresolvconf domain )"
 [ -z "${SLX_NET_SEARCH}" ] && SLX_NET_SEARCH="$( getresolvconf search )"
-[ -z "${SLX_DNS}" ] && SLX_DNS="8.8.8.8 8.8.4.4"
+# Do not use helper here and check (loosely) for IPv4
+declare -a dns
+dns=( $( awk '$1 == "nameserver" && $2 ~ "\\..*\\..*\\." {print $2}' /etc/resolv.conf ) )
+[ -z "${dns}" ] && dns=( $SLX_DNS )
+# Fallbacks
+[ -z "${dns}" ] && dns=( "8.8.8.8" "8.8.4.4" )
 [ -z "${SLX_NET_DOMAIN}" ] && SLX_NET_DOMAIN="$FALLBACK_DOMAIN"
 [ -z "${SLX_NET_SEARCH}" ] && SLX_NET_SEARCH="$FALLBACK_DOMAIN"
 # WINS - if not supplied, try to get it from the search base of our ldap config
@@ -47,7 +51,7 @@ done
 [ -z "$NTPSRV" ] && NTPSRV="0.0.0.0"
 [ -z "${SLX_NET_WINS}" ] && SLX_NET_WINS=$(getips "$SLX_NET_DOMAIN")
 [ -z "${SLX_NET_WINS}" ] && SLX_NET_WINS="0.0.0.0"
-sed "s#%DNSSERVER%#${SLX_DNS}#;s#%DOMAIN%#${SLX_NET_DOMAIN}#;s#%SEARCH%#${SLX_NET_SEARCH}#;s#%WINS%#${SLX_NET_WINS}#;s#%NTPSERVER%#${NTPSRV}#" "${DHCP_NAT_CONF}.template" > "${DHCP_NAT_CONF}.$$"
+sed "s#%DNSSERVER%#${dns[*]}#;s#%DOMAIN%#${SLX_NET_DOMAIN}#;s#%SEARCH%#${SLX_NET_SEARCH}#;s#%WINS%#${SLX_NET_WINS}#;s#%NTPSERVER%#${NTPSRV}#" "${DHCP_NAT_CONF}.template" > "${DHCP_NAT_CONF}.$$"
 
 # Make sure the primary vm running (we most likely never run more than one at a time anyways) always gets the same ip
 echo "static_lease $(echo "$MACADDRPREFIX:$MACADDRSUFFIX" | sed 's/%VMID%/01/') 192.168.101.20" >> "${DHCP_NAT_CONF}.$$"
