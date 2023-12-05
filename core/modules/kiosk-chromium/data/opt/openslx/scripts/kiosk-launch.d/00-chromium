@@ -115,7 +115,7 @@ if [ -n "$SLX_BROWSER_RELOAD_SECS" ] && [ "$SLX_BROWSER_RELOAD_SECS" -gt 0 ]; th
 		if (( current_idle >= SLX_BROWSER_RELOAD_SECS )); then
 			if [ "$activity" = "yes" ] && [ -n "$SLX_BROWSER_INTERACTIVE" ]; then
 				# activity was seen, interactive browser (UI) -> kill session
-				killall chromium-browser
+				killall chromium-browser chromium
 				loginctl terminate-user demo
 			else
 				xdotool windowactivate "$wid"

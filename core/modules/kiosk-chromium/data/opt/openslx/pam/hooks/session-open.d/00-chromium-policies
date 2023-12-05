@@ -24,6 +24,7 @@ create_chromium_policies() {
 		"DeviceAutoUpdateDisabled": true,
 		"DownloadRestrictions": 3,
 		"HomepageLocation": $url,
+		"HomepageIsNewTabPage": false,
 		"NewTabPageLocation": "about:blank",
 		"PasswordManagerEnabled": false,
 		"RestoreOnStartup": 4,
