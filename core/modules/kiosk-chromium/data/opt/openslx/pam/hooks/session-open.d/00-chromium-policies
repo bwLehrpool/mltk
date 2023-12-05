@@ -30,12 +30,21 @@ create_chromium_policies() {
 		"RestoreOnStartup": 4,
 		"RestoreOnStartupURLs": $url,
 		"ShowAppsShortcutInBookmarkBar": false,
+		"ImportBookmarks": false,
 		"TranslateEnabled": false
 	}
 	EOF
 	# Ubuntu uses chromium-browser, Debian chromium (...)
 	ln -nfs "/etc/chromium-browser/policies/managed/kiosk-mode.json" \
 		"/etc/chromium/policies/managed/kiosk-mode.json"
+	# Disable importing bookmarks
+	for i in chromium chromium-browser; do
+		i="/etc/$i/master_preferences"
+		[ -f "$i" ] || continue
+		< "$i"  jq 'del(.distribution.import_bookmarks_from_file) | .distribution.import_bookmarks = false' \
+			> "$i.new"
+		mv -f "$i.new" "$i"
+	done
 }
 
 if [ "${PAM_SERVICE//autologin/}" != "$PAM_SERVICE" -a "$PAM_TTY" = ":0" ]; then
