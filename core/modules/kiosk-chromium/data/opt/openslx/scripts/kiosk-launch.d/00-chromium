@@ -90,23 +90,23 @@ fi
 if [ -n "$SLX_BROWSER_RELOAD_SECS" ] && [ "$SLX_BROWSER_RELOAD_SECS" -gt 0 ]; then
 	(
 	wid=
-	wpid=
+	while [ -z "$wid" ]; do
+		sleep 1
+		[ -z "$wid" ] && wid="$( xdotool search --onlyvisible --class chromium-browser )"
+		[ -z "$wid" ] && wid="$( xdotool search --onlyvisible --class chromium )"
+		[ -z "$wid" ] && wid="$( xdotool search --onlyvisible --class browser )"
+	done
+	readonly wid
+	wpid="$( xprop -id "$wid" | awk '$1 == "_NET_WM_PID(CARDINAL)" {print $3}' )"
+	if [ -z "$wpid" ]; then
+		# logs to ~/.xsession-errors
+		echo "Failed to get the pid of chromium-browser via xprop..."
+		exit 1
+	fi
+	readonly wpid
 	activity=init
+	last=
 	while true; do
-		if [ -z "$wid" ]; then
-			wid="$(xdotool search --onlyvisible --class browser)"
-			[ -z "$wid" ] && sleep 1 && continue
-			readonly wid
-		fi
-		if [ -z "$wpid" ]; then
-			wpid="$( xprop -id "$wid" | awk '$1 == "_NET_WM_PID(CARDINAL)" {print $3}' )"
-			if [ -z "$wpid" ]; then
-				# logs to ~/.xsession-errors
-				echo "Failed to get the pid of chromium-browser via xprop..."
-				exit 1
-			fi
-			readonly wpid
-		fi
 		if [ ! -d "/proc/$wpid" ]; then
 			echo "Process with PID $wpid stopped, exiting auto-reload loop."
 			exit 0
@@ -120,16 +120,20 @@ if [ -n "$SLX_BROWSER_RELOAD_SECS" ] && [ "$SLX_BROWSER_RELOAD_SECS" -gt 0 ]; th
 			else
 				xdotool windowactivate "$wid"
 				xdotool key Alt+Home
+				last="$current_idle"
 				sleep "$SLX_BROWSER_RELOAD_SECS"
 				activity=init
 				continue
 			fi
 		elif [ "$activity" = "init" ]; then
 			activity=no
-		else
+		elif [ -n "$last" ] && (( last > current_idle )); then
 			activity=yes
 		fi
-		sleep "$(( 1 + SLX_BROWSER_RELOAD_SECS - current_idle ))"
+		last="$current_idle"
+		num="$(( SLX_BROWSER_RELOAD_SECS - ( current_idle + 3 ) ))"
+		(( num < 1 )) && num=1
+		sleep "$num"
 	done
 	) &
 fi
