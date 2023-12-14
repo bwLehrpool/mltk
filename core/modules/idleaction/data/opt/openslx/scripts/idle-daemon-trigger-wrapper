@@ -1,0 +1,41 @@
+#!/bin/bash
+
+# Executed by the idle-daemon with the desired action:
+# reboot, poweroff, kexec, suspend
+# Normally this is done directly by the idle-daemon, but
+# we use this wrapper script in exam mode so we can report
+# to slx-admin what is happening, and provide idle-daemon
+# logs so we can reconstruct why, hopefully.
+
+[ "$UID" != 0 ] && exit 1
+
+action="$1"
+
+case "$action" in
+reboot|poweroff|suspend|kexec)
+	sleep 1
+	conf=$( mktemp || echo "/tmp/id-$RANDOM-$RANDOM" )
+	{
+		echo "Command:"
+		ps aux | grep -F idle-daemon
+		echo "Config:"
+		grep -F -e TIMEOUT= -e SCHEDULE= /opt/openslx/config
+		echo "Journal:"
+		journalctl -u idle-daemon.service --no-pager
+		echo "Now:"
+		date
+	} &> "$conf"
+	slxlog -s "exam-idledaemon" "Exam mode: Executing action '$action'" "$conf"
+	if [ "$action" = kexec ]; then
+		systemctl --no-block isolate kexec.target
+	else
+		systemctl --no-block "$action"
+	fi
+	;;
+*)
+	slxlog "exam-idledaemon" "Exam mode: Unknown action '$action' from idle-daemon"
+	exit 1
+	;;
+esac
+
+exit 0

@@ -29,6 +29,7 @@ if [ -z "${SLX_EXAM}" ]; then
 else
 	# Exam mode active
 	CMD="$CMD --min-idle 7200" # Ignore schedule if idle time is lower than 2h
+	CMD="$CMD --cmd /opt/openslx/scripts/idle-daemon-trigger-wrapper" # Use wrapper for slxlog
 	# Add additional times -- We might miss tightly scheduled ones because of --min-idle
 	if [ -n "$SLX_SHUTDOWN_SCHEDULE" ]; then
 		SLX_SHUTDOWN_SCHEDULE="$SLX_SHUTDOWN_SCHEDULE 23:00 4:00"
