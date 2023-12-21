@@ -93,6 +93,10 @@ start_wm() {
 		declare -g RUNVIRT_TASKBAR_PID="$!"
 	fi
 
+	# This script conditionally runs useful stuff, like xfce4's power manager that can handle
+	# backlight control keys, in case it sees there is a backlight
+	/opt/openslx/scripts/start-useful-session-daemons
+
 	if isempty HAVE_WM_CLEANUP_HOOK; then
 		add_cleanup stop_wm
 		declare -rg HAVE_WM_CLEANUP_HOOK=yes

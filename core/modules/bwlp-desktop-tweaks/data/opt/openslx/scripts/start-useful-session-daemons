@@ -1,0 +1,24 @@
+#!/bin/sh
+
+# Check environment
+
+file="/sys/class/backlight/intel_backlight/max_brightness"
+if ! [ -e "$file" ]; then
+	for file in /sys/class/backlight/*/max_brightness; do
+		break
+	done
+fi
+have_backlight=false
+[ -e "$file" ] && have_backlight=true
+
+#
+# Run daemons
+#
+
+# xfce4-power-manager
+
+if $have_backlight; then
+	xfce4-power-manager &
+fi
+
+exit 0
