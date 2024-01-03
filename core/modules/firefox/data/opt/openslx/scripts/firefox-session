@@ -1,6 +1,0 @@
-#!/bin/ash
-
-. /opt/openslx/config
-
-openbox &
-exec /usr/bin/firefox --new-window "$SLX_BROWSER_START_URL"

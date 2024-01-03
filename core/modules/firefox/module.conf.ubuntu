@@ -1,3 +1,0 @@
-#!/bin/bash
-REQUIRED_INSTALLED_PACKAGES="firefox"
-REQUIRED_CONTENT_PACKAGES="firefox"
