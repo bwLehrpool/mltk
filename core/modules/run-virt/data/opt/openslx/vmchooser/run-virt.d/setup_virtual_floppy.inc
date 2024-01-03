@@ -3,13 +3,13 @@
 ##############################################
 ## Functions ##
 setup_virtual_floppy() {
-	declare -rg SLX_FLOPPY_IMG="${TMPDIR}/floppy.img"
+	declare -rg floppy_img="${TMPDIR}/floppy.img"
 	declare -r TMPHOME="${HOME}"
 
 	# create floppy disk file + filesystem
-	dd "if=/dev/zero" "of=${SLX_FLOPPY_IMG}" count=1440 bs=1024
-	chmod 0600 "${SLX_FLOPPY_IMG}"
-	mkfs.fat "${SLX_FLOPPY_IMG}" || mkdosfs "${SLX_FLOPPY_IMG}"
+	dd "if=/dev/zero" "of=${floppy_img}" count=1440 bs=1024
+	chmod 0600 "${floppy_img}"
+	mkfs.fat "${floppy_img}" || mkdosfs "${floppy_img}"
 	
 	if [ -s "${TMPHOME}/.openslx/shares" ]; then
 		$(safesource "${TMPHOME}/.openslx/shares")
@@ -174,7 +174,7 @@ setup_virtual_floppy() {
 		writelog "WARNING: Floppydir contains $size kb of data, will most likely not fit..."
 	fi
 	
-	if ! mcopy -s -i "${SLX_FLOPPY_IMG}" "${FLOPPYDIR}"/* "::/"; then
+	if ! mcopy -s -i "${floppy_img}" "${FLOPPYDIR}"/* "::/"; then
 		writelog "Error creating floppy image from ${FLOPPYDIR}"
 	elif ! $DEBUG; then
 		rm -rf -- "${FLOPPYDIR}"

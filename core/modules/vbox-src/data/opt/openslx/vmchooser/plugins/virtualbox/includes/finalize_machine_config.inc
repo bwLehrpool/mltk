@@ -63,7 +63,7 @@ setup_floppies() {
 	# add the slx floppy to the second drive
 	add_node \
 		'/VirtualBox/Machine//StorageControllers/StorageController/AttachedDevice[@device="1"]' "Image" \
-		"uuid={${SLX_FLOPPY_UUID}}"
+		"uuid={${floppy_uuid}}"
 }
 
 setup_optical_drives() {

@@ -18,7 +18,7 @@ log_config_summary() {
 	writelog ""
 	writelog "\tCD-ROM1:\t\t${CDROM0}"
 	writelog "\tFloppy A:\t\t${FLOPPY0}"
-	writelog "\tFloppy B:\t\t${SLX_FLOPPY_IMG}"
+	writelog "\tFloppy B:\t\t${floppy_img}"
 	writelog "\tShared Folders:\t\t'${HOME_SHARE_NAME}' -> '${HOME_SHARE_PATH}'"
 }
 

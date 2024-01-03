@@ -74,11 +74,11 @@ setup_optical_drives() {
 }
 
 setup_floppies() {
-	local SLX_FLOPPY
-	if isset SLX_FLOPPY_IMG; then
-		SLX_FLOPPY="TRUE"
+	local floppy_bool
+	if isset floppy_img; then
+		floppy_bool="TRUE"
 	else
-		SLX_FLOPPY="FALSE"
+		floppy_bool="FALSE"
 	fi
 	(
 	# Floppies:
@@ -99,10 +99,10 @@ setup_floppies() {
 		HEREEND
 	fi
 	cat <<-HEREEND
-		floppy1.present = "$SLX_FLOPPY"
+		floppy1.present = "$floppy_bool"
 		floppy1.startConnected = "TRUE"
 		floppy1.fileType = "file"
-		floppy1.fileName = "$SLX_FLOPPY_IMG"
+		floppy1.fileName = "$floppy_img"
 	HEREEND
 	) >> "$TMPCONFIG"
 }

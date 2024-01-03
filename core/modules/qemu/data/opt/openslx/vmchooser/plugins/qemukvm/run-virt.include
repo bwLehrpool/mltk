@@ -104,7 +104,7 @@ run_plugin() {
 	notempty VM_MAC_ADDR       && VIRTCMDOPTS+=( "-vmmac0"      "${VM_MAC_ADDR}" )
 	notempty vm_diskfile       && VIRTCMDOPTS+=( "-vmhdd0"      "${vm_diskfile}" )
 	                              VIRTCMDOPTS+=( "-vmfloppy0"   "${FLOPPY_0}" )
-	notempty SLX_FLOPPY_IMG    && VIRTCMDOPTS+=( "-vmfloppy1"   "${SLX_FLOPPY_IMG}" )
+	notempty floppy_img        && VIRTCMDOPTS+=( "-vmfloppy1"   "${floppy_img}" )
 	notempty CDROM_0           && VIRTCMDOPTS+=( "-vmcdrom0"    "${CDROM_0}" )
 	notempty CDROM_1           && VIRTCMDOPTS+=( "-vmcdrom1"    "${CDROM_1}" )
 	notempty SERIAL0 && [ -w "${SERIAL0}" ] \

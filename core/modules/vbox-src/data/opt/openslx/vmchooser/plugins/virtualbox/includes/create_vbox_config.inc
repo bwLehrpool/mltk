@@ -4,7 +4,7 @@
 create_vbox_config() {
 	# generate random machine/floppies UUIDs
 	declare -rg MACHINE_UUID="$(gen_uuid)"
-	declare -rg SLX_FLOPPY_UUID="$(gen_uuid)"
+	declare -rg floppy_uuid="$(gen_uuid)"
 
 	cat <<EOF > "${VBOX_ROOT}/VirtualBox.xml"
 <VirtualBox xmlns="http://www.virtualbox.org/" version="1.12-linux">
@@ -29,7 +29,7 @@ create_vbox_config() {
 		<MediaRegistry>
 			<HardDisks/>
 			<FloppyImages>
-				<Image uuid="{${SLX_FLOPPY_UUID}}" location="${SLX_FLOPPY_IMG}"/>
+				<Image uuid="{${floppy_uuid}}" location="${floppy_img}"/>
 			</FloppyImages>
 		</MediaRegistry>
 		<NetserviceRegistry>
