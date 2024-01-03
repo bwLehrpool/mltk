@@ -10,7 +10,4 @@ if lsmod | grep -q '^nvidia\s'; then
 	fi
 fi
 
-# Seems we can finally always do that; in fact, not doing so seems to crash VMs left and right
-echo -e "# Written by load-gfx-driver\nSLX_VMWARE_3D=yes" >> "/opt/openslx/config"
-
 exit 0
