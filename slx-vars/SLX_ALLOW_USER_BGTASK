@@ -1,0 +1,3 @@
+Read by idle-daemon in its startup script.
+
+If set to 'yes', then logging out doesn't kill a user's background processes. Note that this only affects idle-daemon behavior for now. systemd-logind has a similar feature via logind.conf, which this setting does not affect as of now.

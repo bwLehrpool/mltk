@@ -1,0 +1,1 @@
+If empty or "OFF", the login screen will display as usual. Otherwise, the user "demo" will be logged in automatically, and further behavior is dictated by other variables, such as SLX_AUTOSTART_UUID or SLX_BROWSER_URL.
