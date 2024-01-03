@@ -55,15 +55,6 @@ main() {
 
 	local url_policy_file="/etc/chromium-browser/policies/managed/url-filter.json"
 	if [ -z "$SLX_BROWSER_BLACKLIST" ] && [ -z "$SLX_BROWSER_WHITELIST" ]; then
-		# Legacy format
-		if [ "$SLX_BROWSER_IS_WHITELIST" -eq 1 ]; then
-			SLX_BROWSER_BLACKLIST="*"
-			SLX_BROWSER_WHITELIST="$SLX_BROWSER_URLLIST"
-		else
-			SLX_BROWSER_BLACKLIST="$SLX_BROWSER_URLLIST"
-		fi
-	fi
-	if [ -z "$SLX_BROWSER_BLACKLIST" ] && [ -z "$SLX_BROWSER_WHITELIST" ]; then
 		rm -f -- "$url_policy_file"
 		return
 	fi

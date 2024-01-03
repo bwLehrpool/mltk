@@ -9,15 +9,6 @@ OPTS=()
 [ -n "$SLX_BROWSER_INSECURE" ] && [ "$SLX_BROWSER_INSECURE" -gt 0 ] && OPTS+=("--insecure")
 # On inactivity, reload every X seconds
 [ -n "$SLX_BROWSER_RELOAD_SECS" ] && [ "$SLX_BROWSER_RELOAD_SECS" -gt 0 ] && OPTS+=("--reload-interval" "$SLX_BROWSER_RELOAD_SECS")
-# If we have no black- or whitelist, see if the legacy vars exist
-if [ -z "$SLX_BROWSER_BLACKLIST" ] && [ -z "$SLX_BROWSER_WHITELIST" ] && [ -n "$SLX_BROWSER_URLLIST" ]; then
-	# If set, is a space separated list of URLs or hosts
-	if [ "$SLX_BROWSER_IS_WHITELIST" -gt 0 ]; then
-		SLX_BROWSER_WHITELIST="$SLX_BROWSER_URLLIST"
-	else
-		SLX_BROWSER_BLACKLIST="$SLX_BROWSER_URLLIST"
-	fi
-fi
 
 if [ -n "$SLX_BROWSER_BLACKLIST" ]; then
 	# Turn into file with one entry per line
