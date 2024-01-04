@@ -1,0 +1,1 @@
+If enabled (set to yes), this will add the system-uuid as the DHCP UID (option 0x3d) for all DHCP requests done by the system. This was done by some PXE implementations, so if your DHCP server relies on this identifier to assign consistent IPs to the clients, and you have clients that do this during the PXE step, you might want to enable this.

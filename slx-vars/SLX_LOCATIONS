@@ -1,0 +1,4 @@
+Contains the location IDs of the currently running client's, from closest to furthest.
+As locations are represented as a tree, for example
+Main Campus -> Building 101 -> Basement -> Room 4
+we have a location ID for each of these "path components". They will be provided as a space separated list in this variable, i.e. the ID of "Room 4" comes first, followed by "Basement", and so on.
