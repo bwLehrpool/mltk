@@ -15,7 +15,7 @@ setup_vm_commandline() {
 	if [ ! -d "${VMCHOOSER_DIR}/plugins/${PLUGIN_ID}" ]; then
 		EXIT_TYPE="internal" EXIT_REASON="msg.vm.missing-hypervisor
 Fehlende Unterstützung für '${PLUGIN_DISPLAY_NAME}' im Grundsystem.
-Stellen Sie sicher, dass ihre bwLehrpool-Administration das SLX_ADDON '${PLUGIN_ID}' zur Verfügung stellt.
+Stellen Sie sicher, dass ihre bwLehrpool-Administration das run-virt plugin '${PLUGIN_ID}' zur Verfügung stellt.
 " cleanexit 1
 	fi
 	if ! $(safesource "$VMCHOOSER_DIR/plugins/$PLUGIN_ID/run-virt.include"); then
