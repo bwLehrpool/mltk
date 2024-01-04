@@ -78,7 +78,7 @@ add_ips "OUT" "127.0.0.0/8" 0 "ACCEPT"
 add_ips "OUT" "$SLX_DNS" 53 "ACCEPT"
 add_ips "OUT" "$SLX_DNBD3_SERVERS" 5003 "ACCEPT"
 add_ips "OUT" "$SLX_DNBD3_FALLBACK" 5003 "ACCEPT"
-add_ips "OUT" "$SLX_KCL_SERVERS $SLX_SERVER_IP" 0 "ACCEPT"
+add_ips "OUT" "$SLX_KCL_SERVERS $SLX_PXE_SERVER_IP" 0 "ACCEPT"
 
 # sssd
 sssd="$( < /etc/sssd/sssd.conf  grep -P '^\s*ldap_(backup_)?uri\s*=' | sed -r 's/^[^=]*=//' )"
