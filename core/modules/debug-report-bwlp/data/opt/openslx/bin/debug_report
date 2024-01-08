@@ -131,7 +131,7 @@ echo -n "."
 
 cp -r /var/log/Xorg.0.lo* \
 	/var/log/{auth.log,kdm.log,syslog,messages,user.log,cups,openslx,lightdm} \
-	/tmp/x11vnc-log-* \
+	/tmp/x11vnc-log-* /tmp/remote-access-*/*log* \
 	static/ 2> /dev/null
 cp /proc/{cpu,mem}info /proc/{mtrr,interrupts} /proc/driver/nvidia/{params,registry} static/proc/ 2> /dev/null
 cp /run/openslx/*log* /run/openslx/dmsetup.state static/ 2> /dev/null
