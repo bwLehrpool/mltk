@@ -20,7 +20,7 @@ fi
 # Don't allow locking in exam mode
 . /opt/openslx/config
 if [ -n "$SLX_EXAM" ]; then
-	xmessage "Im Klausurmodus nicht moeglich"
+	xmessage "Im Pruefungsmodus nicht moeglich"
 	exit 0
 fi
 

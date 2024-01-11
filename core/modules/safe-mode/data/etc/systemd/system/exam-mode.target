@@ -1,4 +1,4 @@
 [Unit]
-Description=bwLehrpool Klausurmodus
+Description=bwLehrpool Prüfungsmodus
 Requires=multi-user.target
 After=multi-user.target
