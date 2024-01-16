@@ -1,10 +1,15 @@
 #!/bin/bash
 fetch_source() {
-	local version
+	local version url
 	mkdir -p src
 	cde src
 	for version in $NVIDIA_VERSIONS; do
-		download "${REQUIRED_URL//%VERSION%/$version}" "${version}.run"
+		for url in $REQUIRED_URL; do
+			url="${url//%VERSION%/$version}"
+			pinfo "Downloading '$url'"
+			wget -O "${version}.run" "$url" && continue 2
+		done
+		perror "Could not download installer for $version"
 	done
 }
 
