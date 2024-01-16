@@ -109,7 +109,7 @@ build() {
 		if ! [ -s "${builddir}/supportedchips.html" ]; then
 			pwarning "No supportedchips.html -- THE GOGGLES, THEY DO NOTHING!"
 		else
-			local mode line name dev version
+			local mode line dev version
 			pinfo "Creating drm.cfg"
 			local regex='^<td[^>]*>([0-9A-F]{4})(\s+[0-9A-F]{4}\s+[0-9A-F]{4})?<'
 			mode=0
@@ -120,7 +120,6 @@ build() {
 					mode=1
 				elif [[ "$mode" = 1 ]] && [[ "$line" =~ ^'<td' ]]; then
 					mode=2
-					#name=$(echo "$line" | sed -r 's/^.*<td[^>]*>([^<]+)<.*$/\1/')
 				elif [[ "$mode" = 2 ]] && [[ "$line" =~ $regex ]]; then
 					mode=0
 					dev="${BASH_REMATCH[1]}"
@@ -133,7 +132,6 @@ build() {
 					fi
 				else
 					mode=0
-					name=
 					dev=
 				fi
 			done < "${builddir}/supportedchips.html" >> "$drmfile"
