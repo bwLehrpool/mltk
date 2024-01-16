@@ -8,5 +8,6 @@ REQUIRED_CONTENT_PACKAGES="
 
 REQUIRED_INSTALLED_PACKAGES="
 	libvdpau1
+	libglvnd-dev
 "
 
