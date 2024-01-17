@@ -20,12 +20,6 @@ if [ "$1" = "suspend" ]; then
 	# If we're about to suspend, consider reboot and shutdown too - we
 	# need to wake up to execute these
 	SCHEDULE="$SCHEDULE $SLX_SHUTDOWN_SCHEDULE $SLX_REBOOT_SCHEDULE"
-	# Delete this so the idle timeout will be reset
-	# Otherwise a user might wake the PC up right before
-	# cron fires the idle action check, which could
-	# shut the machine down right away because the timestamp
-	# from the file looks quite old
-	rm -f -- /run/openslx/idlehint
 fi # suspend == true
 
 SCHEDULE=$( echo ${SCHEDULE} ) # poor man's trim
