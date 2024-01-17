@@ -23,7 +23,7 @@ loginctl --help 2>&1 | grep -q -- '--no-legend' && LEGEND="--no-legend"
 for SESSION in $(loginctl $LEGEND | awk '{print $1}'); do
 	unset Display Remote State Class
 	eval "$(loginctl -p Display -p Remote -p State -p Class -p Name show-session "$SESSION")"
-	if [ "$Display" = ":0" ] && [ "$Remote" = "no" ] && [ "$State" = "active" -o "$State" = "online" ] && [ "$Class" = "user" ]; then
+	if [ "$Display" = ":0" ] && [ "$Remote" = "no" ] && [[ "$State" = "active" || "$State" = "online" ]] && [ "$Class" = "user" ]; then
 		USED=1 # We only consider sessions on the primary display, which should always be the case
 		break # keeps $Name set!
 	fi
@@ -117,7 +117,10 @@ fi
 [ -e "/run/openslx/no-ram-warning" ] && exit 0
 
 WARN=
-if [ "$SWAP_FREE" -gt 0 ] && [ "$SWAP_FREE" -lt 500000 ]; then # less than 500MB swap
+memfreep=$(( MEM_FREE / (MEM_SIZE / 100) ))
+swapratio=$(( (SWAP_SIZE - SWAP_FREE) * 100 / MEM_FREE ))
+if (( SWAP_SIZE > 0 && SWAP_FREE < 500000 && (memfreep < 10 || swapratio > 100) )) || # less than 500MB swap free and (memfree < 10% or more swap usage than free memory)
+	(( SWAP_SIZE == 0 && MEM_FREE < 1200000 )); then # no swap and less than 1.2GB available
 	WARN="$WARN
 Der Arbeitsspeicher des Computers ist fast voll.
 The computer is running out of RAM."
