@@ -53,7 +53,7 @@ build() {
 	cp "${MODULE_WORK_DIR}/src/$VMWARE_BUNDLE_FILE" "${MODULE_BUILD_DIR}/$VMWARE_BUNDLE_FILE"
 	local KVER2=$TARGET_KERNEL_SHORT
 	[ ${#KVER2} -gt 4 ] && KVER2=${KVER2%.*}
-	git clone --depth 1 -b "w${OFFICIAL_VERSION}-k${KVER2}" "https://github.com/mkubecek/vmware-host-modules.git" "${MODULE_BUILD_DIR}/prepatched" \
+	git clone --depth 1 -b "workstation-${OFFICIAL_VERSION}" "https://github.com/mkubecek/vmware-host-modules.git" "${MODULE_BUILD_DIR}/prepatched" \
 		&& pinfo "Have prepatched kernel modules"
 	if ! [ -d "${MODULE_BUILD_DIR}/prepatched" ]; then
 		# copy required patches
