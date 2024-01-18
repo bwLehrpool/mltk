@@ -3,6 +3,7 @@
 # by systemd and ignores further add events. So if you think this problem doesn't exist anymore, make sure
 # you're not just lucky and not hitting this issue, and also make sure you understand what the initial problem
 # was. I assume it's something to with switching from initrd to final root, but this isn't worth the effort tbh.
-#ACTION=="add", SUBSYSTEM=="net", KERNEL=="br0|br-nic-*", TAG+="systemd", ENV{SYSTEMD_ALIAS}="/sys/subsystem/net/devices/$name", ENV{SYSTEMD_WANTS}="network-interface@$name.service"
+#ACTION=="add", SUBSYSTEM=="net", KERNEL=="br0", TAG+="systemd", ENV{SYSTEMD_ALIAS}="/sys/subsystem/net/devices/$name", ENV{SYSTEMD_WANTS}="network-interface@$name.service"
 # So use a more crude approach that triggers every time (consecutive invocations shouldn't do anything)
-ACTION=="add", SUBSYSTEM=="net", KERNEL=="br0|br-nic-*", RUN+="/bin/systemctl --no-block start network-interface@$name.service"
+ACTION=="add", SUBSYSTEM=="net", KERNEL=="br0", RUN+="/bin/systemctl --no-block start network-interface@$name.service"
+# Also don't match br-nic-* here, it's conditionally started via systemd-bridge_additional_nics
