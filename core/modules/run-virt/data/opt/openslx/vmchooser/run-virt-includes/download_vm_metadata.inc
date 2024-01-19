@@ -7,7 +7,8 @@
 # New mode: uuid in xml _and_ vmx given via http.
 download_metadata() {
 	local EXTRA_ERROR=
-	declare -rg TMPCONFIG="$CONFDIR/vmx"
+	local DOWNLOADED_VMX="$CONFDIR/vmx"
+	declare -rg TMPCONFIG="$CONFDIR/vmx_modified"
 
 	# Run hooks
 	if run_hooks "download" "$CONFDIR"; then
@@ -17,14 +18,21 @@ download_metadata() {
 		writelog "Downloading metadata via default method."
 		download_metadata_default
 	fi
-	[ -s "$TMPCONFIG" ] && return 0
-	# Seems we are in legacy mode, which is no longer supported. Warn user and exit
-	EXIT_TYPE="user" EXIT_REASON="msg.vm.no-metadata
+	if ! [ -s "$DOWNLOADED_VMX" ]; then
+		# Seems we are in legacy mode, which is no longer supported. Warn user and exit
+		EXIT_TYPE="user" EXIT_REASON="msg.vm.no-metadata
 Die Metadaten der Lehrumgebung konnten nicht vom bwLehrpool-Satelliten
-heruntergeladen werden. Bitte versuchen Sie es in wenigen Minuten erneut
+heruntergeladen werden, oder sind leer. Bitte versuchen Sie es in wenigen Minuten erneut
 und wenden Sie sich an den Support, wenn das Problem bestehen bleibt.
-$EXTRA_ERROR
-" cleanexit 1
+$EXTRA_ERROR" cleanexit 1
+	fi
+	if ! cp "$DOWNLOADED_VMX" "$TMPCONFIG"; then
+		EXIT_TYPE="user" EXIT_REASON="msg.vm.copy-metadata
+Die Metadaten der Lehrumgebung konnten nicht umkopiert werden.
+Wenden Sie sich an den Support, wenn das Problem bestehen bleibt.
+$EXTRA_ERROR" cleanexit 1
+	fi
+	return 0
 }
 
 download_metadata_default() {
@@ -45,10 +53,10 @@ download_metadata_default() {
 	RET=$?
 	if [ "$RET" = 0 ] && [ -n "$ERRCODE" ] && [ "$ERRCODE" -ge 200 ] && [ "$ERRCODE" -lt 300 ]; then
 		# Success, see if data is usable
-		if tar -C "$CONFDIR" -x -f "$TMPFILE" && [ -s "$TMPCONFIG" ]; then
+		if tar -C "$CONFDIR" -x -f "$TMPFILE" && [ -s "$DOWNLOADED_VMX" ]; then
+			rm -rf -- "$TMPFILE"
 			return 0
 		fi
-		rm -rf -- "$TMPFILE"
 		writelog "Extracting metadata.tgz failed. Cannot start VM."
 	else
 		writelog "Downloading metadata.tgz failed (RET=$RET, HTTP=$ERRCODE). Cannot start VM.
