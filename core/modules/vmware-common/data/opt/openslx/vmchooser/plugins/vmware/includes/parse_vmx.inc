@@ -7,14 +7,16 @@ parse_vmx() {
 	# it before continuing with filling in the gaps
 	local TMPTMPCONFIG="$(mktemp)"
 	grep -E '^\s*(#|[^=]+=[^"]*"[^"]*"\s*$|[^=]+=[^"]+$|$)' "$TMPCONFIG" > "$TMPTMPCONFIG"
-	if ! diff -q "$TMPCONFIG" "$TMPTMPCONFIG"; then
+	if ! cmp -s "$TMPCONFIG" "$TMPTMPCONFIG"; then
 		# file was corrupted, log it
 		writelog "'$TMPCONFIG' had bad syntax and was pruned by the post-download sanitizer!"
-		slxlog -s "virt-vmware-vmx-corrupt" "Downloaded .vmx for '$IMGUUID' has a corrupted format!" "$TMPCONFIG"
+		slxlog -s "virt-vmware-vmx-corrupt" "Downloaded .vmx for '$IMGUUID' has lines with invalid syntax!" "$TMPCONFIG"
+		mv -f -- "$TMPTMPCONFIG" "$TMPCONFIG"
+	else
+		rm -f -- "$TMPTMPCONFIG"
 	fi
-	mv -f -- "$TMPTMPCONFIG" "$TMPCONFIG"
 
-	writelog "Parsing virtual machine description file..."
+	writelog "Parsing virtual machine description file for hwVersion..."
 	local -i HW_VERSION=$(grep -i -m1 '^virtualHW.version *= *' "${TMPCONFIG}" | awk -F '=' '{print $2}' | sed -r 's/[^0-9]//g')
 	if notempty HW_VERSION; then
 		declare -g VM_HW_VERSION="${HW_VERSION}"
