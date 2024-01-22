@@ -55,7 +55,7 @@ EOF
 
 ssh_banner() {
 	# Visual: ssh banner
-	echo "+ - - - - PRÜFUNGSMODUS AKTIV - - - - +" >> "/etc/issue.net"
+	echo "+ - - -  PRÜFUNGSMODUS  AKTIV  - - - +" >> "/etc/issue.net"
 	echo "++++++++++++++++++++++++++++++++++++++" >> "/etc/issue.net"
 }
 
