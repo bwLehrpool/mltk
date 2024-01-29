@@ -4,11 +4,9 @@ Wants=tmp.target
 After=tmp.target
 # Because we might mount something to /tmp/virt there, which we use for ID44 calculation
 After=run-virt-env.service
-# This one needs the data we gather
-Before=system-check.service
 
 [Service]
 Type=oneshot
-ExecStart=/opt/openslx/scripts/systemd-hardware_stats
+ExecStart=/opt/openslx/scripts/systemd-gather_hw_info
 RemainAfterExit=yes
 

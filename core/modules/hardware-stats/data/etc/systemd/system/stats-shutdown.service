@@ -1,7 +1,7 @@
 [Unit]
 Description=Send shutdown event to boot server
 # Try this as a dedicated service in addition to the ExecStop=
-# entry in the hardware-stats.service, as that one sometimes
+# entry in the gather-hw-info.service, as that one sometimes
 # doesn't trigger/reach the server :-(
 Wants=network.target
 Before=shutdown.target

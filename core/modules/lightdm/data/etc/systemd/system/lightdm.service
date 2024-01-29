@@ -1,6 +1,7 @@
 [Unit]
 Description=LightDM Display Manager
 Conflicts=getty@tty7.service
+Wants=system-check.service
 After=dev-tty7.device systemd-user-sessions.service load-gfx-driver.service
 After=setup-slx-addon@vmware.service setup-slx-addon@virtualbox.service
 # So the hostname won't change later on an mess up X11 access

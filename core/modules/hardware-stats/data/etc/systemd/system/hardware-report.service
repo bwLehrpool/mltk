@@ -1,7 +1,7 @@
 [Unit]
 Description=Send hardware information to boot server
-After=hardware-stats.service
-Wants=hardware-stats.service
+After=gather-hw-info.service
+Wants=gather-hw-info.service
 
 [Service]
 Type=oneshot
