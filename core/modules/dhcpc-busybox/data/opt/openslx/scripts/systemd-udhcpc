@@ -12,11 +12,6 @@ fi
 . /opt/openslx/config
 primary="${SLX_BRIDGE:-br0}"
 
-if [ "${SLX_DHCP_SECONDARY:-yes}" != "yes" ]; then
-	echo "No DHCP on other NICs requested. Doing nothing."
-	exit 0
-fi
-
 if [ "$primary" = "$net_if" ] && [ "$SLX_NET_DHCP_UUID" = "yes" ]; then
 	uid="$( dmidecode -s system-uuid | sed -r 's/^(..)(..)(..)(..)-(..)(..)-(..)(..)-(....)-/00\4\3\2\1\6\5\8\7\9/' )"
 	if [ "${#uid}" = 34 ]; then
