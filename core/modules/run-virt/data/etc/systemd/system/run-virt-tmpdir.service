@@ -1,0 +1,9 @@
+[Unit]
+Description=Sets up /tmp/virt virtualization scratch space
+After=tmp.target network.target
+DefaultDependencies=no
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/opt/openslx/scripts/systemd-run_virt_tmpdir
