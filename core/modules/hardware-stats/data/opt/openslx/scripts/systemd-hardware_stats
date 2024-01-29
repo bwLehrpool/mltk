@@ -5,8 +5,8 @@
 # This script gathers information about the hardware and configuration and reports it back to the server
 
 . /opt/openslx/config
-export LANG=C
-export LC_ALL=C
+export LANG=C.UTF-8
+export LC_ALL=C.UTF-8
 
 touch "/tmp/hw-delete-list" || exit 10
 chmod 0600 "/tmp/hw-delete-list" || exit 11

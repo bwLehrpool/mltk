@@ -19,8 +19,8 @@ int main(int argc, char **argv)
 	char * const nenv[] = {
 		"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/openslx/sbin:/opt/openslx/bin",
 		"HOME=/root",
-		"LC_ALL=C",
-		"LANG=C",
+		"LC_ALL=C.UTF-8",
+		"LANG=C.UTF-8",
 		0
 	};
 

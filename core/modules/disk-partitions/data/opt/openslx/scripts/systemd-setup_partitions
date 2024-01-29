@@ -134,7 +134,7 @@ mount_temp () {
 	chmod a+rwxt /tmp
 	# Move stuff from working directory, which is old /tmp, to new /tmp just mounted
 	mv ./* ./.[!.]* ./..?* /tmp/ 2> /dev/null
-	local OLD=$(LANG=C ls -alh | grep -v -E ' \.\.?$' | grep -v '^total')
+	local OLD=$(LANG=C.UTF-8 ls -alh | grep -v -E ' \.\.?$' | grep -v '^total')
 	[ -n "$OLD" ] && echo -- "Leftovers:" && echo -- "$OLD"
 	cd "$PRE" || true
 }
