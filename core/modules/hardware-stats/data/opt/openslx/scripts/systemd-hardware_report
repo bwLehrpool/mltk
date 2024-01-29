@@ -16,8 +16,9 @@ report_hardware_info() {
 		return 1
 	fi
 	hwreport="/run/hwreport"
-	if [ ! -s "$hwreport" ]; then
-		echo "Missing hwreport file: $hwreport"
+	jsonfile="/run/hwreport.json"
+	if ! [ -s "$hwreport" ] && ! [ -s "$jsonfile" ]; then
+		echo "Missing hwreport file: $hwreport AND $jsonfile"
 		# TODO send data without?
 		return 1
 	fi
@@ -50,14 +51,12 @@ report_hardware_info() {
 	# Get IP/subnet size
 	local primary="${SLX_BRIDGE:-br0}"
 	subnet="$( ip -o -f inet addr show "$primary" | awk '/scope global/ {print $4}' )"
-	# Finally, new json-based reporting
-	jsonfile="$( mktemp )"
-	if ! python3 /opt/openslx/system-check/collect_hw_info_json.py -p > "$jsonfile"; then
-		echo -n "" > "$jsonfile"
-	fi
+	# just assume the uuid/mac dumped are valid here (its checked often enough :))
+	[ -s "$hwreport" ] || touch "$hwreport"
+	[ -s "$jsonfile" ] || touch "$jsonfile"
+
 	# Bail out if a shutdown was triggered and submitted in the meantime
 	[ -e /run/openslx/shutdown.mutex ] && exit 0
-	# just assume the uuid/mac dumped are valid here (its checked often enough :))
 
 	# got everything, get the last infos
 	uptime=$(grep -oE '^[0-9]+' /proc/uptime)

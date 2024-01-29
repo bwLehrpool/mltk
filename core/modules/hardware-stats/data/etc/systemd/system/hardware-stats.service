@@ -1,6 +1,6 @@
 [Unit]
 Description=Gather hardware information about this machine
-Wants=tmp.target system-check.service
+Wants=tmp.target
 After=tmp.target
 # Because we might mount something to /tmp/virt there, which we use for ID44 calculation
 After=run-virt-env.service

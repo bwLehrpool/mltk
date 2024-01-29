@@ -3,6 +3,7 @@ Description=Report system checks
 Before=display-manager.service
 Wants=network-online.target
 After=network-online.target
+After=hardware-stats.service
 
 [Service]
 Type=oneshot

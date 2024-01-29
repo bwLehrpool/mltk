@@ -5,48 +5,41 @@
 # This script gathers information about the hardware and configuration and reports it back to the server
 
 . /opt/openslx/config
+
 export LANG=C.UTF-8
 export LC_ALL=C.UTF-8
 
-touch "/tmp/hw-delete-list" || exit 10
-chmod 0600 "/tmp/hw-delete-list" || exit 11
-echo -n "" > "/tmp/hw-delete-list" || exit 12
+declare -rg REPORTFILE="/run/hwreport"
+declare -rg jsonfile="/run/hwreport.json"
+
+# new json-based reporting, run first in background and wait at the end of script
+# This is only supported by Sat3.11, released 12-2023, so keep creating the old format
+# too below this call, until we don't support 3.10 anymore.
+if ! python3 /opt/openslx/hardware-stats/collect_hw_info_json.py -p > "$jsonfile"; then
+	echo -n "" > "$jsonfile"
+fi &
+
+tmpmask="/tmp/hwreport-$$."
 
 mktemp() {
 	local FILE=
 	if [ -x /bin/mktemp ]; then
-		FILE=$(/bin/mktemp)
+		FILE=$( /bin/mktemp "${tmpmask}XXXXXXXX" )
 	fi
 	if [ -z "$FILE" ] && [ -x /opt/openslx/bin/mktemp ]; then
-		FILE=$(/opt/openslx/bin/mktemp)
+		FILE=$( /opt/openslx/bin/mktemp "${tmpmask}XXXXXXXX" )
 	fi
 	if [ -z "$FILE" ]; then
-		local FN DIR
-		for DIR in "tmp" "tmp" "tmp" "run/user/$UID" "run"; do
-			FN="/${DIR}/${RANDOM}-${$}-${UID}-$(date +%N)"
-			[ -e "$FN" ] && continue
-			touch "$FN" || continue
-			chmod 0600 "$FN" || continue
-			echo -n "" > "$FN" || continue
-			FILE="$FN"
-			break
-		done
+		FILE="${tmpmask}$RANDOM$RANDOM$$"
 	fi
-	if [ -z "$FILE" ]; then
-		# Uhm...
-		echo "/dev/null"
-		exit 1
-	fi
-	echo "$FILE" >> "/tmp/hw-delete-list"
 	echo "$FILE"
 }
 
-# Can't just place all temp file names in a variable since mktemp usually runs in a subshell
-cleanup() {
-	local FILE=
-	while read -r FILE _ || [ -n "$FILE" ]; do
-		[ -f "$FILE" ] && rm -f -- "$FILE"
-	done < "/tmp/hw-delete-list"
+# Run on exit
+cleanup_exit() {
+	wait
+	rm -f -- "$tmpmask"* # no space!
+	exit 0
 }
 
 slxfdisk() {
@@ -265,7 +258,6 @@ HW_MODEL=$(bashesc "$HW_MODEL")
 ################################################################################
 # Save raw data to report file
 #
-REPORTFILE="/run/hwreport"
 cat > "$REPORTFILE" <<-EOF
 ############################### CPU #####################################
 Sockets:       $CPUSOCKETS
@@ -313,6 +305,4 @@ HW_CORES='${CPUCORES}'
 HW_THREADS='${VCORES}'
 HORST
 
-cleanup
-exit 0
-
+cleanup_exit

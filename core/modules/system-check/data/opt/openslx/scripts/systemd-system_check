@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Kind of a generic message generation thing. Hooks in /opt/openslx/messages.d
+# Kind of a generic message generation thing. Hooks in /opt/openslx/system-check/hooks.d
 # are passed the location of the lightdm warning file on execution. They can either
 # ignore it (e.g. for remote logging purposes) or just append tags to that file.
 # The tags are defined in /opt/openslx/system-check/tags and will be replaced

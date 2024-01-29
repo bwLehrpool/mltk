@@ -4,7 +4,7 @@ fetch_source() {
 }
 
 build() {
-	local dir="${MODULE_BUILD_DIR}/opt/openslx/system-check"
+	local dir="${MODULE_BUILD_DIR}/opt/openslx/hardware-stats"
 	mkdir -p "$dir"
 	cde "$dir"
 	local file
