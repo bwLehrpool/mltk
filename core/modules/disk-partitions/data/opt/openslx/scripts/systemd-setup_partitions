@@ -208,20 +208,22 @@ fi
 echo "Partitions:"
 cat "$PARTITION_FILE"
 
+linux_pid=
 if [ -n "$DO_LINUX" ]; then
 	# Put detected linux partitions (83) into /etc/fstab with "noauto"
 	echo "Adding existing linux partitions to fstab"
 	for PART_DEV in $(dev_find_partitions "83"); do
 		mkdir -p "/media/${PART_DEV#/dev/}"
 		echo -e "${PART_DEV}\t/media/${PART_DEV#/dev/}\tauto\t\tnoauto,noexec\t 0 0" >> "/etc/fstab"
-	done
+	done &
+	linux_pid=$!
 fi
 
 if [ -n "$DO_SWAP" ]; then
 	# Check for standard swap partitions and make them available to the system
 	echo "Enabling existing swap partitions"
 	HAVE_SWAP=no
-	for PART_DEV in $(dev_find_partitions "82" "0657fd6d-a4ab-43c4-84e5-0933c84b4f4f"); do
+	for PART_DEV in $(dev_find_partitions --rw "82" "0657fd6d-a4ab-43c4-84e5-0933c84b4f4f"); do
 		if swapon -p 10 "$PART_DEV"; then
 			HAVE_SWAP=yes # low priority, in case we have zram swap, prefer that
 			echo -e "$PART_DEV\tswap\t\tswap\t\tdefaults\t 0 0" >> "/etc/fstab"
@@ -240,7 +242,7 @@ if [ -n "$DO_TMP" ]; then
 	# corrupted
 	echo "Mounting ID44 temp partitions"
 	HAVE_TEMP=no
-	for PART_DEV in $(dev_find_partitions "44" "87f86132-ff94-4987-b250-444444444444"); do
+	for PART_DEV in $(dev_find_partitions --rw "44" "87f86132-ff94-4987-b250-444444444444"); do
 		# check for supported filesystem and formatter
 		if format_disk "$PART_DEV"; then
 			mount_temp "${MOUNT_OPTIONS_SET_BY_FORMAT_DISK[@]}" "$PART_DEV" || continue
@@ -259,7 +261,7 @@ if [ -n "$DO_PERSISTENT" ]; then
 	HAVE_PARTITION_45=no
 	get_mount_options "ext4" mopts
 	# try all the ID45 partitions until one succeeds, from large to small
-	for PART_DEV in $(dev_find_partitions "45" "87f86132-ff94-4987-b250-454545454545"); do
+	for PART_DEV in $(dev_find_partitions --rw "45" "87f86132-ff94-4987-b250-454545454545"); do
 		mkdir -p "$MOUNT_POINT_45"
 		# Let's see if this is an ext4 partition and if so, whether it has the proper size
 		# Any fixing should happen first
@@ -343,6 +345,8 @@ if [ "$HAVE_PARTITION_45" = "yes" ]; then
 elif [ -d "$MOUNT_POINT_45" ]; then
 	rm -f -- "$MOUNT_POINT_45"
 fi
+
+[ -n "$linux_pid" ] && wait "$linux_pid"
 
 mount -a
 
