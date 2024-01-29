@@ -1,0 +1,53 @@
+#!/bin/bash
+
+# This tries to call growfs helpers (xfs_growfs, resize2fs, ...) to resize
+# the root filesystem mounted on $NEWROOT to the maximum size of the backing
+# disk partition (done by dmsetup-slx-device).
+
+. /opt/openslx/config
+
+if [ -z "$SLX_DNBD3_DEVICE_COW" ]; then
+	SLX_DNBD3_DEVICE_COW="$( awk '$2 == "/" {print $1; exit}' /proc/mounts )"
+fi
+if ! [ -b "$SLX_DNBD3_DEVICE_COW" ]; then
+	echo "Cannot grow rootfs on '$SLX_DNBD3_DEVICE_COW' - not a block device"
+	exit 0
+fi
+
+resize_rootfs() {
+	# First let's check what filesystem it is
+	local fstype helper
+	declare -a options
+	fstype="$(blkid "$SLX_DNBD3_DEVICE_COW" | grep -oE 'TYPE=\S+')"
+	if [ -z "$fstype" ]; then
+		echo "Failed to detect filesystem on '$SLX_DNBD3_DEVICE_COW' - ignoring."
+		return 1
+	fi
+	fstype="${fstype#TYPE=}"
+	fstype="${fstype//\"/}"
+	case "$fstype" in
+	ext?)
+		helper="resize2fs"
+		options=()
+		;;
+	xfs)
+		helper="xfs_growfs"
+		options=( "-d" )
+		;;
+	*)
+		echo "'$fstype' not supported - ignoring."
+		return 1
+		;;
+	esac
+	if ! hash "${helper}" &> /dev/null; then
+		echo "'$fstype' is supported, but cannot find helper binary - ignoring."
+		return 1
+	fi
+	if ! "${helper}" "${options[@]}" "$SLX_DNBD3_DEVICE_COW"; then
+		echo "Failed to run '${helper}' on '${SLX_DNBD3_DEVICE_COW}'."
+		return 1
+	fi
+	return 0
+}
+
+resize_rootfs
