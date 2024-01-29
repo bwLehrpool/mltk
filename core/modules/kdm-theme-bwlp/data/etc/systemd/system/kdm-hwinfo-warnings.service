@@ -1,9 +1,0 @@
-[Unit]
-Description=Patch warnings into KDM theme
-After=hardware-stats.service mount-vm-store.service
-Before=kdm.service
-
-[Service]
-Type=oneshot
-ExecStart=/opt/openslx/scripts/systemd-kdm_hwinfo_warnings
-RemainAfterExit=yes
