@@ -156,7 +156,7 @@ mount_temp_fallback () {
 wait_for_udev () {
 	local upid ctr hdd
 	hdd=
-	if [ "x$1" = "x--hdd" ]; then
+	if [ "$1" = "--hdd" ]; then
 		hdd=true
 		shift
 	fi
@@ -183,10 +183,13 @@ has_hdd () {
 	[ -n "$( ls -U -1 /dev/disk/by-path/ )" ]
 }
 
-wait_for_udev 2
-
-if ! has_hdd; then
-	wait_for_udev --hdd 4
+if ! [ -s "/run/openslx/dmsetup.state" ]; then
+	# If above file exists we should've waited for HDDs to appear in stage 3 already,
+	# so don't just wait for udev for two+ seconds for no reason.
+	wait_for_udev 2
+	if ! has_hdd; then
+		wait_for_udev --hdd 4
+	fi
 fi
 
 declare -A known=
