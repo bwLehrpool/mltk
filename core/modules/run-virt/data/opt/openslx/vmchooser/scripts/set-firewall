@@ -166,25 +166,28 @@ while read -r DIR DEST PORT ACTION GARBAGE || [ -n "$DIR" ]; do
 		IPLINE2+=" --dport $PORT"
 	fi
 	IPLINE2+=" -j $ACTION"
+	with=
+	[ "$ACTION" = "REJECT" ] && with="--reject-with tcp-reset"
 	# IPv6?
 	if ! [[ $DEST =~ $V4 ]]; then
 		if [ "$PORT" = 0 ]; then
+			[ -n "$with" ] && ip6tables $IPLINE1 -p tcp $IPLINE2 $with
 			ip6tables $IPLINE1 $IPLINE2
 		else
-			ip6tables $IPLINE1 -p tcp $IPLINE2
+			ip6tables $IPLINE1 -p tcp $IPLINE2 $with
 			ip6tables $IPLINE1 -p udp $IPLINE2
 		fi
 	fi
 	# IPv4
 	if ! [[ $DEST =~ $V6 ]]; then
 		if [ "$PORT" = 0 ]; then
+			[ -n "$with" ] && iptables $IPLINE1 -p tcp $IPLINE2 $with
 			iptables $IPLINE1 $IPLINE2
 		else
-			iptables $IPLINE1 -p tcp $IPLINE2
+			iptables $IPLINE1 -p tcp $IPLINE2 $with
 			iptables $IPLINE1 -p udp $IPLINE2
 		fi
 	fi
 done < "$RULES"
 
 exit 0
-
