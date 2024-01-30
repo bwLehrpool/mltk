@@ -1,6 +1,5 @@
 [Unit]
 Description=Setup local disk partitions (persistent, swap)
-After=systemd-udev-settle.service systemd-udevd.service
 Wants=tmp.target persistent.target
 Before=persistent.target
 DefaultDependencies=no
