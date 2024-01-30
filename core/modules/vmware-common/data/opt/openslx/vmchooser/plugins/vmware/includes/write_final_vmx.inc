@@ -344,9 +344,7 @@ write_final_vmx() {
 	END {
 		for (k in a) printf "%s = %s\n", k, a[k];
 	}' "${TMPCONFIG}" > "${TMPCONFIG}.tmp" \
-		&& mv -f "${TMPCONFIG}.tmp" "${TMPCONFIG}"
-
-	sort -o "${TMPCONFIG}" "${TMPCONFIG}"
+		&& sort "${TMPCONFIG}.tmp" > "${TMPCONFIG}"
 
 	# At last: Let's copy it to $VM_CONF_DIR/run-vmware.conf
 	if cp -p "${TMPCONFIG}" "${VM_RUN_FILE}"; then
