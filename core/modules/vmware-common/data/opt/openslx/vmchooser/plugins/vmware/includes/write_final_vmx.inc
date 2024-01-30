@@ -40,9 +40,9 @@ setup_ethernet() {
 			# Remove lines that could break things
 			sed -i "/^${eth}\.connectionType/Id;/^${eth}\.present/Id" "${TMPCONFIG}"
 			# Set up devType
-			devline=
 			if ! grep -q -i "^${eth}\.virtualDev" "${TMPCONFIG}" && [ -n "$devtype" ]; then
 				devline="${eth}.virtualDev = "'"'"${devtype}"'"'
+				echo "${devline}" >> "${TMPCONFIG}"
 			fi
 			cat >> "${TMPCONFIG}" <<-HEND
 			${eth}.connectionType = "custom"
@@ -50,7 +50,6 @@ setup_ethernet() {
 			${eth}.vnet = "vmnet${vmnet}"
 			${eth}.addressType = "static"
 			${eth}.address = "${mac}"
-			${devline}
 			HEND
 		done
 	fi
@@ -336,7 +335,7 @@ write_final_vmx() {
 	finalize_hardware
 
 	# Killing duplicate entries; always keep last value:
-	awk -F= '{
+	awk -F= 'NF{
 		b = $0;
 		gsub(/^[ \t]+|[ \t]+$/, "", $1);
 		gsub(/^[ \t]*[^ \t]+[ \t]*=[ \t]*|[ \t]+$/, "", b);
@@ -346,6 +345,8 @@ write_final_vmx() {
 		for (k in a) printf "%s = %s\n", k, a[k];
 	}' "${TMPCONFIG}" > "${TMPCONFIG}.tmp" \
 		&& mv -f "${TMPCONFIG}.tmp" "${TMPCONFIG}"
+
+	sort -o "${TMPCONFIG}" "${TMPCONFIG}"
 
 	# At last: Let's copy it to $VM_CONF_DIR/run-vmware.conf
 	if cp -p "${TMPCONFIG}" "${VM_RUN_FILE}"; then
