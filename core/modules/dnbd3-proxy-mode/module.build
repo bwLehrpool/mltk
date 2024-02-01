@@ -8,5 +8,6 @@ build() {
 }
 
 post_copy() {
-	useradd --system --user-group --no-create-home "dnbd3"
+	useradd --system --user-group --no-create-home --groups "fuse" "dnbd3" \
+		|| perror "Cannot create user dnbd3 with supp. group fuse"
 }
