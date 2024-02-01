@@ -102,8 +102,9 @@ useradd () {
 		[ "$pw" != "#" ] && usr_setpw "$name" "$pw"
 		return 0 # Nothing to do
 	fi
-	command useradd "${_USER_EXTRA_OPTS[@]}" "${opts[@]}" || perror "useradd failed"
+	command useradd "${_USER_EXTRA_OPTS[@]}" "${opts[@]}" || perror "useradd ${opts[*]} failed"
 	[ "$pw" != "#" ] && usr_setpw "$name" "$pw"
+	true
 }
 
 groupadd () {
@@ -135,7 +136,8 @@ groupadd () {
 		(( sys == 0 && _ngid < 1000 )) && perror "$name: Already exists with system id $_ngid"
 		return 0
 	fi
-	command groupadd "${_USER_EXTRA_OPTS[@]}" "${opts[@]}" || perror "groupadd failed"
+	command groupadd "${_USER_EXTRA_OPTS[@]}" "${opts[@]}" || perror "groupadd ${opts[*]} failed"
+	true
 }
 
 # Add user to given group. Not entirely safe as we don't wait for a lock,
@@ -144,7 +146,7 @@ groupadd () {
 add_to_group () {
 	ua_set_vars
 	grep -qP "^${2}:.*:.*[:,]${1}(,|$)" "$_GROUP" && return 0
-	grep -q  "^${2}:" "$_GROUP" || return 1
+	grep -q  "^${2}:" "$_GROUP" || perror "Cannot add '$1' to '$2' - no such group"
 	sed -i -r "s/^${2}:[^:]*:[^:]*:.+$/&,$1/;s/^${2}:[^:]*:[^:]*:$/&$1/" "$_GROUP"
 }
 
