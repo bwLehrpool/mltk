@@ -30,8 +30,6 @@ mkdir -p "/run/openslx"
 dev_find_partitions &> /dev/null # Preload function
 
 logfile=
-HAVE_TEMP=
-HAVE_SWAP=
 
 # Check what to do. Currently triggered by:
 # setup-partitions.service (Mini and Maxi, for swap, linux, persistent)
@@ -209,6 +207,8 @@ echo "Partitions:"
 cat "$PARTITION_FILE"
 
 linux_pid=
+swap_pid=
+tmp_pid=
 if [ -n "$DO_LINUX" ]; then
 	# Put detected linux partitions (83) into /etc/fstab with "noauto"
 	echo "Adding existing linux partitions to fstab"
@@ -222,18 +222,29 @@ fi
 if [ -n "$DO_SWAP" ]; then
 	# Check for standard swap partitions and make them available to the system
 	echo "Enabling existing swap partitions"
-	HAVE_SWAP=no
-	for PART_DEV in $(dev_find_partitions --rw "82" "0657fd6d-a4ab-43c4-84e5-0933c84b4f4f"); do
-		if swapon -p 10 "$PART_DEV"; then
-			HAVE_SWAP=yes # low priority, in case we have zram swap, prefer that
-			echo -e "$PART_DEV\tswap\t\tswap\t\tdefaults\t 0 0" >> "/etc/fstab"
+	(
+		ret=1
+		for PART_DEV in $(dev_find_partitions --rw "82" "0657fd6d-a4ab-43c4-84e5-0933c84b4f4f"); do
+			if swapon -p 10 "$PART_DEV"; then
+				# low priority, in case we have zram swap, prefer that
+				echo -e "$PART_DEV\tswap\t\tswap\t\tdefaults\t 0 0" >> "/etc/fstab"
+				ret=0
+			fi
+		done
+		if [ -b "/dev/mapper/slx-swap" ] && mkswap "/dev/mapper/slx-swap" \
+				&& swapon -p 10 "/dev/mapper/slx-swap"; then
+			echo "Added slx-swap in ID44"
+			ret=0
 		fi
-	done
-	if [ -b "/dev/mapper/slx-swap" ] && mkswap "/dev/mapper/slx-swap" \
-			&& swapon -p 10 "/dev/mapper/slx-swap"; then
-		echo "Added slx-swap in ID44"
-		HAVE_SWAP=yes # finally, success
-	fi
+		if [ "$ret" != 0 ]; then
+			TOTAL_RAM=$(grep ^MemTotal /proc/meminfo | awk '{print $2}')
+			if [ -n "$TOTAL_RAM" ] && [ "$TOTAL_RAM" -lt "3000000" ]; then
+				slxlog "partition-swap" "Have no (formatted) swap partition, using zram swap only!" "$PARTITION_FILE"
+			fi
+		fi
+		exit "$ret"
+	) &
+	swap_pid=$!
 fi
 
 if [ -n "$DO_TMP" ]; then
@@ -241,24 +252,34 @@ if [ -n "$DO_TMP" ]; then
 	# space, thus no normal filesystem will be incidentally deleted or
 	# corrupted
 	echo "Mounting ID44 temp partitions"
-	HAVE_TEMP=no
-	for PART_DEV in $(dev_find_partitions --rw "44" "87f86132-ff94-4987-b250-444444444444"); do
-		# check for supported filesystem and formatter
-		if format_disk "$PART_DEV"; then
-			mount_temp "${MOUNT_OPTIONS_SET_BY_FORMAT_DISK[@]}" "$PART_DEV" || continue
-			echo -e "${PART_DEV}\t/tmp\t\tauto\t\tnoexec\t 0 0" >> "/etc/fstab"
-			HAVE_TEMP=yes
-			break
-		else
-			echo "formatting failed for some reason"
-		fi # Made this non-forking, systemd should handle it - 2013-05-28
-	done
+	(
+		for PART_DEV in $(dev_find_partitions --rw "44" "87f86132-ff94-4987-b250-444444444444"); do
+			# check for supported filesystem and formatter
+			if format_disk "$PART_DEV"; then
+				mount_temp "${MOUNT_OPTIONS_SET_BY_FORMAT_DISK[@]}" "$PART_DEV" || continue
+				echo -e "${PART_DEV}\t/tmp\t\tauto\t\tnoexec\t 0 0" >> "/etc/fstab"
+				exit 0
+			else
+				echo "formatting failed for some reason"
+			fi
+		done
+		# Make tmpfs if nothing could be mounted for /tmp
+		# 2016-10-12: Use a sane size of 66% which should be generous enough and prevent the machine from
+		# just crashing if RAM is too full. We previously hugely oversized since vmware wants at least as
+		# much free space as the VMs RAM; however, this requirement can be disabled with a vmx setting,
+		# which we're now doing.
+		mount_temp -t tmpfs -o size=66% none
+		slxlog "partition-temp" "Running /tmp on tmpfs only!" "$PARTITION_FILE"
+		exit 1
+	) &
+	tmp_pid=$!
 fi
 
+# As we do this last, fork everything above into the background, and then after
+# ID45 setup, wait for everything else
 if [ -n "$DO_PERSISTENT" ]; then
 	# special partition 45 (persistent scratch) to $MOUNT_POINT_45
 	echo "Mounting ID45 persistent partitions"
-	HAVE_PARTITION_45=no
 	get_mount_options "ext4" mopts
 	# try all the ID45 partitions until one succeeds, from large to small
 	for PART_DEV in $(dev_find_partitions --rw "45" "87f86132-ff94-4987-b250-454545454545"); do
@@ -347,29 +368,11 @@ elif [ -d "$MOUNT_POINT_45" ]; then
 fi
 
 [ -n "$linux_pid" ] && wait "$linux_pid"
+[ -n "$swap_pid" ] && wait "$swap_pid"
+[ -n "$tmp_pid" ] && wait "$tmp_pid"
 
 mount -a
 
-# HAVE_* will be empty if the according cmdline option was not passed.
-
-# Make tmpfs if nothing could be mounted for /tmp
-# 2016-10-12: Use a sane size of 66% which should be generous enough and prevent the machine from
-# just crashing if RAM is too full. We previously hugely oversized since vmware wants at least as
-# much free space as the VMs RAM; however, this requirement can be disabled with a vmx setting,
-# which we're now doing.
-if [ "$HAVE_TEMP" = "no" ]; then
-	# If --tmp wasn't requested HAVE_TEMP will be empty, so we don't end up here...
-	mount_temp -t tmpfs -o size=66% none
-	slxlog "partition-temp" "Running /tmp on tmpfs only!" "$PARTITION_FILE"
-fi
-
-if [ "$HAVE_SWAP" = "no" ]; then
-	TOTAL_RAM=$(grep ^MemTotal /proc/meminfo | awk '{print $2}')
-	if [ -n "$TOTAL_RAM" ] && [ "$TOTAL_RAM" -lt "3000000" ]; then
-		slxlog "partition-swap" "Have no (formatted) swap partition, using zram swap only!" "$PARTITION_FILE"
-	fi
-fi
-
 [ -n "$SLX_SPLASH" ] && splashtool --icon "/opt/openslx/icons/active/??-hdd.ppm"
-exit 0
 
+exit 0
