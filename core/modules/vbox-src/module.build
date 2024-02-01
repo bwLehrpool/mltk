@@ -164,5 +164,6 @@ build() (
 )
 
 post_copy() {
-	:
+	groupadd --system vboxusers
+	add_to_group demo vboxusers
 }

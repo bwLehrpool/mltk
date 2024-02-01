@@ -138,18 +138,31 @@ groupadd () {
 	command groupadd "${_USER_EXTRA_OPTS[@]}" "${opts[@]}" || perror "groupadd failed"
 }
 
+# Add user to given group. Not entirely safe as we don't wait for a lock,
+# but should not be an issue during build time as system is usually offline.
+# $1=user $2=group
+add_to_group () {
+	ua_set_vars
+	grep -qP "^${2}:.*:.*[:,]${1}(,|$)" "$_GROUP" && return 0
+	grep -q  "^${2}:" "$_GROUP" || return 1
+	sed -i -r "s/^${2}:[^:]*:[^:]*:.+$/&,$1/;s/^${2}:[^:]*:[^:]*:$/&$1/" "$_GROUP"
+}
+
 # Get numeric ID of given user (name or ID)
 getuid () {
+	ua_set_vars
 	awk -F ':' -v p="$1" -v n= '{if ($1 == p) n = $3; if (n == "" && $3 == p) n = $3;}END{if (length(n)) print n}' "$_PASSWD"
 }
 
 # Get numeric ID of given group (name or ID)
 getgid () {
+	ua_set_vars
 	awk -F ':' -v p="$1" -v n= '{if ($1 == p) n = $3; if (n == "" && $3 == p) n = $3;}END{if (length(n)) print n}' "$_GROUP"
 }
 
 # Get numeric ID of primary group of given user (name or ID)
 getusergroup () {
+	ua_set_vars
 	awk -F ':' -v p="$1" -v n= '{if ($1 == p) n = $4; if (n == "" && $4 == p) n = $3;}END{if (length(n)) print n}' "$_PASSWD"
 }
 

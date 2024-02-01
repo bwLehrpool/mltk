@@ -45,7 +45,7 @@ fi
 
 # check/create vboxusers group
 getent group vboxusers || addgroup --system vboxusers
-adduser demo vboxusers
+[[ " $( id -Gn demo ) " = *" vboxusers "* ]] || adduser demo vboxusers
 
 # set their permissions
 chmod 0600 /dev/vboxdrv /dev/vboxnetctl
