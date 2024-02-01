@@ -45,17 +45,13 @@ while (( $# > 0 )); do
 	shift
 done
 
-declare -a TMPFILES
 gettmp () {
-	local vn file
-	for vn in "$@"; do
-		file=$(mktemp -p /run/openslx) # since we fiddle around with /tmp in this script
-		declare -g "${vn}=${file}"
-		TMPFILES+=("$file")
-	done
+	# since we fiddle around with /tmp in this script
+	mkdir -p "/run/openslx/sp-$$"
+	mktemp "/run/openslx/sp-$$/XXXXXXXX"
 }
 delalltmp () {
-	rm -f -- "${TMPFILES[@]}"
+	rm -rf -- "/run/openslx/sp-$$"
 }
 trap delalltmp EXIT
 
@@ -239,7 +235,7 @@ if [ -n "$DO_SWAP" ]; then
 		if [ "$ret" != 0 ]; then
 			TOTAL_RAM=$(grep ^MemTotal /proc/meminfo | awk '{print $2}')
 			if [ -n "$TOTAL_RAM" ] && [ "$TOTAL_RAM" -lt "3000000" ]; then
-				slxlog "partition-swap" "Have no (formatted) swap partition, using zram swap only!" "$PARTITION_FILE"
+				slxlog --sync "partition-swap" "Have no (formatted) swap partition, using zram swap only!" "$PARTITION_FILE"
 			fi
 		fi
 		exit "$ret"
@@ -269,7 +265,7 @@ if [ -n "$DO_TMP" ]; then
 		# much free space as the VMs RAM; however, this requirement can be disabled with a vmx setting,
 		# which we're now doing.
 		mount_temp -t tmpfs -o size=66% none
-		slxlog "partition-temp" "Running /tmp on tmpfs only!" "$PARTITION_FILE"
+		slxlog --sync "partition-temp" "Running /tmp on tmpfs only!" "$PARTITION_FILE"
 		exit 1
 	) &
 	tmp_pid=$!
@@ -286,13 +282,13 @@ if [ -n "$DO_PERSISTENT" ]; then
 		mkdir -p "$MOUNT_POINT_45"
 		# Let's see if this is an ext4 partition and if so, whether it has the proper size
 		# Any fixing should happen first
-		gettmp "logfile"
+		logfile="$( gettmp )"
 		COUNT=0
 		while (( COUNT++ < 4 )); do
 			fsck.ext4 -y "$PART_DEV" &> "$logfile"
 			RET=$?
 			if (( (RET & 7) == 4 )); then
-				slxlog "partition-45-fsck" "Error fixing file system errors on ID45 partition" "$logfile"
+				slxlog --sync "partition-45-fsck" "Error fixing file system errors on ID45 partition" "$logfile"
 				break
 			fi
 			(( (RET & 3) != 1 )) && break
@@ -312,17 +308,17 @@ if [ -n "$DO_PERSISTENT" ]; then
 				echo "Dev: $dev_mb, fs: $fs_mb"
 				if (( (fs_mb + 100) < dev_mb )); then
 					# dev size plus 100MB is still smaller than reported fs size -- resize fs
-					gettmp "logfile"
+					logfile="$( gettmp )"
 					fsck.ext4 -f -y "$PART_DEV" &> "$logfile"
 					if resize2fs "$PART_DEV" &>> "$logfile"; then
-						slxlog "partition-45-resize-ok" "Resized partition $PART_DEV from $fs_mb MiB to $dev_mb MiB" "$logfile"
+						slxlog --sync "partition-45-resize-ok" "Resized partition $PART_DEV from $fs_mb MiB to $dev_mb MiB" "$logfile"
 					else
-						slxlog "partition-45-resize-fail" "Could not enlarge file system size of $PART_DEV from $fs_mb MiB to $dev_mb MiB" "$logfile"
+						slxlog --sync "partition-45-resize-fail" "Could not enlarge file system size of $PART_DEV from $fs_mb MiB to $dev_mb MiB" "$logfile"
 						dd if=/dev/zero of="$PART_DEV" bs=1M count=1 &>/dev/null
 					fi
 				elif (( dev_size < fs_size )); then
 					# partition is smaller than expected by fs -- killall
-					slxlog "partition-45-shrink" "$PART_DEV has ext4 file system which is $fs_mb MiB, but partition size is only $dev_mb MiB. Will wipe partition to be safe..."
+					slxlog --sync "partition-45-shrink" "$PART_DEV has ext4 file system which is $fs_mb MiB, but partition size is only $dev_mb MiB. Will wipe partition to be safe..."
 					dd if=/dev/zero of="$PART_DEV" bs=1M count=1 &>/dev/null
 				fi
 			fi
@@ -330,14 +326,14 @@ if [ -n "$DO_PERSISTENT" ]; then
 		# try to mount
 		if ! mount -v -t ext4 "${mopts[@]}" "${PART_DEV}" "$MOUNT_POINT_45"; then
 			# failed, try to format
-			gettmp "logfile"
+			logfile="$( gettmp )"
 			if ! format_disk "$PART_DEV" "ext4" &> "$logfile"; then
-				slxlog "partition-45-format" "Cannot format $PART_DEV with ext4" "$logfile"
+				slxlog --sync "partition-45-format" "Cannot format $PART_DEV with ext4" "$logfile"
 				continue
 			fi
-			gettmp "logfile"
+			logfile="$( gettmp )"
 			if ! mount -v -t ext4 "${mopts[@]}" "${PART_DEV}" "$MOUNT_POINT_45" &> "$logfile"; then
-				slxlog "partition-45-newmount" "Cannot mount $PART_DEV with ext4 right after formatting" "$logfile"
+				slxlog --sync "partition-45-newmount" "Cannot mount $PART_DEV with ext4 right after formatting" "$logfile"
 				continue
 			fi
 		fi
