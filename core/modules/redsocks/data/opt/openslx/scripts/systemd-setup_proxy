@@ -1,13 +1,6 @@
 #!/bin/bash
 # Needs full bash
 
-for wait in 1 1 2 3 4 6 8 10 end; do
-	grep -q '^#_RCONFIG_TAG$' /opt/openslx/config && break
-	[ "$wait" == "end" ] && echo "Giving up!" && exit 1
-	echo "No config yet..."
-	sleep $wait
-done
-
 . /opt/openslx/config || echo "Error sourcing config for setup_proxy"
 
 [ -z "$SLX_PROXY_MODE" -o "x$SLX_PROXY_MODE" == "xoff" ] && echo "proxy mode disabled." && exit 0
