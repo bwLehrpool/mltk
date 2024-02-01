@@ -12,8 +12,13 @@ module_init() {
 	groupadd --system "${LIBVIRT_QEMU_GRP}"
 	groupadd --system "${LIBVIRT_QEMU_USR}"
 	groupadd --system "${LIBVIRT_PTHR_GRP}"
-	useradd --gid "${LIBVIRT_QEMU_GRP}" --groups "${LIBVIRT_QEMU_USR},${LIBVIRT_PTHR_GRP},${LIBVIRT_STPM_GRP}" --system \
+	useradd --gid "${LIBVIRT_QEMU_GRP}" --groups "${LIBVIRT_QEMU_USR},${LIBVIRT_PTHR_GRP},${LIBVIRT_STPM_GRP}" \
+		--system \
 		--no-create-home --home-dir "/var/lib/libvirt" "${LIBVIRT_QEMU_USR}"
+	local grp
+	for grp in libvirt-passthrough libvirt-tpm dialout; do
+		add_to_group demo "$grp" || perror "Could not add 'demo' to group '$grp'"
+	done
 }
 
 fetch_source() {
