@@ -18,7 +18,7 @@ if [ -d "/mnt/dnbd3" ] && [ -b /dev/dnbd0 ] \
 	# local dnbd3 proxy replies slower than some upstream server on the
 	# network, which is not that unlikely if the data is not cached
 	# locally yet.
-	for i in 1 2 4 8 16 32 64 128; do
+	for i in 1 2 4 8 16 32 64; do
 		dnbd3-client -s "127.0.0.1:$DNBD3_PORT" -d /dev/dnbd0 &> /dev/null
 		usleep ${i}00000 # tenths of a second
 	done
