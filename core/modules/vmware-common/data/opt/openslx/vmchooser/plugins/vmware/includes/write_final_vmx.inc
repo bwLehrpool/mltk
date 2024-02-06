@@ -306,6 +306,8 @@ finalize_hardware() {
 	# Fix keymap fuckup when leaving VM
 	sed -i '/^mks.x.resetModMap/Id' "${TMPCONFIG}"
 	echo 'mks.x.resetModMap = "FALSE"' >> "${TMPCONFIG}"
+	# Fix key-repeat getting stuck on VMware 17.5.x
+	echo 'keyboard.allowBothIRQs = "FALSE"' >> "${TMPCONFIG}"
 
 	# TODO: Need a way to check if supported by hardware before enabling!
 	#grep -qi '^vpmc\.enable' "${TMPCONFIG}" || echo 'vpmc.enable = "TRUE"' >> "${TMPCONFIG}"
