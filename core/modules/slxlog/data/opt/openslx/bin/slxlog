@@ -76,7 +76,8 @@ if [ $# -gt 2 ]; then
 	EXTRA="$3"
 fi
 
-if [ -n "$SLX_DEBUG" ]; then
+. /opt/openslx/bin/slx-tools
+if is_debug; then
 	CURLLOG="/tmp/slxlog.$USER"
 else
 	CURLLOG="/dev/null"
