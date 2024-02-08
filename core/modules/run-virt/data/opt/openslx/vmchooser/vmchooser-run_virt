@@ -46,10 +46,10 @@ fi
 . /opt/openslx/bin/slx-tools
 
 # Debug mode?
-if [ "x$1" = "x--debug" ]; then
+if [ "$1" = "--debug" ]; then
 	shift
 	DEBUG=true
-elif [ "$SLX_DEBUG_MODE" = "ON" ] || grep -qE '\bdebug\b' "/proc/cmdline"; then
+elif is_debug; then
 	DEBUG=true
 else
 	DEBUG=false
