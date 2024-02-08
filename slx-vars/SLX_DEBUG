@@ -1,0 +1,1 @@
+If enabled (hint: use is_on from slx-tools), scripts and tools should print additional debug information, or offer debug functionality by displaying more controls, disabling sanity checks, etc.
