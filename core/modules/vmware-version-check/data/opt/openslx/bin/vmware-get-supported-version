@@ -3,8 +3,8 @@
 # * Intel: check for "VMX Unrestricted Guest" CPU flag
 # * AMD:   check if CPU family is Bulldozer or newer
 #
-# It can be called inside a dracut context and tries to do
-# chroot magic to call/load the required tools.
+# Please do not move or rename this script, it is expected exactly
+# at /opt/openslx/bin/vmware-get-supported-version
 
 VIRTTYPE="$( grep -m1 '^flags\s*:' /proc/cpuinfo | grep -woF -e svm -e vmx )"
 
@@ -14,7 +14,14 @@ if [ -z "$VIRTTYPE" ]; then
 	exit 0
 fi
 
-modprobe msr
+[ -e "/dev/cpu/0/msr" ]  \
+	|| modprobe msr       \
+	|| insmod "$NEWROOT/lib/modules/$( uname -r )/kernel/arch/x86/kernel/msr.ko"*
+	# * because it might be compressed -> msr.ko.zstd ...
+
+if [ -n "$NEWROOT" ] && [ -d "$NEWROOT" ]; then
+	export PATH="${PATH}:${NEWROOT}/usr/sbin:${NEWROOT}/usr/bin"
+fi
 
 version="legacy"
 if [ "$VIRTTYPE" = "vmx" ]; then    # intel
@@ -25,12 +32,17 @@ if [ "$VIRTTYPE" = "vmx" ]; then    # intel
 		[ "$flag" = "1" ] && version="new"
 	fi
 elif [ "$VIRTTYPE" = "svm" ]; then  # amd
-	BIT="$( rdmsr --bitfield 4:4 0xc0010114 2>/dev/null || echo "fail" )"
-	if [ "$BIT" = "0" ]; then
+	BIT1="$( rdmsr --bitfield 4:4 0xc0010114 2>/dev/null || echo "fail" )"
+	if [ "$BIT1" = "0" ]; then
 		family="$( awk '$1$2 == "cpufamily" {print $NF;exit}' /proc/cpuinfo )"
 		[ "$family" -ge 21 ] && version="new"
 	fi
 fi
 
-echo "$version"
+if [ "$BIT1" = "fail" ]; then
+	echo "fail"
+	exit 1
+fi
 
+echo "$version"
+exit 0
