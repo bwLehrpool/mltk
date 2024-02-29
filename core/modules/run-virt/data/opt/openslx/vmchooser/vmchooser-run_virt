@@ -86,7 +86,8 @@ readonly LOGFILE
 
 main() {
 	declare -rg MAINPID="$BASHPID"
-	writelog "MAINPID: $MAINPID"
+	# Don't have writelog yet
+	echo "MAINPID: $MAINPID"
 	# Functions needed by vmchooser-run_virt (writelog(), cleanexit(), safesource())
 	declare -rg RUN_VIRT_INCLUDE_DIR="${VMCHOOSER_DIR}/run-virt-includes"
 	if ! source "${RUN_VIRT_INCLUDE_DIR}/vmchooser_runvirt_functions.inc"; then
