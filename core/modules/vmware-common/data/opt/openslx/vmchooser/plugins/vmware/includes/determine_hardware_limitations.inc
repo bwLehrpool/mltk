@@ -183,7 +183,7 @@ set_vm_hardware_limits() {
 	# to a different value than the virtual number of cores per virtual CPU.
 	declare -rg VM_CORES_PER_SOCKET="$CPU_CORES"
 	
-	if [ "x$SHARED_FOLDERS" != "xFALSE" ] && [ "$SHARE_REMAP_MODE" -gt 1 ]; then
+	if is_on "$SHARED_FOLDERS" && [ -n "$SHARE_REMAP_MODE" ] && (( SHARE_REMAP_MODE > 1 )); then
 		declare -rg HGFS_DISABLED="FALSE"
 	else
 		declare -rg HGFS_DISABLED="TRUE"
