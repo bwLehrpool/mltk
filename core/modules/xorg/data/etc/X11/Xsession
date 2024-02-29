@@ -5,7 +5,7 @@
 # Xsession is executed to start the user's session (as the user)
 # 
 
-export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/openslx/sbin:/opt/openslx/bin"
+export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/opt/openslx/sbin:/opt/openslx/bin"
 
 PROGNAME=Xsession
 
@@ -27,6 +27,26 @@ errormsg () {
 
 # Make sure we source the global profile - needed for ssh-agent, etc.
 [ -e "/etc/profile" ] && . "/etc/profile"
+
+# New kid on the block
+OPTIONFILE=/etc/X11/Xsession.options
+OPTIONS="$(
+	if [ -r "$OPTIONFILE" ]; then
+		cat "$OPTIONFILE"
+	fi
+	if [ -d /etc/X11/Xsession.options.d ]; then
+		run-parts --list --regex '\.conf$' /etc/X11/Xsession.options.d | xargs -d '\n' cat
+	fi
+)"
+
+has_option() {
+	# Ensure that a later no-foo overrides an earlier foo
+	if [ "$(echo "$OPTIONS" | grep -Eo "^(no-)?$1\>" | tail -n 1)" = "$1" ]; then
+		return 0
+	else
+		return 1
+	fi
+}
 
 # Workaround to start Xsession. The original Xsession script includes error handling functionality and sources other scrips from the Xsession.d/ directory.
 
