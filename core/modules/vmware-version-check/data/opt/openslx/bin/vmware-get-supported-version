@@ -14,8 +14,8 @@ if [ -z "$VIRTTYPE" ]; then
 	exit 0
 fi
 
-[ -e "/dev/cpu/0/msr" ]  \
-	|| modprobe msr       \
+[ -e "/dev/cpu/0/msr" ]            \
+	|| modprobe msr 2> /dev/null    \
 	|| insmod "$NEWROOT/lib/modules/$( uname -r )/kernel/arch/x86/kernel/msr.ko"*
 	# * because it might be compressed -> msr.ko.zstd ...
 

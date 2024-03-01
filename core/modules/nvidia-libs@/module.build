@@ -13,9 +13,9 @@ pre_exec() {
 
 post_copy() {
 	# generate addon-required for this version
-	cat <<-EOF > "${TARGET_BUILD_DIR}/addon-required"
-		#!/bin/ash
-		[ "\$( cat /sys/module/nvidia/version )" = "$TARGET_VERSION" ]
-	EOF
+	sed "s/%TARGET_VERSION%/$TARGET_VERSION/g" \
+		< "${MODULE_DIR}/templates/addon-required.template" \
+		> "${TARGET_BUILD_DIR}/addon-required" \
+		|| perror "Could not copy addon-required template to target"
 	chmod +x "${TARGET_BUILD_DIR}/addon-required"
 }
