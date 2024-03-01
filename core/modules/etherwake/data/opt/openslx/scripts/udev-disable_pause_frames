@@ -1,0 +1,7 @@
+#!/bin/ash
+
+# Hide exit code to avoid udev spam
+ethtool -A "$1" autoneg off rx off tx off
+ret=$?
+[ "$ret" = 76 ] && exit 0
+exit "$ret"

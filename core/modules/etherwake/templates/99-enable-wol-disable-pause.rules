@@ -1,5 +1,5 @@
 # Enable WOL on boot NIC
 ACTION=="add", SUBSYSTEM=="net", NAME=="eth0", RUN+="%ETHTOOL% -s $name wol g"
 ACTION=="add", SUBSYSTEM=="net", NAME=="boot0", RUN+="%ETHTOOL% -s $name wol g"
-# Disaable pause frames on any adapter found
-ACTION=="add", SUBSYSTEM=="net", RUN+="%ETHTOOL% -A $name autoneg off rx off tx off"
+# Disable pause frames on any adapter found
+ACTION=="add", SUBSYSTEM=="net", RUN+="/opt/openslx/scripts/udev-disable_pause_frames $name"
