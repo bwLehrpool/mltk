@@ -1,6 +1,7 @@
 from dmiparser import DmiParser
 from subprocess import PIPE
 from os import listdir, path
+from glob import glob
 import argparse
 import json
 import re
@@ -8,6 +9,7 @@ import requests
 import shlex
 import subprocess
 import sys
+import netifaces
 
 __debug = False
 
@@ -35,7 +37,7 @@ def run_subprocess(_cmd):
         else:
             return stdout.decode()
     else:
-        return stdout.decode() 
+        return stdout.decode()
 
 # Get and parse dmidecode using dmiparser
 def get_dmidecode():
@@ -50,8 +52,10 @@ def get_dmidecode():
 
 # Get the readlink -f output
 def get_readlink(link):
-    _readlink = run_subprocess('readlink -f ' + link)
-    return _readlink
+    resolved_path = path.realpath(link)
+    if path.exists(resolved_path):
+        return resolved_path
+    return ''
 
 # Try parsing string to json
 def parse_to_json(program_name, raw_string):
@@ -69,8 +73,7 @@ def parse_to_json(program_name, raw_string):
 
 # Get smartctl output in json format
 def get_smartctl(disk_path, disk_name):
-    disk_path_full = disk_path + disk_name
-    output = run_subprocess('smartctl -x --json ' + disk_path_full)
+    output = run_subprocess('smartctl -x --json ' + disk_path + disk_name)
     smartctl = parse_to_json('smartctl', output)
     return smartctl
 
@@ -86,12 +89,25 @@ def get_lsblk(disk_path, disk_name):
     lsblk = parse_to_json('lsblk', output)
     return lsblk
 
+def file_get_contents(path, strip_lf = True):
+    try:
+        with open(path, "r") as file:
+            s = file.read()
+            if strip_lf and s and s[-1] == '\n':
+                s = s[:-1]
+            return s
+    except FileNotFoundError:
+        print("File not found: " + path)
+    except IOError:
+        print("IO Error reading file " + path)
+    return ""
+
 # Get CD/DVD Information
 def get_cdrom():
-    cdromdir = '/proc/sys/dev/cdrom/'
+    cdromdir = '/proc/sys/dev/cdrom/info'
     cdrom = []
     if path.exists(cdromdir):
-        cdrom_raw = run_subprocess('cat ' + cdromdir + 'info')
+        cdrom_raw = file_get_contents(cdromdir)
 
         # Skip first two entries because of useless information and empty row
         for row in cdrom_raw.split('\n')[2:]:
@@ -161,14 +177,12 @@ def get_lspci():
 
     # Prepare addition of iommu group
     iommu_groups = {}
-    iommu_raw = run_subprocess('find /sys/kernel/iommu_groups/*/devices/*')
-    if iommu_raw:
-        iommu_split = iommu_raw.split('\n')
-        for iommu_path in iommu_split:
-            if iommu_path == "":
-                continue
-            iommu = iommu_path.split('/')
-            iommu_groups[iommu[6][5:]] = iommu[4]
+    iommu_split = glob('/sys/kernel/iommu_groups/*/devices/*')
+    for iommu_path in iommu_split:
+        if iommu_path == "":
+            continue
+        iommu = iommu_path.split('/')
+        iommu_groups[iommu[6][5:]] = iommu[4]
 
     for line in lspci_raw:
         if len(line) <= 0: continue
@@ -214,11 +228,8 @@ def get_lspci():
 
 # Get ip data in json format
 def get_ip():
-    result = []
     ip_raw = run_subprocess('ip --json addr show')
-    if isinstance(ip_raw, str):
-        result = json.loads(ip_raw)
-    return result
+    return parse_to_json('ip', ip_raw)
 
 def get_net_fallback():
     netdir = '/sys/class/net/'
@@ -226,54 +237,56 @@ def get_net_fallback():
 
     # Get MAC address and speed
     if path.exists(netdir):
-        interfaces = run_subprocess('ls ' + netdir).split('\n')
+        interfaces = listdir(netdir)
         for interface in interfaces:
             # Skip local stuff
             if interface == 'lo' or interface == '':
                 continue
             net = {}
-            speed = run_subprocess('cat ' + netdir + interface + '/speed')
-            if isinstance(speed, str) and speed.endswith('\n'):
-                net['speed'] = speed[:-1]
-
-            duplex = run_subprocess('cat ' + netdir + interface + '/duplex')
-            if isinstance(duplex, str) and duplex.endswith('\n'):
-                net['duplex'] = duplex[:-1]
-
-            mac = run_subprocess('cat ' + netdir + interface + '/address')
-            if isinstance(mac, str) and mac.endswith('\n'):
-                net['mac'] = mac[:-1]
+            speed = file_get_contents(netdir + interface + '/speed')
+            if speed:
+                net['speed'] = speed
+            duplex = file_get_contents(netdir + interface + '/duplex')
+            if duplex:
+                net['duplex'] = duplex
+            mac = file_get_contents(netdir + interface + '/address')
+            if mac:
+                net['mac'] = mac
             result[interface] = net
 
     # Get IP address
-    interfaces = run_subprocess('ip -o addr show | awk \'/inet/ {print $2, $3, $4}\'').split('\n')
-    for interface in interfaces:
-        if interface == '':
+    for interface in netifaces.interfaces():
+        if interface == '' or interface == 'lo':
             continue
-        interf = interface.split(' ')
-        if interf[0] == 'lo':
-            continue
-        else:
-            if interf[0] not in result:
-                result[interf[0]] = {}
-            if interf[1] == 'inet':
-                result[interf[0]]['ipv4'] = interf[2]
-            elif interf[1] == 'inet6':
-                result[interf[0]]['ipv6'] = interf[2]
+        if interface not in result:
+            result[interface] = {}
+        ifaddrs = netifaces.ifaddresses(interface)
+        if netifaces.AF_INET in ifaddrs:
+            ipv4_address = ifaddrs[netifaces.AF_INET][0]['addr']
+            result[interface]['ipv4'] = ipv4_address
+        if netifaces.AF_INET6 in ifaddrs:
+            ipv6_address = ifaddrs[netifaces.AF_INET6][0]['addr']
+            result[interface]['ipv6'] = ipv6_address
     return result
 
 # Get and convert EDID data to hex
 def get_edid():
     edid = {}
-    display_paths = run_subprocess('ls /sys/class/drm/*/edid')
-    if display_paths:
-        display_paths = display_paths.split('\n')
-        for dp in display_paths:
-            if dp == '': continue
-            edid_hex = open(dp, 'rb').read().hex()
-            if len(edid_hex) > 0:
-                # The path is always /sys/class/drm/[..]/edid, so cut the first 15 chars and the last 5 chars
-                edid[dp[15:-5]] = edid_hex
+    edid_hex = ''
+    display_paths = glob('/sys/class/drm/*/edid')
+    for dp in display_paths:
+        if dp == '':
+            continue
+        try:
+            with open(dp, 'rb') as file:
+                edid_hex = file.read().hex()
+        except FileNotFoundError:
+            print("File not found: " + dp)
+        except IOError:
+            print("IO Error reading file " + dp)
+        if len(edid_hex) > 0:
+            # The path is always /sys/class/drm/[..]/edid, so cut the first 15 chars and the last 5 chars
+            edid[dp[15:-5]] = edid_hex
     return edid
 
 def get_lshw():
@@ -287,7 +300,7 @@ def get_uuid():
     uuid_path = '/sys/class/dmi/id/product_uuid'
     uuid = 'N/A'
     if path.exists(uuid_path):
-        uuid_raw = run_subprocess('cat ' + uuid_path)
+        uuid_raw = file_get_contents(uuid_path)
         # uuid_raw = False if no sudo permission:
         if uuid_raw:
             uuid = uuid_raw.rstrip()
