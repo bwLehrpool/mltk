@@ -16,6 +16,8 @@ TOOLS=(
 	dmesg
 	dmidecode
 	"slx-brightness -l"
+	"brctl show"
+	"ip a"
 )
 
 URLS="
@@ -144,10 +146,6 @@ for tool in "${TOOLS[@]}"; do
 	$tool > "generated/${tool%% *}-out" 2> "generated/${tool%% *}-err"
 	echo -n "."
 done
-
-brctl show > "generated/brctl-show-out" 2> "generated/brctl-show-err"
-ip a > "generated/ip-a-out" 2> "generated/ip-a-err"
-echo -n "."
 
 systemctl status > "generated/systemctl-status-out" 2> "generated/systemctl-status-err"
 echo -n "."
