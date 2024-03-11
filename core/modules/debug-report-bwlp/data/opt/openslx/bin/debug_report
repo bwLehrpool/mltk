@@ -15,6 +15,7 @@ TOOLS=(
 	mount
 	dmesg
 	dmidecode
+	"slx-brightness -l"
 )
 
 URLS="

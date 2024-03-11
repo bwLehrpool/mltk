@@ -1,0 +1,7 @@
+[Unit]
+Description=Handle display brightness keys
+
+[Service]
+Type=forking
+ExecStart=/opt/openslx/scripts/systemd-slx_brightness
+Restart=on-failure

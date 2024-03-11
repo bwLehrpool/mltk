@@ -1,0 +1,8 @@
+#!/bin/bash
+
+build() {
+	local dest="${MODULE_BUILD_DIR}/opt/openslx/sbin"
+	mkdir -p "$dest" || perror "Cannot create $dest"
+	gcc -Wall -pedantic -Wextra -Werror -o "$dest/slx-brightness" "${MODULE_DIR}/src/main.c" \
+		|| perror "Cannot compile slx-brightness"
+}

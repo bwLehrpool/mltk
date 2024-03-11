@@ -1,0 +1,78 @@
+#!/bin/bash
+
+if ! command -v slx-brightness &> /dev/null; then
+	echo "Error: Required tool slx-brightness not in path"
+	exit 1
+fi
+
+# How many steps we want from min to max
+declare -rg steps=15
+
+# Look for brightness config file
+#
+max_file="/sys/class/backlight/intel_backlight/max_brightness"
+cur_file="/sys/class/backlight/intel_backlight/brightness"
+
+if ! [ -e "$max_file" ] || ! [ -e "$cur_file" ]; then
+	for max_file in /sys/class/backlight/*/max_brightness; do
+		cur_file="${max_file%/*}/brightness"
+		[ -e "$max_file" ] && [ -e "$cur_file" ] && break
+	done
+fi
+
+if ! [ -e "$max_file" ] || ! [ -e "$cur_file" ]; then
+	echo "No brightness controls found, exiting"
+	exit 0
+fi
+
+# Calc sane limits
+#
+max=$( cat "$max_file" )
+if ! (( max > 0 )); then
+	echo "Max brightness is '$max', doing nothing"
+	exit 0
+fi
+
+min=$(( max / ( steps + 1 ) ))
+
+# Start our daemon
+#
+slx-brightness "$cur_file" "$min" "$max" "$steps" &
+pid=$!
+
+# Give it time to start
+sleep 3
+
+if ! kill -0 "$pid"; then
+	# slx-brightness exits if it doesn't find a known input device for brightness control
+	echo "slx-brightness didn't find a suitable device :-("
+	t="$( mktemp )"
+	if [ -n "$t" ]; then
+		slx-brightness -l &> "$t"
+		slxlog --delete --sync "screen-brightness" \
+			"Device seems to have controllable backlight, but cannot find suitable input device" "$t"
+	fi
+	exit 0
+fi
+
+# Disable handling of keys by xfce-power-manager
+#
+pmfile="/etc/xdg/xfce4/xfconf/xfce-perchannel-xml/xfce4-power-manager.xml"
+if ! [ -s "$pmfile" ]; then
+	mkdir -p "${pmfile%/*}"
+	cat > "$pmfile" <<-EOF
+		<?xml version="1.0" encoding="UTF-8"?>
+
+		<channel name="xfce4-power-manager" version="1.0" locked="*" unlocked="root">
+			<property name="xfce4-power-manager" type="empty">
+				<property name="handle-brightness-keys" type="bool" value="false"/>
+			</property>
+		</channel>
+EOF
+else
+	xmlstarlet ed -u '/channel/property/property[@name="handle-brightness-keys"]/@value' \
+			-v "false" "$pmfile" > "$pmfile.tmp" \
+		&& mv -f "$pmfile.tmp" "$pmfile"
+fi
+
+exit 0
