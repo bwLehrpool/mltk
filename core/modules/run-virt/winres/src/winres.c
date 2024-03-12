@@ -94,7 +94,7 @@ static int optimizeForRemote();
 static int muteSound(BOOL bMute);
 static int setShutdownText();
 static void readShareFile();
-static BOOL mountNetworkShares();
+static BOOL mountNetworkShares(int attemptNo);
 static int queryPasswordDaemon();
 static BOOL fileExists(wchar_t* szPath);
 static BOOL folderExists(wchar_t* szPath);
@@ -175,7 +175,7 @@ static void CALLBACK tmrResolution(HWND hWnd, UINT uMsg, UINT_PTR idEvent, DWORD
 static void CALLBACK setupNetworkDrives(HWND hWnd, UINT uMsg, UINT_PTR idEvent, DWORD dwTime)
 {
 	static BOOL bInProc = FALSE;
-	static int fails = 0;
+	static int attempts = 0;
 	if (bInProc || _mountDone)
 		return;
 	bInProc = TRUE;
@@ -188,12 +188,12 @@ static void CALLBACK setupNetworkDrives(HWND hWnd, UINT uMsg, UINT_PTR idEvent, 
 		int ret = queryPasswordDaemon();
 		dalog("sND: qPD = %d", ret);
 		if (ret != 0) {
-			if (++fails < 10)
+			if (++attempts < 10)
 				goto exit_func;
 			alog("queryPasswordDaemon returned %d", ret);
 		} else {
-			if (!mountNetworkShares()) {
-				if (GetTickCount() - _startTime < 30000 && ++fails < 15)
+			if (!mountNetworkShares(attempts)) {
+				if (GetTickCount() - _startTime < 30000 && ++attempts < 15)
 					goto exit_func;
 			}
 		}
@@ -1204,7 +1204,7 @@ static void udpReceived(SOCKET sock)
 	// Success
 	spass = xorString(buffer + 2, len, bkey2);
 	closesocket(sock);
-	mountNetworkShares();
+	mountNetworkShares(0);
 }
 
 static DWORD mount(LPNETRESOURCEW share, LPWSTR pass, LPWSTR user)
@@ -1384,19 +1384,26 @@ static BOOL mountNetworkShare(const netdrive_t *d, BOOL useIp)
 	return FALSE;
 }
 
-static BOOL mountNetworkShares()
+static BOOL mountNetworkShares(int attemptNo)
 {
+	BOOL withPrinters = attemptNo > 4;
+	int failCount = 0;
+
 	if (!shareFileOk)
 		return TRUE;
 	if (spass == NULL)
 		return FALSE;
-	int failCount = 0;
+
 	for (int i = 0; i < DRIVEMAX; ++i) {
 		if (drives[i].path == NULL)
 			break;
 		if (drives[i].success)
 			continue;
-		if (mountNetworkShare(&drives[i], FALSE)) {
+		if (!withPrinters && drives[i].letter != NULL
+				&& strcmp(drives[i].letter, "PRINTER") == 0) {
+			// Delay connecting printers a bit, might need a resource share or other setup
+			failCount++;
+		} else if (mountNetworkShare(&drives[i], FALSE)) {
 			drives[i].success = TRUE;
 		} else if (mountNetworkShare(&drives[i], TRUE)) {
 			drives[i].success = TRUE;
@@ -1404,9 +1411,8 @@ static BOOL mountNetworkShares()
 			failCount++;
 		}
 	}
-	if (failCount > 0)
-		return FALSE;
-	return TRUE;
+
+	return failCount == 0;
 }
 
 static void remapViaSharedFolder()
