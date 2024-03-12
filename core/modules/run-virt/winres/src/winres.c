@@ -36,7 +36,7 @@ DEFINE_GUID(ID_MMDeviceEnumerator, 0xBCDE0395, 0xE52F, 0x467C, 0x8E, 0x3D, 0xC4,
 #define BUFLEN (200)
 
 typedef struct {
-	const char* path;
+	char* path;
 	const char* pathIp;
 	const char* letter;
 	const char* shortcut;
@@ -94,7 +94,7 @@ static int optimizeForRemote();
 static int muteSound(BOOL bMute);
 static int setShutdownText();
 static void readShareFile();
-static BOOL mountNetworkShares(int attemptNo);
+static BOOL mountNetworkShares(void);
 static int queryPasswordDaemon();
 static BOOL fileExists(wchar_t* szPath);
 static BOOL folderExists(wchar_t* szPath);
@@ -192,7 +192,7 @@ static void CALLBACK setupNetworkDrives(HWND hWnd, UINT uMsg, UINT_PTR idEvent, 
 				goto exit_func;
 			alog("queryPasswordDaemon returned %d", ret);
 		} else {
-			if (!mountNetworkShares(attempts)) {
+			if (!mountNetworkShares()) {
 				if (GetTickCount() - _startTime < 30000 && ++attempts < 15)
 					goto exit_func;
 			}
@@ -1204,7 +1204,7 @@ static void udpReceived(SOCKET sock)
 	// Success
 	spass = xorString(buffer + 2, len, bkey2);
 	closesocket(sock);
-	mountNetworkShares(0);
+	mountNetworkShares();
 }
 
 static DWORD mount(LPNETRESOURCEW share, LPWSTR pass, LPWSTR user)
@@ -1384,21 +1384,33 @@ static BOOL mountNetworkShare(const netdrive_t *d, BOOL useIp)
 	return FALSE;
 }
 
-static BOOL mountNetworkShares(int attemptNo)
+static BOOL mountNetworkShares(void)
 {
-	BOOL withPrinters = attemptNo > 4;
+	static int attemptNo = 0;
 	int failCount = 0;
+	BOOL withPrinters;
 
 	if (!shareFileOk)
 		return TRUE;
 	if (spass == NULL)
 		return FALSE;
 
+	attemptNo++;
+	withPrinters = attemptNo > 4;
+
 	for (int i = 0; i < DRIVEMAX; ++i) {
 		if (drives[i].path == NULL)
 			break;
 		if (drives[i].success)
 			continue;
+		if (attemptNo == 2) {
+			// Strip any trailing slashes or backslashes
+			// See #3955
+			int p = strlen(drives[i].path) - 1;
+			while (p > 0 && (drives[i].path[p] == '/' || drives[i].path[p] == '\\')) {
+				drives[i].path[p--] = '\0';
+			}
+		}
 		if (!withPrinters && drives[i].letter != NULL
 				&& strcmp(drives[i].letter, "PRINTER") == 0) {
 			// Delay connecting printers a bit, might need a resource share or other setup
