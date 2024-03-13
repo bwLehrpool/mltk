@@ -189,16 +189,13 @@ case "$1" in
 			sed -i "s/^\(SLX_PXE_CLIENT_IP=\).*$/\1'$ip'/" /opt/openslx/config
 			# Write DOMAIN and SEARCH to /opt/openslx/config if empty
 			if [ -z "$SLX_NET_DOMAIN" ] && [ -n "$domain" ]; then
-				sed -i "s/^SLX_NET_DOMAIN=/# &/" /opt/openslx/config
 				echo "SLX_NET_DOMAIN='$domain'" >> /opt/openslx/config
 			fi
 			if [ -z "$SLX_NET_SEARCH" ] && [ -n "$search" ]; then
-				sed -i "s/^SLX_NET_SEARCH=/# &/" /opt/openslx/config
 				echo "SLX_NET_SEARCH='$search'" >> /opt/openslx/config
 			fi
 			# Same for WINS servers
 			if [ -z "$SLX_NET_WINS" ] && [ -n "$wins" ]; then
-				sed -i "/^SLX_NET_WINS=/d" /opt/openslx/config
 				echo "SLX_NET_WINS='$wins'" >> /opt/openslx/config
 			fi
 
