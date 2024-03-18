@@ -89,6 +89,8 @@ fi
 
 if [ -n "$SLX_BROWSER_RELOAD_SECS" ] && [ "$SLX_BROWSER_RELOAD_SECS" -gt 0 ]; then
 	(
+	# Wake up to force refresh
+	idle-daemon --send 'get :0' &> /dev/null
 	wid=
 	while [ -z "$wid" ]; do
 		sleep 1
@@ -105,7 +107,8 @@ if [ -n "$SLX_BROWSER_RELOAD_SECS" ] && [ "$SLX_BROWSER_RELOAD_SECS" -gt 0 ]; th
 	fi
 	readonly wpid
 	activity=init
-	last=
+	last="$(idle-daemon --send 'get :0' | grep -oP '(?<=idleSeconds=)[0-9]+')"
+	sleep 1
 	while true; do
 		if [ ! -d "/proc/$wpid" ]; then
 			echo "Process with PID $wpid stopped, exiting auto-reload loop."
@@ -122,6 +125,9 @@ if [ -n "$SLX_BROWSER_RELOAD_SECS" ] && [ "$SLX_BROWSER_RELOAD_SECS" -gt 0 ]; th
 				xdotool key Alt+Home
 				last="$current_idle"
 				sleep "$SLX_BROWSER_RELOAD_SECS"
+				# Wake up to force refresh
+				idle-daemon --send 'get :0' &> /dev/null
+				sleep 1
 				activity=init
 				continue
 			fi
