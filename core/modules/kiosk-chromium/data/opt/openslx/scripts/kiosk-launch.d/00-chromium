@@ -120,14 +120,15 @@ if [ -n "$SLX_BROWSER_RELOAD_SECS" ] && [ "$SLX_BROWSER_RELOAD_SECS" -gt 0 ]; th
 				# activity was seen, interactive browser (UI) -> kill session
 				killall chromium-browser chromium
 				loginctl terminate-user demo
+				exit 0
 			else
 				xdotool windowactivate "$wid"
 				xdotool key Alt+Home
 				last="$current_idle"
-				sleep "$SLX_BROWSER_RELOAD_SECS"
+				sleep "$(( SLX_BROWSER_RELOAD_SECS - 10 ))"
 				# Wake up to force refresh
 				idle-daemon --send 'get :0' &> /dev/null
-				sleep 1
+				sleep 10
 				activity=init
 				continue
 			fi
@@ -137,7 +138,7 @@ if [ -n "$SLX_BROWSER_RELOAD_SECS" ] && [ "$SLX_BROWSER_RELOAD_SECS" -gt 0 ]; th
 			activity=yes
 		fi
 		last="$current_idle"
-		num="$(( SLX_BROWSER_RELOAD_SECS - ( current_idle + 3 ) ))"
+		num="$(( SLX_BROWSER_RELOAD_SECS - ( current_idle + 5 ) ))"
 		(( num < 1 )) && num=1
 		sleep "$num"
 	done
