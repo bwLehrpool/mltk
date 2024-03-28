@@ -11,14 +11,14 @@ export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/o
 
 # grab the password from stdin asap, since there is no guarantee some tool just reads it
 unset USER_PASSWORD
-if [ "x$PAM_TYPE" = "xauth" ]; then
+if [ "$PAM_TYPE" = "auth" ]; then
 	read -r USER_PASSWORD > /dev/null 2>&1
 	readonly USER_PASSWORD
 	[ -z "$USER_PASSWORD" ] && echo "No password given." && exit 1
 fi
 
 # sanity check on PAM_USER: contains '@'?
-if [ -z "$PAM_USER" ] || [ "x${PAM_USER}" = "x${PAM_USER%@*}" ]; then
+if [ -z "$PAM_USER" ] || [ "${PAM_USER}" = "${PAM_USER%@*}" ]; then
 	# no @ contained, invalid username, abort
 	#echo "Invalid username '$PAM_USER'. Aborting."
 	exit 1
@@ -64,9 +64,9 @@ readonly IDP_QUERY_URL mode
 
 # check if we are allowed to run
 . /opt/openslx/config
-if [ "x${SLX_BWIDM_AUTH}" = "xyes" ]; then
+if [ "${SLX_BWIDM_AUTH}" = "yes" ]; then
 	: # Allow everything
-elif [ "x${SLX_BWIDM_AUTH}" = "xselective"  ]; then
+elif [ "${SLX_BWIDM_AUTH}" = "selective"  ]; then
 	if [ -z "${SLX_BWIDM_ORGS}" ]; then
 		echo "bwIDM selective mode with empty org list - exiting"
 		exit 1
@@ -83,10 +83,10 @@ readonly USER_ORGANISATION="${PAM_USER#*@}"
 [ -z "$USER_USERNAME" ] && echo "Could not parse user from given login: ${PAM_USER}. Aborting." && exit 1
 
 # Check if we're in selective mode and if so, whether the user's organization is whitelisted
-if [ "x${SLX_BWIDM_AUTH}" = "xselective" ]; then
+if [ "${SLX_BWIDM_AUTH}" = "selective" ]; then
 	FOUND=
 	for org in ${SLX_BWIDM_ORGS}; do
-		if [ "x$org" = "x$USER_ORGANISATION" ]; then
+		if [ "$org" = "$USER_ORGANISATION" ]; then
 			FOUND=ya
 			break
 		fi
@@ -109,7 +109,7 @@ if [ "$mode" = "ecp" ]; then
 			exit 7
 		fi
 		idpret="$(curl --retry 3 --retry-connrefused --retry-delay 1 --retry-max-time 15 -w "%{http_code}" -o "${IDP_QUERY_CACHE}" --connect-timeout 2 --max-time 6 "$IDP_QUERY_URL")"
-		if [ "${#idpret}" != 3 ] || [ "x${idpret:0:1}" != "x2" ]; then
+		if [ "${#idpret}" != 3 ] || [ "${idpret:0:1}" != "2" ]; then
 			echo "Could not download the list of identity providers from '$IDP_QUERY_URL'. Aborting."
 			rm -f -- "$IDP_QUERY_CACHE"
 			exit 7
@@ -267,7 +267,7 @@ write_user_data() {
 }
 
 # now the pam-type specific part starts
-if [ "x$PAM_TYPE" = "xauth" ]; then
+if [ "$PAM_TYPE" = "auth" ]; then
 	##### Browser
 	if [ "$mode" = "browser" ]; then
 		token="${USER_PASSWORD#shib=}"
@@ -321,7 +321,7 @@ if [ "x$PAM_TYPE" = "xauth" ]; then
 	exit 1
 fi
 
-if [ "x$PAM_TYPE" = "xaccount" ]; then
+if [ "$PAM_TYPE" = "account" ]; then
 	# the sanity checks we did before reacting to PAM_TYPE is enough to validate
 	# the given username as a valid bwIDM username
 	# ('@' contained and IdP found in the idp list fetched from the masterserver)
@@ -337,7 +337,7 @@ exit 1
 # #
 ## main script
 mainret=$?
-if [ "x$mainret" = "x7" ]; then
+if [ "$mainret" = "7" ]; then
 	# exit code 7 is our marker to push the logfile to the sat
 	slxlog --delete "pam-bwidm" "Internal error during bwIDM authentication" "${LOGFILE}"
 	exit 1
