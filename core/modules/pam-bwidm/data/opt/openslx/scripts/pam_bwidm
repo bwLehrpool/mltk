@@ -39,7 +39,9 @@ readonly TMPDIR
 readonly LOGFILE="$(mktemp -p "$TMPDIR")"
 
 # Determine mode: ECP or Embedded Browser
-IDP_QUERY_URL="$( awk -F= '$1 ~ /^shib-url\s*$/ {print $2}' /etc/lightdm/qt-lightdm-greeter.conf.d/*.conf \
+IDP_QUERY_URL="$( awk -F= '$1 ~ /^shib-url\s*$/ {print $2}' \
+	/etc/lightdm/qt-lightdm-greeter.conf \
+	/etc/lightdm/qt-lightdm-greeter.conf.d/*.conf \
 	| tail -n 1 | xargs )" # TRIM
 
 if [ -n "$IDP_QUERY_URL" ]; then
