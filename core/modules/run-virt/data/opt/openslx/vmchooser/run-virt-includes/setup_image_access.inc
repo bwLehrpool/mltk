@@ -40,34 +40,66 @@ setup_dnbd3_proxy () {
 }
 
 setup_dnbd3 () {
+	local dnbd3_tmplog="${TMPDIR}/dnbd3fuse.log"
+	local dnbd3_diskfile=
+	setup_dnbd3_common
+
+	if isempty dnbd3_diskfile; then
+		slxlog "virt-dnbd3" "No dnbd3 server for ${SRC_IMG_RELATIVE} found, trying NFS/CIFS..." "$dnbd3_tmplog"
+		writelog "No working dnbd3 server found :-("
+		return 1
+	fi
+	VM_DISKFILE_RO="$dnbd3_diskfile"
+	return 0
+}
+
+setup_dnbd3_cow () {
+	local dnbd3_tmplog="${TMPDIR}/dnbd3fuse.log"
+	local dnbd3_diskfile=
+
+	mkdir "${TMPDIR}/cow"
+	setup_dnbd3_common -L "${TMPDIR}/cow" -C "${SLX_VMCHOOSER_BASE_URL//"/vmchooser/"/"/cow/"}" --upload-uuid "$DMSD_COW_SESSION" --cow-stats-file --merge
+
+	if isempty dnbd3_diskfile; then
+		slxlog "virt-dnbd3" "Failed to setup dnbd3-fuse with copy-on-write" "$dnbd3_tmplog"
+		writelog "Error setting up CoW"
+		cleanexit 1
+	fi
+	VM_DISKFILE_RW="$dnbd3_diskfile"
+}
+
+setup_dnbd3_common () {
 	# Mount path for images mounted with dnbd3-fuse
 	declare -rg DNBD3_MOUNT_POINT="${TMPDIR}/dnbd3fuse.mnt"
 	mkdir -p "${DNBD3_MOUNT_POINT}"
 	# start dnbd3-fuse in subshell
-	local DNBD3_TMPLOG="${TMPDIR}/dnbd3fuse.log"
 	local DNBD3_EXITFLAG="${TMPDIR}/dnbd3exit$RANDOM"
 	local TIMEOUT VM_DISKFILE_REVISION
 	rm -f -- "${DNBD3_EXITFLAG}"
 	(
+		trap 'kill $dnbd3pid; exit' SIGTERM
 		startup="$( date +%s )"
 		while [ "$( date +%s )" -lt "$(( startup + 4 ))" ]; do
-			dnbd3-fuse -f -o allow_other,max_readahead=262144 -h "${SLX_DNBD3_SERVERS}" -i "${SRC_IMG_RELATIVE}" "${DNBD3_MOUNT_POINT}" > "${DNBD3_TMPLOG}" 2>&1
+			dnbd3-fuse -f -o allow_other,max_readahead=262144 -h "${SLX_DNBD3_SERVERS}" -i "${SRC_IMG_RELATIVE}" "$@" "${DNBD3_MOUNT_POINT}" &> "${dnbd3_tmplog}" &
+			dnbd3pid=$!
+			wait "$dnbd3pid"
 			RET=$?
 		done
 		touch "${DNBD3_EXITFLAG}"
 		if [ "$RET" != "0" ]; then
 			writelog "dnbd3-fuse stopped working (Exit code $RET)"
-			slxlog "virt-dnbd3-fuse" "dnbd3-fuse stopped/refused serving '${SRC_IMG_RELATIVE}' from '${SLX_DNBD3_SERVERS}' with error code: $RET" "${DNBD3_TMPLOG}"
+			slxlog "virt-dnbd3-fuse" "dnbd3-fuse stopped/refused serving '${SRC_IMG_RELATIVE}' from '${SLX_DNBD3_SERVERS}' with error code: $RET" "${dnbd3_tmplog}"
 		fi
 	) &
+	declare -rg DNBD3_PID=$!
 	# give it a bit of time
 	usleep 250000
 	# check if we have the image
 	for TIMEOUT in 0.5 1 1 1 1 2 OUT; do
 		if [ -r "${DNBD3_MOUNT_POINT}/img" ]; then
 			VM_DISKFILE_REVISION="$(grep -m 1 "^Revision:" "${DNBD3_MOUNT_POINT}/status" | cut  -d" " -f2)"
-			VM_DISKFILE_RO="${DNBD3_MOUNT_POINT}/img"
-			writelog "DNBD3: ${SRC_IMG_RELATIVE} on ${VM_DISKFILE_RO} with rid ${VM_DISKFILE_REVISION}"
+			dnbd3_diskfile="${DNBD3_MOUNT_POINT}/img"
+			writelog "DNBD3: ${SRC_IMG_RELATIVE} on ${dnbd3_diskfile} with rid ${VM_DISKFILE_REVISION}"
 			add_cleanup "cleanup_dnbd3"
 			break
 		fi
@@ -76,11 +108,6 @@ setup_dnbd3 () {
 		fi
 		sleep "$TIMEOUT"
 	done
-
-	if isempty VM_DISKFILE_RO; then
-		slxlog "virt-dnbd3" "No dnbd3 server for ${SRC_IMG_RELATIVE} found, trying NFS/CIFS..." "$DNBD3_TMPLOG"
-		writelog "No working dnbd3 server found :-("
-	fi
 }
 
 setup_fallback() {
@@ -143,6 +170,9 @@ setup_image_access_default() {
 		writelog "\tCan't use dnbd3 as SRC_IMG_RELATIVE is not set"
 	elif isempty SLX_DNBD3_SERVERS || [ "x${SLX_VM_DNBD3}" != "xyes" ]; then
 		writelog "\tCan't use dnbd3 as no servers are given in config, or SLX_VM_DNBD3 is not set to yes"
+	elif [ -n "$DMSD_COW_SESSION" ]; then
+		writelog "Setting up DNBD3 CoW session"
+		setup_dnbd3_cow
 	elif setup_dnbd3_proxy; then
 		writelog "\tImage setup done."
 	elif ! check_dep dnbd3-fuse fusermount; then
@@ -152,7 +182,7 @@ setup_image_access_default() {
 		writelog "Trying image access via DNBD3..."
 		setup_dnbd3
 	fi
-	
+
 	# VM_DISKFILE_RO will be empty if dnbd3 is not used or failed to connect.
 	if isempty VM_DISKFILE_RO; then
 		# try to fallback to access the image via NFS/CIFS filesystem

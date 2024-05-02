@@ -182,13 +182,44 @@ main() {
 
 	run_hooks "pre-exec" "$PLUGIN_ID" "$IMGUUID"
 
+	# Launch COWGUI in CoW-Edit-Mode
+	local cowpid cowurl vmpidfile
+	cowpid=
+	vmpidfile=
+	if [ -n "$DMSD_COW_SESSION" ]; then
+		vmpidfile="$( mktemp -p "/run/user/$( id -u )" )"
+		cowurl="${SLX_VMCHOOSER_BASE_URL//"/vmchooser/"/"/cow/"}"
+		(
+		cntr=0
+		while true; do
+			cowgui --session "$DMSD_COW_SESSION" --url "$cowurl" --pid "$DNBD3_PID" && break
+			# Unclean exit, let's see if it's worth relaunching
+			state="$( curl -m 3 -sS -L "$cowurl/status/$DMSD_COW_SESSION" | jq -r .state )"
+			[ -z "$state" ] && break
+			[ "$state" = "PROCESSING" ] && break
+			[ "$state" = "ERROR" ] && break
+			[ "$state" = "COMPLETELY_DONE" ] && break
+			(( cntr++ > 10 )) && break
+		done
+		[ -n "$vmpidfile" ] && kill "$( cat "$vmpidfile" )"
+		) &
+		cowpid=$!
+	fi
+
 	writelog "VM command: ${VIRTCMD} ${VIRTCMDOPTS[*]}"
-	# This will start the VM (no eval needed!)
+	# This will start the VM
 	writelog "---------- BEGIN VM command output ----------"
-	local retval
-	"${VIRTCMD}" "${VIRTCMDOPTS[@]}" &>> "${LOGFILE}"
+	local retval vmpid
+	"${VIRTCMD}" "${VIRTCMDOPTS[@]}" &>> "${LOGFILE}" &
+	vmpid=$!
+	[ -n "$vmpidfile" ] && echo "$vmpid" > "$vmpidfile"
+	wait "$vmpid"
 	retval=${?}
 	writelog "---------- END VM command output ----------"
+
+	[ -n "$DNBD3_PID" ] && kill "$DNBD3_PID"
+	# If cow, wait for GUI
+	[ -n "$cowpid" ] && wait "$cowpid"
 
 	run_hooks "post-exec" "$PLUGIN_ID" "$IMGUUID"
 

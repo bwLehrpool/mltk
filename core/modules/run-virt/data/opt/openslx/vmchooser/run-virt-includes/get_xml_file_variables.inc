@@ -24,32 +24,15 @@ parse_xml() {
 	[ -n "$url_lecture_runscript" ] && readonly url_lecture_runscript="${url_lecture_runscript//%UUID%/${IMGUUID}}"
 
 	# Relative / Absolute path to image
-	declare -rg SRC_IMG_RELATIVE=$(get_xml "image_name")
+	declare -g SRC_IMG_RELATIVE=$(get_xml "image_name")
 	declare -g SRC_IMG_ABSOLUTE=$(get_xml "image_path")
-
-	if isempty SRC_IMG_ABSOLUTE SRC_IMG_RELATIVE; then
-		writelog "Error parsing XML: Neither relative nor absolute path for image found!"
-		EXIT_TYPE="user" EXIT_REASON="Konnte kein Pfad zur ausgewählten virtuellen Maschine ermitteln!" cleanexit 1
-	fi
 
 	if notempty SRC_IMG_ABSOLUTE && [ "${SRC_IMG_ABSOLUTE:0:1}" != "/" ]; then
 		writelog "Error parsing XML: Parsed value for absolute path doesn't start with '/': '$SRC_IMG_ABSOLUTE'"
 		EXIT_TYPE="user" EXIT_REASON="Ungültiger asboluter Pfad zur virtuellen Maschine!" cleanexit 1
 	fi
 
-	if isempty SRC_IMG_ABSOLUTE && notempty VMSTORE_PATH; then
-		SRC_IMG_ABSOLUTE="${VMSTORE_PATH}/${SRC_IMG_RELATIVE}"
-	fi
-	readonly SRC_IMG_ABSOLUTE
-
-	declare -rg IMG_BASENAME=$(basename "$SRC_IMG_ABSOLUTE")
-
 	VM_DISPLAYNAME=$(get_xml "short_description")
-	notempty VM_DISPLAYNAME || VM_DISPLAYNAME="${IMG_BASENAME}"
-	readonly VM_DISPLAYNAME
-
-	# Define VM_CLEANNAME since VM_DISPLAYNAME can be long and contain weird characters
-	declare -rg VM_CLEANNAME=$(echo "${VM_DISPLAYNAME:0:32}" | sed -r 's/[^0-9a-zA-Z_\-\.]+/_/g')
 
 	# image is for the following virtual machine
 	declare -rg PLUGIN_ID=$(get_xml "virtualmachine")
