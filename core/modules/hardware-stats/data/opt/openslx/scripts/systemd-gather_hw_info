@@ -60,7 +60,7 @@ slxfdisk() {
 MAC="${SLX_PXE_MAC}"
 if [ -z "$MAC" ]; then
 	# get MAC from sysfs
-	MAC="$(cat /sys/class/net/${SLX_PXE_NETIF:-br0}/address)"
+	MAC="$( cat "/sys/class/net/${SLX_PXE_NETIF:-br0}/address" )"
 fi
 if [ -z "$MAC" ]; then
 	BOOTIF="$(grep -Po '(?<=BOOTIF=)[0-9a-f\-:]+' /proc/cmdline)"
@@ -89,7 +89,7 @@ CPUSOCKETS=$(grep '^physical id' /proc/cpuinfo | sort -u | wc -l)
 # Fallback 1...
 if [ -z "$CPUCORES" ] || [ "$CPUCORES" = "0" ]; then
 	for c in $(dmidecode -t 4 | grep 'Core Enabled' | awk -F ':' '{print $2}'); do
-		CPUCORES=$(( $CPUCORES + $c ))
+		CPUCORES=$(( CPUCORES + c ))
 	done
 fi
 # Fallback 2...
@@ -108,12 +108,12 @@ echo "$CPUMODEL"
 # 4) RAM
 #
 RAM=$(grep -m1 '^MemTotal:' /proc/meminfo | awk '{print $2}')
-RAM=$(( $RAM / 1024 ))
+RAM=$(( RAM / 1024 ))
 if [ -z "$RAM" ] || [ "$RAM" -lt 500 ]; then
 	# Fallback to dmidecode
 	RAM=0
 	for c in $(dmidecode -t 17 | grep -o 'Size:.*MB$' | awk '{print $2}'); do
-		RAM=$(( $RAM + $c ))
+		RAM=$(( RAM + c ))
 	done
 fi
 echo "$RAM MB RAM"
@@ -173,7 +173,7 @@ if ! slx-tools fs_path_isvolatile "/tmp/virt" ; then
 				[ "$val" -gt "$ID44" ] && ID44=$val
 			done
 			# blockdev reports bytes, convert to MB
-			ID44=$(( $ID44 / 1058576 )) # we'd rather underreport
+			ID44=$(( ID44 / 1058576 )) # we'd rather underreport
 		fi
 	fi
 fi
@@ -183,13 +183,15 @@ echo "Scratch space: $ID44 MB"
 # 7) check smart values
 #
 FDISK=$(mktemp)
-declare -a DISKS
+declare -A DISKS
 shopt -s extglob
 for disk in /dev/disk/by-path/!(*-part*|*-usb-*); do
 	[ -L "$disk" ] || continue
+	[ -z "${DISKS["$disk"]}" ] || continue
 	disk="$( readlink -f "$disk" )"
-	DISKS+=("$disk")
-	slxfdisk -l "$disk" | sed -r 's/\s+[0-9]+,[0-9]+,[0-9]+/ /g;/^\// s/\s[0-9]+\.?[0-9]+[MGT]\s/ /;s/^Units: /Units =foo= /' | awk '{if ($1 !~ /^[0-9]+$/ || $5 ~ /^[0-9a-f]{4}/) { print $0 } else { $5 = "0700 " $5; print $0 }}' # Work around busybox YET AGAIN changing something in an incompatible way
+	DISKS["$disk"]="$disk"
+	slxfdisk -l "$disk" | sed -r 's/\s+[0-9]+,[0-9]+,[0-9]+/ /g;/^\// s/\s[0-9]+\.?[0-9]+[MGT]\s/ /;s/^Units: /Units =foo= /' \
+		| awk '{if ($1 !~ /^[0-9]+$/ || $5 ~ /^[0-9a-f]{4}/) { print $0 } else { $5 = "0700 " $5; print $0 }}' # Work around busybox YET AGAIN changing something in an incompatible way
 done > "$FDISK"
 shopt -u extglob
 [ -z "$SLX_SMARTCTL_MIN_REALLOC" ] && SLX_SMARTCTL_MIN_REALLOC=0
@@ -207,20 +209,20 @@ if which smartctl; then
 		cat "$FILE" >> "$ALLSMART"
 		# parse
 		OVERALL=$(grep -o "test result: .*$" "$FILE" | cut -c 14-)
-		[ "x$OVERALL" = "xPASSED" ] && OVERALL=""
+		[ "$OVERALL" = "PASSED" ] && OVERALL=""
 		REALLOC=$(grep "^ *5 " "$FILE" | awk '{print $8}')
 		PENDING=$(grep "^ *197 " "$FILE" | awk '{print $8}')
 		SPINRETRY_VAL=$(grep "^ *10 " "$FILE" | awk '{print $4}')
 		SPINRETRY_THR=$(grep "^ *10 " "$FILE" | awk '{print $6}')
-		[ -n "$OVERALL" ] && BADSECTORS=$(( $BADSECTORS + 100 ))
+		[ -n "$OVERALL" ] && BADSECTORS=$(( BADSECTORS + 100 ))
 		if [ -n "$REALLOC" ] && [ "$REALLOC" -gt "0" ]; then
-			BADSECTORS=$(( $BADSECTORS + $REALLOC ))
+			BADSECTORS=$(( BADSECTORS + REALLOC ))
 		fi
 		if [ -n "$PENDING" ] && [ "$PENDING" -gt "5" ]; then
-			BADSECTORS=$(( $BADSECTORS + $PENDING ))
+			BADSECTORS=$(( BADSECTORS + PENDING ))
 		fi
 		if [ -n "$SPINRETRY_VAL" ] && [ "$SPINRETRY_VAL" -le "$SPINRETRY_THR" ]; then
-			BADSECTORS=$(( $BADSECTORS + 100 ))
+			BADSECTORS=$(( BADSECTORS + 100 ))
 		fi
 	done
 	rm -f -- "$FILE"
@@ -231,7 +233,7 @@ echo "SMART: $OVERALL - $REALLOC reallocated, $PENDING pending"
 # 8) Read system model and manufacturer
 #
 dmidec() {
-	local RETVAL=$(dmidecode "$@" 2>/dev/null | grep -v '^#' | grep -v '^Invalid' | sed 's/\s\s*/ /g;s/^ //;s/ $//')
+	local RETVAL=$( dmidecode "$@" 2>/dev/null | grep -v '^#' | grep -v '^Invalid' | sed 's/\s\s*/ /g;s/^ //;s/ $//' )
 	case "$RETVAL" in
 		""|*"Product Name"*|*"be filled"*|"unknown"|*"efault string"*|*"efault String"*|*"product name"*|*"anufacturer"*|*"ystem model"*)
 			RETVAL="Unknown"
