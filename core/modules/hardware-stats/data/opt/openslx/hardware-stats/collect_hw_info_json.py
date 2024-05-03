@@ -97,9 +97,9 @@ def file_get_contents(path, strip_lf = True):
                 s = s[:-1]
             return s
     except FileNotFoundError:
-        print("File not found: " + path)
+        eprint("File not found: " + path)
     except IOError:
-        print("IO Error reading file " + path)
+        eprint("IO Error reading file " + path)
     return ""
 
 # Get CD/DVD Information
