@@ -93,5 +93,9 @@ if [ -n "$SLX_SCREEN_SAVER_TIMEOUT" ]; then
 	EXTRA+=( "--allow-screensaver-disable" )
 fi
 
+if [ -s "/run/user/$(id -u)/cow-token" ]; then
+	EXTRA+=( "--cow-token" "/run/user/$(id -u)/cow-token" )
+fi
+
 exec vmchooser.real "$@" --url "$URL" --fullscreen --tab "$TAB" --start-uuid "$SLX_EXAM_START" "${EXTRA[@]}"
 
