@@ -58,7 +58,7 @@ setup_dnbd3_cow () {
 	local dnbd3_diskfile=
 
 	mkdir "${TMPDIR}/cow"
-	setup_dnbd3_common -L "${TMPDIR}/cow" -C "${SLX_VMCHOOSER_BASE_URL//"/vmchooser/"/"/cow/"}" --upload-uuid "$DMSD_COW_SESSION" --cow-stats-file --merge
+	setup_dnbd3_common -c "${TMPDIR}/cow" -C "${SLX_VMCHOOSER_BASE_URL//"/vmchooser/"/"/cow/"}" --upload-uuid "$DMSD_COW_SESSION" --cow-stats-file --merge
 
 	if isempty dnbd3_diskfile; then
 		slxlog "virt-dnbd3" "Failed to setup dnbd3-fuse with copy-on-write" "$dnbd3_tmplog"
@@ -77,8 +77,8 @@ setup_dnbd3_common () {
 	local TIMEOUT VM_DISKFILE_REVISION
 	rm -f -- "${DNBD3_EXITFLAG}"
 	(
-		trap 'kill $dnbd3pid; exit' SIGTERM
-		trap 'kill -SIGQUIT $dnbd3pid' SIGQUIT
+		trap 'writelog "[dnbd3-fuse] Received TERM"; kill $dnbd3pid; exit' SIGTERM
+		trap 'writelog "[dnbd3-fuse] Received QUIT"; kill -SIGQUIT $dnbd3pid' SIGQUIT
 		startup="$( date +%s )"
 		while [ "$( date +%s )" -lt "$(( startup + 4 ))" ]; do
 			dnbd3-fuse -f -o allow_other,max_readahead=262144 -h "${SLX_DNBD3_SERVERS}" -i "${SRC_IMG_RELATIVE}" "$@" "${DNBD3_MOUNT_POINT}" &> "${dnbd3_tmplog}" &

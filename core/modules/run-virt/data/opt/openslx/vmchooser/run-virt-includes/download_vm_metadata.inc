@@ -79,7 +79,7 @@ download_metadata_default() {
 			writelog "No cow token found in edit mode"
 			EXIT_TYPE=user EXIT_REASON="Admin-Modus aktiviert, aber kein cow-token vorgefunden." cleanexit 1
 		fi
-		argx="?cow-user=$cow_token"
+		argx="?cow-user=$cow_token&cow-type=$VMCHOOSER_ADMIN_TYPE"
 	fi
 
 	# Try new unified .tar.gz way
@@ -102,6 +102,9 @@ download_metadata_default() {
 		writelog "Downloading metadata.tgz failed (RET=$RET, HTTP=$ERRCODE). Cannot start VM.
 $( cat $WLOG )"
 		#
+		if [ -s "$TMPFILE" ] && grep -q --binary-files=without-match -E '[a-z]'; then
+			EXTRA_ERROR="$( cat "$TMPFILE" )"
+		fi
 	fi
 }
 

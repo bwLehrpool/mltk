@@ -151,7 +151,7 @@ cleanexit() {
 		done
 	fi
 
-	# kill potential remaining background jobs
+	writelog "Killing remaining background jobs"
 	kill $(jobs -p)
 
 	# If we're not in debug mode AND got a clean exit code, remove all temporary files
@@ -276,7 +276,7 @@ safesource() {
 	while [ $# -gt 0 ]; do
 		# sanitze filename just to be sure as it is part of the eval coming later
 		# alphanumeric and - _ . should be enough for common file naming scheme
-		if [[ ! "$1" =~ ^[a-zA-Z0-9./_-]+$ ]]; then
+		if [[ ! "$1" =~ ^[a-zA-Z0-9./_@-]+$ ]]; then
 			writelog "'$1' is a weird filename to source! Ignoring."
 			return 1
 		fi

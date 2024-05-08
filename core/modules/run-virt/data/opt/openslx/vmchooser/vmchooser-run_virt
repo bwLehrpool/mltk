@@ -192,7 +192,8 @@ main() {
 		(
 		cntr=0
 		while true; do
-			cowgui --session "$DMSD_COW_SESSION" --url "$cowurl" --pid "$DNBD3_PID" && break
+			writelog "Launching CoW-GUI"
+			cowgui --sessionid "$DMSD_COW_SESSION" --url "$cowurl" --pid "$DNBD3_PID" && break
 			# Unclean exit, let's see if it's worth relaunching
 			state="$( curl -m 3 -sS -L "$cowurl/status/$DMSD_COW_SESSION" | jq -r .state )"
 			[ -z "$state" ] && break
@@ -201,7 +202,8 @@ main() {
 			[ "$state" = "COMPLETELY_DONE" ] && break
 			(( cntr++ > 10 )) && break
 		done
-		[ -n "$vmpidfile" ] && kill "$( cat "$vmpidfile" )"
+		writelog "Final cow state: $( curl -m 3 -sS -L "$cowurl/status/$DMSD_COW_SESSION" )"
+		[ -s "$vmpidfile" ] && kill "$( cat "$vmpidfile" )"
 		) &
 		cowpid=$!
 	fi
@@ -215,11 +217,17 @@ main() {
 	[ -n "$vmpidfile" ] && echo "$vmpid" > "$vmpidfile"
 	wait "$vmpid"
 	retval=${?}
-	writelog "---------- END VM command output ----------"
+	writelog "------- END VM command output ($retval) --------"
 
-	[ -n "$DNBD3_PID" ] && kill "$DNBD3_PID"
+	if [ -n "$DNBD3_PID" ]; then
+		writelog "Killing dnbd3-fuse"
+		kill "$DNBD3_PID"
+	fi
 	# If cow, wait for GUI
-	[ -n "$cowpid" ] && wait "$cowpid"
+	if [ -n "$cowpid" ]; then
+		writelog "Waiting for CoW-GUI"
+		wait "$cowpid"
+	fi
 
 	run_hooks "post-exec" "$PLUGIN_ID" "$IMGUUID"
 
