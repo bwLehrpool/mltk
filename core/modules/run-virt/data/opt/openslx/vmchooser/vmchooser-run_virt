@@ -209,10 +209,18 @@ main() {
 	fi
 
 	writelog "VM command: ${VIRTCMD} ${VIRTCMDOPTS[*]}"
+	# Prepare short config dir, needed because libvirt is stupid and likes
+	# to create very long UNIX socket names and then chokes on them.
+	cd="$( mktemp -d "/tmp/lvXXX" )"
+	if [ -z "$cd" ]; then
+		cd="/tmp/lv${UID}$(( RANDOM % 10000 ))"
+		rm -rf -- "$cd"
+		mkdir -p "$cd"
+	fi
 	# This will start the VM
 	writelog "---------- BEGIN VM command output ----------"
 	local retval vmpid
-	"${VIRTCMD}" "${VIRTCMDOPTS[@]}" &>> "${LOGFILE}" &
+	XDG_CONFIG_HOME="$cd" "${VIRTCMD}" "${VIRTCMDOPTS[@]}" &>> "${LOGFILE}" &
 	vmpid=$!
 	[ -n "$vmpidfile" ] && echo "$vmpid" > "$vmpidfile"
 	wait "$vmpid"
