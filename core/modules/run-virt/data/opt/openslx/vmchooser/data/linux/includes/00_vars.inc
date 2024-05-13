@@ -57,6 +57,13 @@ SCRIPTEXT=$(grep scriptExt "$DISKMOUNTDIR/openslx.ini" | cut -f 2 -d "=")
 MUTESOUND=$(grep muteSound "$DISKMOUNTDIR/openslx.ini" | cut -f 2 -d "=")
 SOUNDVOL="100%"
 
+# Edit mode, VM is persistent
+val=$( grep '^persistentMode=' "$SLXCONFIGFILE" | cut -d '=' -f 2)
+PERSISTENT_MODE=
+if [ -n "$val" ] && [ "$val" -ne 0 ]; then
+	PERSISTENT_MODE=1
+fi
+
 ##### Programs interfering with resolution setting #####
 KILLRESPROGS="kscreen_backend_launcher"
 

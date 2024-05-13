@@ -74,6 +74,7 @@ static BOOL _passCreds = FALSE;
 static BOOL _noHomeWarn = FALSE;
 static BOOL _deletedCredentials = FALSE;
 static BOOL _scriptDone = TRUE, _mountDone = TRUE; // Will be set to false if we actually wait for something...
+static BOOL _persistentMode = FALSE; // VM being edited, don't do any changes to system (shortcuts, regedit, )
 static char *shost = NULL, *sport = NULL, *suser = NULL, *spass = NULL;
 
 #define SCRIPTFILELEN (50)
@@ -106,6 +107,9 @@ static HRESULT createFolderShortcut(wchar_t* sTargetfile, wchar_t* sLinkfile, wc
 
 static void alog(const char *fmt, ...)
 {
+	if (_persistentMode)
+		return;
+
 	FILE *f = _wfopen(logFile, L"a+");
 	if (f == NULL) return;
 	time_t raw = time(NULL);
@@ -124,6 +128,9 @@ static void alog(const char *fmt, ...)
 
 static void wlog(const wchar_t *fmt, ...)
 {
+	if (_persistentMode)
+		return;
+
 	wchar_t wbuffer[1000];
 	char    abuffer[1000];
 	va_list args;
@@ -430,6 +437,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	hUser32 = LoadLibraryW(L"user32.dll");
 	if (hUser32 == NULL) {
 		alog("Cannot load user32.dll");
+	}
+	if (GetPrivateProfileIntA("openslx", "persistentMode", 0, SETTINGS_FILE) != 0) {
+		_persistentMode = TRUE;
 	}
 	winVer.dwOSVersionInfoSize = sizeof(winVer);
 	BOOL retVer = GetVersionEx(&winVer);
@@ -918,6 +928,9 @@ static int setResVMware(struct resolution *res, int nres)
 
 static int optimizeForRemote()
 {
+	if (_persistentMode)
+		return;
+
 	LONG ret;
 	HKEY hKey;
 
@@ -1499,6 +1512,9 @@ static uint8_t* hex2bin(char *szHexString)
 
 static HRESULT createFolderShortcut(wchar_t* targetDir, wchar_t* linkFile, wchar_t* comment)
 {
+	if (_persistentMode)
+		return S_OK;
+
 	HRESULT       hRes;                  /* Returned COM result code */
 	IShellLink*   pShellLink;            /* IShellLink object pointer */
 	IPersistFile* pPersistFile;          /* IPersistFile object pointer */
@@ -1551,6 +1567,9 @@ static HRESULT createFolderShortcut(wchar_t* targetDir, wchar_t* linkFile, wchar
 
 static BOOL patchRegPath(BOOL *patchOk, BOOL *anyMapped, HKEY hKey, wchar_t *letter, wchar_t *value, ...)
 {
+	if (_persistentMode)
+		return;
+
 	wchar_t *folder = NULL;
 	wchar_t first[MAX_PATH] = {0};
 	wchar_t path[MAX_PATH];
@@ -1612,6 +1631,9 @@ typedef BOOL (WINAPI *P32TYPE)(HANDLE, PROCESSENTRY32W*);
 
 static void patchUserPaths(wchar_t *letter)
 {
+	if (_persistentMode)
+		return;
+
 	LONG ret;
 	HKEY hKey;
 	BOOL patchOk = TRUE;

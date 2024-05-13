@@ -116,6 +116,10 @@ setup_virtual_floppy() {
 	# Enable openslx.exe debug output if we're running in debug mode
 	local debug=
 	$DEBUG && debug=1
+	local editmode=0
+	if is_on VMCHOOSER_ADMIN_MODE; then
+		editmode=1
+	fi
 
 	cat > "${FLOPPYDIR}/openslx.ini" <<-EOF
 	[openslx]
@@ -133,6 +137,7 @@ setup_virtual_floppy() {
 	noHomeWarn=${SHARE_NO_HOME_WARN}
 	runMode=${SLX_RUNMODE_MODULE}
 	debug=${debug}
+	persistentMode=${editmode}
 	
 	[remap]
 	documents=${SHARE_DOCUMENTS}

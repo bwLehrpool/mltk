@@ -121,18 +121,19 @@ function mount_share()
 		unset PASSWD
 	fi
 	if [ "$ERR" -eq 0 ]; then
-		logger "openslx sharemapper: Linking ${SHARENAME}, if possible."
+		if [ -z "$PERSISTENT_MODE" ]; then
+			logger "openslx sharemapper: Linking ${SHARENAME}, if possible."
 
-		if [ -n "${SHARENAME}" ]; then
-			ln -s "$USERSHAREDIR" "${USERDESKTOP}"/"$SHARENAME"
-			chown "$LOCALUSER" "${USERDESKTOP}"/"$SHARENAME"
-			logger "openslx sharemapper: ${SHARENAME} linked."
-		elif [ -n "${SHARELETTER}" ]; then
-			ln -s "$USERSHAREDIR" "${USERDESKTOP}"/"$SHARELETTER"
-			chown "$LOCALUSER" "${USERDESKTOP}"/"$SHARELETTER"
-			logger "openslx sharemapper: No sharename found, share letter ${SHARELETTER} linked."
+			if [ -n "${SHARENAME}" ]; then
+				ln -sn "$USERSHAREDIR" "${USERDESKTOP}"/"$SHARENAME"
+				chown "$LOCALUSER" "${USERDESKTOP}"/"$SHARENAME"
+				logger "openslx sharemapper: ${SHARENAME} linked."
+			elif [ -n "${SHARELETTER}" ]; then
+				ln -sn "$USERSHAREDIR" "${USERDESKTOP}"/"$SHARELETTER"
+				chown "$LOCALUSER" "${USERDESKTOP}"/"$SHARELETTER"
+				logger "openslx sharemapper: No sharename found, share letter ${SHARELETTER} linked."
+			fi
 		fi
-
 	else
 		logger "openslx sharemapper: deleting previously creates share mount dir $USERSHAREDIR."
 		rmdir "$USERSHAREDIR" 2>/dev/null
@@ -150,21 +151,28 @@ function mount_home()
 	unset USER
 	unset PASSWD
 	
-	case $ERR in	1)	logger "openslx sharemapper: could not mount home share."
+	case $ERR in
+			1)
+				logger "openslx sharemapper: could not mount home share."
 				echo "Konnte Home-Laufwerk nicht einhängen!" >> "$USERLOGFILE"
 				;;
-			2)      logger "openslx sharemapper: home share seems to be already mounted."
+			2)
+				logger "openslx sharemapper: home share seems to be already mounted."
 				;;
-			0)	logger "openslx sharemapper: Linking ${USERDESKTOP}/$(basename $USERHOMEDIR), if possible."
-				# Changed: Link on Desktop no longer "Home-verz.", but same
-				# name as last part of $USERHOMEDIR (-->PERSISTENT)
-				# ln -s "$USERHOMEDIR" "${USERDESKTOP}"/"$SHARENAME"
-				ln -s "$USERHOMEDIR" "${USERDESKTOP}"/$(basename "$USERHOMEDIR")
-				chown "$LOCALUSER" "${USERDESKTOP}"/$(basename "$USERHOMEDIR")
-				logger "openslx sharemapper: "${USERDESKTOP}"/$(basename "$USERHOMEDIR") linked."
+			0)
+				if [ -z "$PERSISTENT_MODE" ]; then
+					logger "openslx sharemapper: Linking ${USERDESKTOP}/$(basename $USERHOMEDIR), if possible."
+					# Changed: Link on Desktop no longer "Home-verz.", but same
+					# name as last part of $USERHOMEDIR (-->PERSISTENT)
+					# ln -s "$USERHOMEDIR" "${USERDESKTOP}"/"$SHARENAME"
+					ln -sn "$USERHOMEDIR" "${USERDESKTOP}"/$(basename "$USERHOMEDIR")
+					chown "$LOCALUSER" "${USERDESKTOP}"/$(basename "$USERHOMEDIR")
+					logger "openslx sharemapper: "${USERDESKTOP}"/$(basename "$USERHOMEDIR") linked."
+				fi
 				;;
-			*)      logger "openslx sharemapper: Unknown error level mounting home share."
-			;;
+			*)
+				logger "openslx sharemapper: Unknown error level mounting home share."
+				;;
 	esac
 }
 
