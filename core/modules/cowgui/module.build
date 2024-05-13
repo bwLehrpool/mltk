@@ -1,0 +1,22 @@
+#!/bin/bash
+
+fetch_source() {
+	autoclone
+}
+
+build() {
+	local SRCDIR="${MODULE_WORK_DIR}/src/cowgui"
+
+	mkdir -p "${MODULE_BUILD_DIR}/${REQUIRED_PREFIX}"
+	cde "${MODULE_BUILD_DIR}/${REQUIRED_PREFIX}"
+
+	pinfo "Running cmake"
+
+	cmake "$SRCDIR" || perror "'cmake $SRCDIR' failed."
+	make || perror "'make' failed."
+}
+
+post_copy() {
+	:
+}
+
