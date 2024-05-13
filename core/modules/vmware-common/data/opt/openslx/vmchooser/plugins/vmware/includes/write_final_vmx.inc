@@ -15,6 +15,8 @@ replace_placeholders() {
 		sed -i 's#%VM_DISK_MODE%#'"independent-nonpersistent"'#g' "${TMPCONFIG}"
 	fi
 	sed -i 's#%VM_DISK_REDOLOGDIR%#'"$VM_REDO_DIR"'#g' "${TMPCONFIG}"
+	# Need this for CoW to work in dnbd3-fuse mount dir
+	echo 'disk.locking = "FALSE"' >> "$TMPCONFIG"
 }
 
 # Ethernet: All we do is entering a generated MAC, as we do not want to interfere
