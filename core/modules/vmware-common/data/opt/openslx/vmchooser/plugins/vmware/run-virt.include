@@ -65,7 +65,7 @@ run_plugin() {
 	# HACK: using the modified version of the wrapper script
 	declare -rg VIRTCMD="/opt/openslx/bin/vmplayer"
 	# -X for fullscreen, plus VMX file - run windowed in CoW mode, so we can see the cowgui
-	if is_on VMCHOOSER_ADMIN_MODE && isset DMSD_COW_SESSION; then
+	if is_on "$VMCHOOSER_ADMIN_MODE" && isset DMSD_COW_SESSION; then
 		VIRTCMDOPTS+=( "${VM_RUN_FILE}" )
 	else
 		VIRTCMDOPTS+=( "-X" "${VM_RUN_FILE}" )

@@ -117,7 +117,7 @@ setup_virtual_floppy() {
 	local debug=
 	$DEBUG && debug=1
 	local editmode=0
-	if is_on VMCHOOSER_ADMIN_MODE; then
+	if is_on "$VMCHOOSER_ADMIN_MODE"; then
 		editmode=1
 	fi
 
