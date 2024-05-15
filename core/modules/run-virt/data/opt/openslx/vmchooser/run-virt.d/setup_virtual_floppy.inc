@@ -119,6 +119,9 @@ setup_virtual_floppy() {
 	local editmode=0
 	if is_on "$VMCHOOSER_ADMIN_MODE"; then
 		editmode=1
+		if [ -n "$DMSD_COW_SESSION" ]; then
+			resolution=
+		fi
 	fi
 
 	cat > "${FLOPPYDIR}/openslx.ini" <<-EOF
