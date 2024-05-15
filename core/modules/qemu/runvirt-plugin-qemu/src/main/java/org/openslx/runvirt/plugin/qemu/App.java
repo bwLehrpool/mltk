@@ -237,7 +237,7 @@ public class App
 			vmViewer = new ViewerLookingGlassClient( vm, hypervisor, cmdLn.isDebugEnabled() );
 		} else {
 			// viewer for non-GPU passthrough (no framebuffer access) is required
-			if ( cmdLn.isDebugEnabled() ) {
+			if ( cmdLn.isDebugEnabled() || cmdLn.isManagerEnabled() ) {
 				// create specific Virtual Machine Manager viewer if debug mode is enabled
 				vmViewer = new ViewerVirtManager( vm, hypervisor );
 			} else {
