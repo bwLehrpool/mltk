@@ -1,1 +1,0 @@
-/opt/openslx/pam/hooks/session-open.d
