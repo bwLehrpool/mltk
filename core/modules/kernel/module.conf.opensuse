@@ -1,4 +1,4 @@
 #!/bin/bash
 REQUIRED_GIT_BRANCH="openSUSE-${SYS_VERSION}"
-REQUIRED_GIT="git://kernel.opensuse.org/kernel.git"
+REQUIRED_GIT="https://kernel.opensuse.org/kernel.git"
 

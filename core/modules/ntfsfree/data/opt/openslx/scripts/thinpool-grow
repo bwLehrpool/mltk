@@ -256,8 +256,6 @@ do_resize() {
 	fi
 	if ! dmsetup table "$DEV" > "$new_table" || ! [ -s "$new_table" ]; then
 		debug "Underlying data device is not a dm-device. TODO"
-		# TODO: Create a linear target in place, 1:1 mapping to the old device, then
-		# appending our new stuff.
 		return 1
 	fi
 	# We don't care too much what type of target the old data device is. Most likely linear,

@@ -141,7 +141,7 @@ setup_cpu_ram() {
 	local nested="false"
 	local cores="1"
 	local ioapic="false"
-	if source /run/hwinfo && [ "${HW_KVM}" = "ENABLED" ]; then
+	if source /run/openslx/hwinfo && [ "${HW_KVM}" = "ENABLED" ]; then
 		ioapic="true"
 		kvm="true"
 		cores="$CPU_CORES"

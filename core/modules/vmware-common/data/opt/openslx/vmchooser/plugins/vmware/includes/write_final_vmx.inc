@@ -290,10 +290,10 @@ setup_graphics() {
 
 finalize_hardware() {
 	# Enable nested virtualization if not specified in remote vmx
-	if [ -e "/run/hwinfo" ] && ! grep -qi '^vhv\.enable' "${TMPCONFIG}" \
+	if [ -e "/run/openslx/hwinfo" ] && ! grep -qi '^vhv\.enable' "${TMPCONFIG}" \
 			&& detect_cpu_flag "ept" "npt" \
 			&& [ "$VM_HW_VERSION" -ge "9" ]; then
-		. "/run/hwinfo"
+		. "/run/openslx/hwinfo"
 		[ "${HW_KVM}" = "ENABLED" ] && echo 'vhv.enable = "TRUE"' >> "${TMPCONFIG}"
 	fi
 

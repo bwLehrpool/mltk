@@ -40,10 +40,8 @@ for opts in ${KCL}; do
 		ip=*)
 			# process IP info
 			parse_ip ${opts#ip=} ;;
-		nfs=*) # TODO: Still working? Still needed? Also see related code in setup_stage32
+		nfs=*)
 			NFS=${opts#nfs=}
-			NFSPATH=${NFS#*:}
-			NFSSERVER=${NFS%:/*}
 			;;
 		BOOTIF=*)
 			MAC="$( echo "$opts" | cut -b 11- | tr '-' ':' | tr '[A-Z]' '[a-z]' )" ;; # make mac lowercase for udev (see setup_network)

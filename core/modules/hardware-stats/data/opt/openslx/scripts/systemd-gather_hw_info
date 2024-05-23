@@ -9,8 +9,8 @@
 export LANG=C.UTF-8
 export LC_ALL=C.UTF-8
 
-declare -rg REPORTFILE="/run/hwreport"
-declare -rg jsonfile="/run/hwreport.json"
+declare -rg REPORTFILE="/run/openslx/hwreport"
+declare -rg jsonfile="/run/openslx/hwreport.json"
 
 # new json-based reporting, run first in background and wait at the end of script
 # This is only supported by Sat3.11, released 12-2023, so keep creating the old format
@@ -292,7 +292,7 @@ echo "Created report file"
 ################################################################################
 # Save information to local file for later use
 #
-cat > "/run/hwinfo" <<HORST
+cat > "/run/openslx/hwinfo" <<HORST
 HW_KVM='${VT}'
 HW_ID44='${ID44}'
 HW_MAC='${MAC}'

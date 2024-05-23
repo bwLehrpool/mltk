@@ -229,7 +229,7 @@ patch_aufs() {
 	[ -d "${AUFS}-standalone/.git" ] && rm -rf "${AUFS}-standalone"		# if already there, kill it.
 	# git: --depth 1 won't work here due to later "checkout origin/branch"
 	if [ "$KERNEL_MAJOR" = "3" ]; then
-		git clone "git://aufs.git.sourceforge.net/gitroot/aufs/${AUFS}-standalone.git" || perror "Cloning ${AUFS} failed."
+		git clone "https://aufs.git.sourceforge.net/gitroot/aufs/${AUFS}-standalone.git" || perror "Cloning ${AUFS} failed."
 	else
 		git clone "https://github.com/sfjro/${AUFS}-standalone.git" || perror "Cloning ${AUFS} failed."
 		#git clone "https://github.com/bnied/${AUFS}-standalone.git" || perror "Cloning ${AUFS} failed."

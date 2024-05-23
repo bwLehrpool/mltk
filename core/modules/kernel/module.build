@@ -118,7 +118,7 @@ patch_aufs() {
 	cd "$MODULE_WORK_DIR"
 	[ -d "aufs3-standalone/.git" ] && rm -rf "aufs3-standalone"		# if already there, kill it.
 	# git: --depth 1 won't work here due to later "checkout origin/branch"
-	git clone "git://aufs.git.sourceforge.net/gitroot/aufs/aufs3-standalone.git" || perror "Cloning aufs3 failed."
+	git clone "https://aufs.git.sourceforge.net/gitroot/aufs/aufs3-standalone.git" || perror "Cloning aufs3 failed."
 	# get the needed version
 	[ ! -z ${SYSTEM_KERNEL_LONG} ] && local NEEDED_BRANCH=$(echo $SYSTEM_KERNEL_LONG | awk -F "." '{print $1"."$2}') \
 				|| perror "SYSTEM_KERNEL_LONG not set, this should not happen!"

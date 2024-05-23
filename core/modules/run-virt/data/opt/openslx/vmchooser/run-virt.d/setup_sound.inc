@@ -6,7 +6,7 @@
 ## Functions ##
 setup_sound() {
 	unset VOL
-	if $(safesource "/run/hwinfo") ; then
+	if $(safesource "/run/openslx/hwinfo") ; then
 		# On startup, the volume of Master, PCM, Speaker, etc. will be set to 100%
 		# Some hardware with builtin speakers might be a bit too loud then, so you can
 		# define an exception table here. Array key is "Manufacturer//Model"
@@ -64,8 +64,9 @@ set_sound_alsa() {
 	writelog --quiet "\tSound card count: $SOUND_CARD_COUNT"
 	
 	# Adjust sound volume (playback)... Random mixer names we have encountered during testing
-	# TODO instead of trying to set volume blindly, why not use 'amixer scontrols' to find
+	# Instead of trying to set volume blindly, why not use 'amixer scontrols' to find
 	# which mixer control exists and set these only?
+	# # ^ because lazy
 	
 	writelog --quiet "Setting up volume to '$VOL' via amixer..."
 	amixer -q -c "$SOUND_CARD_INDEX" -s <<-EOF

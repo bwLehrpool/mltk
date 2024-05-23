@@ -129,7 +129,6 @@ check_devtools() {
 				pinfo "apt install build-essential m4 pkg-config cmake automake autoconf binutils lsb-release wget rsync diffutils lsof zstd"
 				pinfo "to install missing development tools."
 				;;
-			# FIXME: Don't know how precise this filter works so we might want to have a better matching ...
 			opensuse)
 				pinfo "zypper install gcc gcc-c++ make m4 binutils git module-init-tools patch pkg-config cmake lsb-release wget rsync diffutils lsof zstd"
 				pinfo "to install missing development tools."

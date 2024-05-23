@@ -12,7 +12,7 @@
   <url>https://git.openslx.org/openslx-ng/mltk.git/</url>
 
   <scm>
-    <connection>scm:git:git://git.openslx.org/openslx-ng/mltk.git</connection>
+    <connection>scm:git:https://git.openslx.org/openslx-ng/mltk.git</connection>
   </scm>
 
   <properties>

@@ -1,4 +1,4 @@
 #!/bin/bash
 REQUIRED_GIT_BRANCH="v${SYSTEM_KERNEL_SHORT}"
-REQUIRED_GIT="git://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git"
+REQUIRED_GIT="https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git"
 

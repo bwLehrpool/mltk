@@ -13,11 +13,11 @@
 # Use: 00:FF:00 for firtual machines ;)
 
 ## Functions ##
-# Import /run/hwinfo variables
+# Import /run/openslx/hwinfo variables
 import_hwinfo() {
-	$(safesource "/run/hwinfo")
+	$(safesource "/run/openslx/hwinfo")
 }
-# Sets the VM's hostname to the original hostname prefixed with a fixed string and its ID 
+# Sets the VM's hostname to the original hostname prefixed with a fixed string and its ID
 set_virt_hostname() {
 	declare -rg HOSTNAME="virt${VM_ID}-$(hostname)"
 	writelog "\tVM Hostname:\t\t$HOSTNAME"
@@ -115,10 +115,10 @@ set_virt_mac() {
 # If the variables in virtualization.conf is set, "TRUE" is assigned,
 # "FALSE" otherwise.
 check_optical_drives() {
-	# TODO This should only handle exam mode here, maybe even have one function
-	# that prepares all exam mode related stuff. Then create the TRUE/FALSE
-	# variables somewhere in the vmware plugin, since it's specific to that
-	# plugin.
+	# TODO This should not handle exam mode here (and special cases in
+	# 100 other places), maybe have one function that prepares all exam
+	# mode related stuff. Then create the TRUE/FALSE variables somewhere
+	# in the vmware plugin, since it's specific to that plugin.
 	FLOPPY0="FALSE"
 	CDROM0="FALSE"
 	CDROM1="FALSE"

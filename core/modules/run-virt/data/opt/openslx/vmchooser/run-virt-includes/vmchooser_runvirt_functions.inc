@@ -66,7 +66,7 @@ $BODY"
 		TITLE="ERROR"
 	fi
 	# Zenity should yield the nicest result
-	# TODO the title is only set as the window name,
+	# Note: the title is only set as the window name,
 	# which cannot be seen without a window manager
 	zenity --error --title "$TITLE" --text "$BODY"
 	local RET=$?
@@ -330,14 +330,17 @@ call_post_source() {
 # Helper called after sourcing the file via safesource. It just calls the
 # functions in the same order they were registered.
 run_post_source() {
-	[ $# -ne 1 ] && writelog "'${FUNCNAME[0]}' expects one argument only! $# given." && return 1
+	if [ $# -ne 1 ]; then
+		writelog "'${FUNCNAME[0]}' expects one argument only! $# given."
+		EXIT_REASON="Interner Fehler in run_post_source" cleanexit 1
+	fi
 	local TASK RET
 	"$DEBUG" && writelog "Running post-source hooks for ${1}..."
 	for TASK in ${RUN_POST_SOURCE["${1}"]}; do
 		# sanity checks
 		if ! is_function "$TASK"; then
 			writelog "\tRegistered function '$TASK' is not a function!"
-			return 1 # TODO maybe even cleanexit here as this seems very bad...
+			EXIT_REASON="Konnte safesource-hook nicht ausführen" cleanexit 1
 		fi
 		"$DEBUG" && writelog " - ${TASK}"
 		"${TASK}"
@@ -496,22 +499,6 @@ check_dep() {
 		shift
 	done
 	isset ONEOF && return 1 || return 0
-}
-
-# TODO: This is only used once in the whole script:
-# to cleanup the os string stored in the xml
-# Since the rework of this script, the os strings come from
-# the satellite server which already gives us a sanitized string
-# thus this function might not be needed anymore, as calling it on
-# new gen os strings effectively does nothing.
-# Removes any non-alphanumerical and non-hyphen chars
-# from the given parameters.
-clean_string() {
-	if [ "$#" -ge 1 ]; then
-		echo "$@" | tr 'A-Z' 'a-z' | tr -d -c 'a-z0-9\-'
-	else
-		tr 'A-Z' 'a-z' | tr -d -c 'a-z0-9\-'
-	fi
 }
 
 # Helper to detect given cpu flags.

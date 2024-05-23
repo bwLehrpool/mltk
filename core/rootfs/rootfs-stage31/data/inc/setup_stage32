@@ -12,8 +12,8 @@
 #
 if [ -n "$NFS" ]; then
 	echo "Mounting stage 3.2 as NFS..."
-	busybox mount -n -t nfs -o ro,async,nolock ${NFSSERVER}:${NFSPATH} /rorootfs \
-		|| drop_shell "Problem mounting NFS-Directory from ${NFSSERVER}:${NFSPATH}." \
+	busybox mount -n -t nfs -o ro,async,nolock "${NFS}" /rorootfs \
+		|| drop_shell "Problem mounting NFS-Directory from ${NFS}." \
 		|| return 1
 	return 0
 fi

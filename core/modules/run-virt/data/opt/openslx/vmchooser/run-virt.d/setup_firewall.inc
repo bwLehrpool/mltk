@@ -22,6 +22,5 @@ if check_dep slxfwtool; then
 	reg_feature_handler "firewall" "setup_firewall"
 else
 	writelog "Could not find 'slxfwtool' in PATH: $PATH. Netrules firewall will not work!"
-	error_user "Fehler" "Keine Unterstützung von veranstaltungspezifische Firewall-Regeln!"
-	# TODO handle
+	error_user "Fehler" "Keine Unterstützung für veranstaltungspezifische Firewall-Regeln!"
 fi

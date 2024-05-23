@@ -26,7 +26,6 @@ setup_virtual_printer() {
 	fi
 	
 	# Start the lpdaemon listening on the given port
-	# TODO: externalize with something like runvirt.d (other parts might benefit from that too)
 	tcpsvd -E 192.168.101.1 5515 \
 		lpd "$SPOOLDIR" \
 		ash -c "/opt/openslx/scripts/run-virt_print '${USER}' \"${SPOOLDIR}/${QUEUE}/\$DATAFILE\"" \

@@ -2,7 +2,7 @@
 
 . /opt/openslx/config
 . /opt/openslx/bin/slx-tools
-. /run/hwinfo
+. /run/openslx/hwinfo
 
 if [ -n "$1" ]; then
 	exec >> "$1"

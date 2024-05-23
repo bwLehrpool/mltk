@@ -8,7 +8,7 @@ fetch_source() {
 		for drv in $REQUIRED_XORG_DRIVERS; do
 			drv=${drv%//*}
 			[ -d "${drv}/.git" ] && continue
-			git clone "git://anongit.freedesktop.org/xorg/driver/${drv}" "${drv}" || perror "Could not clone $drv"
+			git clone "https://anongit.freedesktop.org/xorg/driver/${drv}" "${drv}" || perror "Could not clone $drv"
 		done
 		cd -
 	fi
