@@ -1,4 +1,0 @@
-#!/bin/bash
-REQUIRED_CONTENT_PACKAGES="	
-			rsyslog
-"
