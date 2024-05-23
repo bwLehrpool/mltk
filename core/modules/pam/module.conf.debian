@@ -8,7 +8,6 @@ REQUIRED_INSTALLED_PACKAGES="
 	libssl-dev
 	ldap-utils
 	nfs-common
-	libpam0g-dev
 	cifs-utils
 	libtool
 "

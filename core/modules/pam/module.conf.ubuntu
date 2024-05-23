@@ -9,7 +9,6 @@ REQUIRED_INSTALLED_PACKAGES="
 	ldap-utils
 	libnfsidmap2
 	nfs-common
-	libpam0g-dev
 	cifs-utils
 	libtool
 "

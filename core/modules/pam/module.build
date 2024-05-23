@@ -8,20 +8,6 @@ fetch_source() {
 build() {
 	mkdir -p "$MODULE_BUILD_DIR/opt/openslx/bin"
 	gcc -o "$MODULE_BUILD_DIR/opt/openslx/bin/sslconnect" "$MODULE_DIR/sslconnect.c" -lssl -lcrypto -O3 || perror "Could not compile sslconnect.c"
-
-	# build pam-script separatly since we use a source tarball
-
-	# HACK: find pam_unix.so in MODULE_BUILD_DIR to see where to put pam_script
-	cde "${MODULE_WORK_DIR}/src/pam_script"
-	for i in 1 2 3; do # FUCK THIS BRAIN DAMAGE!
-		libtoolize
-		automake --add-missing
-		autoreconf
-		aclocal
-		autoheader
-	done
-	./configure --prefix=/ --sysconfdir=/etc/pam-script --libdir="$SYS_PAM_MODULES_PATH" || perror "pam-script: ./configure failed."
-	make DESTDIR="${MODULE_BUILD_DIR}" install || perror "pam-script: make install to ${MODULE_BUILD_DIR} failed."
 }
 
 post_copy() {
