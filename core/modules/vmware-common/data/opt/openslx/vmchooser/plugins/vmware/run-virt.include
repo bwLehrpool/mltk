@@ -21,7 +21,7 @@ declare -rg VMWARE_INCLUDE_DIR="${VMWARE_PLUGIN_DIR}/includes"
 
 # TODO make this part of the metadata coming from the server
 # Define which features the VMware plugin supports
-declare -rg PLUGIN_FEATURES="firewall printer usb slxfloppy sound netshares"
+declare -rg PLUGIN_FEATURES="firewall printer usb slxfloppy sound"
 
 run_plugin() {
 	# declaration of default functions and variables for vmware

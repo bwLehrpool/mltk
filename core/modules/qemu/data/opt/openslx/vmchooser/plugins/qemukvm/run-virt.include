@@ -20,7 +20,7 @@ declare -rg QEMU_PLUGIN_DIR="$(dirname "${BASH_SOURCE[0]}")"
 declare -rg QEMU_INCLUDE_DIR="${QEMU_PLUGIN_DIR}/includes"
 
 # Define which features the QEMU plugin supports
-declare -rg PLUGIN_FEATURES="firewall printer usb slxfloppy sound netshares"
+declare -rg PLUGIN_FEATURES="firewall printer usb slxfloppy sound"
 
 run_plugin() {
 	# include kernel command line utils and functions
