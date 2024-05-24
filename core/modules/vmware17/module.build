@@ -22,7 +22,7 @@ fetch_source() {
 
 	# Get directory listing of where final archive resides
 	wget -O "index.html" "$LIST_URL" || perror "Could not download vmware build type core dir index"
-	VMWARE_BUNDLE_FILE=$(grep -E -o -i -m 1 "href=\"VMware-$REQUIRED_TYPE-[^\"]+[\._\-]$ARCHREGEX[\._\-][^\"]+\"" "index.html" | awk -F '"' '{printf $2}')
+	VMWARE_BUNDLE_FILE=$(grep -E -o -i -m 1 "href=\"VMware-$REQUIRED_TYPE-[^\"]+[\._\-]${ARCHREGEX}[\._\-][^\"]+\"" "index.html" | awk -F '"' '{printf $2}')
 	[ -z "$VMWARE_BUNDLE_FILE" ] && perror "Could not determine vmware $REQUIRED_TYPE bundle file for current arch from $MODULE_WORK_DIR/src/index.html"
 
 	# Download file
@@ -62,9 +62,12 @@ build() {
 	if ! [ -d "${MODULE_BUILD_DIR}/prepatched" ]; then
 		# copy required patches
 		mkdir -p "${MODULE_BUILD_DIR}/patches"
-		for PATCH in $(find "${MODULE_DIR}/patches/" -name "*__*__*.patch"); do
+		for PATCH in "${MODULE_DIR}/patches/"*__*__*.patch; do
+			[ -s "$PATCH" ] || continue
 			parse_patch_name "$PATCH"
-			[ -z "${MIN_KERN}" -o -z "${MAX_KERN}" ] && perror "Could not parse patch filename"
+			if [ -z "${MIN_KERN}" ] || [ -z "${MAX_KERN}" ]; then
+				perror "Could not parse patch filename"
+			fi
 			if version_lt "$TARGET_KERNEL_SHORT" "$MIN_KERN" || version_gt "$TARGET_KERNEL_SHORT" "$MAX_KERN"; then
 				pinfo "*NOT* applying $PATCH (min=$MIN_KERN max=$MAX_KERN cmp=$TARGET_KERNEL_SHORT)"
 				continue # Not suitable for our kernel
@@ -80,7 +83,9 @@ build() {
 	fi
 
 	# sanity check to see if KERNEL_HEADERS_DIR is set and exists
-	[ -z "${KERNEL_HEADERS_DIR}" -o ! -e "${KERNEL_HEADERS_DIR}" ] && perror "KERNEL_HEADERS_DIR ('"${KERNEL_HEADERS_DIR}"') not found. Was the kernel module built?"
+	if [ -z "${KERNEL_HEADERS_DIR}" ] || ! [ -e "${KERNEL_HEADERS_DIR}" ]; then
+		perror "KERNEL_HEADERS_DIR ('${KERNEL_HEADERS_DIR}') not found. Was the kernel module built?"
+	fi
 
 	# build in two steps, to be able to use mltk function while patching modules
 	mkdir -p "${MODULE_BUILD_DIR}/usr/local/bin"
@@ -215,11 +220,12 @@ post_copy() {
 
 }
 
+# Output info encoded in filename via KMOD, MIN/MAX_KERN and MIN/MAX_VMWARE
 parse_patch_name() {
 	[ $# -ne 1 ] && perror "parse_patch_name: Wrong parameter count."
 	local PATCH="$1"
 	# Module
-	SHORT=$(echo "$PATCH" | sed -r 's/^([^_]+)__.*$/\1/g')
+	local SHORT=$(echo "$PATCH" | sed -r 's/^([^_]+)__.*$/\1/g')
 	KMOD="${SHORT}.tar"
 	# Kernel restriction
 	MIN_KERN=$(echo "$PATCH" | sed -r 's/^[^_]+__([0-9\.]+)-[0-9\.]+__[^_]+\.patch$/\1/g')
