@@ -32,12 +32,10 @@ fetch_source() {
 		unlink "$VMWARE_BUNDLE_FILE"
 		VMWARE_BUNDLE_FILE="${VMWARE_BUNDLE_FILE%.tar}"
 	fi
-
-	cd - >/dev/null
 }
 
 build() {
-	local KMOD SHORT PATCH MIN_KERN MAX_KERN
+	local KMOD SHORT PATCH MIN_KERN MAX_KERN vers
 	[ -z "$VMWARE_BUNDLE_FILE" ] && VMWARE_BUNDLE_FILE=$(basename "$(find "${MODULE_WORK_DIR}/src" -iname "vmware-*" | head -n 1)")
 	local DELETE_FILES=$(for LINE in $REQUIRED_VMWARE_DELETIONS;do echo "rm -rf -- $LINE"; done)
 
@@ -53,8 +51,14 @@ build() {
 	cp "${MODULE_WORK_DIR}/src/$VMWARE_BUNDLE_FILE" "${MODULE_BUILD_DIR}/$VMWARE_BUNDLE_FILE"
 	local KVER2=$TARGET_KERNEL_SHORT
 	[ ${#KVER2} -gt 4 ] && KVER2=${KVER2%.*}
-	git clone --depth 1 -b "workstation-${OFFICIAL_VERSION}" "https://github.com/mkubecek/vmware-host-modules.git" "${MODULE_BUILD_DIR}/prepatched" \
-		&& pinfo "Have prepatched kernel modules"
+	# Try next-lower minor as fallback
+	for vers in "$OFFICIAL_VERSION" "${OFFICIAL_VERSION:0:-1}$(( ${OFFICIAL_VERSION:"-1"} - 1 ))"; do
+		git clone --depth 1 -b "workstation-${vers}" \
+			"https://github.com/mkubecek/vmware-host-modules.git" \
+			"${MODULE_BUILD_DIR}/prepatched" || continue
+		pinfo "Have prepatched kernel modules ($vers)"
+		break
+	done
 	if ! [ -d "${MODULE_BUILD_DIR}/prepatched" ]; then
 		# copy required patches
 		mkdir -p "${MODULE_BUILD_DIR}/patches"
