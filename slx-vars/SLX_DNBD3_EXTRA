@@ -1,0 +1,4 @@
+Override dnbd3-server settings in the .ini file in proxy-mode.
+
+This is a space separated list of settings, where each entry has the format
+section.key=value

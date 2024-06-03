@@ -1,0 +1,2 @@
+UUID of lecture to start in exam mode. This takes precedence over SLX_AUTOSTART_UUID.
+Why the exam mode module doesn't just override the latter, I have no idea.

@@ -1,0 +1,2 @@
+If not empty, the dnbd3-proxy on the client will only accept connections from the given addresses. This is done via iptables entries, so any format it accepts for -s will be accepted here.
+The list, as usual, is space separated.

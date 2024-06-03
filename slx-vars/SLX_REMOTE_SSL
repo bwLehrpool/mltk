@@ -1,0 +1,1 @@
+If enabled, use https to talk to the boot server after stage3. The self-signed certificate should be supplied via config.tgz.

@@ -1,0 +1,4 @@
+Tells the system in which way to interpret and write back the BIOS clock.
+Either "local" for local timezone, including DST,
+or "utc" for UTC.
+Any other value means the BIOS clock is ignored and will not be adjusted according to the time acquired by NTP either.

@@ -1,0 +1,2 @@
+Deprecated.
+Only used by MiniLinux to determine which squashfs addons to load (e.g. vmare, virtualbox, ...). Since stage4 is streamed in MaxiLinux, there is no benefit in splitting up the file system.
