@@ -122,14 +122,52 @@ case "$1" in
 	bound|renew)
 		check_env "$1"
 		mkdir -p "/run/dhcpc"
+		if [ "$interface" != "$primary" ]; then
+			echo 1 > /proc/sys/net/ipv4/conf/all/arp_filter
+			echo 1 > /proc/sys/net/ipv4/conf/all/arp_ignore
+		fi
 		# Set address on interface
-		ip addr add "$ip/$( ipcalc -s -p "$ip" "$subnet" | sed 's/.*=//' )" dev "$interface"
-		# Set default route, if given
-		if [ -n "$router" ]; then
-			# Only replace route if it's the same interface as the current default route, or we don't have any
-			current="$( ip route show | awk '{ if ($1 == "default") {print $5; exit 0}}' )"
-			if [ -z "$current" ] || [ "$interface" = "$current" ]; then
-				ip route replace default via "$router"
+		alt_table= # Use separate routing table?
+		if [ "$interface" != "$primary" ]; then
+			pri_net="$( ip addr show dev "${primary}" | awk '$1 == "inet" {print $2; exit}' )"
+			pri_net="$( ipcalc -s -n "$pri_net" | sed 's/^.*=//' )"
+			this_net="$( ipcalc -s -n "$ip" "$subnet" | sed 's/^.*=//' )"
+			[ "$pri_net" = "$this_net" ] && alt_table=yes
+		fi
+		if [ -z "$alt_table" ]; then
+			# default table
+			ip addr add "$ip/$( ipcalc -s -p "$ip" "$subnet" | sed 's/^.*=//' )" dev "$interface"
+			# Set default route, if given
+			if [ -n "$router" ]; then
+				# Only replace route if it's the same interface as the current default route, or we don't have any
+				current="$( ip route show | awk '{ if ($1 == "default") {print $5; exit 0}}' )"
+				if [ -z "$current" ] || [ "$interface" = "$current" ]; then
+					ip route replace default via "$router"
+				fi
+			fi
+		else
+			# alt table - determine which one
+			mkdir -p /etc/iproute2
+			touch /etc/iproute2/rt_tables
+			alt_table="$( awk -v "iface=$interface" \
+					'$1 ~ /^[0-9]+$/ && $2 == iface {print $1; exit}' \
+					/etc/iproute2/rt_tables )"
+			if [ -z "$alt_table" ]; then
+				alt_table="$( awk '$1 ~ /^[0-9]+$/ { a[$1] = 1 }
+				END {
+					for (i = 0; i < 255; ++i) {
+						if (!a[i]) { print i; exit }
+					}
+					print 1
+				}' /etc/iproute2/rt_tables )"
+				echo "$alt_table	$interface" >> /etc/iproute2/rt_tables
+			fi
+			ip addr add "$ip/$( ipcalc -s -p "$ip" "$subnet" | sed 's/.*=//' )" dev "$interface" noprefixroute
+			ip route add "$this_net" dev "$interface" scope link src "$ip" table "$interface"
+			ip rule add from "$ip" table "$interface"
+			# Set default route, if given
+			if [ -n "$router" ]; then
+				ip route replace default via "$router" table "$interface"
 			fi
 		fi
 
@@ -294,6 +332,7 @@ case "$1" in
 			echo 1 > "/proc/sys/net/ipv4/conf/$interface/promote_secondaries"
 			clientip=${ip%%:*}
 			ip addr del "$clientip/$(ipcalc -s -p "$clientip" "$subnet" | sed s/.*=//)" dev "$interface"
+			ip route flush table "$interface"
 			sed -i "/^$(escape_search "$ip")(\s|$)/d" /etc/hosts
 		fi
 		
