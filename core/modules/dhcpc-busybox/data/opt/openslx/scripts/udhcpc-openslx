@@ -116,6 +116,11 @@ check_env() {
 	fi
 }
 
+ipc() {
+	# Use the busybox ipcalc explicity as it's incompatible with the perl-one
+	busybox ipcalc -s "$@"
+}
+
 mkdir -p "/run/network"
 
 case "$1" in
@@ -130,13 +135,14 @@ case "$1" in
 		alt_table= # Use separate routing table?
 		if [ "$interface" != "$primary" ]; then
 			pri_net="$( ip addr show dev "${primary}" | awk '$1 == "inet" {print $2; exit}' )"
-			pri_net="$( ipcalc -s -n "$pri_net" | sed 's/^.*=//' )"
-			this_net="$( ipcalc -s -n "$ip" "$subnet" | sed 's/^.*=//' )"
+			[[ "$pri_net" == */* ]] || pri_net="${pri_net}/32"
+			pri_net="$( ipc -n "$pri_net" | sed 's/^.*=//' )/${pri_net#*/}"
+			this_net="$( ipc -n "$ip" "$subnet" | sed 's/^.*=//' )/$( ipc -p "$ip" "$subnet" | sed 's/^.*=//' )"
 			[ "$pri_net" = "$this_net" ] && alt_table=yes
 		fi
 		if [ -z "$alt_table" ]; then
 			# default table
-			ip addr add "$ip/$( ipcalc -s -p "$ip" "$subnet" | sed 's/^.*=//' )" dev "$interface"
+			ip addr add "$ip/$( ipc -p "$ip" "$subnet" | sed 's/^.*=//' )" dev "$interface"
 			# Set default route, if given
 			if [ -n "$router" ]; then
 				# Only replace route if it's the same interface as the current default route, or we don't have any
@@ -162,7 +168,7 @@ case "$1" in
 				}' /etc/iproute2/rt_tables )"
 				echo "$alt_table	$interface" >> /etc/iproute2/rt_tables
 			fi
-			ip addr add "$ip/$( ipcalc -s -p "$ip" "$subnet" | sed 's/.*=//' )" dev "$interface" noprefixroute
+			ip addr add "$ip/$( ipc -p "$ip" "$subnet" | sed 's/.*=//' )" dev "$interface" noprefixroute
 			ip route add "$this_net" dev "$interface" scope link src "$ip" table "$interface"
 			ip rule add from "$ip" table "$interface"
 			# Set default route, if given
@@ -331,7 +337,7 @@ case "$1" in
 		else
 			echo 1 > "/proc/sys/net/ipv4/conf/$interface/promote_secondaries"
 			clientip=${ip%%:*}
-			ip addr del "$clientip/$(ipcalc -s -p "$clientip" "$subnet" | sed s/.*=//)" dev "$interface"
+			ip addr del "$clientip/$(ipc -p "$clientip" "$subnet" | sed s/.*=//)" dev "$interface"
 			ip route flush table "$interface"
 			sed -i "/^$(escape_search "$ip")(\s|$)/d" /etc/hosts
 		fi
