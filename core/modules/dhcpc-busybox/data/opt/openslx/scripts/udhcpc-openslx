@@ -155,7 +155,7 @@ case "$1" in
 			if [ -z "$alt_table" ]; then
 				alt_table="$( awk '$1 ~ /^[0-9]+$/ { a[$1] = 1 }
 				END {
-					for (i = 0; i < 255; ++i) {
+					for (i = 1; i < 255; ++i) {
 						if (!a[i]) { print i; exit }
 					}
 					print 1
