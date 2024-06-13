@@ -23,7 +23,8 @@ fi
 exec /opt/openslx/sbin/udhcpc "${udhcpc_opts[@]}" \
 	-O domain -O nissrv -O nisdomain -O wpad -O search -O wins \
 	-s /opt/openslx/scripts/udhcpc-openslx \
-	-i "${net_if}" -f -t 8
+	-i "${net_if}" -f -t 6 -T 5 -A 300
+	# ^ try 6 times, 5 seconds timeout each, then wait 5 minutes and repeat
 
 slxlog "udhcpc" "Could not run 'udhcpc ${udhcpc_opts[*]}' on ${net_if}."
 exit 1
