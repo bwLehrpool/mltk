@@ -1,14 +1,9 @@
 #!/bin/bash
-REQUIRED_INSTALLED_PACKAGES="
-	dmidecode
-	msr-tools
-	python3-netifaces
-	util-linux
-"
-
 REQUIRED_CONTENT_PACKAGES="
 	msr-tools
 	dmidecode
 	util-linux
+	python3-netifaces
+	iproute2
 "
 
