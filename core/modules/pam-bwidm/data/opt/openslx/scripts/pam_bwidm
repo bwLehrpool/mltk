@@ -181,6 +181,7 @@ auth_user() {
 	local cret="$(curl \
 		--silent \
 		--connect-timeout 5 \
+		--retry 3 \
 		--max-time 15 \
 		--output "$ret" \
 		--data "$REQUEST" \
@@ -270,11 +271,19 @@ write_user_data() {
 if [ "$PAM_TYPE" = "auth" ]; then
 	##### Browser
 	if [ "$mode" = "browser" ]; then
+		# Check if suffix is allowed org
+		if [ -d "/opt/openslx/pam/shibboleth/whitelist" ] \
+				&& ! grep -Fxqi "$USER_ORGANISATION" /opt/openslx/pam/shibboleth/whitelist/*.suffix; then
+			echo "Organization '$USER_ORGANISATION' not allowed to log in"
+			exit 1
+		fi
+		# Validate with server
 		token="${USER_PASSWORD#shib=}"
 		if [ "${#USER_PASSWORD}" -gt 18 ] && [ "${USER_PASSWORD}" != "$token" ]; then
 			nc="$(curl \
 				--silent \
 				--connect-timeout 5 \
+				--retry 3 \
 				--max-time 15 \
 				--data-urlencode "token=${token}" \
 				"${IDP_QUERY_URL}?action=verify"
