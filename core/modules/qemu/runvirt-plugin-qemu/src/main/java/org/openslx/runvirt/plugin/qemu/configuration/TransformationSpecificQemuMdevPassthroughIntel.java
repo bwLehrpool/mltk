@@ -11,6 +11,7 @@ import org.openslx.libvirt.domain.device.Video;
 import org.openslx.runvirt.plugin.qemu.cmdln.CommandLineArgs;
 import org.openslx.runvirt.plugin.qemu.virtualization.LibvirtHypervisorQemu;
 import org.openslx.runvirt.virtualization.LibvirtHypervisorException;
+import org.openslx.util.Util;
 import org.openslx.virtualization.configuration.transformation.TransformationException;
 import org.openslx.virtualization.configuration.transformation.TransformationSpecific;
 
@@ -116,7 +117,7 @@ public class TransformationSpecificQemuMdevPassthroughIntel
 			mdevDevice.setMemoryFramebufferOn( true );
 			mdevDevice.setSource( mdevDeviceAddress );
 
-			if ( config.getOsLoader() != null && !config.getOsLoader().isEmpty() ) {
+			if ( !Util.isEmptyString( config.getOsLoader() ) || "efi".equalsIgnoreCase( config.getOsFirmware() ) ) {
 				// set Intel specific rom file for GVT-g if UEFI loader is used
 				config.addGvtg( INTEL_GVT_G_UEFI_ROMFILE );
 			} else {
