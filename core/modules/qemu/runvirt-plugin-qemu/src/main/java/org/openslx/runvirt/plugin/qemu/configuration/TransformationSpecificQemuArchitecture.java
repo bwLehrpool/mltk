@@ -3,6 +3,8 @@ package org.openslx.runvirt.plugin.qemu.configuration;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.openslx.libvirt.capabilities.Capabilities;
 import org.openslx.libvirt.capabilities.guest.Guest;
 import org.openslx.libvirt.capabilities.guest.Machine;
@@ -12,7 +14,7 @@ import org.openslx.libvirt.domain.Domain.Type;
 import org.openslx.runvirt.plugin.qemu.cmdln.CommandLineArgs;
 import org.openslx.runvirt.plugin.qemu.virtualization.LibvirtHypervisorQemu;
 import org.openslx.runvirt.virtualization.LibvirtHypervisorException;
-import org.openslx.virtualization.configuration.VirtualizationConfigurationQemuUtils;
+import org.openslx.util.Util;
 import org.openslx.virtualization.configuration.transformation.TransformationException;
 import org.openslx.virtualization.configuration.transformation.TransformationSpecific;
 
@@ -25,6 +27,8 @@ import org.openslx.virtualization.configuration.transformation.TransformationSpe
 public class TransformationSpecificQemuArchitecture
 		extends TransformationSpecific<Domain, CommandLineArgs, LibvirtHypervisorQemu>
 {
+	private static final Logger LOGGER = LogManager.getLogger( TransformationSpecificQemuArchitecture.class );
+	
 	/**
 	 * Name of the configuration transformation.
 	 */
@@ -134,24 +138,15 @@ public class TransformationSpecificQemuArchitecture
 	}
 
 	/**
-	 * Returns the canonical names of a target machine description of a host system's guest
-	 * capability.
-	 * 
-	 * @param guest guest capability of a host system.
-	 * @return canonical names of a target machine description of a host system's guest capability.
-	 * @throws TransformationException failed to return the canonical names of a target machine
-	 *            description of a host system's guest capability
+	 * Return all supported machines for given guest.
 	 */
-	private List<String> getCanonicalNamesFromTargetMachines( Guest guest ) throws TransformationException
+	private List<String> getTargetMachines( Guest guest )
 	{
 		final List<Machine> machines = guest.getArchMachines();
 		final List<String> canonicalNames = new ArrayList<String>();
 
 		for ( Machine machine : machines ) {
-			final String canonicalName = machine.getCanonicalMachine();
-			if ( canonicalName != null ) {
-				canonicalNames.add( canonicalName );
-			}
+			canonicalNames.add( machine.getName() );
 		}
 
 		return canonicalNames;
@@ -172,67 +167,71 @@ public class TransformationSpecificQemuArchitecture
 		// check if source architecture is supported by one of the hypervisor's guests
 		Guest targetGuest = null;
 		if ( sourceArchitectureName == null ) {
-			final String errorMsg = new String( "Source architecture is not specified!" );
-			throw new TransformationException( errorMsg );
+			throw new TransformationException( "Source architecture is not specified!" );
 		} else {
 			targetGuest = this.getTargetGuestFromArchName( sourceArchitectureName );
 			if ( targetGuest == null ) {
-				final String errorMsg = new String( "Source architecture is not supported by the virtualizer!" );
-				throw new TransformationException( errorMsg );
+				throw new TransformationException( "Source architecture '" + sourceArchitectureName + "' "
+						+ "is not supported by the virtualizer!" );
 			}
 		}
 
 		// check if source machine is supported by the hypervisor
-		Machine targetMachine = null;
 		if ( sourceMachine == null ) {
-			final String errorMsg = new String( "Source machine type is not specified!" );
-			throw new TransformationException( errorMsg );
+			throw new TransformationException( "Source machine type is not specified!" );
 		} else {
-			// get all possible machine type for supported source architecture
-			targetMachine = this.getTargetMachineFromGuest( targetGuest, sourceMachine );
+			Machine targetMachine = this.getTargetMachineFromGuest( targetGuest, sourceMachine );
 
-			if ( targetMachine == null ) {
+			if ( targetMachine != null ) {
+				// Canonicalize, otherwise UEFI firmware cannot be found -.-
+				String cn = targetMachine.getCanonicalMachine();
+				if ( !Util.isEmptyString( cn ) ) {
+					config.setOsMachine( cn );
+				}
+			} else {
 				// source machine is not directly supported by the hypervisor
-				// check if up- or downgraded version of the chipset is supported by the hypervisor
-				List<String> targetMachineCanonicalNames = this.getCanonicalNamesFromTargetMachines( targetGuest );
+				LOGGER.info( "Machine '" + sourceMachine + "' not known" );
+				// Get best fallback
+				List<String> supportedMachineNames = this.getTargetMachines( targetGuest );
 
-				// retrieve overwrite chipset name from canonical machine names
+				// Look for best (=longest) match in supported list
 				String sourceMachineOverwrite = null;
-				for ( String targetMachineCanonicalName : targetMachineCanonicalNames ) {
-					final String targetMachineName = VirtualizationConfigurationQemuUtils
-							.getOsMachineName( targetMachineCanonicalName );
-					if ( targetMachineName != null && sourceMachine.contains( targetMachineName ) ) {
-						sourceMachineOverwrite = targetMachineCanonicalName;
-						break;
+				for ( String name : supportedMachineNames ) {
+					LOGGER.debug( "Does '" + sourceMachine + "' start with (or contain) '" + name + "'?" );
+					if ( ( sourceMachine.startsWith( name ) || sourceMachine.contains( "-" + name ) )
+							&& ( sourceMachineOverwrite == null || sourceMachineOverwrite.length() < name.length() ) ) {
+						sourceMachineOverwrite = name;
 					}
 				}
 
 				// if overwrite available, patch the machine type
 				if ( sourceMachineOverwrite != null ) {
+					targetMachine = this.getTargetMachineFromGuest( targetGuest, sourceMachineOverwrite );
+					if (targetMachine != null && !Util.isEmptyString( targetMachine.getCanonicalMachine() ) ) {
+						sourceMachineOverwrite = targetMachine.getCanonicalMachine();
+					}
+					LOGGER.info( "Overriding unsupported machine '" + sourceMachine + "' with '" + sourceMachineOverwrite + "'" );
 					config.setOsMachine( sourceMachineOverwrite );
 				} else {
-					final String errorMsg = new String( "Source machine type is not supported by the virtualizer!" );
-					throw new TransformationException( errorMsg );
+					LOGGER.info( "Don't know how to override unsupported machine '" + sourceMachine + "'" );
+					throw new TransformationException( "Source machine type is not supported by the virtualizer!" );
 				}
 			}
 		}
 
 		// check if source OS type is supported by the hypervisor's architecture
 		if ( sourceOsType == null ) {
-			final String errorMsg = new String( "OS type is not specified!" );
-			throw new TransformationException( errorMsg );
+			throw new TransformationException( "OS type is not specified!" );
 		} else {
 			if ( !sourceOsType.toString().equals( targetGuest.getOsType().toString() ) ) {
-				final String errorMsg = new String( "OS type is not supported by the virtualizer!" );
-				throw new TransformationException( errorMsg );
+				throw new TransformationException( "OS type is not supported by the virtualizer!" );
 			}
 		}
 
 		// check if source domain type is supported by the hypervisor's architecture
 		Type targetDomainType = null;
 		if ( sourceDomainType == null ) {
-			final String errorMsg = new String( "Source domain type is not specified!" );
-			throw new TransformationException( errorMsg );
+			throw new TransformationException( "Source domain type is not specified!" );
 		} else {
 			final List<org.openslx.libvirt.capabilities.guest.Domain> targetDomains = targetGuest.getArchDomains();
 
@@ -247,16 +246,14 @@ public class TransformationSpecificQemuArchitecture
 
 			// check supported domain type
 			if ( targetDomainType == null ) {
-				final String errorMsg = new String( "Source domain type is not supported by the virtualizer!" );
-				throw new TransformationException( errorMsg );
+				throw new TransformationException( "Source domain type is not supported by the virtualizer!" );
 			}
 		}
 
 		// patch path of QEMU emulator binary
 		final String archEmulator = targetGuest.getArchEmulator();
 		if ( archEmulator == null ) {
-			final String errorMsg = new String( "Emulation of source architecture is not supported by the virtualizer!" );
-			throw new TransformationException( errorMsg );
+			throw new TransformationException( "Emulation of source architecture is not supported by the virtualizer!" );
 		} else {
 			config.setDevicesEmulator( targetGuest.getArchEmulator() );
 		}

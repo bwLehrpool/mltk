@@ -7,8 +7,11 @@ import java.util.Arrays;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.core.LoggerContext;
+import org.apache.logging.log4j.core.config.Configuration;
 import org.apache.logging.log4j.core.config.Configurator;
 import org.apache.logging.log4j.core.config.DefaultConfiguration;
+import org.apache.logging.log4j.core.config.LoggerConfig;
 import org.openslx.libvirt.domain.Domain;
 import org.openslx.libvirt.xml.LibvirtXmlDocumentException;
 import org.openslx.libvirt.xml.LibvirtXmlSerializationException;
@@ -98,7 +101,19 @@ public class App
 		}
 		
 		if ( cmdLn.isDebugEnabled() || cmdLn.isDebugDevicePassthroughEnabled() ) {
-			Configurator.setRootLevel( Level.ALL );
+			// Someone please exterminate all Java devs. What's wrong with those fuckheads who come up with this?
+			// https://stackoverflow.com/a/65151249/2043481
+			LoggerContext ctx = (LoggerContext) LogManager.getContext(App.class.getClassLoader(), false);
+			Configuration config = ctx.getConfiguration();
+			LoggerConfig loggerConfig = config.getLoggerConfig(LogManager.ROOT_LOGGER_NAME);
+			loggerConfig.setLevel(Level.DEBUG);
+			ctx.updateLoggers();
+		} else {
+			LoggerContext ctx = (LoggerContext) LogManager.getContext(App.class.getClassLoader(), false);
+			Configuration config = ctx.getConfiguration();
+			LoggerConfig loggerConfig = config.getLoggerConfig(LogManager.ROOT_LOGGER_NAME);
+			loggerConfig.setLevel(Level.INFO);
+			ctx.updateLoggers();
 		}
 
 		// show help if 'help' command line option is set
@@ -170,7 +185,7 @@ public class App
 		try {
 			transformationManager.transform();
 		} catch ( TransformationException e ) {
-			LOGGER.error( "Failed to finalize VM configuration file: " + e.getLocalizedMessage() );
+			LOGGER.error( "Failed to transform VM configuration file", e );
 			hypervisor.close();
 			System.exit( 4 );
 		}
