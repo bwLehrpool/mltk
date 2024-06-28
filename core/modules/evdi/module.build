@@ -6,11 +6,11 @@ fetch_source() {
 
 build() {
        local dir
-       cde "${MODULE_WORK_DIR}/src/evdi/module"
-       make -C "$KERNEL_HEADERS_DIR" M=$(pwd) \
+       cde "${MODULE_WORK_DIR}/src/evdi"
+       make module CONFIG_DRM_EVDI=m KDIR="$KERNEL_HEADERS_DIR" \
                || perror "Could not make .ko"
        dir="${MODULE_BUILD_DIR}/lib/modules/${TARGET_KERNEL_LONG}/kernel/extra"
        mkdir -p "$dir"
-       cp evdi.ko "$dir/" \
-               || perror "Couldnotopcy"
+       cp module/evdi.ko "$dir/" \
+               || perror "Couldnotopcy evdi.ko"
 }
