@@ -93,7 +93,8 @@ if [ "$SLX_BRIDGE_OTHER_NICS" = "yes" ]; then
 	echo "Setting up additional bridged network interfaces"
 	vboxnet=3
 	for nic in /sys/class/net/br-nic-*; do
-		nic="${nic##*-}"
+		nic="${nic#br-nic-}"
+		[ "$nic" = "*" ] && break
 		if ! [ "$nic" -ge 0 ]; then
 			slxlog "vbox-other-nics" "NaN: br-nic-X has X='$nic'"
 			continue
