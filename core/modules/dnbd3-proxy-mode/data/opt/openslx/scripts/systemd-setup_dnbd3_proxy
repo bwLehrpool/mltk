@@ -1,4 +1,5 @@
-#!/bin/ash
+#!/bin/bash
+## bash for assoc arrays
 # This scripts runs as root and prepares the configuration
 # for the dnbd3 server (...)
 
@@ -107,24 +108,24 @@ fi
 # Done with sanity checks, now create configs: server.conf & alt-servers
 # Using the information given by the server in /opt/openslx/config
 
-# helper to echo given list of IPs to ${DNBD3_CONF_DIR}/alt-servers
-# optionally takes a single char prefix as first param and
-# adds it to the IP (for private dnbd3 servers)
-# Also sets FOUND_SAT if satellite IP was seen
-MY_IPS=$(ip a | grep '^\s*inet\s' | awk '{print $2}')
-FOUND_SAT=
+# helper to echo given list of IPs to ${DNBD3_CONF_DIR}/alt-servers.
+# Fist argument has to be 'replication', 'client', or 'all'.
+# Second argument is a comment
+# From third argument on, it's IP addresses
+declare -A DUPCHECK
 add_alt_server() {
-	local PRE=
-	if [ "${#1}" = "1" ]; then
-		PRE="$1"
-		shift
-	fi
+	local ALT PRE COMM
+	PRE="$1"
+	COMM="$2"
+	shift 2
 	for ALT in "$@"; do
-		for ip in $MY_IPS; do
-			[ "x$ALT" = "x${ip%/*}" ] && return 0 # Ignore self
-		done
-		echo "${PRE}${ALT}" >> "${DNBD3_CONF_DIR}/alt-servers"
-		[ "x${ALT}" = "x${SLX_PXE_SERVER_IP}" ] && FOUND_SAT="oui"
+		[ -n "${DUPCHECK["$ALT"]}" ] && continue
+		DUPCHECK["$ALT"]=1
+		{
+			echo "[${ALT}]"
+			[ "$PRE" != "all" ] && echo "for=${PRE}"
+			echo "comment=$COMM"
+		} >> "${DNBD3_CONF_DIR}/alt-servers"
 	done
 	return 0
 }
@@ -149,7 +150,7 @@ if [ -n "$islocal" ]; then
 	MAX_REPLICATION_SIZE=500
 
 	# Use DNBD3 servers from openslx config and then patch it to say localhost
-	add_alt_server '-' ${SLX_DNBD3_SERVERS}
+	add_alt_server 'replication' "From config" ${SLX_DNBD3_SERVERS}
 	sed -i "s/^SLX_DNBD3_SERVERS=.*$/SLX_DNBD3_SERVERS='127.0.0.1'/;s/^SLX_DNBD3_FALLBACK=.*$/SLX_DNBD3_FALLBACK='${SLX_DNBD3_SERVERS} ${SLX_DNBD3_FALLBACK}'/" '/opt/openslx/config'
 
 else
@@ -195,8 +196,10 @@ else
 	MAX_REPLICATION_SIZE=$(( disksize / 6 ))
 	[ "$MAX_REPLICATION_SIZE" -lt 100 ] && MAX_REPLICATION_SIZE=100
 
-	add_alt_server ${SLX_DNBD3_PUBLIC}
-	add_alt_server '-' ${SLX_DNBD3_PRIVATE}
+	MY_IPS=$( ip a | grep '^\s*inet\s' | awk '$2 !~ /^127\./ {print $2}' | awk -F/ '{print $1}' )
+	add_alt_server 'all' "Config, for client and server" ${SLX_DNBD3_PUBLIC}
+	add_alt_server 'replication' "Config, for replication only" ${SLX_DNBD3_PRIVATE}
+	add_alt_server 'client' "Local address from interface list" ${MY_IPS}
 
 	rm -f "/opt/openslx/iptables/rules.d/99-dnbd3"
 	# now create iptables helper rules
@@ -276,7 +279,7 @@ for item in $SLX_DNBD3_EXTRA; do # space sep
 done
 
 # To this day, only the sat IP is in SLX_KCL_SERVERS afaik
-[ -z "${FOUND_SAT}" ] && add_alt_server ${SLX_KCL_SERVERS}
+add_alt_server 'all' "Boot server from KCL" ${SLX_KCL_SERVERS}
 chmod -R a+Xr "${DNBD3_CONF_DIR}"
 
 # create rpc.acl to allow the satellite only
