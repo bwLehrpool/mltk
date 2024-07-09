@@ -10,7 +10,7 @@ if [ -n "$SLX_EXAM" ]; then
 fi
 
 # Report core dumps
-URL="http://132.230.8.113/error_report.php"
+URL="https://bwlp-masterserver.ruf.uni-freiburg.de/error_report.php"
 DIR=$(mktemp -d)
 [ -n "$DIR" ] && cd "$DIR"
 
