@@ -191,8 +191,9 @@ public abstract class LibvirtHypervisor implements Closeable
 	public void close()
 	{
 		// deregister all VMs defined on the hypervisor
-		for ( LibvirtVirtualMachine vm : this.machines ) {
+		for ( LibvirtVirtualMachine vm : new ArrayList<>( this.machines ) ) {
 			try {
+				// This modifies this.machines, so make a copy above
 				this.deregisterVm( vm );
 			} catch ( LibvirtHypervisorException | LibvirtVirtualMachineException e ) {
 				e.printStackTrace();
