@@ -24,7 +24,7 @@ if [ "$SLX_RUNMODE_MODULE" != "dnbd3" ]; then
 	[ "x$SLX_VM_DNBD3" != "xyes" ] && exit 0 # Do not want
 	[ -z "$SLX_DNBD3_SERVERS" ] && exit 0 # No servers!?
 	[ -z "$SLX_DNBD3_MIN_GB" ] && exit 0 # Disabled
-	[ "$SLX_DNBD3_MIN_GB" -ge "$mingb" ] || exit 0 # Disabled
+	(( SLX_DNBD3_MIN_GB >= mingb )) || exit 0 # Disabled
 	mingb="$SLX_DNBD3_MIN_GB"
 fi
 
@@ -50,7 +50,7 @@ disksize () {
 	val="$( fs_path_space "$1" )"
 	val="${val#* }"
 	len="${#val}"
-	if [ "$len" -lt 7 ]; then
+	if (( len < 7 )); then
 		echo 0
 	else
 		echo "${val:0:$(( len - 6 ))}"
@@ -71,10 +71,10 @@ d="/opt/openslx/persistent"
 dsd="$(disksize "$d")"
 e="/tmp"
 dse="$(disksize "$e")"
-if fs_path_ismountpoint "$d" && [ -k "$d/data" ] && [ "$dsd" -ge "$mingb" ]; then
+if fs_path_ismountpoint "$d" && [ -k "$d/data" ] && (( dsd >= mingb )); then
 	DNBD3_BASE_DIR="$d/data"
 	disksize="$dsd"
-elif [ -z "$islocal" ] && ! fs_path_isvolatile "$e" && [ "$dse" -ge "$mingb" ]; then
+elif [ -z "$islocal" ] && ! fs_path_isvolatile "$e" && (( dse >= mingb )); then
 	DNBD3_BASE_DIR="$e"
 	disksize="$dse"
 	# We're using /tmp, don't warn about low space
@@ -139,7 +139,8 @@ if [ -n "$islocal" ]; then
 	DNBD3_SPARSE="true"
 	DNBD3_PRETEND_CLIENT="true"
 	DNBD3_AUTOFREE=0 # Immediately start freeing images when running out of space in local caching mode
-	if [ -n "$SLX_DNBD3_MIN_GB_HASH" ] && [ "$SLX_DNBD3_MIN_GB_HASH" -gt 0 ] && [ "$disksize" -ge "$SLX_DNBD3_MIN_GB_HASH" ]; then
+	if [ -n "$SLX_DNBD3_MIN_GB_HASH" ] && (( SLX_DNBD3_MIN_GB_HASH > 0 )) \
+			&& (( disksize >= SLX_DNBD3_MIN_GB_HASH )); then
 		DNBD3_BGR="hashblock"
 	else
 		DNBD3_BGR="false"
@@ -164,7 +165,7 @@ else
 	# Delay deletion only if we're booted early
 	hour="$( date +%_H )"
 	hour="${hour# }"
-	if [ "$hour" -lt 7 ]; then
+	if (( hour < 7 )); then
 		DNBD3_AUTOFREE=$(( 7 - hour ))
 	else
 		DNBD3_AUTOFREE=0
@@ -182,13 +183,13 @@ else
 		[ -z "${SLX_DNBD3_WHITELIST}" ] && DNBD3_LOOKUP="true"
 	fi
 	# Determine if we need sparse mode, or override BGR
-	if ! [ "$disksize" -gt 200 ]; then
+	if ! (( disksize > 200 )); then
 		# less than 120GiB or NaN, force
 		[ "$DNBD3_BGR" = "true" ] && slxlog -s -e "dnbd3-setup-small" "Cache partition < 200GiB, forcing background replication OFF and sparse mode ON"
 		DNBD3_BGR="false"
 		DNBD3_SERVER_PENALTY=5000
 		DNBD3_LOOKUP="false"
-	elif [ "$disksize" -gt 2000 ]; then
+	elif (( disksize > 2000 )); then
 		# force non-sparse on > 2TiB
 		DNBD3_SPARSE="false"
 	fi
