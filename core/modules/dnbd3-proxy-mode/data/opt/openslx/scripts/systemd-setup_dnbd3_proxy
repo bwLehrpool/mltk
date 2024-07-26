@@ -194,8 +194,15 @@ else
 	fi
 
 	MAX_REPLICATION_SIZE=$(( disksize / 6 ))
-	[ "$MAX_REPLICATION_SIZE" -lt 100 ] && MAX_REPLICATION_SIZE=100
+	(( MAX_REPLICATION_SIZE < 100 )) && MAX_REPLICATION_SIZE=100
 
+	# If we seem to have additional interfaces, wait a bit to make sure they get configured
+	sleep 1
+	numifs=$( systemctl list-units --legend=false "udhcpc@*" | wc -l )
+	if (( numifs > 1 )); then
+		echo "Waiting a bit since I see $numifs interfaces"
+		sleep 10
+	fi
 	MY_IPS=$( ip a | grep '^\s*inet\s' | awk '$2 !~ /^127\./ {print $2}' | awk -F/ '{print $1}' )
 	add_alt_server 'all' "Config, for client and server" ${SLX_DNBD3_PUBLIC}
 	add_alt_server 'replication' "Config, for replication only" ${SLX_DNBD3_PRIVATE}
