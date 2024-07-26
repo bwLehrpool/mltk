@@ -115,7 +115,7 @@ reload_rules () {
 	exit 0
 }
 
-echo "$$ INOTIFY"
+#echo "$$ INOTIFY"
 if mkdir "$LOCK" &> /dev/null; then
 	reload_rules "$$" &
 fi
