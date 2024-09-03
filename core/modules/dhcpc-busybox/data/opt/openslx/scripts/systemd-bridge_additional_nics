@@ -23,6 +23,23 @@ is_slave() {
 	return 1
 }
 
+# OK so if you feel motivated to do this properly: We need a way
+# to wait until systemd-udevd did the renaming stuff, or we might
+# end up either taking a device up as e.g. eth0 and prevent systemd
+# from renaming it, or end up missing a device as it will get renamed
+# just after the glob expanded.
+for nic in /sys/class/net/*; do
+	ifname="${nic##*/}"
+	# do not handle the primary interface
+	if [ "$SLX_PXE_NETIF" = "${ifname}" ]; then
+		continue
+	fi
+	if [[ $ifname = eth* ]]; then
+		echo "Possible pre-rename, found '$ifname', sleeping"
+		sleep 2
+	fi
+done
+
 declare -g id=1
 for nic in /sys/class/net/*; do
 	ifname="${nic##*/}"
