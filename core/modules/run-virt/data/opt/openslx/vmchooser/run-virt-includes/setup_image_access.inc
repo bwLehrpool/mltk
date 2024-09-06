@@ -169,6 +169,7 @@ setup_image_access_default() {
 	# See if we should setup dnbd3 image access at all
 	if ! isset SRC_IMG_RELATIVE; then
 		writelog "\tCan't use dnbd3 as SRC_IMG_RELATIVE is not set"
+		[ -n "$DMSD_COW_SESSION" ] && cleanexit 1
 	elif [ -n "$DMSD_COW_SESSION" ]; then
 		writelog "Setting up DNBD3 CoW session"
 		setup_dnbd3_cow
