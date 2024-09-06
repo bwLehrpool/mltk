@@ -169,11 +169,11 @@ setup_image_access_default() {
 	# See if we should setup dnbd3 image access at all
 	if ! isset SRC_IMG_RELATIVE; then
 		writelog "\tCan't use dnbd3 as SRC_IMG_RELATIVE is not set"
-	elif isempty SLX_DNBD3_SERVERS || [ "x${SLX_VM_DNBD3}" != "xyes" ]; then
-		writelog "\tCan't use dnbd3 as no servers are given in config, or SLX_VM_DNBD3 is not set to yes"
 	elif [ -n "$DMSD_COW_SESSION" ]; then
 		writelog "Setting up DNBD3 CoW session"
 		setup_dnbd3_cow
+	elif isempty SLX_DNBD3_SERVERS || ! is_on "${SLX_VM_DNBD3}"; then
+		writelog "\tCan't use dnbd3 as no servers are given in config, or SLX_VM_DNBD3 is not set to yes"
 	elif setup_dnbd3_proxy; then
 		writelog "\tImage setup done."
 	elif ! check_dep dnbd3-fuse fusermount; then
