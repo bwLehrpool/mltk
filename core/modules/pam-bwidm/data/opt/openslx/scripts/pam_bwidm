@@ -38,21 +38,34 @@ readonly TMPDIR
 # redirect stdout/stderr to temporary logfile
 readonly LOGFILE="$(mktemp -p "$TMPDIR")"
 
-# Determine mode: ECP or Embedded Browser
-IDP_QUERY_URL="$( awk -F= '$1 ~ /^shib-url\s*$/ {print $2}' \
-	/etc/lightdm/qt-lightdm-greeter.conf \
-	/etc/lightdm/qt-lightdm-greeter.conf.d/*.conf \
-	| tail -n 1 | xargs )" # TRIM
+token="${USER_PASSWORD#shib=}"
+readonly token
 
-if [ -n "$IDP_QUERY_URL" ]; then
-	mode=browser
-else
+# Determine mode: ECP or Embedded Browser
+mode=
+if [ "$token" != "${USER_PASSWORD}" ]; then
+	IDP_QUERY_URL="$( awk -F= '$1 ~ /^shib-url\s*$/ {print $2}' \
+		/etc/lightdm/qt-lightdm-greeter.conf \
+		/etc/lightdm/qt-lightdm-greeter.conf.d/*.conf \
+		| tail -n 1 | xargs )" # TRIM
+
+	if [ -n "$IDP_QUERY_URL" ]; then
+		mode=browser
+	fi
+fi
+
+if [ -z "$mode" ]; then
 	# URL to query masterserver for IDPs
 	IDP_QUERY_URL="https://bwlp-masterserver.ruf.uni-freiburg.de/webif/pam.php"
 	mode=ecp
 	readonly IDP_QUERY_CACHE="/run/openslx/bwlp-idp"
 fi
 readonly IDP_QUERY_URL mode
+
+if [ -z "$mode" ]; then
+	echo "No shibboleth mode could be detected."
+	exit 1
+fi
 
 # everything in a subshell in an effort to hide sensitive information
 # from this script's environment
@@ -63,17 +76,19 @@ readonly IDP_QUERY_URL mode
 #exec > "${LOGFILE}" 2>&1
 
 # check if we are allowed to run
-. /opt/openslx/config
-if [ "${SLX_BWIDM_AUTH}" = "yes" ]; then
-	: # Allow everything
-elif [ "${SLX_BWIDM_AUTH}" = "selective"  ]; then
-	if [ -z "${SLX_BWIDM_ORGS}" ]; then
-		echo "bwIDM selective mode with empty org list - exiting"
+if [ "$mode" = "ecp" ]; then
+	. /opt/openslx/config
+	if [ "${SLX_BWIDM_AUTH}" = "yes" ]; then
+		: # Allow everything
+	elif [ "${SLX_BWIDM_AUTH}" = "selective"  ]; then
+		if [ -z "${SLX_BWIDM_ORGS}" ]; then
+			echo "bwIDM selective mode with empty org list - exiting"
+			exit 1
+		fi
+	else
+		echo "bwIDM login disabled in openslx-config."
 		exit 1
 	fi
-else
-	echo "bwIDM login disabled in openslx-config."
-	exit 1
 fi
 
 # valid username, we can already split it here
@@ -82,22 +97,22 @@ readonly USER_ORGANISATION="${PAM_USER#*@}"
 [ -z "$USER_ORGANISATION" ] && echo "Could not parse organisation from given login: ${PAM_USER}. Aborting." && exit 1
 [ -z "$USER_USERNAME" ] && echo "Could not parse user from given login: ${PAM_USER}. Aborting." && exit 1
 
-# Check if we're in selective mode and if so, whether the user's organization is whitelisted
-if [ "${SLX_BWIDM_AUTH}" = "selective" ]; then
-	FOUND=
-	for org in ${SLX_BWIDM_ORGS}; do
-		if [ "$org" = "$USER_ORGANISATION" ]; then
-			FOUND=ya
-			break
-		fi
-	done
-	if [ -z "$FOUND" ]; then
-		echo "bwIDM organization $USER_ORGANISATION not in whitelist, abort"
-		exit 1
-	fi
-fi
-
 if [ "$mode" = "ecp" ]; then
+	# Check if we're in selective mode and if so, whether the user's organization is whitelisted
+	if [ "${SLX_BWIDM_AUTH}" = "selective" ]; then
+		FOUND=
+		for org in ${SLX_BWIDM_ORGS}; do
+			if [ "$org" = "$USER_ORGANISATION" ]; then
+				FOUND=ya
+				break
+			fi
+		done
+		if [ -z "$FOUND" ]; then
+			echo "bwIDM organization $USER_ORGANISATION not in whitelist, abort"
+			exit 1
+		fi
+	fi
+
 	# The given username is valid. Now we get the list of IdPs from the bwlp masterserver
 	# and try to find the user's organisation
 	mkdir -p /run/openslx
@@ -278,7 +293,6 @@ if [ "$PAM_TYPE" = "auth" ]; then
 			exit 1
 		fi
 		# Validate with server
-		token="${USER_PASSWORD#shib=}"
 		if [ "${#USER_PASSWORD}" -gt 18 ] && [ "${USER_PASSWORD}" != "$token" ]; then
 			nc="$(curl \
 				--silent \
