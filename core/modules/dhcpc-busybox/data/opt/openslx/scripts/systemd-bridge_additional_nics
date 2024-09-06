@@ -28,6 +28,9 @@ is_slave() {
 # end up either taking a device up as e.g. eth0 and prevent systemd
 # from renaming it, or end up missing a device as it will get renamed
 # just after the glob expanded.
+# We already wait for udev trigger and settle, but that doesn't seem
+# enough...
+sleep .5
 for nic in /sys/class/net/*; do
 	ifname="${nic##*/}"
 	# do not handle the primary interface
