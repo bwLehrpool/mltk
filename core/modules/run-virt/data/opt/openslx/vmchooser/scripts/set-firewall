@@ -4,10 +4,12 @@
 
 [ "$UID" = "0" ] || exit 1
 
-declare -rg RULES="$( mktemp )"
-declare -rg AUTORULES="$( mktemp )"
-declare -rg REMOTERULES="$( mktemp )"
-declare -rg LOGFILE="$( mktemp )"
+RULES="$( mktemp )"
+AUTORULES="$( mktemp )"
+REMOTERULES="$( mktemp )"
+LOGFILE="$( mktemp )"
+
+readonly RULES AUTORULES REMOTERULES LOGFILE
 
 [ -n "$RULES" ] || exit 2
 
@@ -20,25 +22,37 @@ trap 'rm -f -- "$RULES" "$AUTORULES" "$REMOTERULES" "$LOGFILE"' EXIT
 
 . /opt/openslx/config
 
-for TOOL in iptables ip6tables; do
-	$TOOL -w -F runvirt-INPUT || $TOOL -w -N runvirt-INPUT
-	$TOOL -w -F runvirt-OUTPUT || $TOOL -w -N runvirt-OUTPUT
+# Create/reset all our chains
+if ! (
+	set -e
+	for TOOL in iptables ip6tables; do
+		$TOOL -w -F runvirt-INPUT || $TOOL -w -N runvirt-INPUT
+		$TOOL -w -F runvirt-OUTPUT || $TOOL -w -N runvirt-OUTPUT
 
-	if ! $TOOL -w -C INPUT -i br0 -j runvirt-INPUT; then
-		$TOOL -w -A INPUT -i br0 -j runvirt-INPUT
-	fi
-	if ! $TOOL -w -C OUTPUT -o br0 -j runvirt-OUTPUT; then
-		$TOOL -w -A OUTPUT -o br0 -j runvirt-OUTPUT
-	fi
-	if ! $TOOL -w -C FORWARD -i br0 -j runvirt-INPUT; then
-		$TOOL -w -A FORWARD -i br0 -j runvirt-INPUT
-	fi
-	if ! $TOOL -w -C FORWARD -o br0 -j runvirt-OUTPUT; then
-		$TOOL -w -A FORWARD -o br0 -j runvirt-OUTPUT
-	fi
-	$TOOL -A runvirt-INPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
-	$TOOL -A runvirt-OUTPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
-done
+		if ! $TOOL -w -C INPUT -i br0 -j runvirt-INPUT; then
+			$TOOL -w -A INPUT -i br0 -j runvirt-INPUT
+		fi
+		if ! $TOOL -w -C OUTPUT -o br0 -j runvirt-OUTPUT; then
+			$TOOL -w -A OUTPUT -o br0 -j runvirt-OUTPUT
+		fi
+		if ! $TOOL -w -C FORWARD -i br0 -j runvirt-INPUT; then
+			$TOOL -w -A FORWARD -i br0 -j runvirt-INPUT
+		fi
+		if ! $TOOL -w -C FORWARD -o br0 -j runvirt-OUTPUT; then
+			$TOOL -w -A FORWARD -o br0 -j runvirt-OUTPUT
+		fi
+		# Allow all loopback
+		$TOOL -w -A runvirt-INPUT -i lo -j ACCEPT
+		$TOOL -w -A runvirt-OUTPUT -o lo -j ACCEPT
+		# Allow conntrack so creating out-rules is enough usually
+		$TOOL -w -A runvirt-INPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+		$TOOL -w -A runvirt-OUTPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+	done
+	true
+); then
+	echo "Creating or resetting runvirt iptables chains failed"
+	exit 7
+fi
 
 
 parse_uri () {
@@ -61,7 +75,7 @@ add_ips () {
 	# add_ips "IN/OUT" "IP1 IP2 IPn" "PORT" "ACCEPT/REJECT"
 	local ip port port_def
 	port_def="$3"
-	[ -z "$1" -o -z "$2" -o -z "$port_def" -o -z "$4" ] && return 1
+	[[ -z "$1" || -z "$2" || -z "$port_def" || -z "$4" ]] && return 1
 	for ip in $2; do
 		port="${ip#*:}"
 		if (( port > 0 && port < 65536 )) 2> /dev/null; then
@@ -73,12 +87,12 @@ add_ips () {
 	done
 }
 
-add_ips "IN" "127.0.0.0/8" 0 "ACCEPT"
-add_ips "OUT" "127.0.0.0/8" 0 "ACCEPT"
+# Auto-allow important servers from config
 add_ips "OUT" "$SLX_DNS" 53 "ACCEPT"
 add_ips "OUT" "$SLX_DNBD3_SERVERS" 5003 "ACCEPT"
 add_ips "OUT" "$SLX_DNBD3_FALLBACK" 5003 "ACCEPT"
 add_ips "OUT" "$SLX_KCL_SERVERS $SLX_PXE_SERVER_IP" 0 "ACCEPT"
+add_ips "OUT" "$SLX_PROXY_IP" "$SLX_PROXY_PORT" "ACCEPT"
 
 # sssd
 sssd="$( < /etc/sssd/sssd.conf  grep -P '^\s*ldap_(backup_)?uri\s*=' | sed -r 's/^[^=]*=//' )"
@@ -134,60 +148,70 @@ fi
 # Download OK, append to rules
 cat "${REMOTERULES}" >> "${RULES}"
 
-declare -rg V4='^[0-9]+(\.[0-9]+)*(/[0-9]+)?$'
-declare -rg V6='^([0-9a-fA-F]+|:)(:+[0-9a-fA-F]*)*(/[0-9]+)?$'
+declare -rg V4='^((25[0-5]|(2[0-4]|1[0-9]|[1-9]|)[0-9])\.?\b){4}(/[0-9]+)?$'
+# https://stackoverflow.com/a/17871737
+declare -rg V6='^(([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|::(ffff(:0{1,4}){0,1}:){0,1}((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9]))(/[0-9]+)?$'
 
-while read -r DIR DEST PORT ACTION GARBAGE || [ -n "$DIR" ]; do
-	if [ -z "$DEST" -o -z "$PORT" -o -z "$ACTION" ]; then
-		echo "Invalid rule: '$DIR $DEST $PORT $ACTION'"
-		continue
-	fi
-	IPLINE1=" -w"
-	IPLINE2=
-	if [ "$DIR" = "IN" ]; then
-		IPLINE1+=" -A runvirt-INPUT"
-	elif [ "$DIR" = "OUT" ]; then
-		IPLINE1+=" -A runvirt-OUTPUT"
-	else
-		continue
-	fi
-	if ! [[ $PORT =~ ^[0-9]+$ ]] || [ "$PORT" -gt 65535 ]; then
-		echo "Invalid port: '$PORT'"
-		continue
-	fi
-	if [ "$DEST" != "*" ]; then
-		if [ "$DIR" = "OUT" ]; then
-			IPLINE1+=" -d $DEST"
-		else
-			IPLINE1+=" -s $DEST"
+if ! (
+	declare -a IPLINE1 IPLINE2 IPLINE2with
+	while read -r DIR DEST PORT ACTION _ || [ -n "$DIR" ]; do
+		if [[ -z "$DEST" || -z "$PORT" || -z "$ACTION" ]]; then
+			# Should this be a hard error?
+			echo "Ignoring invalid rule: '$DIR $DEST $PORT $ACTION'"
+			continue
 		fi
-	fi
-	if [ "$PORT" != 0 ]; then
-		IPLINE2+=" --dport $PORT"
-	fi
-	IPLINE2+=" -j $ACTION"
-	with=
-	[ "$ACTION" = "REJECT" ] && with="--reject-with tcp-reset"
-	# IPv6?
-	if ! [[ $DEST =~ $V4 ]]; then
-		if [ "$PORT" = 0 ]; then
-			[ -n "$with" ] && ip6tables $IPLINE1 -p tcp $IPLINE2 $with
-			ip6tables $IPLINE1 $IPLINE2
+		IPLINE1=( "-w" )
+		IPLINE2=( )
+		if [ "$DIR" = "IN" ]; then
+			IPLINE1+=( "-A" "runvirt-INPUT" )
+		elif [ "$DIR" = "OUT" ]; then
+			IPLINE1+=( "-A" "runvirt-OUTPUT" )
 		else
-			ip6tables $IPLINE1 -p tcp $IPLINE2 $with
-			ip6tables $IPLINE1 -p udp $IPLINE2
+			continue
 		fi
-	fi
-	# IPv4
-	if ! [[ $DEST =~ $V6 ]]; then
-		if [ "$PORT" = 0 ]; then
-			[ -n "$with" ] && iptables $IPLINE1 -p tcp $IPLINE2 $with
-			iptables $IPLINE1 $IPLINE2
-		else
-			iptables $IPLINE1 -p tcp $IPLINE2 $with
-			iptables $IPLINE1 -p udp $IPLINE2
+		if ! [[ $PORT =~ ^[0-9]+$ ]] || (( PORT > 65535 || PORT < 0 )); then
+			echo "Invalid port: '$PORT'"
+			continue
 		fi
-	fi
-done < "$RULES"
+		if [ "$DEST" != "*" ]; then
+			if [ "$DIR" = "OUT" ]; then
+				IPLINE1+=( "-d" "$DEST" )
+			else
+				IPLINE1+=( "-s" "$DEST" )
+			fi
+		fi
+		if [ "$PORT" != 0 ]; then
+			IPLINE2+=( "--dport" "$PORT" )
+		fi
+		IPLINE2+=( "-j" "$ACTION" )
+		IPLINE2with=( "${IPLINE2[@]}" )
+		[ "$ACTION" = "REJECT" ] && IPLINE2with+=( "--reject-with" "tcp-reset" )
+		# IPv6?
+		if ! [[ $DEST =~ $V4 ]]; then
+			# NOT v4 style, so it's v6 or DNS
+			if [ "$PORT" = 0 ]; then
+				[ "$ACTION" = "REJECT" ] && ip6tables "${IPLINE1[@]}" -p tcp "${IPLINE2with[@]}"
+				ip6tables "${IPLINE1[@]}" "${IPLINE2[@]}"
+			else
+				ip6tables "${IPLINE1[@]}" -p tcp "${IPLINE2with[@]}"
+				ip6tables "${IPLINE1[@]}" -p udp "${IPLINE2[@]}"
+			fi
+		fi
+		# IPv4
+		if ! [[ $DEST =~ $V6 ]]; then
+			# NOT v6 style, so it's v4 or DNS
+			if [ "$PORT" = 0 ]; then
+				[ "$ACTION" = "REJECT" ] && iptables "${IPLINE1[@]}" -p tcp "${IPLINE2with[@]}"
+				iptables "${IPLINE1[@]}" "${IPLINE2[@]}"
+			else
+				iptables "${IPLINE1[@]}" -p tcp "${IPLINE2with[@]}"
+				iptables "${IPLINE1[@]}" -p udp "${IPLINE2[@]}"
+			fi
+		fi
+	done < "$RULES"
+); then
+	echo "Setting up one or more firewall rules via iptables failed."
+	exit 8
+fi
 
 exit 0
