@@ -5,6 +5,7 @@ REQUIRED_INSTALLED_PACKAGES="
 	xmlstarlet
 "
 REQUIRED_CONTENT_PACKAGES="
+	dnsmasq
 	usbutils
 	mtools
 	xmlstarlet
