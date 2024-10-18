@@ -18,6 +18,9 @@ REQUIRED_INSTALLED_PACKAGES="
 	libxrandr-dev
 	makeself
 	nasm
+	qt6-base-dev
+	qt6-scxml-dev
+	qt6-tools-dev
 	usbutils
 	xsltproc
 	yasm
