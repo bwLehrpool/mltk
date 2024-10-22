@@ -253,7 +253,6 @@ if ! (
 				iptables "${IPLINE1[@]}" -p tcp "${IPLINE2with[@]}"
 				iptables "${IPLINE1[@]}" -p udp "${IPLINE2[@]}"
 			fi
-		else
 		fi
 	done < "$RULES"
 	if [ -s "$DNSCFG" ]; then
