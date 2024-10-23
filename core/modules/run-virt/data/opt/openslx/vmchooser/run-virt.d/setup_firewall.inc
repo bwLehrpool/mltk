@@ -33,14 +33,15 @@ setup_firewall () {
 		cat >> "$DNSMASQ_CONF" <<-DNSCONF
 		keep-in-foreground
 		pid-file=/tmp/dns-$RANDOM.$RANDOM.$RANDOM
+
 		no-hosts
 		no-resolv
 		port=$port
 		interface=lo
 		bind-interfaces
+		log-facility=-
 		DNSCONF
-		add_cleanup "cleanup_firewall"
-		if ! dnsmasq --test --conf-file "$DNSMASQ_CONF" &> "${DNSMASQ_CONF}.tmp"; then
+		if ! dnsmasq --test --conf-file="$DNSMASQ_CONF" &> "${DNSMASQ_CONF}.tmp"; then
 			cat "${DNSMASQ_CONF}.tmp" >> "${DNSMASQ_CONF}"
 			rm -f -- "${DNSMASQ_CONF}.tmp"
 			slxlog -s -d "virt-firewall" "Invalid dnsmasq.conf was generated" "$DNSMASQ_CONF"
@@ -58,7 +59,7 @@ run_dnsmasq_fw () {
 	trap 'exit 0' INT TERM
 	trap 'kill "$dnspid"' EXIT
 	while [ -s "$DNSMASQ_CONF" ]; do
-		dnsmasq --conf-file "$DNSMASQ_CONF" &
+		dnsmasq --conf-file="$DNSMASQ_CONF" &
 		dnspid=$!
 		wait "$dnspid"
 	done

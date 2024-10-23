@@ -218,9 +218,7 @@ if ! (
 						[ -z "$blockall" ] && blockall=1
 					else
 						# A host - map to 0.0.0.0
-						for dnsip in $dnslist; do
-							echo "address=/$DEST/"
-						done >> "$DNSCFG"
+						echo "address=/$DEST/" >> "$DNSCFG"
 					fi
 				else
 					# ACCEPT
@@ -228,7 +226,7 @@ if ! (
 						# Special case: '*' - degault rule, so ACCEPT -> default servers
 						[ -z "$blockall" ] && blockall=0
 					else
-						# specifically map to out DNS servers
+						# specifically map to our DNS servers
 						for dnsip in $dnslist; do
 							echo "server=/$DEST/$dnsip"
 						done >> "$DNSCFG"
@@ -266,10 +264,10 @@ if ! (
 		# (then check for invalid/private addresses)
 		for DEST in $( cat /opt/openslx/vmchooser/data/doh-servers ); do
 			if [[ $DEST =~ $V6 ]]; then
-				ip6tables -w -I runvirt-INPUT 1 -d "$DEST" -p tcp --dport 443 \
+				ip6tables -w -I runvirt-OUTPUT 1 -d "$DEST" -p tcp --dport 443 \
 					-j REJECT --reject-with tcp-reset
 			else
-				iptables -w -I runvirt-INPUT 1 -d "$DEST" -p tcp --dport 443 \
+				iptables -w -I runvirt-OUTPUT 1 -d "$DEST" -p tcp --dport 443 \
 					-j REJECT --reject-with tcp-reset
 			fi
 		done
@@ -283,12 +281,13 @@ if ! (
 		fi
 		# Redirect UDP:53 to dnsmasq on whatever port
 		# physdev /sys/class/net/br0/brif/
-		cat "$DNS_IPT_FILE" <<-EOF
+		cat >> "$DNS_IPT_FILE" <<-EOF
 		iptables -t nat -A PREROUTING -p tcp --dport 53 -j REDIRECT --to-port "$DNSPORT"
 		iptables -t nat -A PREROUTING -p udp --dport 53 -j REDIRECT --to-port "$DNSPORT"
 		ip6tables -t nat -A PREROUTING -p tcp --dport 53 -j REDIRECT --to-port "$DNSPORT"
 		ip6tables -t nat -A PREROUTING -p udp --dport 53 -j REDIRECT --to-port "$DNSPORT"
 		EOF
+		chmod +x "$DNS_IPT_FILE"
 	fi
 ); then
 	echo "Setting up one or more firewall rules via iptables failed."
