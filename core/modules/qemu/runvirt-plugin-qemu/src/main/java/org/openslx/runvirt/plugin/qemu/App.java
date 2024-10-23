@@ -149,6 +149,18 @@ public class App
 			hypervisor.close();
 			System.exit( 3 );
 		}
+		
+		// Validation run?
+		if ( cmdLn.isValidateEnabled() ) {
+			try {
+				config.validateXml();
+			} catch ( LibvirtXmlValidationException e ) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+				System.exit( 42 );
+			}
+			System.exit( 0 );
+		}
 
 		// create transformation manager to finalize VM configuration
 		final TransformationManager<Domain, CommandLineArgs> transformationManager;

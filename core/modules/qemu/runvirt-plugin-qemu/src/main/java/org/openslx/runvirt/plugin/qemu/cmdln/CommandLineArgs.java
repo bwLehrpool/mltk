@@ -179,6 +179,11 @@ public class CommandLineArgs
 	{
 		return this.cmdLn.hasOption( CmdLnOption.MANAGER.getShortOption() );
 	}
+	
+	public boolean isValidateEnabled()
+	{
+		return this.cmdLn.hasOption( CmdLnOption.VALIDATE.getShortOption() );
+	}
 
 	/**
 	 * Returns the state of the command line option {@link CmdLnOption#DEBUG_PTH}.
@@ -537,6 +542,7 @@ public class CommandLineArgs
 		VM_CPU_TOPO ( '1', "cputopo",     1, "Set pairs of CPUs belonging to the same thread, semi-colon separated."
 		                                   + " Each group can contain commas or dashes to mark ranges. E.g. 0,1;2-3;4;5;6;7;8,9,10,11" ),
 		MANAGER     ( '2', "manager",     0, "Force using virt-manager even if not in debug mode" ),
+		VALIDATE    ( '3', "validate",    0, "Validate input file only, exit immediately with exit code 0 on success, 42 otherwise" ),
 		VM_MAC0     ( 'a', "vmmac0",      1, "MAC address for the first network interface" ),
 		DEBUG       ( 'b', "debug",       1, "Enable or disable debug mode" ),
 		VM_NCPUS    ( 'c', "vmncpus",     1, "Number of virtual CPUs for the virtual machine" ),
