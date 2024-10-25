@@ -215,7 +215,11 @@ if ! (
 					# BLOCK
 					if [ "$DEST" = "*" ]; then
 						# Special case: '*' - default rule, so BLOCK -> no default servers
-						[ -z "$blockall" ] && blockall=1
+						if [ -s "$DNSCFG" ]; then
+							[ -z "$blockall" ] && blockall=1
+						else
+							both=1
+						fi
 					else
 						# A host - map to 0.0.0.0
 						echo "address=/$DEST/" >> "$DNSCFG"
@@ -224,7 +228,11 @@ if ! (
 					# ACCEPT
 					if [ "$DEST" = "*" ]; then
 						# Special case: '*' - degault rule, so ACCEPT -> default servers
-						[ -z "$blockall" ] && blockall=0
+						if [ -s "$DNSCFG" ]; then
+							[ -z "$blockall" ] && blockall=0
+						else
+							both=1
+						fi
 					else
 						# specifically map to our DNS servers
 						for dnsip in $dnslist; do
