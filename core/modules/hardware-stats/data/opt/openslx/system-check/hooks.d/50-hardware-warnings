@@ -12,3 +12,6 @@ fi
 if lspci -nk | grep -q 'Kernel driver in use: nouveau'; then
 	echo 'slx-gfx-nouveau'
 fi
+if ! grep -Fq 'vfio.ko' "/lib/modules/$(uname -r)/modules.builtin"; then
+	echo 'slx-vfio-not-builtin'
+fi
