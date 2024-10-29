@@ -81,30 +81,22 @@ public class TransformationSpecificQemuGraphics
 		// validate configuration and input arguments
 		this.validateInputs( config, args );
 
-		// convert all VNC graphics devices to local SPICE graphics devices
+		// Remove all existing graphics devices
 		for ( final GraphicsVnc graphicsVncDevice : config.getGraphicVncDevices() ) {
-
 			// remove VNC graphics device
 			graphicsVncDevice.remove();
-
-			// add SPICE graphics device with local Unix domain socket access
-			this.addLocalSpiceGraphics( config, false );
 		}
 
 		// convert all SPICE graphics devices to local SPICE graphics devices
+		boolean isOGL = false;
 		for ( final GraphicsSpice graphicsSpiceDevice : config.getGraphicSpiceDevices() ) {
-
-			if ( graphicsSpiceDevice.getListenType() != ListenType.NONE ) {
-
-				// save state of configured OpenGL option
-				final boolean openGlEnabled = graphicsSpiceDevice.isOpenGlEnabled();
-
-				// remove VNC graphics device
-				graphicsSpiceDevice.remove();
-
-				// add SPICE graphics device with local Unix domain socket access
-				this.addLocalSpiceGraphics( config, openGlEnabled );
-			}
+			// save state of configured OpenGL option
+			isOGL = graphicsSpiceDevice.isOpenGlEnabled() || isOGL;
+			// remove VNC graphics device
+			graphicsSpiceDevice.remove();
 		}
+		
+		// finally, add one SPICE graphics device with local Unix domain socket access
+		this.addLocalSpiceGraphics( config, isOGL );
 	}
 }
