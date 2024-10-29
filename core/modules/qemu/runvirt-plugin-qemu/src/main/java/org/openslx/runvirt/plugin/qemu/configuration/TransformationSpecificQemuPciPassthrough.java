@@ -64,6 +64,8 @@ public class TransformationSpecificQemuPciPassthrough
 	 * Reserved memory for framebuffer meta data of the Looking Glass shared memory device in MiB.
 	 */
 	private static final long RESERVED_MEMORY_FRAMEBUFFER = 10;
+	
+	private final boolean withLookingGlass;
 
 	/**
 	 * Creates a new Nvidia GPU passthrough transformation for Libvirt/QEMU virtualization
@@ -71,9 +73,10 @@ public class TransformationSpecificQemuPciPassthrough
 	 * 
 	 * @param hypervisor Libvirt/QEMU hypervisor.
 	 */
-	public TransformationSpecificQemuPciPassthrough( LibvirtHypervisorQemu hypervisor )
+	public TransformationSpecificQemuPciPassthrough( LibvirtHypervisorQemu hypervisor, boolean withLookingGlass )
 	{
 		super( TransformationSpecificQemuPciPassthrough.NAME, hypervisor );
+		this.withLookingGlass = withLookingGlass;
 	}
 
 	/**
@@ -102,7 +105,7 @@ public class TransformationSpecificQemuPciPassthrough
 			//
 			if ( pciIds.size() % 2 != 0 ) {
 				throw new TransformationException(
-						"Arguments of PCI IDs are not follow the pattern for a GPU passthrough!" );
+						"Arguments of PCI IDs do not follow the pattern for a GPU passthrough!" );
 			}
 
 			// parse PCI device description and PCI device address
@@ -235,19 +238,12 @@ public class TransformationSpecificQemuPciPassthrough
 		}
 
 		// check if passthrough of Nvidia GPU takes place
-		if ( args.isNvidiaGpuPassthroughEnabled() ) {
+		if ( this.withLookingGlass ) {
 			// add shared memory device for Looking Glass
 			final Shmem shmemDevice = config.addShmemDevice();
 			shmemDevice.setName( "looking-glass" );
 			shmemDevice.setModel( Shmem.Model.IVSHMEM_PLAIN );
 			shmemDevice.setSize( TransformationSpecificQemuPciPassthrough.calculateFramebufferSize() );
-
-			// enable hypervisor shadowing to avoid error code 43 of Nvidia drivers in virtual machines
-			if ( TransformationSpecificQemuPciPassthrough.NVIDIA_PATCH ) {
-				config.setFeatureHypervVendorIdValue( TransformationSpecificQemuPciPassthrough.HYPERV_VENDOR_ID );
-				config.setFeatureHypervVendorIdState( true );
-				config.setFeatureKvmHiddenState( true );
-			}
 
 			// disable all software video devices if device passthrough debug mode is not enabled
 			if ( !args.isDebugDevicePassthroughEnabled() ) {
@@ -262,6 +258,14 @@ public class TransformationSpecificQemuPciPassthrough
 				graphicsSpiceDevice.setListenType( ListenType.ADDRESS );
 				graphicsSpiceDevice.setListenAddress( GraphicsSpice.DEFAULT_ADDRESS );
 				graphicsSpiceDevice.setListenPort( GraphicsSpice.DEFAULT_PORT + i );
+			}
+		}
+		if ( args.isNvidiaGpuPassthroughEnabled() ) {
+			// enable hypervisor shadowing to avoid error code 43 of Nvidia drivers in virtual machines
+			if ( TransformationSpecificQemuPciPassthrough.NVIDIA_PATCH ) {
+				config.setFeatureHypervVendorIdValue( TransformationSpecificQemuPciPassthrough.HYPERV_VENDOR_ID );
+				config.setFeatureHypervVendorIdState( true );
+				config.setFeatureKvmHiddenState( true );
 			}
 		}
 	}

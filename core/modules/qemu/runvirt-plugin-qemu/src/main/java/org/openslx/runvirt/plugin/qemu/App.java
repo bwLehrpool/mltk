@@ -179,6 +179,7 @@ public class App
 		transformationManager.register( new TransformationGenericFileSystemDevices(), true );
 
 		// register QEMU specific transformations to finalize configuration template
+		boolean lookingGlass = false;
 		if ( hypervisor instanceof LibvirtHypervisorQemu ) {
 			final LibvirtHypervisorQemu hypervisorQemu = LibvirtHypervisorQemu.class.cast( hypervisor );
 
@@ -187,7 +188,10 @@ public class App
 			transformationManager.register( new TransformationSpecificQemuGraphics( hypervisorQemu ), true );
 			transformationManager.register( new TransformationSpecificQemuSerialDevices( hypervisorQemu ), true );
 			transformationManager.register( new TransformationSpecificQemuMdevPassthroughIntel( hypervisorQemu ), false );
-			transformationManager.register( new TransformationSpecificQemuPciPassthrough( hypervisorQemu ), false );
+			String os = config.getLibOsInfoOsId();
+			lookingGlass = cmdLn.isNvidiaGpuPassthroughEnabled()
+					&& ( "http://microsoft.com/win/10".equals( os ) || "http://microsoft.com/win/11".equals( os ) );
+			transformationManager.register( new TransformationSpecificQemuPciPassthrough( hypervisorQemu, lookingGlass ), false );
 		}
 
 		// Needs to be last one since TransformationSpecificQemuArchitecture sets this too
@@ -259,7 +263,7 @@ public class App
 
 		// create specific viewer to display Libvirt VM
 		final Viewer vmViewer;
-		if ( cmdLn.isNvidiaGpuPassthroughEnabled() && !cmdLn.isDebugDevicePassthroughEnabled() ) {
+		if ( lookingGlass && !cmdLn.isDebugDevicePassthroughEnabled() ) {
 			// viewer for GPU passthrough (framebuffer access) is required
 			vmViewer = new ViewerLookingGlassClient( vm, hypervisor, cmdLn.isDebugEnabled() );
 		} else {

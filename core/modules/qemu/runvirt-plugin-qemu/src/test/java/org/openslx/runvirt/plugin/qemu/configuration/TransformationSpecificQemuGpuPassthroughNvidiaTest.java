@@ -35,7 +35,7 @@ class TransformationSpecificQemuGpuPassthroughNvidiaStub extends TransformationS
 
 	public TransformationSpecificQemuGpuPassthroughNvidiaStub( String capabilityFileName )
 	{
-		super( null );
+		super( null, true );
 
 		this.capabilityFileName = capabilityFileName;
 	}
