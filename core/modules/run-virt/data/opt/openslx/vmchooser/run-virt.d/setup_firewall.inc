@@ -30,6 +30,9 @@ setup_firewall () {
 	fi
 	# Run dnsmasq if applicable
 	if [ -s "$DNSMASQ_CONF" ]; then
+		# If we want to support bridged VMs in the future, we need to listen on br0 too, but then
+		# we need to block incoming traffic on this port (via set-firewall script)
+		# using physdev matching.
 		cat >> "$DNSMASQ_CONF" <<-DNSCONF
 		keep-in-foreground
 		pid-file=/tmp/dns-$RANDOM.$RANDOM.$RANDOM
@@ -38,15 +41,17 @@ setup_firewall () {
 		no-resolv
 		port=$port
 		interface=lo
-		bind-interfaces
-		log-facility=-
+		interface=nat1
+		interface=vsw2
+		log-facility=${DNSMASQ_CONF}.log
 		DNSCONF
 		if ! dnsmasq --test --conf-file="$DNSMASQ_CONF" &> "${DNSMASQ_CONF}.tmp"; then
 			cat "${DNSMASQ_CONF}.tmp" >> "${DNSMASQ_CONF}"
 			rm -f -- "${DNSMASQ_CONF}.tmp"
-			slxlog -s -d "virt-firewall" "Invalid dnsmasq.conf was generated" "$DNSMASQ_CONF"
+			slxlog -s "virt-firewall" "Invalid dnsmasq.conf was generated" "$DNSMASQ_CONF"
 			return 1
 		fi
+		rm -f -- "${DNSMASQ_CONF}.tmp"
 		# All seems well, launch for real
 		run_dnsmasq_fw "$port"
 		add_cleanup "cleanup_firewall"
