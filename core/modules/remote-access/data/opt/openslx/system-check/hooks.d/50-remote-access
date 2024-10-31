@@ -1,0 +1,12 @@
+#!/bin/ash
+# This file is executed in /opt/openslx/scripts/systemd-generate_warnings
+# If a first parameter is given, we write to that file instead of stdout.
+
+. /opt/openslx/config
+[ -n "$SLX_REMOTE_VNC" ] || exit 0 # Nothing to do
+
+if [ -n "$1" ]; then
+	exec >> "$1"
+fi
+
+echo 'slx-remote-access'
