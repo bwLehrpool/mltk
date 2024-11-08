@@ -3,6 +3,7 @@ Description=Prepare KIOSK mode
 Before=display-manager.service kdm.service lightdm.service
 
 [Service]
+Type=forking
 ExecStart=/opt/openslx/scripts/systemd-setup_kiosk
 RemainAfterExit=true
-
+Restart=no

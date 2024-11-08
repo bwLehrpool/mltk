@@ -1,8 +1,24 @@
 #!/bin/bash
 
+# This is launched as a systemd service of default type forking,
+# *NOT* oneshot. This is so that you can have blocking tasks in
+# the sourced files, that will delay this service from being
+# considered started up completely, so that any services that
+# are ordered *After* this one will actually wait until everything
+# is finished and we reach the final "exit 0".
+# If you want to execute some longer-running task that doesn't need
+# to finish before lightdm or any browser starts up (e.g. prefetch),
+# you can just fork it into the background, and it will keep
+# running while services ordered after this one will already get
+# executed.
+
 for file in "$0".d/*; do
 	[ -f "$file" ] || continue
 	# hooks for browser-related stuff
+	if ! bash -n "$file"; then
+		slxlog "kiosk-setup-syntax" "Syntax error in kiosk setup script '$file'"
+		continue
+	fi
 	. "$file" || slxlog "kiosk-setup" "Failed to source '$file'."
 done
 
