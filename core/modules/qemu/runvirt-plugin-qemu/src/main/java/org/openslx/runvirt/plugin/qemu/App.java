@@ -188,9 +188,15 @@ public class App
 			transformationManager.register( new TransformationSpecificQemuGraphics( hypervisorQemu ), true );
 			transformationManager.register( new TransformationSpecificQemuSerialDevices( hypervisorQemu ), true );
 			transformationManager.register( new TransformationSpecificQemuMdevPassthroughIntel( hypervisorQemu ), false );
+			// For now, do not use looking-glass, ever. Windows can handle rendering on the NVIDIA GPU and shoving the
+			// frames onto the QXL device just fine, which might not be as low-latency as looking-glass, but is WAY
+			// less fragile, doesn't require the looking-glass service in the VM, and doesn't require anything to
+			// be connected to the nvidia card. So long, looking-glass!
+			/*
 			String os = config.getLibOsInfoOsId();
 			lookingGlass = cmdLn.isNvidiaGpuPassthroughEnabled()
 					&& ( "http://microsoft.com/win/10".equals( os ) || "http://microsoft.com/win/11".equals( os ) );
+					*/
 			transformationManager.register( new TransformationSpecificQemuPciPassthrough( hypervisorQemu, lookingGlass ), false );
 		}
 
