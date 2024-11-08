@@ -116,9 +116,6 @@ run_plugin() {
 	if $DEBUG; then
 		VIRTCMDOPTS+=( "-xmledit" )
 	fi
-	if notempty DMSD_COW_SESSION; then
-		VIRTCMDOPTS+=( "-manager" )
-	fi
 
 	if [ "${SHARE_REMAP_MODE}" -gt 1 ]; then
 		notempty HOME_SHARE_PATH   && VIRTCMDOPTS+=( "-vmfssrc0"    "${HOME_SHARE_PATH}" )
