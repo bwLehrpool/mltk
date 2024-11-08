@@ -149,6 +149,9 @@ fi
 if is_on "$SLX_BROWSER_INSECURE"; then
 	chromium_args+=( "--allow-running-insecure-content" "--ignore-certificate-errors" )
 fi
+if is_on "$SLX_BROWSER_HWVIDEO"; then
+	chromium_args+=( "--enable-features=VaapiVideoDecoder,VaapiIgnoreDriverChecks,VaapiVideoDecodeLinuxGL" )
+fi
 
 # Wait until cert store is fully populated
 wait $nss_pid
