@@ -35,6 +35,8 @@ json_bookmarks() {
 	done
 }
 
+. /opt/openslx/bin/slx-tools
+
 # Pass SLX_BROWSER_BOOKMARKS without quotes for splitting into arguments
 cat > "$HOME/.config/chromium/Default/Bookmarks" <<EOF
 {
@@ -71,8 +73,8 @@ chromium_args+=("--simulate-outdated-no-au=\"Tue, 31 Dec 2099 23:59:59 GMT\"")
 # default to maximized on startup
 chromium_args+=("--start-maximized")
 
-if [ -z "$SLX_BROWSER_INTERACTIVE" ]; then
-	if [ -n "${SLX_AUTOLOGIN%OFF}" ]; then
+if is_on "$SLX_BROWSER_INTERACTIVE"; then
+	if is_on "${SLX_AUTOLOGIN%OFF}"; then
 		# Autologin active, go full fullscreen
 		chromium_args+=("--kiosk")
 	fi
@@ -144,8 +146,8 @@ if [ -n "$SLX_BROWSER_RELOAD_SECS" ] && [ "$SLX_BROWSER_RELOAD_SECS" -gt 0 ]; th
 	) &
 fi
 
-if [ -n "$SLX_BROWSER_INSECURE" ]; then
-	chromium_args+=("--allow-running-insecure-content" "--ignore-certificate-errors")
+if is_on "$SLX_BROWSER_INSECURE"; then
+	chromium_args+=( "--allow-running-insecure-content" "--ignore-certificate-errors" )
 fi
 
 # Wait until cert store is fully populated
