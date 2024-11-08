@@ -7,7 +7,6 @@
 . /opt/openslx/config
 
 if [ "${SLX_BROWSER//chromium/}" != "$SLX_BROWSER" ]; then
-	(
 	dd if=/usr/lib/chromium-browser/chromium-browser of=/dev/null &> /dev/null &
-	) &
+	dd if=/usr/lib/chromium/chromium of=/dev/null &> /dev/null &
 fi
