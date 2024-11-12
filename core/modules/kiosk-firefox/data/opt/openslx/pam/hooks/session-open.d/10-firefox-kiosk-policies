@@ -1,0 +1,130 @@
+#!/bin/bash
+#^ SOURCED, actually running in ash
+
+# Protip: Comment out while editing, but DO NOT FORGET TO RE-ENABLE
+[ "${PAM_SERVICE//autologin/}" != "$PAM_SERVICE" ] && [ "$PAM_TTY" = ":0" ] \
+	&& bash <<"EOF"
+# Helper to decode URL-encoded strings
+# e.g. urldecode http%3A%2F%2Ffoobar.com -> http://foobar.com
+urldecode() {
+	: "${*//+/ }"; echo -e "${_//%/\\x}"
+}
+
+# Helper to json'ize bookmarks given as arguments in the form:
+#    <name>,<url>  ->  e.g. Google,https://www.google.com
+json_bookmarks() {
+	local name url
+	while [ $# -ne 0 ]; do
+		name="$( urldecode "${1%%,*}" )"
+		url="$( urldecode "${1#*,}" )"
+		jq --null-input --join-output --compact-output --arg name "$name" --arg url "$url" \
+			'{"Placement": "toolbar", "Title": $name, "URL": $url}'
+		shift
+		[ $# -ne 0 ] && printf ","
+	done
+}
+
+jqitmp=$( mktemp )
+jqi() {
+	< "/etc/firefox/policies/policies.json" jq "$@" > "$jqitmp"
+	cat "$jqitmp" > "/etc/firefox/policies/policies.json"
+}
+# setpref <name> <value> [number|boolean|string]
+setpref() {
+	if [ -n "$3" ]; then
+		local arg
+		if [ "$3" = "boolean" ] || [ "$3" = "number" ]; then
+			arg=argjson
+		else
+			arg=arg
+		fi
+		jqi --arg name "$1" "--$arg" value "$2" --arg type "$3" \
+			'.policies.Preferences[$name].Value = $value | .policies.Preferences[$name].Status = "user" | .policies.Preferences[$name].Type = $type'
+	else
+		jqi --arg name "$1" --arg value "$2" \
+			'.policies.Preferences[$name].Value = $value | .policies.Preferences[$name].Status = "user"'
+	fi
+}
+
+## add_urls <path> <url1> <url2> ... <urlN>
+add_urls() {
+	local url scheme host path chost arr key
+	key="$1"
+	shift
+	readarray -t -d ' ' arr < <( printf "%s" "$@" )
+	for url in "${arr[@]}"; do
+		# extract scheme and remove it from url if needed
+		scheme="${url%%://*}"
+		if [ "$scheme" != "$url" ]; then
+			url="${url#*://}"
+			if [ "$scheme" = 'http*' ]; then
+				# Special case: assume http* means http and https
+				scheme="http"
+				add_urls "https://$url"
+			elif [ "${scheme#*\*}" != "${scheme}" ]; then
+				# Contains a *, not supported, use any
+				scheme='*'
+			fi
+		else
+			scheme='*'
+		fi
+		# extract host
+		host="${url%%/*}"
+		[ -z "$host" ] && continue
+		if [[ "$url" = */* ]]; then
+			path="${url#*/}"
+		else
+			path="*"
+		fi
+		jqi --arg arg "${scheme}://${host}/${path}" "$key += [ \$arg ]"
+	done
+}
+
+. /opt/openslx/config
+. /opt/openslx/bin/slx-tools
+
+cp "/etc/firefox/policies/policies.kiosk.json" "/etc/firefox/policies/policies.json"
+
+bookmarks="$( json_bookmarks $SLX_BROWSER_BOOKMARKS )"
+if [ -z "$bookmarks" ]; then
+	jqi '.policies.DisplayBookmarksToolbar = "never"'
+else
+	jqi '.policies.DisplayBookmarksToolbar = "always"'
+	jqi --argjson bookmarks "[ $bookmarks ]" \
+		'.policies.Bookmarks = $bookmarks'
+fi
+
+if [ -n "${SLX_BROWSER_BLACKLIST}${SLX_BROWSER_WHITELIST}" ]; then
+	# If we only have a whitelist, implicitly block everything by default
+	re='^\s*$'
+	if [[ $SLX_BROWSER_BLACKLIST =~ $re ]]; then
+		SLX_BROWSER_BLACKLIST="*"
+	fi
+	add_urls '.policies.WebsiteFilter.Block' "$SLX_BROWSER_BLACKLIST"
+	add_urls '.policies.WebsiteFilter.Exceptions' "$SLX_BROWSER_WHITELIST"
+fi
+
+# Custom cert so satellite.bwlehrpool works with HTTPS
+for i in /etc/ssl/certs/ca-*.crt; do
+	[ -s "$i" ] || continue
+	jqi --arg file "$i" '.policies.Certificates.Install += [$file]'
+done
+
+if [ -n "$SLX_BROWSER_ZOOM" ] && (( SLX_BROWSER_ZOOM >= 25 && SLX_BROWSER_ZOOM <= 400 )); then
+	setpref "ui.textScaleFactor" "$SLX_BROWSER_ZOOM" number
+fi
+
+# TODO: Seems this feature doesn't exist in firefox
+# We could run a mitm proxy that re-encrypts everything and add its CA cert
+# to FF, but... ugh...
+#if is_on "$SLX_BROWSER_INSECURE"; then
+
+if is_on "$SLX_BROWSER_HWVIDEO"; then
+	setpref 'media.ffmpeg.vaapi.enabled' true boolean
+	setpref 'media.hardware-video-decoding.force-enabled' true boolean
+fi
+
+jqi --arg url "$SLX_BROWSER_URL" '.policies.Homepage.URL = $url'
+EOF
+true
+

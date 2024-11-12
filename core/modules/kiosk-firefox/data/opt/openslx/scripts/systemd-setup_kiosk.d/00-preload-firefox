@@ -1,0 +1,17 @@
+#!/bin/ash
+#
+# Simple "preload" by just reading the directory /usr/lib/chromium-browser 
+# Tested the variation loading just the linked libraries, but it does
+# not bring the same startup acceleration than this trivial method...
+
+. /opt/openslx/config
+
+if [ "${SLX_BROWSER//firefox/}" != "$SLX_BROWSER" ]; then
+	for dir in /lib/firefox /usr/lib/firefox /lib/firefox-esr /usr/lib/firefox-esr; do
+		[ -d "$dir" ] || continue
+		for i in firefox firefox-esr libxul.so omni.ja; do
+			dd if=/usr/lib/chromium-browser/chromium-browser of=/dev/null bs=128k &> /dev/null &
+		done
+		break
+	done
+fi

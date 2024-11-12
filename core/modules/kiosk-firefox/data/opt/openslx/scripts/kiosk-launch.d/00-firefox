@@ -1,0 +1,94 @@
+#!/bin/bash -- sourced
+# prepare and run firefox as kiosk browser
+
+command -v firefox \
+	|| command -v firefox-esr \
+	|| return 0
+
+# clear state of previous sessions
+if [ "$(whoami)" = "demo" ]; then
+	rm -rf -- "$HOME/".mozilla/firefox*
+fi
+
+. /opt/openslx/bin/slx-tools
+
+# default firefox arguments
+#firefox_args=( "-private" ) # breaks auto-installed uBlock
+firefox_args=( )
+
+done_url=
+if ! is_on "$SLX_BROWSER_INTERACTIVE"; then
+	if is_on "${SLX_AUTOLOGIN%OFF}"; then
+		# Autologin active, go full fullscreen
+		firefox_args+=( "--kiosk" "$SLX_BROWSER_URL" )
+		done_url=1
+	fi
+fi
+
+if [ -z "$done_url" ]; then
+	firefox_args+=( "-url" "$SLX_BROWSER_URL" )
+fi
+
+# Watchdog for reload/restart
+if [ -n "$SLX_BROWSER_RELOAD_SECS" ] && [ "$SLX_BROWSER_RELOAD_SECS" -gt 0 ]; then
+	(
+	# Wake up to force refresh
+	idle-daemon --send 'get :0' &> /dev/null
+	wid=
+	while [ -z "$wid" ]; do
+		sleep 1
+		[ -z "$wid" ] && wid="$( xdotool search --onlyvisible --class firefox )"
+		[ -z "$wid" ] && wid="$( xdotool search --onlyvisible --class firefox-esr )"
+		[ -z "$wid" ] && wid="$( xdotool search --onlyvisible --class Navigator )"
+	done
+	readonly wid
+	wpid="$( xprop -id "$wid" | awk '$1 == "_NET_WM_PID(CARDINAL)" {print $3}' )"
+	if [ -z "$wpid" ]; then
+		# logs to ~/.xsession-errors
+		echo "Failed to get the pid of firefox via xprop..."
+		exit 1
+	fi
+	readonly wpid
+	activity=init
+	last="$(idle-daemon --send 'get :0' | grep -oP '(?<=idleSeconds=)[0-9]+')"
+	sleep 1
+	while true; do
+		if [ ! -d "/proc/$wpid" ]; then
+			echo "Process with PID $wpid stopped, exiting auto-reload loop."
+			exit 0
+		fi
+		current_idle="$(idle-daemon --send 'get :0' | grep -oP '(?<=idleSeconds=)[0-9]+')"
+		if (( current_idle >= SLX_BROWSER_RELOAD_SECS )); then
+			if [ "$activity" = "yes" ] && [ -n "$SLX_BROWSER_INTERACTIVE" ]; then
+				# activity was seen, interactive browser (UI) -> kill session
+				killall firefox-esr firefox
+				loginctl terminate-user demo
+				exit 0
+			else
+				xdotool windowactivate "$wid"
+				xdotool key Esc # In case a context menu is open etc.
+				xdotool key Alt+Home # Go to home page
+				last="$current_idle"
+				sleep "$(( SLX_BROWSER_RELOAD_SECS - 10 ))"
+				# Wake up to force refresh
+				idle-daemon --send 'get :0' &> /dev/null
+				sleep 10
+				activity=init
+				continue
+			fi
+		elif [ "$activity" = "init" ]; then
+			activity=no
+		elif [ -n "$last" ] && (( last > current_idle )); then
+			activity=yes
+		fi
+		last="$current_idle"
+		num="$(( SLX_BROWSER_RELOAD_SECS - ( current_idle + 5 ) ))"
+		(( num < 1 )) && num=1
+		sleep "$num"
+	done
+	) &
+fi
+
+# finally exec to firefox
+exec firefox "${firefox_args[@]}"
+exec firefox-esr "${firefox_args[@]}"

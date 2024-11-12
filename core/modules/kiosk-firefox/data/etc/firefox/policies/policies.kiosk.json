@@ -1,0 +1,77 @@
+{
+	"policies": {
+		"Bookmarks": [
+		],
+		"NoDefaultBookmarks": true,
+		"ExtensionSettings": {
+			"uBlock0@raymondhill.net": {
+				"installation_mode": "force_installed",
+				"install_url": "https://addons.mozilla.org/firefox/downloads/latest/ublock-origin/latest.xpi"
+			}
+		},
+		"FirefoxHome": {
+			"Search": true,
+			"TopSites": false,
+			"SponsoredTopSites": false,
+			"Highlights": false,
+			"Pocket": false,
+			"SponsoredPocket": false,
+			"Snippets": false,
+			"Locked": true
+		},
+		"FirefoxSuggest": {
+			"WebSuggestions": false,
+			"SponsoredSuggestions": false,
+			"ImproveSuggest": false,
+			"Locked": true
+		},
+		"Homepage": {
+			"URL": "about:blank",
+			"Locked": true,
+			"Additional": [],
+			"StartPage": "homepage-locked"
+		},
+		"AppAutoUpdate": false,
+		"AutofillAddressEnabled": false,
+		"AutofillCreditCardEnabled": false,
+		"DisableAppUpdate": true,
+		"DisableFirefoxAccounts": true,
+		"DisableFirefoxScreenshots": true,
+		"DisableFormHistory": true,
+		"DisableMasterPasswordCreation": true,
+		"DisablePocket": true,
+		"DisableProfileImport": true,
+		"DisableSetDesktopBackground": true,
+		"DisplayBookmarksToolbar": true,
+		"DontCheckDefaultBrowser": true,
+		"OfferToSaveLogins": false,
+		"OfferToSaveLoginsDefault": false,
+		"OverrideFirstRunPage": "",
+		"OverridePostUpdatePage": "",
+		"PasswordManagerEnabled": false,
+		"PrimaryPassword": false,
+		"PrintingEnabled": false,
+		"PromptForDownloadLocation": true,
+		"DisableTelemetry": true,
+		"SearchEngines": {
+			"Default": "DuckDuckGo",
+			"PreventInstalls": true
+		},
+		"TranslateEnabled": false,
+		"UserMessaging": {
+			"ExtensionRecommendations": false,
+			"FeatureRecommendations": false,
+			"UrlbarInterventions": false,
+			"SkipOnboarding": true
+		},
+		"WebsiteFilter": {
+			"Block": [],
+			"Exceptions": []
+		},
+		"Preferences": {
+			"media.webspeech.synth.enabled": {
+				"Value": false
+			}
+		}
+	}
+}
