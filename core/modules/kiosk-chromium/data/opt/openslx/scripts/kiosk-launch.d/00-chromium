@@ -73,7 +73,7 @@ chromium_args+=("--simulate-outdated-no-au=\"Tue, 31 Dec 2099 23:59:59 GMT\"")
 # default to maximized on startup
 chromium_args+=("--start-maximized")
 
-if is_on "$SLX_BROWSER_INTERACTIVE"; then
+if ! is_on "$SLX_BROWSER_INTERACTIVE"; then
 	if is_on "${SLX_AUTOLOGIN%OFF}"; then
 		# Autologin active, go full fullscreen
 		chromium_args+=("--kiosk")
