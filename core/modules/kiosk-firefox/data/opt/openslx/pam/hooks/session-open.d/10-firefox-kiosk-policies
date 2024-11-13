@@ -83,6 +83,7 @@ add_urls() {
 . /opt/openslx/config
 . /opt/openslx/bin/slx-tools
 
+mv -n "/etc/firefox/policies/policies.json" "/etc/firefox/policies/policies.default.json"
 cp "/etc/firefox/policies/policies.kiosk.json" "/etc/firefox/policies/policies.json"
 
 bookmarks="$( json_bookmarks $SLX_BROWSER_BOOKMARKS )"

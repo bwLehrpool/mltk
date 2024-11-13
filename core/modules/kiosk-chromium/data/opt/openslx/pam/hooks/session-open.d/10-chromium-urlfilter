@@ -2,7 +2,8 @@
 #^ SOURCED, actually running in ash
 
 # Protip: Comment out while editing, but DO NOT FORGET TO RE-ENABLE
-bash <<"EOF"
+[ "${PAM_SERVICE//autologin/}" != "$PAM_SERVICE" ] && [ "$PAM_TTY" = ":0" ] \
+	&& bash <<"EOF"
 format_urls() {
 	local url scheme host path chost arr
 	readarray -t -d ' ' arr < <( printf "%s" "$@" )
@@ -81,10 +82,7 @@ main() {
 	ln -nfs "$url_policy_file" "/etc/chromium/policies/managed/url-filter.json"
 }
 
-if [ "${PAM_SERVICE//autologin/}" != "$PAM_SERVICE" ] && [ "$PAM_TTY" = ":0" ]; then
-	# autologin of some sort
-	main
-fi
+main
 EOF
 true
 

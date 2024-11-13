@@ -1,0 +1,7 @@
+#!/bin/ash
+# ^ sourced
+
+for dir in /etc/firefox/policies /etc/firefox-esr/policies; do
+	[ -s "$dir/policies.default.json" ] || continue
+	mv -f "$dir/policies.default.json" "$dir/policies.json"
+done
