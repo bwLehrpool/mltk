@@ -10,7 +10,7 @@ if [ "${SLX_BROWSER//firefox/}" != "$SLX_BROWSER" ]; then
 	for dir in /lib/firefox /usr/lib/firefox /lib/firefox-esr /usr/lib/firefox-esr; do
 		[ -d "$dir" ] || continue
 		for i in firefox firefox-esr libxul.so omni.ja; do
-			dd if=/usr/lib/chromium-browser/chromium-browser of=/dev/null bs=128k &> /dev/null &
+			cat "$dir/$i" &> /dev/null &
 		done
 		break
 	done
