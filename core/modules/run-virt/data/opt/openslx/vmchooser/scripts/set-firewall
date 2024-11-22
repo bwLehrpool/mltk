@@ -292,8 +292,11 @@ if ! (
 		cat >> "$DNS_IPT_FILE" <<-EOF
 		iptables -t nat -A PREROUTING -p tcp --dport 53 -j REDIRECT --to-port "$DNSPORT"
 		iptables -t nat -A PREROUTING -p udp --dport 53 -j REDIRECT --to-port "$DNSPORT"
-		ip6tables -t nat -A PREROUTING -p tcp --dport 53 -j REDIRECT --to-port "$DNSPORT"
-		ip6tables -t nat -A PREROUTING -p udp --dport 53 -j REDIRECT --to-port "$DNSPORT"
+		ip6tables -t nat -A PREROUTING -p tcp --dport 53 -j REDIRECT --to-port "$DNSPORT" \
+			|| ip6tables -A FORWARD -p tcp --dport 53 -j DROP
+		ip6tables -t nat -A PREROUTING -p udp --dport 53 -j REDIRECT --to-port "$DNSPORT" \
+			|| ip6tables -A FORWARD -p udp --dport 53 -j DROP
+		true
 		EOF
 		chmod +x "$DNS_IPT_FILE"
 	fi
