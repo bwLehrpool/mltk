@@ -7,11 +7,19 @@
 . /opt/openslx/config
 
 if [ "${SLX_BROWSER//firefox/}" != "$SLX_BROWSER" ]; then
+	echo "Preloading Firefox files"
 	for dir in /lib/firefox /usr/lib/firefox /lib/firefox-esr /usr/lib/firefox-esr; do
 		[ -d "$dir" ] || continue
+		ok=
 		for i in firefox firefox-esr libxul.so omni.ja; do
+			[ -s "$dir/$i" ] || continue
+			ok=1
 			cat "$dir/$i" &> /dev/null &
 		done
-		break
-	done
+		if [ -n "$ok" ]; then
+			wait
+			echo "Finished preloading Firefox"
+			break
+		fi
+	done &
 fi
