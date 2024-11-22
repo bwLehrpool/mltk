@@ -53,13 +53,24 @@ run_plugin() {
 
 	# HACK: make the mouse disappear
 	(
-		local WINDOWS="$(xdotool search --sync --name '.*VMware.*Player.*')"
+		local WINDOWS
+		for i in 2 2 2 1 1 1 0; do
+			WINDOWS="$(xdotool search --sync --name '.*VMware.*Player.*')"
+			[ -n "$WINDOWS" ] && break
+			sleep "$i"
+		done
 		isempty WINDOWS && writelog "Could not find any vmplayer windows."
 		for WINDOW in $WINDOWS; do
-			xdotool set_desktop_for_window $WINDOW 0 || writelog "Could not move vmplayer to desktop 0"
-			xdotool windowactivate --sync $WINDOW || writelog "Could not activate vmplayer window"
-			xdotool key --delay 2000 --clearmodifiers ctrl+g || writelog "Could not send ctrl+g to vmplayer window"
+			xdotool set_desktop_for_window "$WINDOW" 0 || writelog "Could not move vmplayer to desktop 0"
+			sleep .01
+			xdotool windowactivate --sync "$WINDOW" || writelog "Could not activate vmplayer window"
+			sleep .01
 		done
+		wmctrl -s 0
+		sleep .01
+		xdotool mousemove --sync --polar 0 0 || writelog "Could not move mouse to center of screen"
+		sleep .01
+		xdotool click 1 || writelog "Could not click"
 	) &
 	
 	# HACK: using the modified version of the wrapper script
