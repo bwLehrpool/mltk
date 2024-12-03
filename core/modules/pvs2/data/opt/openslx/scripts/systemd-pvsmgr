@@ -9,5 +9,10 @@ if [ -n "$SLX_PVS_CONFIG_URL" ]; then
 	[ -s "${DST}.new" ] && mv -f "${DST}.new" "${DST}"
 fi
 
+# Disable low RAM warnings if we run dedicated
+if [ -n "$SLX_PVS_DEDICATED" ]; then
+	touch "/run/openslx/no-ram-warning"
+fi
+
 exit 0
 
