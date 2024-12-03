@@ -3,9 +3,22 @@
 # Running as root?
 touch "/run" || exit 2
 
+[ -e "/run/openslx/shutdown.mutex" ] && exit 0 # Machine shutting down
+[ -e "/etc/cron.d/usage_stats" ] || exit 0 # Reporting not active
+
 ACTION=$1
 
-if [ "x$ACTION" != "xresume" ] && [ "x$ACTION" != "xsuspend" ]; then
+if [ "$ACTION" = "resume" ]; then
+	if ! [ -e "/run/openslx/suspend.mutex" ]; then
+		echo "Suspend mutex not found on resume" >&2
+		exit 1
+	fi
+elif [ "$ACTION" = "suspend" ]; then
+	if ! mkdir "/run/openslx/suspend.mutex"; then
+		echo "Cannot create suspend mutex; suspend already in progress, or wakeup not finished" >&2
+		exit 1
+	fi
+else
 	echo "Expecting resume or suspend as argument!" >&2
 	exit 1
 fi
@@ -15,11 +28,17 @@ fi
 UUID=$(cat /etc/system-uuid)
 
 echo "Submitting to $SLX_REMOTE_LOG"
-if curl --retry 4 --retry-connrefused --data-urlencode "type=~$ACTION" --data-urlencode "uuid=$UUID" "$SLX_REMOTE_LOG" | grep -q "RESULT=0"; then
+curl -sS --connect-timeout 2 --max-time 4 --retry 4 --retry-connrefused \
+	--data-urlencode "type=~$ACTION" --data-urlencode "uuid=$UUID" "$SLX_REMOTE_LOG" | grep -q "RESULT=0"
+ret=$?
+
+if [ "$ACTION" = "resume" ]; then
+	rmdir "/run/openslx/suspend.mutex" || rm -r --interactive=never "/run/openslx/suspend.mutex"
+fi
+
+if [ "$ret" = 0 ]; then
 	echo "Success"
 	exit 0
-else
-	echo "Failed..."
 fi
 
 echo "Giving up" >&2

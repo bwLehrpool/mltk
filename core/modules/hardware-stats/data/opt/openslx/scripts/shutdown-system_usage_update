@@ -6,6 +6,12 @@ mkdir /run/openslx/shutdown.mutex || exit 0
 . /opt/openslx/config
 [ -z "$SLX_REMOTE_LOG" ] && exit 0
 
+# Seems we're about to enter/leave standby, wait for this to finish first, but give up after a while
+for i in x x x x x; do
+	[ -e "/run/openslx/suspend.mutex" ] || break
+	sleep 1
+done
+
 UUID=$(cat /etc/system-uuid)
 
 [ -z "$UUID" ] && exit 1
