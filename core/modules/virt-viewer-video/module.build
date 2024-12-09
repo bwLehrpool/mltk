@@ -1,0 +1,75 @@
+#!/bin/bash
+
+fetch_source() {
+	autoclone
+}
+
+# () for subshell, so no need to clean up env
+build() (
+	local SRCDIR
+	local DSTDIR="${MODULE_BUILD_DIR}"
+
+	# set config paths for additional pkg-config files
+	export PKG_CONFIG_PATH="${TARGET_BUILD_DIR}/usr/lib/x86_64-linux-gnu/pkgconfig:${TARGET_BUILD_DIR}/usr/lib64/pkgconfig"
+	# set system root directory for prebuilt headers and libraries, e.g. libvirt-glib
+	export PKG_CONFIG_SYSROOT_DIR="${TARGET_BUILD_DIR}"
+	# enable output of all system include directories
+	export PKG_CONFIG_ALLOW_SYSTEM_CFLAGS=1
+	# enable output of all system library directories
+	export PKG_CONFIG_ALLOW_SYSTEM_LIBS=1
+	# Patch path so it uses the pkg-config we create below
+	export PATH="${MODULE_BUILD_DIR}:${PATH}"
+
+	# create custom pkg-config program to patch paths from pkg-build config files in our build directory
+	cat > "${MODULE_BUILD_DIR}/pkg-config" <<-EOF
+		#!/bin/bash
+
+		# unset custom path to avoid call recursion of this custom pkg-config script
+		unset PATH
+
+		# call patched pkg-config wrapper from mltk bin directory
+		exec "${ROOT_DIR}/core/bin/pkg-config.sh" "\${@}"
+	EOF
+	chmod +x "${MODULE_BUILD_DIR}/pkg-config"
+
+	# Part 1: spice-protocol
+	SRCDIR="${MODULE_WORK_DIR}/src/spice-protocol"
+	cde "${SRCDIR}"
+	meson setup \
+		--prefix=/usr \
+		build spice-protocol || perror "meson for spice-protocol failed"
+	DESTDIR="${DSTDIR}" ninja -C build install || perror "ninja spice-protocol failed"
+
+	# Part 2: spice-gtk
+	SRCDIR="${MODULE_WORK_DIR}/src/spice-gtk"
+	cde "${SRCDIR}"
+	meson setup --prefix=/usr \
+		build spice-gtk \
+		-Dwayland-protocols=enabled \
+		-Dbuiltin-mjpeg=false \
+		-Dopus=enabled \
+		-Dgtk=enabled || perror "meson for spice-gtk failed"
+	DESTDIR="${DSTDIR}" ninja -C build install || perror "ninja for spice-gtk failed"
+
+	# Part 3: 
+	SRCDIR="${MODULE_WORK_DIR}/src/virt-viewer"
+	cde "${SRCDIR}"
+	meson build \
+		--prefix="/usr" \
+		--sysconfdir="/etc" \
+		--localstatedir="/var" \
+		-Dovirt=disabled \
+		-Dspice=enabled \
+		-Dvnc=enabled \
+		-Dlibvirt=enabled || perror "'meson' for virt-viewer failed."
+	ninja -v -C build || perror "'ninja' for virt-viewer failed."
+	DESTDIR="${DSTDIR}" ninja -v -C build install || perror "'ninja install' failed."
+
+	rm -f -- "${MODULE_BUILD_DIR}/pkg-config"
+
+	# restore old environment so that following pkg-config calls are not modified
+)
+
+post_copy() {
+	:
+}
