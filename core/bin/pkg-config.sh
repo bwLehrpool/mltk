@@ -24,6 +24,7 @@ function pkg_config_process_dir() {
 	local DIR_OPTION="${1}"
 	local DIR_WTH_SYSROOT="${2}"
 	local DIR_NON_SYSROOT="${DIR_WTH_SYSROOT##${PKG_CONFIG_SYSROOT_DIR}}"
+	DIR_WTH_SYSROOT="${PKG_CONFIG_SYSROOT_DIR}/${DIR_NON_SYSROOT}"
 
 	if pkg_config_non_empty_dir "${DIR_WTH_SYSROOT}"; then
 		echo -n "${DIR_OPTION}${DIR_WTH_SYSROOT}"
