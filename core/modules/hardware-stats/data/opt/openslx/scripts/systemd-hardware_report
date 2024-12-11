@@ -53,6 +53,10 @@ report_hardware_info() {
 	[ -s "$hwreport" ] || touch "$hwreport"
 	[ -s "$jsonfile" ] || touch "$jsonfile"
 
+	# EFI?
+	fw=BIOS
+	[ -d /sys/firmware/efi ] && fw=EFI
+
 	# Bail out if a shutdown was triggered and submitted in the meantime
 	[ -e /run/openslx/shutdown.mutex ] && exit 0
 
@@ -68,6 +72,7 @@ report_hardware_info() {
 		--data-urlencode "id44mb=$HW_ID44" \
 		--data-urlencode "badsectors=$HW_BADSECTORS" --data-urlencode "systemmodel=$model" \
 		--data-urlencode "subnet=$subnet" \
+		--data-urlencode "firmware=$fw" \
 		--data-urlencode "runmode=$runmode" --data-urlencode "data@$hwreport" --data-urlencode "json@$jsonfile" \
 		"$SLX_REMOTE_LOG" | grep -q "RESULT=0"
 	local ret=$?
