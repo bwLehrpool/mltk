@@ -8,6 +8,8 @@ fetch_source() {
 			url="${url//%VERSION%/$version}"
 			pinfo "Downloading '$url'"
 			wget -O "${version}.run" "$url" && continue 2
+			wget -O "${version}.run" "${url//"/download.nvidia"/"/us.download.nvidia"}" && continue 2
+			wget -O "${version}.run" "${url//"/download.nvidia"/"/eu.download.nvidia"}" && continue 2
 		done
 		perror "Could not download installer for $version"
 	done
