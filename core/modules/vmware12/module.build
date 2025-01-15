@@ -113,6 +113,7 @@ build() {
 	# This is required as there are still some uname calls in the Makefiles, EVEN THOUGH
 	# YOU SPECIFY ANOTHER KERNEL via -k below. Building will fail for a 5.x kernel if you
 	# run on a system with a 4.x kernel.
+	mkdir -p "${MODULE_BUILD_DIR}/usr/local/bin"
 	cat > "${MODULE_BUILD_DIR}/usr/local/bin/uname" <<-EOF
 	#!/bin/sh
 	if [ "\$1" = "-r" ]; then
@@ -121,7 +122,7 @@ build() {
 		/bin/uname "\$@" || /usr/bin/uname "\$@"
 	fi
 	EOF
-	chmod +x "${MODULE_BUILD_DIR}/usr/local/bin/uname"
+	chmod +x "${MODULE_BUILD_DIR}/usr/local/bin/uname" || perror "Cannot create/chmod uname wrapper"
 	chroot_run "${MODULE_BUILD_DIR}" <<-EOF
 		perror() {
 			echo "[ERROR ERROR] " "\$@" >&6
