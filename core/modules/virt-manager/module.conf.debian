@@ -17,4 +17,6 @@ REQUIRED_INSTALLED_PACKAGES="
 	python3-libxml2
 	python3-pytest
 	python3-requests
+	pylint
+	pycodestyle
 "

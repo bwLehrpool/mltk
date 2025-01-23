@@ -8,11 +8,15 @@ build() {
 	local DSTDIR="${MODULE_BUILD_DIR}"
 	cde "${SRCDIR}"
 
-	# Work-aound newer setuptools requirement
-	grep -qF 'py_modules' "setup.py" || sed -i '/^distutils.core.setup/a py_modules=[],' "setup.py"
-	python3 setup.py configure --prefix /usr/local --default-hvs qemu,lxc --default-graphics spice || perror "'setup.py configure' failed."
-	python3 setup.py build || perror "'setup.py build' failed."
-	python3 setup.py --no-update-icon-cache --no-compile-schemas install --prefix /usr/local --root "${DSTDIR}" --no-compile -O0 || perror "'setup.py install' failed."
+	meson setup --prefix=/usr/local \
+		-Ddefault-hvs=qemu,lxc \
+		-Ddefault-graphics=spice \
+		-Dupdate-icon-cache=false \
+		-Dcompile-schemas=false \
+		build \
+		|| perror "'meson setup' failed."
+	meson install -C build --destdir "${DSTDIR}" \
+		|| perror "'meson install' failed."
 }
 
 post_copy() {
