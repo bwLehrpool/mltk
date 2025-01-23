@@ -24,6 +24,7 @@ REQUIRED_INSTALLED_PACKAGES="
 	libudev-dev
 	libattr1-dev
 	libpciaccess-dev
+	libjson-c-dev
 	kmod
 	policykit-1
 	libcurl4-gnutls-dev
