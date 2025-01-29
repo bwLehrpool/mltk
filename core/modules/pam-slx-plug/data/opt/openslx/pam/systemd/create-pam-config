@@ -41,6 +41,7 @@ write_sssd_config() {
 	for file in /opt/openslx/pam/slx-ldap.d/*; do
 		[ -f "$file" ] || continue
 		unset LDAP_ATTR_MOUNT_OPTS LDAP_URI LDAP_BASE SHARE_DOMAIN LDAP_CACERT
+		unset LDAP_DN LDAP_PW
 		. "$file"
 		[ -z "$LDAP_URI" ] && continue
 		[ -z "$LDAP_BASE" ] && continue
@@ -60,6 +61,18 @@ write_sssd_config() {
 			ldap_tls_reqcert = demand
 		HERE
 		[ -n "$LDAP_CACERT" ] && echo "ldap_tls_cacert = $LDAP_CACERT" >> "$tmpfile"
+		[ -n "$LDAP_DN" ] && echo "ldap_default_bind_dn = $LDAP_DN" >> "$tmpfile"
+		[ -n "$LDAP_PW" ] && echo "ldap_default_authtok = $LDAP_PW" >> "$tmpfile"
+	done
+	# Also honor "raw" sssd domains that can be placed in /opt/openslx/pam/slx-sssd.d/* files
+	# These must not have an ini section header like [domain/foo], as this is auto-generated
+	for file in /opt/openslx/pam/slx-sssd.d/*; do
+		[ -f "$file" ] || continue
+		echo "... including $file"
+		ok=$(( ok + 1 ))
+		domains="${domains}, dom$ok"
+		echo "[domain/dom$ok]" >> "$tmpfile"
+		cat "$file" >> "$tmpfile"
 	done
 	if [ "$ok" = 0 ]; then
 		echo "Config is empty, aborting"
