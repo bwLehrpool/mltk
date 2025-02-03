@@ -59,6 +59,7 @@ write_sssd_config() {
 			ldap_uri = $LDAP_URI
 			ldap_search_base = $LDAP_BASE
 			ldap_tls_reqcert = demand
+			override_shell = /bin/bash
 		HERE
 		[ -n "$LDAP_CACERT" ] && echo "ldap_tls_cacert = $LDAP_CACERT" >> "$tmpfile"
 		[ -n "$LDAP_DN" ] && echo "ldap_default_bind_dn = $LDAP_DN" >> "$tmpfile"
