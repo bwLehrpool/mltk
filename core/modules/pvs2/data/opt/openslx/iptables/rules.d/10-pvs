@@ -1,9 +1,20 @@
 #!/bin/ash
 
+# In exam mode, we don't want outgoing VNC connections, and try to
+# limit the control connection destination.
+. /opt/openslx/config
+
 # Allow PVS ports
 # Control connection: server incoming, client outgoing
-iptables -I ipt-helper-INPUT 1 -i br0 -p tcp --dport 5194 -j ACCEPT
-iptables -I ipt-helper-OUTPUT 1 -o br0 -p tcp --dport 5194 -j ACCEPT
+if [ -z "$SLX_EXAM" ]; then
+	iptables -I ipt-helper-INPUT 1 -i br0 -p tcp --dport 5194 -j ACCEPT
+	iptables -I ipt-helper-OUTPUT 1 -o br0 -p tcp --dport 5194 -j ACCEPT
+else
+	# Exam mode: No incoming, limit outgoing to known managers
+	for ip in $( grep -Po '(?<=mgrIP=).*' /opt/openslx/pvs2/pvs2.ini ); do
+		iptables -I ipt-helper-OUTPUT 1 -o br0 -d "$ip" -p tcp --dport 5194 -j ACCEPT
+	done
+fi
 # UDP discovery
 # pvsmgr: allow incoming discovery (broadcast)
 iptables -I ipt-helper-INPUT 1 -i br0 -p udp --dport 3492 -j ACCEPT
@@ -13,6 +24,12 @@ iptables -I ipt-helper-OUTPUT 1 -o br0 -p udp --sport 3492 -j ACCEPT
 iptables -I ipt-helper-OUTPUT 1 -o br0 -p udp --dport 3492 -j ACCEPT
 # pvsclient: allow incoming discovery reply (unicast)
 iptables -I ipt-helper-INPUT 1 -i br0 -p udp --sport 3492 -j ACCEPT
+
 # VNC connection - incoming and outgoing - small range as we use -autoport
+if [ -z "$SLX_EXAM" ]; then
+	# Outgoing only if not in exam mode
+	iptables -I ipt-helper-OUTPUT 1 -o br0 -p tcp --dport 54112:54122 -j ACCEPT
+fi
 iptables -I ipt-helper-INPUT 1 -i br0 -p tcp --dport 54112:54122 -j ACCEPT
-iptables -I ipt-helper-OUTPUT 1 -o br0 -p tcp --dport 54112:54122 -j ACCEPT
+
+exit 0
