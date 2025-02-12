@@ -1,0 +1,17 @@
+#!/bin/ash
+
+. /opt/openslx/config
+
+[ -z "${SLX_DNBD3_SERVERS}${SLX_DNBD3_FALLBACK}" ] && exit 0
+
+. /opt/openslx/bin/slx-tools
+net_split &> /dev/null # Preload, as it's being used in subshell
+
+for ip in $SLX_DNBD3_SERVERS $SLX_DNBD3_FALLBACK; do
+	ip=$( net_split "$ip" 5003 )
+	port=${ip#* }
+	ip=${ip% *}
+	iptables -A OUTPUT -d "$ip" -p tcp --dport "$port" -j ACCEPT
+done
+
+exit 0

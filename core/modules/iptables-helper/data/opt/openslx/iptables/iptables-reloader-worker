@@ -65,6 +65,16 @@ reload_rules () {
 	# Loopback
 	iptables -w -A ipt-helper-INPUT -i lo -j ACCEPT
 	iptables -w -A ipt-helper-OUTPUT -o lo -j ACCEPT
+	# Stateful
+	iptables -w -A ipt-helper-INPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+	iptables -w -A ipt-helper-OUTPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+	iptables -w -A ipt-helper-FORWARD -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+	# Essential: boot server(s)
+	. /opt/openslx/config
+	for ip in $SLX_KCL_SERVERS $SLX_PXE_SERVER_IP; do
+		iptables -w -A ipt-helper-OUTPUT -d "$ip" -j ACCEPT
+	done
+
 	# TODO: IPv6 (in general)
 
 	# Apply

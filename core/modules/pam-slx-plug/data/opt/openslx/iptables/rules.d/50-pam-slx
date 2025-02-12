@@ -1,0 +1,22 @@
+#!/bin/ash
+
+# pam-slx-plug
+srcd=
+for file in /opt/openslx/pam/slx-ldap.d/*; do
+	[ -f "$file" ] || continue
+	uris="$( grep -Po "(?<=LDAP_URI=')[^']*" "$file" )"
+	[ -n "$uris" ] || continue
+	if [ -z "$srcd" ]; then
+		srcd=1
+		. /opt/openslx/bin/slx-tools
+	fi
+	for uri in $uris; do
+		ip=$( net_parse_uri "$uri" x )
+		port="${ip#* }"
+		[ "$port" = "x" ] && continue
+		ip="${ip% *}"
+		iptables -A OUTPUT -d "$ip" -p tcp --dport "$port" -j ACCEPT
+	done
+done
+
+exit 0
