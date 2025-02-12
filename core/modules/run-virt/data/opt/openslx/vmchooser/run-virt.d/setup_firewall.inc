@@ -22,7 +22,7 @@ setup_firewall () {
 		port="$try"
 	done
 	# Run iptables helper
-	slxfwtool "$IMGUUID" "$DNSMASQ_CONF" "$port" &> "$LOGF"
+	slxfwtool "$IMGUUID" "$DNSMASQ_CONF" "$port" "$$" &> "$LOGF"
 	RET=$?
 	if [ "$RET" != "0" ]; then
 		slxlog "virt-firewall" "Error setting up firewall rules for lecture $IMGUUID (Exit code $RET)" "$LOGF"

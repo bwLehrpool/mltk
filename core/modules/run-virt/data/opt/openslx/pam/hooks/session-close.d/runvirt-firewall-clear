@@ -3,13 +3,16 @@
 # Sourced as session-close hook
 
 runvirt_fw_clear () {
-	iptables -w -F runvirt-INPUT
-	ip6tables -w -F runvirt-INPUT
-	iptables -w -F runvirt-OUTPUT
-	ip6tables -w -F runvirt-OUTPUT
+	local a b
+	for a in "" "-sub"; do
+		for b in "INPUT" "OUTPUT"; do
+			iptables -w -F "runvirt-$b$a"
+			ip6tables -w -F "runvirt-$b$a"
+		done
+	done
 }
 
-if [ "x$PAM_TTY" = "x:0" ]; then
+if [ "$PAM_TTY" = ":0" ]; then
 	runvirt_fw_clear > /dev/null 2>&1
 fi
 

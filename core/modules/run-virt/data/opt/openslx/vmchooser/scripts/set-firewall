@@ -10,6 +10,7 @@ REMOTERULES="$( mktemp )"
 LOGFILE="$( mktemp )"
 DNSCFG="$2" # optional, write dnsmasq config here if applicable
 DNSPORT="$3" # required if $2 given
+PARENTPID="$4" # exit when this stops to exist
 [ -z "$DNSPORT" ] && DNSCFG=
 
 readonly RULES AUTORULES REMOTERULES LOGFILE DNSCFG DNSPORT
@@ -34,6 +35,8 @@ if ! (
 	for TOOL in iptables ip6tables; do
 		$TOOL -w -F runvirt-INPUT || $TOOL -w -N runvirt-INPUT
 		$TOOL -w -F runvirt-OUTPUT || $TOOL -w -N runvirt-OUTPUT
+		$TOOL -w -F runvirt-INPUT-sub || $TOOL -w -N runvirt-INPUT-sub
+		$TOOL -w -F runvirt-OUTPUT-sub || $TOOL -w -N runvirt-OUTPUT-sub
 
 		if ! $TOOL -w -C INPUT -i br0 -j runvirt-INPUT; then
 			$TOOL -w -A INPUT -i br0 -j runvirt-INPUT
@@ -50,9 +53,9 @@ if ! (
 		# Allow all loopback
 		$TOOL -w -A runvirt-INPUT -i lo -j ACCEPT
 		$TOOL -w -A runvirt-OUTPUT -o lo -j ACCEPT
-		# Allow conntrack so creating out-rules is enough usually
-		$TOOL -w -A runvirt-INPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
-		$TOOL -w -A runvirt-OUTPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+		# Jump to subchain for user-defined rules
+		$TOOL -w -A runvirt-INPUT -j runvirt-INPUT-sub
+		$TOOL -w -A runvirt-OUTPUT -j runvirt-OUTPUT-sub
 	done
 	true
 ); then
@@ -60,22 +63,12 @@ if ! (
 	exit 7
 fi
 
+. /opt/openslx/bin/slx-tools
 
-parse_uri () {
-	local scheme
-	ip="${1,,}"
-	scheme="${ip%%://*}"
-	ip="${ip#*://}"
-	port="${ip##*:}"
-	if [[ "$port" =~ ^[0-9]+$ ]]; then
-		ip="${ip%:*}"
-	elif [ "$scheme" = "ldaps" ]; then
-		port=636
-	else
-		port=389
-	fi
-	(( port >= 0 && port <= 65535 )) || port=0
-}
+declare -rg ILLEGAL_DNS='[?@:*/ ]'
+declare -rg V4='^((25[0-5]|(2[0-4]|1[0-9]|[1-9]|)[0-9])\.?\b){4}(/[0-9]+)?$'
+# https://stackoverflow.com/a/17871737
+declare -rg V6='^(([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|::(ffff(:0{1,4}){0,1}:){0,1}((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9]))(/[0-9]+)?$'
 
 add_ips () {
 	# add_ips "IN/OUT" "IP1 IP2 IPn" "PORT" "ACCEPT/REJECT"
@@ -93,22 +86,37 @@ add_ips () {
 	done
 }
 
-# get all DNS servers in use
-dnslist="$( ( echo "$SLX_DNS"; awk '$1 == "nameserver" {print $2}' /etc/resolv.conf ) | sort -u )"
+# get all DNS servers potentially in use
+dnslist="$( (
+	echo "$SLX_DNS"
+	awk '$1 == "nameserver" {print $2}' /etc/resolv.conf
+	resolvectl dns
+	grep -Po '(?<=^server=)[^/].*' /etc/dnsmasq.conf /etc/dnsmasq.d/*
+) | grep -Po '\S+' | sort -u )"
 
-# Auto-allow important servers from config
-add_ips "OUT" "$dnslist" 53 "ACCEPT"
-add_ips "OUT" "$SLX_DNBD3_SERVERS" 5003 "ACCEPT"
-add_ips "OUT" "$SLX_DNBD3_FALLBACK" 5003 "ACCEPT"
-add_ips "OUT" "$SLX_KCL_SERVERS $SLX_PXE_SERVER_IP" 0 "ACCEPT"
-add_ips "OUT" "$SLX_PROXY_IP" "$SLX_PROXY_PORT" "ACCEPT"
+# Auto-allow via iptables-helper
+dnsscript=$( mktemp )
+echo "#!/bin/ash" > "$dnsscript"
+for ip in $dnslist; do
+	if [[ $ip =~ $V4 ]]; then
+		tool=iptables
+	elif [[ $ip =~ $V6 ]]; then
+		tool=ip6tables
+	else
+		continue
+	fi
+	echo "$tool -w -A OUTPUT -d $ip -p udp --dport 53 -j ACCEPT"
+	echo "$tool -w -A OUTPUT -d $ip -p tcp --dport 53 -j ACCEPT"
+done >> "$dnsscript"
+chmod +x "$dnsscript"
+mv "$dnsscript" "/opt/openslx/iptables/rules.d/"
 
 # sssd
 sssd="$( < /etc/sssd/sssd.conf  grep -P '^\s*ldap_(backup_)?uri\s*=' | sed -r 's/^[^=]*=//' )"
 sssd="${sssd//,/ }"
 for uri in $sssd; do
-	parse_uri "$uri"
-	add_ips "OUT" "$ip" "$port" "ACCEPT"
+	net_parse_uri "$uri" || continue
+	add_ips "OUT" "$nethost" "$netport" "ACCEPT"
 done
 
 # pam-slx-plug
@@ -116,8 +124,8 @@ for file in /opt/openslx/pam/slx-ldap.d/*; do
 	[ -f "$file" ] || continue
 	uris="$( grep -Po "(?<=LDAP_URI=')[^']*" "$file" )"
 	for uri in $uris; do
-		parse_uri "$uri"
-		add_ips "OUT" "$ip" "$port" "ACCEPT"
+		net_parse_uri "$uri" || continue
+		add_ips "OUT" "$nethost" "$netport" "ACCEPT"
 	done
 done
 
@@ -159,13 +167,77 @@ cat "${REMOTERULES}" >> "${RULES}"
 
 # Determine if we have dnsmasq as we need to know this while setting up iptables rules
 dnsmasq=
+dig=
 if [ -n "$DNSCFG" ] && [ -f "$DNSCFG" ] && [ -n "$dnslist" ]; then
 	dnsmasq="$( which dnsmasq || command -v dnsmasq )"
+	dig="$( which dig || command -v dig )"
 fi
-declare -rg ILLEGAL_DNS='[?@:*/ ]'
-declare -rg V4='^((25[0-5]|(2[0-4]|1[0-9]|[1-9]|)[0-9])\.?\b){4}(/[0-9]+)?$'
-# https://stackoverflow.com/a/17871737
-declare -rg V6='^(([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|::(ffff(:0{1,4}){0,1}:){0,1}((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9]))(/[0-9]+)?$'
+unset dns_list
+declare -A dns_list
+
+# prepearetool $DIR $DEST $PORT $ACTION
+# Will modify global arrays IPLINE[12](with)?
+preparetool() {
+	local front=
+	local chain
+	if [ "$1" == "--front" ]; then
+		front=1
+		shift
+	fi
+	local DIR="$1"
+	local DEST="$2"
+	local PORT="$3"
+	local ACTION="$4"
+	IPLINE1=( "-w" )
+	IPLINE2=( )
+	if [ "$DIR" = "IN" ]; then
+		chain="runvirt-INPUT"
+	elif [ "$DIR" = "OUT" ]; then
+		chain="runvirt-OUTPUT"
+	else
+		echo "Invalid direction: '$DIR'"
+		return 1
+	fi
+	# Default rule goes to parent chain
+	[ "$DEST" = "*" ] || chain="${chain}-sub"
+	if [ -n "$front" ]; then
+		IPLINE1+=( "-I" "$chain" 1 )
+	else
+		IPLINE1+=( "-A" "$chain" )
+	fi
+	if ! [[ $PORT =~ ^[0-9]+$ ]] || (( PORT > 65535 || PORT < 0 )); then
+		echo "Invalid port: '$PORT'"
+		return 1
+	fi
+	if [ "$DEST" != "*" ]; then
+		if [ "$DIR" = "OUT" ]; then
+			IPLINE1+=( "-d" "$DEST" )
+		else
+			IPLINE1+=( "-s" "$DEST" )
+		fi
+	fi
+	if [ "$PORT" != 0 ]; then
+		IPLINE2+=( "--dport" "$PORT" )
+	fi
+	IPLINE2+=( "-j" "$ACTION" )
+	IPLINE2with=( "${IPLINE2[@]}" )
+	[ "$ACTION" = "REJECT" ] && IPLINE2with+=( "--reject-with" "tcp-reset" )
+	return 0
+}
+
+# calltool <iptables> $PORT $ACTION
+calltool() {
+	local TOOL="$1"
+	local PORT="$2"
+	local ACTION="$3"
+	if [ "$PORT" = 0 ]; then
+		[ "$ACTION" = "REJECT" ] && "$TOOL" "${IPLINE1[@]}" -p tcp "${IPLINE2with[@]}"
+		"$TOOL" "${IPLINE1[@]}" "${IPLINE2[@]}"
+	else
+		"$TOOL" "${IPLINE1[@]}" -p tcp "${IPLINE2with[@]}"
+		"$TOOL" "${IPLINE1[@]}" -p udp "${IPLINE2[@]}"
+	fi
+}
 
 if ! (
 	declare -a IPLINE1 IPLINE2 IPLINE2with
@@ -176,50 +248,28 @@ if ! (
 			echo "Ignoring invalid rule: '$DIR $DEST $PORT $ACTION'"
 			continue
 		fi
-		IPLINE1=( "-w" )
-		IPLINE2=( )
-		if [ "$DIR" = "IN" ]; then
-			IPLINE1+=( "-A" "runvirt-INPUT" )
-		elif [ "$DIR" = "OUT" ]; then
-			IPLINE1+=( "-A" "runvirt-OUTPUT" )
-		else
-			continue
-		fi
-		if ! [[ $PORT =~ ^[0-9]+$ ]] || (( PORT > 65535 || PORT < 0 )); then
-			echo "Invalid port: '$PORT'"
-			continue
-		fi
-		if [ "$DEST" != "*" ]; then
-			if [ "$DIR" = "OUT" ]; then
-				IPLINE1+=( "-d" "$DEST" )
-			else
-				IPLINE1+=( "-s" "$DEST" )
-			fi
-		fi
-		if [ "$PORT" != 0 ]; then
-			IPLINE2+=( "--dport" "$PORT" )
-		fi
-		IPLINE2+=( "-j" "$ACTION" )
-		IPLINE2with=( "${IPLINE2[@]}" )
-		[ "$ACTION" = "REJECT" ] && IPLINE2with+=( "--reject-with" "tcp-reset" )
+		preparetool "$DIR" "$DEST" "$PORT" "$ACTION" || continue
 		both=
 		# See if it's a hostname potentially
 		if ! [[ $DEST =~ $V6 || $DEST =~ $V4 ]]; then
+			dns_list["$DEST"]+=":$ACTION $DIR $PORT"
 			if [ "$DIR" != OUT ] || [ -z "$dnsmasq" ] || [ "$PORT" != 0 ]; then
 				both=1 # Not outgoing, dnsmasq not found, or specific port - cannot do on DNS level
 			elif [[ $DEST =~ $ILLEGAL_DNS ]] && [ "$DEST" != '*' ]; then
-				both=1 # Not a legal hostname and not wildcard (default rule)
-			else
-				# Can do via DNS :-)
+				both=1 # Not a legal hostname and not wildcard (w/c = default rule)
+			fi
+			if [ -z "$both" ] || [ "$ACTION" = "ACCEPT" ]; then
+				# Can do via DNS, or ACCEPT rule - do DNS
+				# 1) is obvious, 2) is required since accepting on IP level while we block on DNS
+				# level doesn't make any sense
 				if [ "$ACTION" != "ACCEPT" ]; then
 					# BLOCK
 					if [ "$DEST" = "*" ]; then
 						# Special case: '*' - default rule, so BLOCK -> no default servers
 						if [ -s "$DNSCFG" ]; then
 							[ -z "$blockall" ] && blockall=1
-						else
-							both=1
 						fi
+						both=1
 					else
 						# A host - map to 0.0.0.0
 						echo "address=/$DEST/" >> "$DNSCFG"
@@ -227,12 +277,11 @@ if ! (
 				else
 					# ACCEPT
 					if [ "$DEST" = "*" ]; then
-						# Special case: '*' - degault rule, so ACCEPT -> default servers
+						# Special case: '*' - default rule, so ACCEPT -> default servers
 						if [ -s "$DNSCFG" ]; then
 							[ -z "$blockall" ] && blockall=0
-						else
-							both=1
 						fi
+						both=1
 					else
 						# specifically map to our DNS servers
 						for dnsip in $dnslist; do
@@ -241,26 +290,17 @@ if ! (
 					fi
 				fi
 			fi
+			[ -z "$dig" ] && both=1
 		fi
 		if [ -n "$both" ] || [[ $DEST =~ $V6 ]]; then # IPv6?
-			if [ "$PORT" = 0 ]; then
-				[ "$ACTION" = "REJECT" ] && ip6tables "${IPLINE1[@]}" -p tcp "${IPLINE2with[@]}"
-				ip6tables "${IPLINE1[@]}" "${IPLINE2[@]}"
-			else
-				ip6tables "${IPLINE1[@]}" -p tcp "${IPLINE2with[@]}"
-				ip6tables "${IPLINE1[@]}" -p udp "${IPLINE2[@]}"
-			fi
+			calltool ip6tables "$PORT" "$ACTION"
 		fi
 		if [ -n "$both" ] || [[ $DEST =~ $V4 ]]; then # IPv4
-			if [ "$PORT" = 0 ]; then
-				[ "$ACTION" = "REJECT" ] && iptables "${IPLINE1[@]}" -p tcp "${IPLINE2with[@]}"
-				iptables "${IPLINE1[@]}" "${IPLINE2[@]}"
-			else
-				iptables "${IPLINE1[@]}" -p tcp "${IPLINE2with[@]}"
-				iptables "${IPLINE1[@]}" -p udp "${IPLINE2[@]}"
-			fi
+			calltool iptables "$PORT" "$ACTION"
 		fi
 	done < "$RULES"
+	unset digargs
+	declare -a digargs
 	if [ -s "$DNSCFG" ]; then
 		# Try to disable DoH
 		echo "address=/use-application-dns.net/" >> "$DNSCFG" # firefox
@@ -281,6 +321,11 @@ if ! (
 		done
 		# Handle dns default rule
 		if [ "$blockall" = 1 ]; then
+			# Allow reverse lookup
+			for dnsip in $dnslist; do
+				echo "server=/in-addr.arpa/$dnsip"
+				echo "server=/ip6.arpa/$dnsip"
+			done >> "$DNSCFG"
 			echo "address=/#/" >> "$DNSCFG"
 		else
 			for dnsip in $dnslist; do
@@ -299,7 +344,49 @@ if ! (
 		true
 		EOF
 		chmod +x "$DNS_IPT_FILE"
+		digargs=( -p "$DNSPORT" "@127.0.0.1" )
 	fi
+	# Background worker adding IPs over time...
+	if [ -n "$PARENTPID" ] && (( ${#dns_list[@]} > 0 )) && [ -n "$dig" ]; then
+		echo "Running background DNS monitor"
+		exec 2> /tmp/dns-monitor
+		set -x
+		# mangle_addrs <iptables>
+		# Expects $known, $dns_list, $domain and $ips to be set
+		mangle_addrs() {
+			[ -z "$ips" ] && return 0
+			local arr action dir port ruleset
+			# Iterate over all rules for this domain
+			mapfile -t -d ":" arr <<< "${dns_list["$domain"]}"
+			for ruleset in "${arr[@]}"; do
+				read -r action dir port _ <<< "$ruleset"
+				[ -n "$action" ] || continue
+				[ -n "$dir" ] || continue
+				[ -n "$port" ] || continue
+				# Iterate over all IPs we got for this domain
+				for ip in $ips; do
+					[ -n "${known["$ip:$ruleset"]}" ] && continue
+					known["$ip:$ruleset"]=1
+					preparetool "$dir" "$ip" "$port" "$action"
+					calltool "$1" "$port" "$action"
+				done
+			done
+		}
+		# Remember IPs we already added here
+		sleep 5 # dnsmasq startup
+		declare -A known
+		while [ -d "/proc/$PARENTPID" ]; do
+			for domain in "${!dns_list[@]}"; do
+				# Resolve all
+				ips=$( dig "${digargs[@]}" +short "$domain" A )
+				[ $? = 0 ] && mangle_addrs iptables
+				ips=$( dig "${digargs[@]}" +short "$domain" AAAA )
+				[ $? = 0 ] && mangle_addrs ip6tables
+			done # Loop over domains
+			sleep 31
+		done # While main process still running
+		rm -f -- "$DNS_IPT_FILE"
+	fi & # Background poller
 ); then
 	echo "Setting up one or more firewall rules via iptables failed."
 	exit 8
