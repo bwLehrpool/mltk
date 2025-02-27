@@ -21,6 +21,9 @@ source /opt/openslx/vmchooser/plugins/qemukvm/includes/kernel-cmdln.inc
 source /opt/openslx/vmchooser/plugins/qemukvm/includes/passthrough-pci.inc
 source /opt/openslx/vmchooser/plugins/qemukvm/includes/passthrough-mdev.inc
 
+# create required standard directories
+mkdir -p "/tmp/virt/qemukvm" -m 1777
+
 #
 # setup PCI devices for passthrough if Intel PCI passthrough is enabled
 #

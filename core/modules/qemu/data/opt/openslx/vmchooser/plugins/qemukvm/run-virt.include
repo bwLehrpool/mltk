@@ -18,6 +18,7 @@
 # BASH_SOURCE[0] contains the file being sourced, namely this one
 declare -rg QEMU_PLUGIN_DIR="$(dirname "${BASH_SOURCE[0]}")"
 declare -rg QEMU_INCLUDE_DIR="${QEMU_PLUGIN_DIR}/includes"
+declare -rg VM_WORK_DIR="/tmp/virt/${PLUGIN_ID}/${USER}.$$"
 
 # Define which features the QEMU plugin supports
 declare -rg PLUGIN_FEATURES="firewall printer usb slxfloppy sound"
@@ -29,6 +30,9 @@ run_plugin() {
 	$(safesource "${QEMU_INCLUDE_DIR}/passthrough-pci.inc")
 	# include mediated device passthrough utils and functions
 	$(safesource "${QEMU_INCLUDE_DIR}/passthrough-mdev.inc")
+
+	# make work dir
+	mkdir -p "$VM_WORK_DIR" >/dev/null 2>&1
 
 	# setup RW image access for operation
 	local vm_diskfile
@@ -57,10 +61,13 @@ run_plugin() {
 	# set path to QEMU firmware specification files
 	local firmware_path="/usr/share/qemu/firmware"
 
+	cp -p "${TMPCONFIG}" "${VM_WORK_DIR}/libvirt.original.xml"
+	local vm_final_config="${VM_WORK_DIR}/libvirt.modified.xml"
+
 	# set debug related options
 	if [ "${DEBUG}" = "true" ]; then
 		# write finalized config in debug mode to temporary folder for debugging purposes
-		local vm_final_config="/tmp/qemu-last-config.xml"
+		#local vm_final_config="/tmp/qemu-last-config.xml"
 
 		# set configuration for virt-manager
 		local GSETTINGS_SCHEMA_NAME_PREFIX="org.virt-manager.virt-manager"
