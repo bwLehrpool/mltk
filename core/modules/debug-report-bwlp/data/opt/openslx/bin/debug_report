@@ -121,7 +121,7 @@ done
 
 echo -n "."
 
-mapfile -t -d '' FILES < <( find /tmp/vmware* /tmp/virt /tmp/vmchooser* \
+mapfile -t -d '' FILES < <( find /tmp/vmware* /tmp/virt /tmp/vmchooser* /var/log/libvirt/qemu/ /home/*/.cache/libvirt/qemu/log/ \
 	-type f \
 	\( -name "*.log" -o -name "*.conf" -o -name "*.xml" -o -name "vmx" \) \
 	-print0 2> /dev/null )
@@ -140,6 +140,7 @@ cp /proc/{cpu,mem}info /proc/{mtrr,interrupts} /proc/driver/nvidia/{params,regis
 cp /run/openslx/*log* /run/openslx/dmsetup.state static/ 2> /dev/null
 cp -r /opt/openslx/.mltk static/ 2> /dev/null
 cp -r /tmp/bwlp_debug_logs static/ 2> /dev/null
+cp /var/log/libvirt/libvirtd.log static/ 2> /dev/null
 echo -n "."
 
 for tool in "${TOOLS[@]}"; do
