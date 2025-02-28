@@ -1,7 +1,6 @@
 [Unit]
 Description=Grow size of rootfs to underlying block device
 DefaultDependencies=no
-Before=gather-hw-info.service
 
 [Service]
 Type=oneshot

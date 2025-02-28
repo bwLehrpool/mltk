@@ -154,7 +154,7 @@ echo "KVM support is $VT"
 #
 ID44=0
 if ! slx-tools fs_path_isvolatile "/tmp/virt" ; then
-	ID44_SPACE=($(slx-tools fs_path_space "/tmp/virt"))
+	ID44_SPACE=($(slx-tools fs_path_space --optimistic "/tmp/virt"))
 	[ -n "${ID44_SPACE[1]}" ] && ID44="$(( ${ID44_SPACE[1]} / 1024 ))"
 
 	if [ "$ID44" -eq 0 ]; then
