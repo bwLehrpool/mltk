@@ -929,7 +929,7 @@ static int setResVMware(struct resolution *res, int nres)
 static int optimizeForRemote()
 {
 	if (_persistentMode)
-		return;
+		return 0;
 
 	LONG ret;
 	HKEY hKey;
@@ -1032,16 +1032,26 @@ static char* xorString(const uint8_t* text, int len, const uint8_t* key);
 static int getbin(int x);
 static uint8_t* hex2bin(char *szHexString);
 
-static char* getToken(char **ptr, BOOL doDup)
+static char* getToken(char **ptr, BOOL doDup, BOOL doTrim)
 {
 	if (*ptr == NULL || **ptr == '\0') return NULL;
 	char *dest = *ptr;
+	while (doTrim && **ptr == ' ') {
+		*(*ptr)++ = '\0';
+		dest++;
+	}
 	while (**ptr != '\0') {
 		if (**ptr == '\n' || **ptr == '\r' || **ptr == '\t') {
 			*(*ptr)++ = '\0';
 			break;
 		}
 		(*ptr)++;
+	}
+	if (doTrim) {
+		char *trim = *ptr - 1;
+		while (trim > dest && *(trim - 1) == ' ') {
+			*--trim = '\0';
+		}
 	}
 	if (doDup) {
 		dest = strdup(dest);
@@ -1089,21 +1099,21 @@ static void readShareFile()
 	char *skey1 = NULL, *skey2 = NULL;
 	if (fgets(creds, sizeof(creds), h) != NULL) {
 		char *ptr = creds;
-		shost = getToken(&ptr, TRUE);
-		sport = getToken(&ptr, TRUE);
-		skey1 = getToken(&ptr, FALSE);
-		skey2 = getToken(&ptr, FALSE);
-		suser = getToken(&ptr, TRUE);
+		shost = getToken(&ptr, TRUE, TRUE);
+		sport = getToken(&ptr, TRUE, TRUE);
+		skey1 = getToken(&ptr, FALSE, TRUE);
+		skey2 = getToken(&ptr, FALSE, TRUE);
+		suser = getToken(&ptr, TRUE, TRUE);
 	}
 	int idx = 0;
 	while (fgets(buffer, sizeof(buffer), h) != NULL && idx < DRIVEMAX) {
 		char *ptr = buffer;
 		netdrive_t *d = &drives[idx];
-		d->path = getToken(&ptr, TRUE);
-		d->letter = getToken(&ptr, TRUE);
-		d->shortcut = getToken(&ptr, TRUE);
-		d->user = getToken(&ptr, TRUE);
-		d->pass = getToken(&ptr, TRUE);
+		d->path = getToken(&ptr, TRUE, TRUE);
+		d->letter = getToken(&ptr, TRUE, TRUE);
+		d->shortcut = getToken(&ptr, TRUE, FALSE);
+		d->user = getToken(&ptr, TRUE, TRUE);
+		d->pass = getToken(&ptr, TRUE, FALSE);
 		if (d->path == NULL || d->path[0] == '\0')
 			goto drive_fail;
 		d->success = FALSE;
@@ -1448,7 +1458,7 @@ static void remapViaSharedFolder()
 	if (once) return;
 	once = TRUE;
 	netdrive_t d;
-	d.path = homeDirA;
+	d.path = strdup(homeDirA);
 	d.letter = _remapHomeDrive;
 	d.shortcut = "Home-Verzeichnis";
 	d.user = "";
@@ -1568,7 +1578,7 @@ static HRESULT createFolderShortcut(wchar_t* targetDir, wchar_t* linkFile, wchar
 static BOOL patchRegPath(BOOL *patchOk, BOOL *anyMapped, HKEY hKey, wchar_t *letter, wchar_t *value, ...)
 {
 	if (_persistentMode)
-		return;
+		return TRUE;
 
 	wchar_t *folder = NULL;
 	wchar_t first[MAX_PATH] = {0};
