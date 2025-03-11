@@ -3,6 +3,7 @@ package org.openslx.runvirt.plugin.qemu.configuration;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
 
@@ -14,6 +15,8 @@ import org.openslx.libvirt.domain.device.GraphicsSpice;
 import org.openslx.libvirt.domain.device.GraphicsSpice.ImageCompression;
 import org.openslx.libvirt.domain.device.GraphicsSpice.StreamingMode;
 import org.openslx.libvirt.domain.device.GraphicsVnc;
+import org.openslx.libvirt.domain.device.Video;
+import org.openslx.libvirt.domain.device.Video.Model;
 import org.openslx.runvirt.plugin.qemu.cmdln.CommandLineArgs;
 import org.openslx.virtualization.configuration.transformation.TransformationException;
 
@@ -56,6 +59,13 @@ public class TransformationSpecificQemuGraphicsTest
 		assertFalse( spiceDeviceAfterTransformation.isPlaybackCompressionOn() );
 		assertEquals( StreamingMode.OFF, spiceDeviceAfterTransformation.getStreamingMode() );
 		assertFalse( spiceDeviceAfterTransformation.isOpenGlEnabled() );
+
+		for ( Video dev : config.getVideoDevices() ) {
+			if ( dev.getModel() == Model.QXL ) {
+				assertTrue( dev.getVgaMem() >= TransformationSpecificQemuGraphics.MIN_VGA_MEM );
+				assertTrue( dev.getRam() >= dev.getVgaMem() + TransformationSpecificQemuGraphics.MIN_RAM );
+			}
+		}
 
 		assertDoesNotThrow( () -> config.validateXml() );
 	}

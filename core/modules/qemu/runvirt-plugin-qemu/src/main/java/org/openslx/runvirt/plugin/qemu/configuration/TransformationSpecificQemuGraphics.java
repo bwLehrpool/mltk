@@ -25,8 +25,8 @@ public class TransformationSpecificQemuGraphics
 		extends TransformationSpecific<Domain, CommandLineArgs, LibvirtHypervisorQemu>
 {
 
-	private static final int MIN_VGA_MEM = 48 * 1024;
-	private static final int MIN_RAM = 16 * 1024;
+	public static final int MIN_VGA_MEM = 48 * 1024;
+	public static final int MIN_RAM = 16 * 1024;
 
 	/**
 	 * Name of the configuration transformation.
