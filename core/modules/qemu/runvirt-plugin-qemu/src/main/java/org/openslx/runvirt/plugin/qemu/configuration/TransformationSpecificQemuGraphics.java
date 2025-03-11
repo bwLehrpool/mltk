@@ -1,11 +1,15 @@
 package org.openslx.runvirt.plugin.qemu.configuration;
 
+import java.util.List;
+
 import org.openslx.libvirt.domain.Domain;
 import org.openslx.libvirt.domain.device.Graphics.ListenType;
 import org.openslx.libvirt.domain.device.GraphicsSpice;
 import org.openslx.libvirt.domain.device.GraphicsSpice.ImageCompression;
 import org.openslx.libvirt.domain.device.GraphicsSpice.StreamingMode;
 import org.openslx.libvirt.domain.device.GraphicsVnc;
+import org.openslx.libvirt.domain.device.Video;
+import org.openslx.libvirt.domain.device.Video.Model;
 import org.openslx.runvirt.plugin.qemu.cmdln.CommandLineArgs;
 import org.openslx.runvirt.plugin.qemu.virtualization.LibvirtHypervisorQemu;
 import org.openslx.virtualization.configuration.transformation.TransformationException;
@@ -20,6 +24,10 @@ import org.openslx.virtualization.configuration.transformation.TransformationSpe
 public class TransformationSpecificQemuGraphics
 		extends TransformationSpecific<Domain, CommandLineArgs, LibvirtHypervisorQemu>
 {
+
+	private static final int MIN_VGA_MEM = 48 * 1024;
+	private static final int MIN_RAM = 16 * 1024;
+
 	/**
 	 * Name of the configuration transformation.
 	 */
@@ -57,7 +65,7 @@ public class TransformationSpecificQemuGraphics
 	 * 
 	 * @return created SPICE graphics device instance.
 	 */
-	public GraphicsSpice addLocalSpiceGraphics( Domain config, boolean openGlEnabled )
+	private GraphicsSpice addLocalSpiceGraphics( Domain config, boolean openGlEnabled )
 	{
 		final GraphicsSpice newGraphicsSpiceDevice = config.addGraphicsSpiceDevice();
 
@@ -68,11 +76,28 @@ public class TransformationSpecificQemuGraphics
 		newGraphicsSpiceDevice.setImageCompression( ImageCompression.OFF );
 		newGraphicsSpiceDevice.setPlaybackCompression( false );
 		newGraphicsSpiceDevice.setStreamingMode( StreamingMode.OFF );
-		
+
 		// enable OpenGL acceleration if necessary
 		newGraphicsSpiceDevice.setOpenGl( openGlEnabled );
 
 		return newGraphicsSpiceDevice;
+	}
+
+	private void adjustVideoMemory( Domain config )
+	{
+		// adjust vgamem, so higher resolutions work properly
+		List<Video> list = config.getVideoDevices();
+		for ( Video dev : list ) {
+			if ( dev.getModel() == Model.QXL || dev.getVgaMem() > 0 ) {
+				// See https://lists.gnu.org/archive/html/qemu-devel/2012-06/msg01898.html
+				if ( dev.getVgaMem() < MIN_VGA_MEM ) {
+					dev.setVgaMem( MIN_VGA_MEM );
+				}
+				if ( dev.getRam() < dev.getVgaMem() + MIN_RAM ) {
+					dev.setRam( dev.getVgaMem() + MIN_RAM );
+				}
+			}
+		}
 	}
 
 	@Override
@@ -95,6 +120,8 @@ public class TransformationSpecificQemuGraphics
 			// remove VNC graphics device
 			graphicsSpiceDevice.remove();
 		}
+		// in case vmem is low, adjust to support large resolutions (4k+)
+		this.adjustVideoMemory( config );
 		
 		// finally, add one SPICE graphics device with local Unix domain socket access
 		this.addLocalSpiceGraphics( config, isOGL );
