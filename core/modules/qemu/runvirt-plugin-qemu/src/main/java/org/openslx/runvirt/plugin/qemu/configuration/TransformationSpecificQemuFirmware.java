@@ -54,6 +54,17 @@ public class TransformationSpecificQemuFirmware
 		// validate configuration and input arguments
 		this.validateInputs( config, args );
 
+		// If we got firmware="efi" in the os tag, we don't need the loader
+		// at all, in fact it can lead to
+		// libvirt: QEMU Driver Fehler : operation failed: Unable to find any firmware to satisfy 'efi'
+		// so we remove the loader tag in that case and bail out
+		if ( "efi".equalsIgnoreCase( config.getOsFirmware() ) ) {
+			config.setOsLoader( null );
+			return;
+		}
+		// EFI not specified, but might still be enabled through the loader tag, try to
+		// figure out the correct path on this system
+
 		// get OS loader from VM
 		final String sourceOsLoader = config.getOsLoader();
 
