@@ -63,7 +63,7 @@ public class TransformationSpecificQemuGraphicsTest
 		for ( Video dev : config.getVideoDevices() ) {
 			if ( dev.getModel() == Model.QXL ) {
 				assertTrue( dev.getVgaMem() >= TransformationSpecificQemuGraphics.MIN_VGA_MEM );
-				assertTrue( dev.getRam() >= dev.getVgaMem() + TransformationSpecificQemuGraphics.MIN_RAM );
+				assertTrue( dev.getRam() >= dev.getVgaMem() * 4 );
 			}
 		}
 

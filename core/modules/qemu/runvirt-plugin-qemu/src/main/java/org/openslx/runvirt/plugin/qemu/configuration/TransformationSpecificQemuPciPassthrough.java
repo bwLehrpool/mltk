@@ -14,6 +14,7 @@ import org.openslx.libvirt.domain.device.HostdevPciDeviceAddress;
 import org.openslx.libvirt.domain.device.HostdevPciDeviceDescription;
 import org.openslx.libvirt.domain.device.Shmem;
 import org.openslx.libvirt.domain.device.Video;
+import org.openslx.runvirt.plugin.qemu.Util;
 import org.openslx.runvirt.plugin.qemu.cmdln.CommandLineArgs;
 import org.openslx.runvirt.plugin.qemu.virtualization.LibvirtHypervisorQemu;
 import org.openslx.runvirt.virtualization.LibvirtHypervisorException;
@@ -167,29 +168,18 @@ public class TransformationSpecificQemuPciPassthrough
 		return capabilities;
 	}
 
-	private static BigInteger roundToNearestPowerOf2( BigInteger value )
-	{
-		BigInteger k = BigInteger.valueOf( 1 );
-
-		while ( k.compareTo( value ) == -1 ) {
-			k = k.multiply( BigInteger.valueOf( 2 ) );
-		}
-
-		return k;
-	}
-
 	/**
 	 * Calculates the framebuffer memory size for the Looking Glass shared memory device.
 	 * 
 	 * @return framebuffer memory size in bytes for the Looking Glass shared memory device.
 	 */
-	private static BigInteger calculateFramebufferSize()
+	private static long calculateFramebufferSize()
 	{
 		final long totalBytesFramebuffer = MAX_DISPLAY_WIDTH * MAX_DISPLAY_HEIGHT * 4 * 2;
 		final long totalBytesReserved = RESERVED_MEMORY_FRAMEBUFFER * 1048576;
 
 		// round sum of total memory in bytes to nearest power of two
-		return roundToNearestPowerOf2( BigInteger.valueOf( totalBytesFramebuffer + totalBytesReserved ) );
+		return Util.roundToNearestPowerOf2( totalBytesFramebuffer + totalBytesReserved );
 	}
 
 	@Override
@@ -243,7 +233,7 @@ public class TransformationSpecificQemuPciPassthrough
 			final Shmem shmemDevice = config.addShmemDevice();
 			shmemDevice.setName( "looking-glass" );
 			shmemDevice.setModel( Shmem.Model.IVSHMEM_PLAIN );
-			shmemDevice.setSize( TransformationSpecificQemuPciPassthrough.calculateFramebufferSize() );
+			shmemDevice.setSize( BigInteger.valueOf( TransformationSpecificQemuPciPassthrough.calculateFramebufferSize() ) );
 
 			// disable all software video devices if device passthrough debug mode is not enabled
 			if ( !args.isDebugDevicePassthroughEnabled() ) {

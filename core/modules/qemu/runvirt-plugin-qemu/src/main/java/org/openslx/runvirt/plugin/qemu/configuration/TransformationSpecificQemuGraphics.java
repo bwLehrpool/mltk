@@ -10,6 +10,7 @@ import org.openslx.libvirt.domain.device.GraphicsSpice.StreamingMode;
 import org.openslx.libvirt.domain.device.GraphicsVnc;
 import org.openslx.libvirt.domain.device.Video;
 import org.openslx.libvirt.domain.device.Video.Model;
+import org.openslx.runvirt.plugin.qemu.Util;
 import org.openslx.runvirt.plugin.qemu.cmdln.CommandLineArgs;
 import org.openslx.runvirt.plugin.qemu.virtualization.LibvirtHypervisorQemu;
 import org.openslx.virtualization.configuration.transformation.TransformationException;
@@ -25,8 +26,8 @@ public class TransformationSpecificQemuGraphics
 		extends TransformationSpecific<Domain, CommandLineArgs, LibvirtHypervisorQemu>
 {
 
+	// TODO: Configurable, calculate in run-virt, maybe support multiple heads
 	public static final int MIN_VGA_MEM = 48 * 1024;
-	public static final int MIN_RAM = 16 * 1024;
 
 	/**
 	 * Name of the configuration transformation.
@@ -91,10 +92,18 @@ public class TransformationSpecificQemuGraphics
 			if ( dev.getModel() == Model.QXL || dev.getVgaMem() > 0 ) {
 				// See https://lists.gnu.org/archive/html/qemu-devel/2012-06/msg01898.html
 				if ( dev.getVgaMem() < MIN_VGA_MEM ) {
-					dev.setVgaMem( MIN_VGA_MEM );
+					dev.setVgaMem( Util.roundToNearestPowerOf2( MIN_VGA_MEM ) );
 				}
-				if ( dev.getRam() < dev.getVgaMem() + MIN_RAM ) {
-					dev.setRam( dev.getVgaMem() + MIN_RAM );
+				// * 4 is recommended on newer linux (KMS) according to https://www.ovirt.org/develop/internal/video-ram.html
+				if ( dev.getRam() < dev.getVgaMem() * 4 ) {
+					dev.setRam( Util.roundToNearestPowerOf2( dev.getVgaMem() * 4 ) );
+				}
+				// Windows can't really make good use of it. 2025-03-17, re-check every now and then...
+				String os = config.getLibOsInfoOsId();
+				if ( os != null && os.contains( "microsoft.com/" ) ) {
+					dev.setVRam( 8192 );
+				} else {
+					dev.setVRam( Util.roundToNearestPowerOf2( dev.getVgaMem() * 2 ) );
 				}
 			}
 		}
