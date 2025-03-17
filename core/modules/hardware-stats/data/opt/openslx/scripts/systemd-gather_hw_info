@@ -224,10 +224,10 @@ if which smartctl; then
 		if [ -n "$SPINRETRY_VAL" ] && [ "$SPINRETRY_VAL" -le "$SPINRETRY_THR" ]; then
 			BADSECTORS=$(( BADSECTORS + 100 ))
 		fi
+		echo "SMART $dev: $OVERALL - $REALLOC reallocated, $PENDING pending"
 	done
 	rm -f -- "$FILE"
 fi
-echo "SMART: $OVERALL - $REALLOC reallocated, $PENDING pending"
 
 ################################################################################
 # 8) Read system model and manufacturer
