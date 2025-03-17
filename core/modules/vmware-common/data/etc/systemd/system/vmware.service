@@ -4,6 +4,5 @@ Requires=run-virt-env.service
 After=run-virt-env.service tmp.target
 
 [Service]
-Type=oneshot
-RemainAfterExit=yes
-ExecStart=/opt/openslx/scripts/systemd-vmware_env start
+Type=forking
+ExecStart=/opt/openslx/scripts/systemd-vmware_env

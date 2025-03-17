@@ -18,13 +18,12 @@
 ################################################################################
 
 VMWARE_CONF_DIR=/opt/openslx/vmchooser/vmware
-VMCHOOSER_CONF_DIR=/opt/openslx/vmchooser/config
 
 . /opt/openslx/config
 
 load_modules () {
 	local FAILED=""
-	# module stuff
+	echo "Loading kernel modules"
 	insmod /lib/modules/vmware/vmmon.ko || FAILED="$FAILED vmmon"
 	insmod /lib/modules/vmware/vmnet.ko || FAILED="$FAILED vmnet"
 	#insmod /lib/modules/vmware/vmci.ko || FAILED="$FAILED vmci"
@@ -39,6 +38,7 @@ unload_modules () {
 
 vmnet_create() {
 	vmnet="$1"
+	echo "Creating vmnet$vmnet"
 	# first, create device node
 	dev="/dev/vmnet${vmnet}"
 	if ! [ -c "$dev" ] && ! mknod "${dev}" c 119 "${vmnet}"; then
@@ -47,9 +47,11 @@ vmnet_create() {
 	fi
 	chmod 0700 "${dev}"
 	# now bring it up
+	echo "netifup $vmnet"
 	if ! /usr/bin/vmnet-netifup -d "/run/vmnet-netifup-vmnet${vmnet}.pid" "${dev}" "vmnet${vmnet}" ; then
 		slxlog "vmware-netifup" "Launching /usr/bin/vmnet-netifup for vmnet${vmnet} failed."
 	fi
+	echo "ip link up $vmnet"
 	ip link set dev "vmnet${vmnet}" up
 }
 
@@ -68,12 +70,14 @@ vmnetif () {
 	# Set the vmware interface to 9000 too, as br0 will use the smallest of all slave devices
 	[ "$SLX_JUMBO_FRAMES" = "yes" ] && ip link set dev vmnet0 mtu 9000
 	# setup bridge (vmnet0), nat (vmnet1) and software defined networking (vmnet2) interfaces
+	echo "Adding vmnet 0-2 to according bridges"
 	brctl addif br0 vmnet0
 	brctl addif nat1 vmnet1
 	brctl addif vsw2 vmnet2
 	# 2) see if we should bridge additional interfaces
 	if [ "$SLX_BRIDGE_OTHER_NICS" = "yes" ]; then
 		# These will have been set up in our init, or by bridge-other-nics.service
+		echo "Bridging additional NICs"
 		NICS=$( ls -1 /sys/class/net | grep '^br-nic-' | cut -c 8- )
 		vmnet=10
 		for nic in $NICS; do
@@ -91,8 +95,10 @@ vmnetif () {
 	touch /opt/openslx/iptables/rules.d/empty
 }
 
-vmblock () {
+vmusb () {
 	# It's got to be *somewhere* right?
+	echo "Launching usbarbitrator"
+	# This forks, so make service type forking too
 	if ! /usr/lib/vmware/bin/vmware-usbarbitrator && ! /usr/bin/vmware-usbarbitrator; then
 		slxlog "vmware-usbarb" "Launching vmware-usbarbitrator failed."
 	fi
@@ -101,33 +107,11 @@ vmblock () {
 # create required standard directories
 mkdir -p "/tmp/virt/vmware" "/dev/shm/vmware" "/run/vmware" -m 1777
 
-# FixMe: Should be rewritten for proper systemd operation
-case "$1" in
-	start)
-		# hack to access the first serial/parallel port
-		[ -c /dev/ttyS0 ] && chmod a+rw /dev/ttyS0
-		[ -c /dev/parport0 ] && chmod a+rw /dev/parport0
-		load_modules
-		vmnetif
-		vmblock
-	;;
-	stop)
-		#stop: defines stop function for initscript
-		killall vmnet-netifup vmnet-bridge vmware vmplayer vmware-tray
-		# might take a while until all services are shut down
-		sleep 1
-		unload_modules
-
-	;;
-	restart)
-		#restart: defines restart function for initscript
-		$0 stop && $0 start
-	;;
-	status)
-		#status: defines status function for initscript
-		vmstatus
-	;;
-esac
+# hack to access the first serial/parallel port
+[ -c /dev/ttyS0 ] && chmod a+rw /dev/ttyS0
+[ -c /dev/parport0 ] && chmod a+rw /dev/parport0
+load_modules
+vmnetif
+vmusb
 
 exit 0
-
