@@ -8,6 +8,10 @@ fetch_source() {
 build() {
 	mkdir -p "$MODULE_BUILD_DIR/opt/openslx/bin"
 	gcc -o "$MODULE_BUILD_DIR/opt/openslx/bin/sslconnect" "$MODULE_DIR/sslconnect.c" -lssl -lcrypto -O3 || perror "Could not compile sslconnect.c"
+	mkdir -p "$MODULE_BUILD_DIR/etc"
+	# start with system-provided one but add marker so pam-slx-plug can overwrite it
+	cp "/etc/nsswitch.conf" "$MODULE_BUILD_DIR/etc/nsswitch.conf"
+	echo "# <slx-autogen>" >> "$MODULE_BUILD_DIR/etc/nsswitch.conf"
 }
 
 post_copy() {

@@ -92,7 +92,7 @@ echo "Generating common generic pam and nsswitch entries..."
 # unix
 auth+=("[success=%NUM% default=ignore] pam_unix.so nodelay")
 account+=("[success=%NUM% new_authtok_reqd=done default=ignore] pam_unix.so")
-nss+=("files" "cache")
+nss+=("files" "cache" "systemd")
 
 # Our plugin, but account ONLY since it's fast (it's not if not executed in root context so move after unix)
 account+=("[success=%NUM% new_authtok_reqd=done default=ignore] pam_exec.so quiet /opt/openslx/pam/exec_account")
@@ -114,17 +114,18 @@ fi
 auth+=("[success=%NUM% default=ignore] pam_exec.so quiet expose_authtok /opt/openslx/pam/exec_auth")
 
 # sssd if reasonable
-if systemctl is-enabled -q sssd.service && grep -q -e '^\s*id_provider' -e '^\s*auth_provider' "/etc/sssd/sssd.conf" \
+if systemctl is-enabled -q sssd.service \
+		&& grep -q -e '^\s*id_provider' -e '^\s*auth_provider' "/etc/sssd/sssd.conf" 2> /dev/null \
 		&& ! grep -q -F '<slx-autogen>' "/etc/sssd/sssd.conf"; then
 	# sssd is configured and doesn't have our marker - just add pam and nss config but leave sssd.conf alone
-	echo "Found existing unmanaged sssd config - leaving alone an enabling"
+	echo "Found existing unmanaged sssd config - leaving alone and enabling"
 	add_sssd_modules
 elif ! systemctl show sssd.service | grep -q '^LoadError='; then
 	# We have sssd available and unconfigured, or marked with our config tag, <slx-autogen>
 	if write_sssd_config; then
 		add_sssd_modules
-		systemctl enable sssd.service
-		systemctl restart --no-block sssd.service
+		# --no-block doesn't work for enable
+		systemctl enable --now sssd.service &
 	else
 		# Nothing to configure, don't use sssd
 		session+=("optional pam_unix.so")
@@ -138,7 +139,7 @@ fi
 dns+=("files" "cache")
 if systemctl is-enabled -q systemd-resolved; then
 	echo "resolved is enabled, including in nsswitch"
-	dns+=("resolve")
+	dns+=("resolve [!UNAVAIL=return]")
 fi
 dns+=("dns")
 
@@ -149,7 +150,7 @@ session+=("optional pam_exec.so quiet /opt/openslx/pam/exec_session")
 tmpfile=$(mktemp)
 
 # common-auth
-if grep -q '<slx-autogen>' "/etc/pam.d/common-auth"; then
+if grep -q -F '<slx-autogen>' "/etc/pam.d/common-auth"; then
 	echo "Writing common-auth..."
 	skip=$(( ${#auth[@]} + 1 ))
 	echo "# <slx-autogen> Generated $(date)" > "$tmpfile"
@@ -230,4 +231,3 @@ fi
 rm -f -- "$tmpfile"
 
 exit 0
-
