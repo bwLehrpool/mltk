@@ -3,11 +3,15 @@
 # Include: Detect and pass USB devices to the VM #
 ##################################################
 
-declare -g PASSTHROUGH_USB_DEVICES="2 0:5 0:6 0:7 0:14 0:16 0:17 239"
+# 2:* Communication devices, 2:6 is Ethernet
+# 239 Misc
+declare -g PASSTHROUGH_USB_DEVICES="2:2 2:13 2:14 0:5 0:6 0:7 0:14 0:16 0:17 239"
+if ! is_on "$SLX_BRIDGE_OTHER_NICS" && ! is_on "$SLX_DHCP_OTHER_NICS"; then
+	PASSTHROUGH_USB_DEVICES+=" 2:6"
+fi
 
 # include USB IDs explicitly given by SLX_PASSTHROUGH_USB_ID
 # which is expected to be a space-separated list!
-. /opt/openslx/config
 if [ -n "${SLX_PASSTHROUGH_USB_ID}" ]; then
 	while IFS= read -ra USB_ID; do
 		for ID in ${USB_ID[@]}; do
