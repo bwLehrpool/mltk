@@ -468,6 +468,20 @@ public class CommandLineArgs
 
 		return nvidiaPciIds;
 	}
+	
+	public List<String> getUsbRedirDevices()
+	{
+		final String[] usbRaw = this.getArguments( CmdLnOption.USBREDIR );
+		final ArrayList<String> retval;
+
+		if ( usbRaw == null || usbRaw.length <= 0 ) {
+			retval = new ArrayList<String>();
+		} else {
+			retval = new ArrayList<String>( Arrays.asList( usbRaw ) );
+		}
+
+		return retval;
+	}
 
 	/**
 	 * Returns the state whether a passthrough of a NVIDIA GPU is requested.
@@ -543,6 +557,7 @@ public class CommandLineArgs
 		                                   + " Each group can contain commas or dashes to mark ranges. E.g. 0,1;2-3;4;5;6;7;8,9,10,11" ),
 		MANAGER     ( '2', "manager",     0, "Force using virt-manager even if not in debug mode" ),
 		VALIDATE    ( '3', "validate",    0, "Validate input file only, exit immediately with exit code 0 on success, 42 otherwise" ),
+		USBREDIR    ( '4', "usbredir",    1, "Add USB auto-redirect option to virt-viewer call. Can be passed multiple times." ),
 		VM_MAC0     ( 'a', "vmmac0",      1, "MAC address for the first network interface" ),
 		DEBUG       ( 'b', "debug",       1, "Enable or disable debug mode" ),
 		VM_NCPUS    ( 'c', "vmncpus",     1, "Number of virtual CPUs for the virtual machine" ),

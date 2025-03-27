@@ -126,7 +126,7 @@ run_plugin() {
 
 	# See if there are any USB devices connected that we want to pass through immediately
 	# --spice-usbredir-redirect-on-connect="0x03,-1,-1,-1,0|-1,-1,-1,-1,1"
-	VIRTCMDOPTS+=( $( get_usb_devices '-usbredir -1,%VENDOR%,%PRODUCT%,-1,1' ) )
+	VIRTCMDOPTS+=( $( get_usb_devices '--usbredir=-1,0x%VENDOR%,0x%PRODUCT%,-1,1' ) )
 
 
 	if [ "${SHARE_REMAP_MODE}" -gt 1 ]; then

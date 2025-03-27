@@ -1,8 +1,12 @@
 package org.openslx.runvirt.viewer;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.apache.logging.log4j.util.Strings;
 import org.openslx.runvirt.virtualization.LibvirtHypervisor;
 import org.openslx.runvirt.virtualization.LibvirtHypervisorException;
 import org.openslx.runvirt.virtualization.LibvirtVirtualMachine;
@@ -26,15 +30,19 @@ public class ViewerVirtViewer extends Viewer
 	 */
 	private final static int NUM_SUPPORTED_DISPLAYS = Integer.MAX_VALUE;
 
+	private final List<String> usbAutoconnect;
+
 	/**
 	 * Creates a new Virtual Viewer for a Libvirt virtual machine running on a Libvirt hypervisor.
 	 * 
 	 * @param machine virtual machine to display.
 	 * @param hypervisor remote (hypervisor) endpoint for the viewer to connect to.
+	 * @param usbRedirOptions list of usb redir autoconnect rules
 	 */
-	public ViewerVirtViewer( LibvirtVirtualMachine machine, LibvirtHypervisor hypervisor )
+	public ViewerVirtViewer( LibvirtVirtualMachine machine, LibvirtHypervisor hypervisor, List<String> usbRedirOptions )
 	{
 		super( ViewerVirtViewer.NAME, ViewerVirtViewer.NUM_SUPPORTED_DISPLAYS, machine, hypervisor );
+		this.usbAutoconnect = usbRedirOptions;
 	}
 
 	@Override
@@ -88,10 +96,15 @@ public class ViewerVirtViewer extends Viewer
 			throw new ViewerException(
 					"The URI of the hypervisor backend or the UUID of the machine to display is missing!" );
 		}
+		ArrayList<String> args = new ArrayList<String>();
+		if ( !this.usbAutoconnect.isEmpty() ) {
+			args.add( "--spice-usbredir-redirect-on-connect=" + Strings.join( this.usbAutoconnect, '|' ) );
+		}
+		args.addAll( Arrays.asList( new String[] { "--full-screen", "--wait",
+				"--attach", "--connect=" + connectionUri, "--uuid", "--", machineUuid } ) );
 
 		// execute viewer process with arguments:
 		// "virt-viewer --full-screen --wait --attach --connect=<URI> --domain-name -- <DOMAIN-UUID>"
-		ViewerUtils.executeViewer( ViewerVirtViewer.NAME, new String[] { "--full-screen", "--wait",
-				"--attach", "--connect=" + connectionUri, "--uuid", "--", machineUuid } );
+		ViewerUtils.executeViewer( ViewerVirtViewer.NAME, args.toArray( new String[ args.size() ] ) );
 	}
 }

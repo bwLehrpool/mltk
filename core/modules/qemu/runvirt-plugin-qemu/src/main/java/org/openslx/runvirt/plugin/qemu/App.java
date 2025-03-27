@@ -99,7 +99,7 @@ public class App
 			App.printUsage( cmdLn );
 			System.exit( 1 );
 		}
-		
+
 		if ( cmdLn.isDebugEnabled() || cmdLn.isDebugDevicePassthroughEnabled() ) {
 			// Someone please exterminate all Java devs. What's wrong with those fuckheads who come up with this?
 			// https://stackoverflow.com/a/65151249/2043481
@@ -279,7 +279,7 @@ public class App
 				vmViewer = new ViewerVirtManager( vm, hypervisor );
 			} else {
 				// create Virtual Viewer if debug mode is disabled
-				vmViewer = new ViewerVirtViewer( vm, hypervisor );
+				vmViewer = new ViewerVirtViewer( vm, hypervisor, cmdLn.getUsbRedirDevices() );
 			}
 		}
 
