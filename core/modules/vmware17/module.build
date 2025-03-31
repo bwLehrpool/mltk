@@ -1,54 +1,43 @@
 #!/bin/bash
 fetch_source() {
-	[ -d "${MODULE_WORK_DIR}/src" ] && \
-		{ rm -r "${MODULE_WORK_DIR}/src"	|| perror "Could not delete old src dir."; }
 	mkdir -p "${MODULE_WORK_DIR}/src"	|| perror "Could not mkdir src"
 	cde "${MODULE_WORK_DIR}/src"
 
-	local BASE_URL LIST_URL BUILD_NO
-	#BASE_URL="http://softwareupdate.vmware.com/cds/vmw-desktop/ws/12.5.2/4638234/linux/core/"
-	BASE_URL="http://softwareupdate.vmware.com/cds/vmw-desktop/"
-	if [ "$REQUIRED_TYPE" = "workstation" ]; then
-		BASE_URL+="ws/"
-	else
-		BASE_URL+="${REQUIRED_TYPE}/"
-	fi
-	BASE_URL+="${REQUIRED_VERSION}/"
-	# Get directory listing of version to get build number
-	wget -O "index.html" "$BASE_URL" || perror "Could not download vmware version index from $BASE_URL"
-	BUILD_NO=$(grep -E -o -i -m 1 'href="[0-9]+/"' "index.html" | awk -F '"' '{print $2}')
-	[ -z "$BUILD_NO" ] && perror "Could not determine build number of $REQUIRED_VERSION from $MODULE_WORK_DIR/src/index.html"
-	LIST_URL="${BASE_URL}${BUILD_NO}linux/core/" # BUILD_NO already has trailing slash...
-
-	# Get directory listing of where final archive resides
-	wget -O "index.html" "$LIST_URL" || perror "Could not download vmware build type core dir index"
-	VMWARE_BUNDLE_FILE=$(grep -E -o -i -m 1 "href=\"VMware-$REQUIRED_TYPE-[^\"]+[\._\-]${ARCHREGEX}[\._\-][^\"]+\"" "index.html" | awk -F '"' '{printf $2}')
-	[ -z "$VMWARE_BUNDLE_FILE" ] && perror "Could not determine vmware $REQUIRED_TYPE bundle file for current arch from $MODULE_WORK_DIR/src/index.html"
-
-	# Download file
-	wget -O "$VMWARE_BUNDLE_FILE" "${LIST_URL}${VMWARE_BUNDLE_FILE}" || perror "Could not download ${VMWARE_BUNDLE_FILE} from ${LIST_URL}"
-	if [[ "$VMWARE_BUNDLE_FILE" == *.tar ]]; then
-		tar -x "${VMWARE_BUNDLE_FILE%.tar}" -f "$VMWARE_BUNDLE_FILE" || perror "Could not untar downloaded $VMWARE_BUNDLE_FILE"
-		unlink "$VMWARE_BUNDLE_FILE"
-		VMWARE_BUNDLE_FILE="${VMWARE_BUNDLE_FILE%.tar}"
-	fi
+	local url="https://files.bwlp.ks.uni-freiburg.de/stuff/vmware/VMware-Workstation-${REQUIRED_VERSION}.tgz"
+	download "${url}" "${MODULE_WORK_DIR}/src/VMware.tgz" \
+		|| perror "Could not download ${url}"
 }
 
 build() {
-	local KMOD SHORT PATCH MIN_KERN MAX_KERN vers
-	[ -z "$VMWARE_BUNDLE_FILE" ] && VMWARE_BUNDLE_FILE=$(basename "$(find "${MODULE_WORK_DIR}/src" -iname "vmware-*" | head -n 1)")
-	local DELETE_FILES=$(for LINE in $REQUIRED_VMWARE_DELETIONS;do echo "rm -rf -- $LINE"; done)
+	local KMOD SHORT PATCH MIN_KERN MAX_KERN bundle vers
+	if [ -s "${MODULE_WORK_DIR}/src/VMware.tgz" ]; then
+		bundle="$( tar -t -f "${MODULE_WORK_DIR}/src/VMware.tgz" \
+			--wildcards "VMware-Workstation-*.bundle" )"
+		[ -z "$bundle" ] && bundle="$( tar -t -f "${MODULE_WORK_DIR}/src/VMware.tgz" \
+			--wildcards "*${REQUIRED_VERSION}*.bundle" )"
+		[ -z "$bundle" ] && bundle="$( tar -t -f "${MODULE_WORK_DIR}/src/VMware.tgz" \
+			--wildcards "*.bundle" )"
+		[ -z "$bundle" ] && perror "Cannot find *.bundle in vmware tgz"
+		tar -C "${MODULE_WORK_DIR}/src" -x -f "${MODULE_WORK_DIR}/src/VMware.tgz" "$bundle" \
+			|| perror "Cannot extract $bundle from VMware.tgz"
+		unlink "${MODULE_WORK_DIR}/src/VMware.tgz"
+		bundle="${MODULE_WORK_DIR}/src/$bundle"
+	else
+		bundle=$( find "${MODULE_WORK_DIR}/src/" -type -f -name "*.bundle" | awk -F/ '{print $NF}' )
+		[ -z "$bundle" ] || perror "Cannot find bundle."
+	fi
+	local DELETE_FILES=$(for LINE in $REQUIRED_VMWARE_DELETIONS; do echo "rm -rf -- '$LINE'"; done)
 
-	local OFFICIAL_VERSION=$(echo "$VMWARE_BUNDLE_FILE" | cut -f 3 -d '-')
-	local BUILD_VERSION=$(echo "$VMWARE_BUNDLE_FILE" | cut -f 4 -d '-')
-	BUILD_VERSION=${BUILD_VERSION%%.*}
-	[ -z "$OFFICIAL_VERSION" ] && perror "Could not determine vmware version from downloaded file (expected eg. 12.0.0)"
-	if [ -z "$BUILD_VERSION" ] || [ "$BUILD_VERSION" -lt 10000 ]; then
+	local re="-([0-9]+\.[0-9]+\.[0-9]+)-([0-9]+)\."
+	[[ $bundle =~ $re ]] || perror "Weird filename, $bundle"
+	local OFFICIAL_VERSION=${BASH_REMATCH[1]}
+	local BUILD_VERSION=${BASH_REMATCH[2]}
+	if ! (( BUILD_VERSION > 10000 )); then
 		perror "Could not determine vmware build number from downloaded file"
 	fi
 
 	# prepare the build directory with the files needed during the chroot
-	cp "${MODULE_WORK_DIR}/src/$VMWARE_BUNDLE_FILE" "${MODULE_BUILD_DIR}/$VMWARE_BUNDLE_FILE"
+	cp "${MODULE_WORK_DIR}/src/$bundle" "${MODULE_BUILD_DIR}/$bundle"
 	local KVER2=$TARGET_KERNEL_SHORT
 	[ ${#KVER2} -gt 4 ] && KVER2=${KVER2%.*}
 	# Try next-lower minor as fallback
@@ -109,7 +98,7 @@ build() {
 		}
 		# PS1='\[\e[1;33m\](chroot) \u@\h:\w\$ \[\e[1;32m\]' /bin/bash -norc	# un-comment for debugging within chroot
 		$DELETE_FILES
-		yes | sh /"${VMWARE_BUNDLE_FILE}" --eulas-agreed --console --required
+		yes | sh /"${bundle}" --eulas-agreed --console --required
 		set -x
 		# Patch kernel modules
 		# check if we need to patch modules
@@ -155,7 +144,7 @@ build() {
 	rm -rf -- "${MODULE_BUILD_DIR}/etc/vmware-installer"
 	rm -rf -- "${MODULE_BUILD_DIR}/usr/lib/vmware-installer"
 	rm -rf -- "${MODULE_BUILD_DIR}/usr/lib/vmware-ovftool"
-	unlink "${MODULE_BUILD_DIR}/$VMWARE_BUNDLE_FILE"
+	unlink "${MODULE_BUILD_DIR}/$bundle"
 
 	# write vmware.conf config file to be later sourced by vmware/run-virt.include.
 	mkdir -p "${MODULE_BUILD_DIR}/opt/openslx/vmchooser/plugins/vmware/" || perror "Could not mkdir "${MODULE_BUILD_DIR}/opt/openslx/vmchooser/plugins/vmware/"."
