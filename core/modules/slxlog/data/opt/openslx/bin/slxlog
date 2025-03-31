@@ -89,11 +89,11 @@ if [ -s /etc/system-uuid ]; then
 fi
 
 submitlog () {
-	if [ -n "$EXTRA" ] && [ -r "$EXTRA" ] && [ -s "$EXTRA" ] && [ "$(stat -c %s "$EXTRA")" -lt "10000" ]; then # valid file attachment
+	if [ -n "$EXTRA" ] && [ -r "$EXTRA" ] && [ -s "$EXTRA" ] && [ "$(stat -c %s "$EXTRA")" -lt "60000" ]; then # valid file attachment
 		curl --data-urlencode "uuid=$UUID" --data-urlencode "type=$TYPE" --data-urlencode "description=$MSG" --data-urlencode "longdesc@$EXTRA" "$SLX_REMOTE_LOG" >> "$CURLLOG" 2>&1
 	elif [ -z "$EXTRA" ]; then # no attachment
 		curl --data-urlencode "uuid=$UUID" --data-urlencode "type=$TYPE" --data-urlencode "description=$MSG" "$SLX_REMOTE_LOG" >> "$CURLLOG" 2>&1
-	elif [ -s "$EXTRA" ]; then # attachment file to big (more than 10k)
+	elif [ -s "$EXTRA" ]; then # attachment file to big (more than 60k)
 		curl --data-urlencode "uuid=$UUID" --data-urlencode "type=$TYPE" --data-urlencode "description=$MSG" --data-urlencode "longdesc=Attachment too large: $EXTRA" "$SLX_REMOTE_LOG" >> "$CURLLOG" 2>&1
 	else # empty attachment file (or missing)
 		curl --data-urlencode "uuid=$UUID" --data-urlencode "type=$TYPE" --data-urlencode "description=$MSG" --data-urlencode "longdesc=Attachment missing/empty: $EXTRA" "$SLX_REMOTE_LOG" >> "$CURLLOG" 2>&1
