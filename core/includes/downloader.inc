@@ -118,7 +118,7 @@ download_if_empty() {
 # Second syntax is mostly for git servers that don't accept a non-branch when shallow-cloning
 autoclone () {
 	[ -z "$REQUIRED_GIT" ] && return 0
-	local url branch dst dstdir checkout i
+	local url branch dst dstdir checkout i name
 	if [ -n "$1" ]; then
 		dstdir="$1"
 	else
@@ -128,31 +128,37 @@ autoclone () {
 	for url in $REQUIRED_GIT; do
 		branch=
 		checkout="${url#*||}"
-		if [ "x$checkout" = "x$url" ]; then
+		if [ "$checkout" = "$url" ]; then
 			checkout=
 			branch="${url#*|}"
-			[ "x$branch" = "x$url" ] && branch=
+			[ "$branch" = "$url" ] && branch=
 		fi
 		url="${url%%|*}"
 		dst="${url##*/}"
 		dst="${dst%.git}"
 		pinfo "Cloning $url to $dst"
-		for i in {1..3} fail; do
+		for i in {1..4} fail; do
 			[ "$i" = "fail" ] && perror "Could not clone."
 			if [ -n "$branch" ]; then
 				git clone --depth 1 -b "$branch" "$url" "$dstdir/$dst" && break
 				pwarning "[Try $i] Could not clone $url branch $branch"
-				sleep 2
+				sleep 10
 			else
 				if ! git clone "$url" "$dstdir/$dst"; then
 					pwarning "[Try $i] Could not clone $url"
-					sleep 2
+					sleep 10
 				elif [ -n "$checkout" ]; then
 					git -C "$dstdir/$dst" checkout "$checkout" && break
 					perror "Could not checkout $checkout from $url"
 				else
 					break
 				fi
+			fi
+			if (( i == 3 )) && ! [[ $url == https://github.com/* ]]; then
+				# Failed three times, let's see if there's a github mirror
+				name="${url##*/}"
+				[[ $name == *.git ]] || name="${name}.git"
+				url="https://github.com/mirror/$name"
 			fi
 		done
 		[ -n "$AUTOCLONE_FILE" ] \
