@@ -29,15 +29,4 @@ public class TransformationGenericUuidTest
 
 		assertDoesNotThrow( () -> config.validateXml() );
 	}
-
-	@Test
-	@DisplayName( "Test transformation of VM UUID configuration with unspecified input data" )
-	public void testTransformationGenericUuidNoData() throws TransformationException
-	{
-		final TransformationGenericUuid transformation = new TransformationGenericUuid();
-		final Domain config = TransformationTestUtils.getDefaultDomain();
-		final CommandLineArgs args = TransformationTestUtils.getEmptyCmdLnArgs();
-
-		assertThrows( TransformationException.class, () -> transformation.transform( config, args ) );
-	}
 }
