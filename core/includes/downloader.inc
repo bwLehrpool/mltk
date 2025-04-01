@@ -59,6 +59,7 @@ download () {
 		rm -f -- "$tmpfile"
 		[ -n "$f" ] && pinfo "Checksum of downloaded file is valid :-)"
 	fi
+	return 0
 }
 
 # [algo] [file_to_hash] [sumfile] [name_in_sumfile]
@@ -94,6 +95,7 @@ download_untar () {
 	local RET=$?
 	[ "x$RET" != "x0" ] && perror "could not untar $TMPFILE to $DEST (tar returned $RET)"
 	unlink "$TMPFILE"
+	return 0
 }
 
 # Download first param URL to second param path,

@@ -4,8 +4,7 @@ fetch_source() {
 	cde "${MODULE_WORK_DIR}/src"
 
 	local url="https://files.bwlp.ks.uni-freiburg.de/stuff/vmware/VMware-Workstation-${REQUIRED_VERSION}.tgz"
-	download "${url}" "${MODULE_WORK_DIR}/src/VMware.tgz" \
-		|| perror "Could not download ${url}"
+	download "${url}" "${MODULE_WORK_DIR}/src/VMware.tgz"
 }
 
 build() {
