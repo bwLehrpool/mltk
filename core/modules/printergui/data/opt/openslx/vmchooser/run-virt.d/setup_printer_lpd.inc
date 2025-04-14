@@ -6,6 +6,11 @@ setup_virtual_printer() {
 	# TODO: QUEUE should prolly not be hardcoded ....
 	local QUEUE="STANDARD" # This has to match the queue you configured in your VM
 	local SPOOLDIR
+
+	if is_on "$SLX_MINIMAL_GUI"; then
+		# Printergui could interfere with remote sessions
+		return 0
+	fi
 	
 	### Disabled: 100megs is not enough, some jobs are HUGE, try to use temp which should be on disk
 	## Try using user's tmpfs home first, as it gets wiped on logout
@@ -16,7 +21,7 @@ setup_virtual_printer() {
 	# If failed, try to fall back to /tmp
 	
 	if [ -z "${SPOOLDIR}" ] || [ ! -w "${SPOOLDIR}/${QUEUE}" ]; then
-		SPOOLDIR="${TMPDIR}/printergui-${RANDOM}"
+		SPOOLDIR="${TMPDIR}/printergui-$$-${RANDOM}"
 		rm -rf -- "${SPOOLDIR}"
 		if ! mkdir -p "${SPOOLDIR}/${QUEUE}"; then
 			writelog "Could not mkdir -p '${SPOOLDIR}/${QUEUE}'"
