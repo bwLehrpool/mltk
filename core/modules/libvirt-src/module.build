@@ -69,9 +69,10 @@ build() {
 	sed -i 's/^libdir=.*$/libdir=\/usr\/lib\/x86_64-linux-gnu/g' "${DSTDIR}/usr/lib64/pkgconfig/libvirt-qemu.pc"
 
 	# delete non-empty run folder to prevent mltk from stopping
-	if [ -d "${DSTDIR}/var/run" ] && ! [ -L "${DSTDIR}/var/run" ]; then
-		rm -rf -- "${DSTDIR}/var/run" || perror "${DSTDIR}/var/run exists could not be killed"
-	fi
+	local dir
+	for dir in "run" "var/run"; do
+		rm -rf -- "${DSTDIR}/$dir" || perror "${DSTDIR}/$dir exists could not be killed"
+	done
 }
 
 post_copy() {
