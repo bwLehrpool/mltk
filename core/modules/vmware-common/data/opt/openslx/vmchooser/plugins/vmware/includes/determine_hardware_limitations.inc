@@ -105,7 +105,7 @@ set_vm_hardware_limits() {
 			MAXMEM="128000"
 			MAXCORES="256"
 		;;
-		windows9-64)
+		windows9-64 | windows11-64)
 			VM_OS_TYPE="windows9-64"
 			MAXMEM="512000"
 			MAXCORES="256"
@@ -124,13 +124,13 @@ set_vm_hardware_limits() {
 			MAXMEM="8000"
 			MAXCORES="32"
 		;;
-		windows9)
+		windows9 | windows11)
 			MAXMEM="8000"
 			MAXCORES="32"
 		;;
 		win*64)
-			MAXMEM="32000"
-			MAXCORES="32"
+			MAXMEM="512000"
+			MAXCORES="256"
 		;;
 		win*)
 			MAXMEM="8000"
@@ -161,8 +161,8 @@ set_vm_hardware_limits() {
 		# as there is a multitude of different distributions. Perhaps further
 		# action will be needed if this leads to problems with exotic OSs.
 		*64)
-			MAXMEM="123456"
-			MAXCORES="64"
+			MAXMEM="512000"
+			MAXCORES="256"
 		;;
 		*)
 			VM_OS_TYPE="other"
@@ -175,7 +175,7 @@ set_vm_hardware_limits() {
 	declare -g CPU_CORES="${HW_THREADS:-1}"
 	declare -rg HOST_CORE_COUNT="$CPU_CORES"
 	if (( CPU_CORES > MAXCORES )); then
-		writelog "Limiting vCPU count from $CPU_CORES to $MAXCORES because of guest OS"
+		writelog "Limiting vCPU count from $CPU_CORES to $MAXCORES because of guestOS = $VM_OS_TYPE"
 		CPU_CORES="$MAXCORES"
 	fi
 	
@@ -189,8 +189,14 @@ set_vm_hardware_limits() {
 		declare -rg HGFS_DISABLED="TRUE"
 	fi
 	
-	[ "${VM_MEM}" -ge "${MAXMEM}" ] && VM_MEM="${MAXMEM}"
-	[ "${VM_HW_VERSION}" -lt "7" -a "${VM_MEM}" -gt "3500" ] && VM_MEM="3500"
+	if (( VM_MEM > MAXMEM )); then
+		writelog "Limiting VM RAM from $VM_MEM to $MAXMEM because of guestOS = $VM_OS_TYPE"
+		VM_MEM="${MAXMEM}"
+	fi
+	if (( VM_HW_VERSION < 7 && VM_MEM > 3500 )); then
+		writelog "Limiting VM RAM from $VM_MEM to 3500 because of ancient hwVersion ($VM_HW_VERSION)"
+		VM_MEM="3500"
+	fi
 	return 0
 }
 
