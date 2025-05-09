@@ -100,7 +100,7 @@ public class ViewerVirtViewer extends Viewer
 		if ( !this.usbAutoconnect.isEmpty() ) {
 			args.add( "--spice-usbredir-redirect-on-connect=" + Strings.join( this.usbAutoconnect, '|' ) );
 		}
-		args.addAll( Arrays.asList( new String[] { "--kiosk", "--full-screen", "--wait",
+		args.addAll( Arrays.asList( new String[] { "--kiosk", "--kiosk-quit", "on-disconnect", "--full-screen", "--wait",
 				"--attach", "--connect=" + connectionUri, "--uuid", "--", machineUuid } ) );
 
 		// execute viewer process with arguments:
