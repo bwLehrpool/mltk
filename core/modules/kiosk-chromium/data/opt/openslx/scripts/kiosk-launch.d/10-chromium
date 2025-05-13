@@ -146,6 +146,8 @@ if [ -n "$SLX_BROWSER_RELOAD_SECS" ] && [ "$SLX_BROWSER_RELOAD_SECS" -gt 0 ]; th
 	) &
 fi
 
+chromium_args+=( "--accept-lang=${SLX_BROWSER_LANG:-de_DE,en_US}" )
+
 if is_on "$SLX_BROWSER_INSECURE"; then
 	chromium_args+=( "--allow-running-insecure-content" "--ignore-certificate-errors" )
 fi
