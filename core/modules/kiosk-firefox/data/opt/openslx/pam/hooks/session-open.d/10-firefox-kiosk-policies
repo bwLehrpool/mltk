@@ -125,6 +125,8 @@ if is_on "$SLX_BROWSER_HWVIDEO"; then
 	setpref 'media.hardware-video-decoding.force-enabled' true boolean
 fi
 
+setpref "intl.accept_languages" "${SLX_BROWSER_LANG:-de-DE,en-US}"
+
 jqi --arg url "$SLX_BROWSER_URL" '.policies.Homepage.URL = $url'
 EOF
 true
