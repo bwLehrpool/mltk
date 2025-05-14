@@ -6,9 +6,11 @@
 [ -n "$SLX_REMOTE_VNC" ] && return 0
 
 if [ -z "$SLX_FORCE_RESOLUTION" ]; then
-	# Also don't interfere if we requested a minimal gui
 	. /opt/openslx/bin/slx-tools
+	# Also don't interfere if we requested a minimal gui
 	is_on "$SLX_MINIMAL_GUI" && return 0
+	# or autologin (compat hack, as older sat servers don't supply SLX_MINIMAL_GUI)
+	is_on "$SLX_AUTOLOGIN" && return 0
 	# Nothing set, normal operation
 	/opt/openslx/bin/beamergui -a
 	# Detach
