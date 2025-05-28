@@ -1,6 +1,13 @@
 #!/bin/bash
 fetch_source() {
+	local p
+	local SRCDIR="${MODULE_WORK_DIR}/src/virt-viewer"
 	autoclone
+	for p in "${MODULE_DIR}/"patches/*; do
+		[ -f "$p" ] || continue
+		pinfo "Applying $p"
+		git -C "$SRCDIR" apply < "$p" || perror "Patch failed"
+	done
 }
 
 build() {
