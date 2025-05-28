@@ -1,0 +1,66 @@
+From d2b0ba617f15514410f564317dd74b43e5990cc8 Mon Sep 17 00:00:00 2001
+From: Proteek <pro_roy7@yahoo.co.uk>
+Date: Fri, 7 Mar 2025 05:41:57 +0000
+Subject: [PATCH] Fix stray windows in kiosk mode
+
+virt_viewer_app_set_kiosk() currently creates a window per physical monitor.
+This seems like unwanted behaviour e.g. with the mapping 1:2;2:3 we still end up with a window on monitor 1.
+This fix modifies the function to create a window per spice display so we only end up with windows on relevant monitors.
+---
+ src/virt-viewer-app.c | 32 +++++++++++++++++++++++++++-----
+ 1 file changed, 27 insertions(+), 5 deletions(-)
+
+diff --git a/src/virt-viewer-app.c b/src/virt-viewer-app.c
+index 5a1204b..11691f3 100644
+--- a/src/virt-viewer-app.c
++++ b/src/virt-viewer-app.c
+@@ -1902,7 +1902,6 @@ static void
+ virt_viewer_app_set_kiosk(VirtViewerApp *self, gboolean enabled)
+ {
+     VirtViewerAppPrivate *priv = virt_viewer_app_get_instance_private(self);
+-    int i;
+     GList *l;
+ 
+     priv->kiosk = enabled;
+@@ -1910,11 +1909,34 @@ virt_viewer_app_set_kiosk(VirtViewerApp *self, gboolean enabled)
+         return;
+ 
+     virt_viewer_app_set_fullscreen(self, enabled);
++    g_debug("kiosk - creating windows for displays");
++
++    /*
++        Create windows for each spice display with a valid monitor.
++
++        Ensure we end up with the same number of windows as displays.
++        I.e. 1 window per display. This prevents stray windows.
+ 
+-    /* create windows for each client monitor */
+-    for (i = g_list_length(priv->windows);
+-         i < get_n_client_monitors(); i++) {
+-        virt_viewer_app_window_new(self, i);
++        Strays occur when:
++        1) we create windows for displays that are mapped to invalid monitors.
++        2) we create windows when available windows already exist in priv->windows.
++    */
++
++    int window = 0;
++    int windows = g_list_length(priv->windows);
++    for (l = virt_viewer_app_get_initial_displays(self); l != NULL; l = l->next) {
++        gint j = virt_viewer_app_get_initial_monitor_for_display(self, GPOINTER_TO_INT(l->data));
++
++        if (j == -1) {
++            g_debug("   Display %d - has invalid monitor", GPOINTER_TO_INT(l->data));
++            continue;
++        } else if (window < windows) {
++            g_debug("   Display %d - window (%d presumably) already available", GPOINTER_TO_INT(l->data), window);
++        } else if (window >= windows) {
++            g_debug("   Display %d - creating window %d", GPOINTER_TO_INT(l->data), window);
++            virt_viewer_app_window_new(self, window);
++        }
++        window++;
+     }
+ 
+     for (l = priv->windows; l != NULL; l = l ->next) {
+-- 
+GitLab
+
