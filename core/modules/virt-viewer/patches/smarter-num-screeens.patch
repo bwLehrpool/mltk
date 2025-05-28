@@ -1,0 +1,29 @@
+diff --git a/src/virt-viewer-app.c b/src/virt-viewer-app.c
+index 5a1204b..1b09cc7 100644
+--- a/src/virt-viewer-app.c
++++ b/src/virt-viewer-app.c
+@@ -348,7 +348,23 @@ virt_viewer_app_quit(VirtViewerApp *self)
+ static gint
+ get_n_client_monitors(void)
+ {
+-    return gdk_screen_get_n_monitors(gdk_screen_get_default());
++    GdkScreen *screen = gdk_screen_get_default();
++    gint num = gdk_screen_get_n_monitors(screen);
++    gint ret = 0;
++    GdkRectangle outer, inner;
++    for (gint o = 0; o < num; ++o) {
++        gboolean ok = TRUE;
++        gdk_screen_get_monitor_geometry(screen, o, &outer);
++        for (gint i = 0; i < o; ++i) {
++            gdk_screen_get_monitor_geometry(screen, i, &inner);
++            if (outer.x == inner.x && outer.y == inner.y) {
++                    ok = FALSE;
++                    break;
++            }
++        }
++        if (ok) ret++;
++    }
++    return ret;
+ }
+ 
+ GList* virt_viewer_app_get_initial_displays(VirtViewerApp* self)

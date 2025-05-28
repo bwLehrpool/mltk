@@ -1,0 +1,74 @@
+From f536966df6253dc625a69803734bc250f3c01cda Mon Sep 17 00:00:00 2001
+From: Proteek <pro_roy7@yahoo.co.uk>
+Date: Fri, 7 Mar 2025 05:50:33 +0000
+Subject: [PATCH] Fix window placement in kiosk mode
+
+virt_viewer_window_move_to_monitor() did not consider display mappings (in kiosk mode it seems).
+Both a window and display need to be instructed which monitor to be placed on (I think).
+This fix focuses on placing the window correctly by using the configured mapping.
+---
+ src/virt-viewer-window.c | 43 ++++++++++++++++++++++++++++++++++++----
+ 1 file changed, 39 insertions(+), 4 deletions(-)
+
+diff --git a/src/virt-viewer-window.c b/src/virt-viewer-window.c
+index 29ec4bd7..7fb5860c 100644
+--- a/src/virt-viewer-window.c
++++ b/src/virt-viewer-window.c
+@@ -674,15 +674,50 @@ virt_viewer_window_move_to_monitor(VirtViewerWindow *self)
+     GdkRectangle mon;
+     gint n = self->fullscreen_monitor;
+ 
++    /*
++        The window should be placed on the monitor for it's
++        contained display. The monitor can be found in the
++        initial_display_mapping and is retrieved with
++        virt_viewer_app_get_initial_monitor_for_display().
++
++        virt_viewer_display_get_monitor() does not update
++        properly (in kiosk mode) and is not derived from
++        the "monitor-mapping"/initial_display_mapping.
++    */
++
++    if (self->display) {
++        gint nthd = virt_viewer_display_get_nth(self->display);
++        g_debug("   Display %d - assigned monitor %d", nthd, virt_viewer_display_get_monitor(self->display));
++        g_debug("   Display %d - window %s assigned monitor %d", nthd, self->subtitle, n);
++        if (self->app) {
++            n = virt_viewer_app_get_initial_monitor_for_display(self->app, nthd);
++            g_debug("      Both should be on monitor %d", n);
++        }
++    } else {
++        g_debug("No display for this window, nothing to do");
++        //return;
++    }
++
+     if (n == -1)
+         return;
+ 
++    gint width, height, x, y;
++    gtk_window_get_size(GTK_WINDOW(self->window), &width, &height);
++    gtk_window_get_position(GTK_WINDOW(self->window), &x, &y);
+     gdk_screen_get_monitor_geometry(gdk_screen_get_default(), n, &mon);
+-    gtk_window_move(GTK_WINDOW(self->window), mon.x, mon.y);
+ 
+-    gtk_widget_set_size_request(self->window,
+-                                mon.width,
+-                                mon.height);
++    g_debug("   window geom %dx%d+%d+%d", width, height, x, y);
++    g_debug("   monitor geom %dx%d+%d+%d", mon.width, mon.height, mon.x, mon.y);
++
++    if(width != mon.width || height != mon.height) {
++        g_debug("   Window has incorrect size. Resizing to %dx%d", mon.width, mon.height);
++        gtk_widget_set_size_request(self->window, mon.width, mon.height);
++    }
++
++    if(x != mon.x || y != mon.y) {
++        g_debug("   Window has incorrect position. Moving to (%d, %d)", mon.x, mon.y);
++        gtk_window_move(GTK_WINDOW(self->window), mon.x, mon.y);
++    }
+ }
+ 
+ static gboolean
+-- 
+GitLab
+
