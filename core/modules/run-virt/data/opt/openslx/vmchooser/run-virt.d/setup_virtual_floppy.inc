@@ -123,6 +123,8 @@ setup_virtual_floppy() {
 			resolution=
 		fi
 	fi
+	local physcreen=0
+	is_on "$SLX_PHYSICAL_SCREEN" && physcreen=1
 
 	cat > "${FLOPPYDIR}/openslx.ini" <<-EOF
 	[openslx]
@@ -141,6 +143,7 @@ setup_virtual_floppy() {
 	runMode=${SLX_RUNMODE_MODULE}
 	debug=${debug}
 	persistentMode=${editmode}
+	preferPhysicalScreen=${physcreen}
 	
 	[remap]
 	documents=${SHARE_DOCUMENTS}

@@ -1,6 +1,6 @@
-#define NTDDI_VERSION  NTDDI_VISTA
-#define WINVER 0x0602
-#define _WIN32_WINNT 0x0602
+//#define NTDDI_VERSION  NTDDI_VISTA
+#define _WIN32_WINNT 0x0A00
+#define WINVER 0x0A00
 #define WIN32_LEAN_AND_MEAN
 #define _UNICODE
 #define UNICODE
@@ -8,6 +8,7 @@
 #define ENOTSUP 95
 #define EAGAIN 11
 #include <windows.h>
+#include <dbt.h>
 #include <winsock2.h>
 #include <winnetwk.h>
 #include <mmdeviceapi.h>
@@ -30,7 +31,8 @@
 DEFINE_GUID(ID_IAudioEndpointVolume, 0x5CDF2C82, 0x841E, 0x4546, 0x97, 0x22, 0x0C, 0xF7, 0x40, 0x78, 0x22, 0x9A);
 DEFINE_GUID(ID_IMMDeviceEnumerator, 0xa95664d2, 0x9614, 0x4f35, 0xa7,0x46, 0xde,0x8d,0xb6,0x36,0x17,0xe6);
 DEFINE_GUID(ID_MMDeviceEnumerator, 0xBCDE0395, 0xE52F, 0x467C, 0x8E, 0x3D, 0xC4, 0x57, 0x92, 0x91, 0x69, 0x2E);
-
+// {E6F07B5F-EE97-4a90-B076-33F57BF4EAA7}
+DEFINE_GUID(GUID_DEVINTERFACE_MONITOR, 0xE6F07B5F, 0xEE97, 0x4a90, 0xB0, 0x76, 0x33, 0xF5, 0x7B, 0xF4, 0xEA, 0xA7);
 #define WM_SOCKDATA (WM_APP+1)
 
 #define BUFLEN (200)
@@ -53,6 +55,7 @@ static const ssize_t KEYLEN = 16;
 
 static BOOL _debug = FALSE;
 
+static HWND sockWnd = NULL;
 static HINSTANCE hKernel32, hShell32, hUser32;
 static OSVERSIONINFO winVer;
 static BOOL shareFileOk = FALSE;
@@ -75,7 +78,9 @@ static BOOL _noHomeWarn = FALSE;
 static BOOL _deletedCredentials = FALSE;
 static BOOL _scriptDone = TRUE, _mountDone = TRUE; // Will be set to false if we actually wait for something...
 static BOOL _persistentMode = FALSE; // VM being edited, don't do any changes to system (shortcuts, regedit, )
+static BOOL _preferPhysicalScreen = FALSE; // Should we switch to real GPU's screens if we detect any, and disable all virtual ones?
 static char *shost = NULL, *sport = NULL, *suser = NULL, *spass = NULL;
+static UINT_PTR tmrRes = 0;
 
 #define SCRIPTFILELEN (50)
 static wchar_t _scriptFile[SCRIPTFILELEN];
@@ -172,9 +177,9 @@ static void CALLBACK tmrResolution(HWND hWnd, UINT uMsg, UINT_PTR idEvent, DWORD
 	static BOOL bInProc = FALSE;
 	if (!bInProc) {
 		bInProc = TRUE;
-		if (setResolution() == 0) {
-			KillTimer(hWnd, idEvent);
-		}
+		setResolution();
+		KillTimer(hWnd, tmrRes);
+		tmrRes = 0;
 		bInProc = FALSE;
 	}
 }
@@ -223,6 +228,20 @@ static void CALLBACK setupNetworkDrives(HWND hWnd, UINT uMsg, UINT_PTR idEvent, 
 	return;
 exit_func:
 	bInProc = FALSE;
+}
+
+LRESULT CALLBACK slxWindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
+
+static int makeWindow(void)
+{
+	// Create window for events
+	if (sockWnd == NULL) {
+		sockWnd = CreateWindowA("STATIC", "OpenSLX mystery window", 0, 0, 0, 0, 0, NULL, NULL, NULL, NULL);
+		if (sockWnd == NULL)
+			return GetLastError();
+		SetWindowLong(sockWnd, GWL_WNDPROC, (LONG)&slxWindowProc);
+	}
+	return ERROR_SUCCESS;
 }
 
 static inline int mapScriptVisibility(int input)
@@ -318,9 +337,11 @@ failure:
 	}
 }
 
-typedef HRESULT (*GFPTYPE)(HWND, int, HANDLE, DWORD, wchar_t*);
-typedef HRESULT (*GSFTYPE)(HWND, int, ITEMIDLIST**);
-typedef BOOL (*ID2PTYPE)(const ITEMIDLIST*, wchar_t*);
+typedef HRESULT (WINAPI *GFPTYPE)(HWND, int, HANDLE, DWORD, wchar_t*);
+typedef HRESULT (WINAPI *GSFTYPE)(HWND, int, ITEMIDLIST**);
+typedef BOOL (WINAPI *ID2PTYPE)(const ITEMIDLIST*, wchar_t*);
+typedef HDEVNOTIFY (WINAPI *RDNTYPE)(HANDLE, LPVOID, DWORD);
+
 
 /**
  * Load given path (CSIDL). Store in default (must be allocated to hold at least MAX_PATH+1 chars).
@@ -441,6 +462,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	if (GetPrivateProfileIntA("openslx", "persistentMode", 0, SETTINGS_FILE) != 0) {
 		_persistentMode = TRUE;
 	}
+	if (GetPrivateProfileIntA("openslx", "preferPhysicalScreen", 0, SETTINGS_FILE) != 0) {
+		_preferPhysicalScreen = TRUE;
+	}
 	winVer.dwOSVersionInfoSize = sizeof(winVer);
 	BOOL retVer = GetVersionEx(&winVer);
 	CoInitializeEx(NULL, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
@@ -484,12 +508,27 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		}
 	}
 	// Resolution
-	UINT_PTR tRet;
-	tRet = SetTimer(NULL, 0, 211, (TIMERPROC)&tmrResolution);
-	if (tRet == 0) {
+	if (winVer.dwMajorVersion > 6 || (winVer.dwMajorVersion == 6 && winVer.dwMinorVersion >= 1)) { // 7+
+		// Event when connected screens change
+		RDNTYPE rdn = (RDNTYPE)GetProcAddress(hUser32, "RegisterDeviceNotificationW");
+		if (rdn != NULL && makeWindow() == ERROR_SUCCESS) {
+			dalog("Registering device notifications");
+			DEV_BROADCAST_DEVICEINTERFACE_W nf = {
+				.dbcc_size = sizeof(nf),
+				.dbcc_devicetype = DBT_DEVTYP_DEVICEINTERFACE,
+				.dbcc_classguid = GUID_DEVINTERFACE_MONITOR,
+			};
+			HDEVNOTIFY hDeviceNotify = rdn(sockWnd, &nf,
+					DEVICE_NOTIFY_WINDOW_HANDLE);
+		}
+	}
+	// Timer to try and change resolution etc.
+	tmrRes = SetTimer(NULL, 0, 211, (TIMERPROC)&tmrResolution);
+	if (tmrRes == 0) {
 		alog("Could not create timer for resolution setting: %d", (int)GetLastError());
 	}
 	// Runscript
+	UINT_PTR tRet;
 	tRet = SetTimer(NULL, 0, 3456, (TIMERPROC)&launchRunscript);
 	dalog("init: &launchRunscript");
 	if (tRet == 0) {
@@ -622,6 +661,9 @@ typedef LONG (WINAPI *CDSTYPE)(LPCWSTR, PDEVMODEW, HWND, DWORD, LPVOID);
 typedef BOOL (WINAPI *EDDTYPE)(LPCWSTR, DWORD, PDISPLAY_DEVICEW, DWORD);
 typedef BOOL (WINAPI *EDMTYPE)(HDC, LPCRECT, MONITORENUMPROC, LPARAM);
 typedef BOOL (WINAPI *GMITYPE)(HMONITOR, LPMONITORINFO);
+typedef LONG (WINAPI *QDCTYPE)(UINT32, UINT32*, DISPLAYCONFIG_PATH_INFO*, UINT32*, DISPLAYCONFIG_MODE_INFO*, DISPLAYCONFIG_TOPOLOGY_ID*);
+typedef LONG (WINAPI *SDCTYPE)(UINT32, DISPLAYCONFIG_PATH_INFO*, UINT32, DISPLAYCONFIG_MODE_INFO*, UINT32);
+typedef LONG (WINAPI *DCGDITYPE)(DISPLAYCONFIG_DEVICE_INFO_HEADER*);
 
 struct resolution {
 	long int w, h;
@@ -629,6 +671,7 @@ struct resolution {
 
 #define MAX_SCREENS (16)
 static int isResolutionFine(struct resolution *res, int nres);
+static int setResModern(void);
 static int setResWinMulti(struct resolution *res, int nres);
 static int setResWinLegacy(struct resolution *res, int nres);
 static int setResVMware(struct resolution *res, int nres);
@@ -638,9 +681,24 @@ static int setResolution()
 	static int nres = 0;
 	static struct resolution res[MAX_SCREENS];
 	static int callCount = -1;
+
 	callCount++;
 	if (nres == -1 || callCount > 10) // We've been here before and consider config invalid, or are done
 		return 0;
+
+	if (_preferPhysicalScreen) {
+		int ret = setResModern();
+		if (ret != ENOTSUP) {
+			if (ret == 0) {
+				// All good, reset counter for next hotplug event
+				callCount = -1;
+				return 0;
+			}
+			return EAGAIN;
+		}
+		// Fall-through for not supported (old windows?)
+	}
+
 	if (nres == 0) {
 		// use config file in floppy
 		char data[300] = "";
@@ -688,6 +746,7 @@ static int setResolution()
 			ret = setResVMware(res, nres);
 			if (ret != ENOTSUP)
 				break;
+			// Fallthrough
 		default:
 			// Legacy WinAPI (single screen only)
 			ret = setResWinLegacy(res, nres);
@@ -729,14 +788,16 @@ static int isResolutionFine(struct resolution *res, int nres)
 	while (edd(NULL, screenNum++, &screen, 0)) {
 		DEVMODEW mode = { .dmSize = sizeof(mode) };
 		int query = EnumDisplaySettingsW(screen.DeviceName, ENUM_CURRENT_SETTINGS, &mode);
-		if (query == 0 || mode.dmPelsWidth == 0)
+		if (query == 0 || mode.dmPelsWidth == 0) {
+			dwlog(L"Disconnected screen '%s' '%s' (ret: %d)", screen.DeviceName, screen.DeviceString, query);
 			continue; // Not active
+		}
 		// See if this screen matches any of the expected res+offset
 		BOOL found = FALSE;
 		for (int i = 0; i < nres; ++i) {
 			if (offsets[i] == mode.dmPosition.x
 					&& res[i].w == mode.dmPelsWidth && res[i].h == mode.dmPelsHeight) {
-				offsets[i] = -1; // Marker
+				offsets[i] = -1; // "OK" Marker
 				found = TRUE;
 				break;
 			}
@@ -774,6 +835,96 @@ static BOOL foobar(HMONITOR Arg1, HDC Arg2, LPRECT Arg3, LPARAM Arg4)
 	return TRUE;
 }
 
+static int setResModern(void)
+{
+	if (hUser32 == NULL)
+		return ENOTSUP;
+	QDCTYPE queryDisplayConf = (QDCTYPE)GetProcAddress(hUser32, "QueryDisplayConfig");
+	if (queryDisplayConf == NULL)
+		return ENOTSUP;
+	SDCTYPE setDisplayConf = (SDCTYPE)GetProcAddress(hUser32, "SetDisplayConfig");
+	DCGDITYPE dcGetInfo = (DCGDITYPE)GetProcAddress(hUser32, "DisplayConfigGetDeviceInfo");
+	if (setDisplayConf == NULL || dcGetInfo == NULL) {
+		dalog("SetDisplayConfig or DisplayConfigGetDeviceInfo NULL!?");
+		return ENOTSUP;
+	}
+
+	static DISPLAYCONFIG_PATH_INFO paths[400], newPaths[400];
+	static DISPLAYCONFIG_MODE_INFO modes[400];
+
+	UINT32 flags = QDC_ALL_PATHS;
+	LONG result = ERROR_SUCCESS;
+	UINT32 pathCount = 400, modeCount = 400, npi = 0;
+
+	result = queryDisplayConf(flags, &pathCount, paths, &modeCount, modes, NULL);
+	if (result != ERROR_SUCCESS) {
+		dalog("Cannot QueryDisplayConfig: %s", (int)result);
+		return ENOTSUP;
+	}
+	dalog("PathCount: %u ModeCount: %u", pathCount, modeCount);
+	BOOL onlyReal = FALSE;
+	for (UINT32 i = 0; i < pathCount; ++i) {
+		// See if target is already handled, duplicates make the set call fail
+		BOOL isdup = FALSE;
+		for (UINT32 j = 0; j < npi; ++j) {
+			if (paths[i].targetInfo.id == newPaths[j].targetInfo.id
+					&& memcmp(&paths[i].targetInfo.adapterId,
+						&newPaths[j].targetInfo.adapterId, sizeof(LUID)) == 0) {
+				isdup = TRUE;
+				break;
+			}
+		}
+		if (isdup)
+			continue;
+		DISPLAYCONFIG_ADAPTER_NAME adapterName = {
+			.header.type = DISPLAYCONFIG_DEVICE_INFO_GET_ADAPTER_NAME,
+			.header.size = sizeof(adapterName),
+			.header.adapterId = paths[i].targetInfo.adapterId
+		};
+		BOOL avail = paths[i].targetInfo.targetAvailable;
+		BOOL active = paths[i].flags & DISPLAYCONFIG_PATH_ACTIVE;
+		int isReal = -1;
+		result = dcGetInfo(&adapterName.header);
+		if (result == ERROR_SUCCESS) {
+			isReal = wcsstr(adapterName.adapterDevicePath, L"#VEN_10DE") != NULL // NVIDIA
+				|| wcsstr(adapterName.adapterDevicePath, L"#VEN_1022") != NULL // AMD
+				|| wcsstr(adapterName.adapterDevicePath, L"#VEN_1002") != NULL // AMD/ATI
+				|| wcsstr(adapterName.adapterDevicePath, L"#VEN_8086") != NULL // INTEL
+				;
+		}
+		dwlog(L"Screen %x is connected to %s, active: %u, avail: %d, real: %d, conn: %d, sid: %d, tid: %d, taid: %llu, said: %llu",
+				i, L"" /* adapterName.adapterDevicePath */, active,
+				avail, isReal, paths[i].targetInfo.outputTechnology,
+				paths[i].sourceInfo.id, paths[i].targetInfo.id,
+				*(uint64_t*)&paths[i].targetInfo.adapterId, *(uint64_t*)&paths[i].sourceInfo.adapterId);
+		if (isReal > 0 && avail) {
+			modes[modeCount] = (DISPLAYCONFIG_MODE_INFO){
+				.infoType = DISPLAYCONFIG_MODE_INFO_TYPE_SOURCE,
+				.adapterId = paths[i].sourceInfo.adapterId,
+				.id = paths[i].sourceInfo.id,
+			};
+			paths[i].flags = DISPLAYCONFIG_PATH_ACTIVE;
+			paths[i].sourceInfo.modeInfoIdx = modeCount;
+			onlyReal = TRUE;
+			newPaths[npi] = paths[i];
+			npi++;
+			modeCount++;
+		}
+	}
+	if (!onlyReal) // ENOTSUP so we fall-thru and use other methods
+		return ENOTSUP;
+	// Apply
+	result = setDisplayConf(npi, newPaths, modeCount, modes, SDC_APPLY | SDC_SAVE_TO_DATABASE
+		| SDC_ALLOW_CHANGES | SDC_USE_SUPPLIED_DISPLAY_CONFIG);
+	dalog("BLUBB: num %d, ret %d", npi, (int)result);
+	if (result != 0) {
+		result = setDisplayConf(npi, newPaths, modeCount, modes, SDC_APPLY
+			| SDC_ALLOW_CHANGES | SDC_USE_SUPPLIED_DISPLAY_CONFIG);
+		dalog("BLUBB: num %d, ret %d", npi, (int)result);
+	}
+	return 0;
+}
+
 /*
  * This seems to be broken with VirtualBox, and I'm not sure whether
  * I'm doing something wrong here. For a dualscreen setup, this
@@ -809,15 +960,13 @@ static int setResWinMulti(struct resolution *res, int nres)
 		DEVMODEW mode = { .dmSize = sizeof(mode) };
 		int query = EnumDisplaySettingsW(screen.DeviceName, ENUM_CURRENT_SETTINGS, &mode);
 		if (query == 0) {
-			dalog("EnumDisplaySettings: Retrying with index 0");
+			dalog("EnumDisplaySettings: Retrying with iModeNum 0");
 			query = EnumDisplaySettingsW(screen.DeviceName, 0, &mode);
 		}
 		mode.dmFields = 0;
 		if (query == 0) {
-			dalog("EnumDisplaySettings: Falling back to default values");
-			mode.dmFields |= DM_BITSPERPEL | DM_DISPLAYFREQUENCY;
-			mode.dmBitsPerPel = 32;
-			mode.dmDisplayFrequency = 60;
+			dalog("EnumDisplaySettings: Ignoring monitor");
+			continue;
 		}
 		dwlog(L"%s (%s) currently %dx%d+%d+%d, %dHz, %dbpp (Query: %d)",
 				screen.DeviceName, screen.DeviceString,
@@ -1157,16 +1306,26 @@ static void udpReceived(SOCKET sock);
 
 LRESULT CALLBACK slxWindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-	if (uMsg != WM_SOCKDATA) {
-		return DefWindowProc(hwnd, uMsg, wParam, lParam);
+	if (uMsg == WM_SOCKDATA) {
+		// Socket event
+		int event = LOWORD(lParam);
+		int errorCode = HIWORD(lParam);
+		if (errorCode == 0 && event == FD_READ) {
+			udpReceived((SOCKET)wParam);
+		}
+		return 0;
+	} else if (uMsg == WM_DEVICECHANGE) {
+		if (wParam == DBT_DEVICEARRIVAL || wParam == DBT_DEVICEREMOVECOMPLETE) {
+			// Screen connected/disconnected
+			dalog("Debice shice");
+			if (tmrRes != 0) {
+				KillTimer(hwnd, tmrRes);
+			}
+			tmrRes = SetTimer(NULL, 0, 500, (TIMERPROC)&tmrResolution);
+			return 0;
+		}
 	}
-	// Socket event
-	int event = LOWORD(lParam);
-	int errorCode = HIWORD(lParam);
-	if (errorCode == 0 && event == FD_READ) {
-		udpReceived((SOCKET)wParam);
-	}
-	return 0;
+	return DefWindowProc(hwnd, uMsg, wParam, lParam);
 }
 
 static int queryPasswordDaemon()
@@ -1178,7 +1337,8 @@ static int queryPasswordDaemon()
 	dalog("...");
 	static int wsaInit = 1337;
 	static SOCKET sock = INVALID_SOCKET;
-	static HWND sockWnd = NULL;
+	if (makeWindow() != ERROR_SUCCESS)
+		return 6;
 	// Init socket stuff
 	if (wsaInit == 1337) {
 		WSADATA wsa;
@@ -1186,13 +1346,6 @@ static int queryPasswordDaemon()
 	}
 	if (wsaInit != 0)
 		return 2;
-	// Create window for socket events
-	if (sockWnd == NULL) {
-		sockWnd = CreateWindowA("STATIC", "OpenSLX mystery window", 0, 0, 0, 0, 0, NULL, NULL, NULL, NULL);
-		if (sockWnd == NULL)
-			return GetLastError();
-		SetWindowLong(sockWnd, GWL_WNDPROC, (LONG)&slxWindowProc);
-	}
 	// Create socket
 	if (sock == INVALID_SOCKET) {
 		sock = socket(AF_INET, SOCK_DGRAM, 0);
