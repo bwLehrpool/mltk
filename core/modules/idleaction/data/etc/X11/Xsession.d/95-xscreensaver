@@ -15,9 +15,10 @@ if command -v xscreensaver; then
 	[ -z "$UID" ] && UID=$(id -u)
 	[ -z "$HOME" ] && HOME="$(getent passwd "$UID" | head -n 1 | awk -F ':' '{print $6}')"
 	. /opt/openslx/config
+	. /opt/openslx/bin/slx-tools
 	SBY="${SLX_SCREEN_STANDBY_TIMEOUT}"
 	SVR="${SLX_SCREEN_SAVER_TIMEOUT}"
-	if [ -n "${SLX_REMOTE_VNC}" ]; then
+	if [ -n "${SLX_REMOTE_VNC}" ] || is_on "$SLX_MINIMAL_GUI"; then
 		AUTOLOCK=False
 		NEVER_LOCK=True
 	fi
