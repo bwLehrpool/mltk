@@ -50,7 +50,7 @@
 		"OverridePostUpdatePage": "",
 		"PasswordManagerEnabled": false,
 		"PrimaryPassword": false,
-		"PrintingEnabled": false,
+		"PrintingEnabled": true,
 		"PromptForDownloadLocation": true,
 		"DisableTelemetry": true,
 		"SearchEngines": {
