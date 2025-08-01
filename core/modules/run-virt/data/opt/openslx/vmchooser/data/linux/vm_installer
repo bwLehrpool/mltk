@@ -45,6 +45,7 @@ case $(${PS} --pid 1 -o comm h) in
 		cat <<-HEREDOC > "$SERVICEDIR"/"$SERVICEDISKMOUNT"
 			[Unit]
 			Description=Mount pseudofloppy fd1
+			JobTimeoutSec=10
 
 			[Mount]
 			What=/dev/fd1
