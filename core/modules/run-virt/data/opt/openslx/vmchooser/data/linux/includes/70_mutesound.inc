@@ -1,81 +1,67 @@
 function mutesound()
 {
 
-local PACTL=$(which pactl)
-local AMIXER=$(which amixer)
-local SYSTEM=alsa
-local PACTLERR
-local AMIXERERR
-local time
+local wpctlbin=$(which wpctl)
+local pactlbin=$(which pactl)
+local amixerbin=$(which amixer)
+local pipewire=false; 	local pipepulse=false;	local pulseaudio=false
+local pactlerr="x";	local wpctlerr="x";	local amixererr="x"
+local wpctlopt; 	local pactlopt;		local amixeropt
+local wpctlmuteopt;	local wpctlmute="";	local wpctlunmute=""
+local pactlmuteopt;	local pactlmute="";	local pactlunmute=""
+local amixermuteopt;	local amixermute="mute"; local amixerunmute="unmute"
 
-if [[ -z "${AMIXER}" && -z "${PACTL}" ]]; then
-	logger "openslx sound muter: Neither pactl (pulseaudio) nor amixer (alsa) found. Exiting."
+logger "openslx sound muter: Started."
+
+if [[ -z "${amixerbin}" && -z "${pactlbin}" && -z "${wpctlbin}" ]]; then
+	logger "openslx sound muter: Neither pactl, amixer or wpctl found. Exiting."
 	return 1
 fi
 
+if ps aux | grep -q "pipewire$";		then	pipewire=true; wpctlopt="set-mute @DEFAULT_AUDIO_SINK@"; \
+							wpctlmute="1"; wpctlunmute="0"; amixeropt="-c 0 set Master"
+							logger "openslx sound muter: pipewire daemon running."; fi
+if ps aux | grep -q "pipewire-pulse$";		then	pipepulse=true;  pactlopt="set-sink-mute @DEFAULT_SINK@"; \
+							pactlmute="true"; pactlunmute="false"; amixeropt="-c 0 set Master"
+							logger "openslx sound muter: pipewire-pulseaudio  daemon running."; fi
+if [ $(ps aux | grep -c "pulseaudio") -gt 1 ];	then 	pulseaudio=true; pactlopt="set-sink-mute 0"; pactlmute="0"; pactlunmute="1"; \
+							amixeropt="-q -D pulse set Master"
+							logger "openslx sound muter: pulseaudio daemon running."; fi
 
-if [ -n "${PACTL}" ]; then
-	SYSTEM=pulse
-	logger "openslx sound muter: pulseaudio seems to be installed..."
-	time=2
-	# while [ $(su -c "pulseaudio --check" "${LOCALUSER}") ]; do
-	while [ -z "$(ps aux|grep /pulseaudio|grep -v grep)" ]; do
-		if [ "$time" -gt 30 ]; then
-			logger "openslx sound muter: Waited ${time} sec for pulseaudio, giving up."
-			break
-		fi
-		sleep ${time}; time=$((time + 2))
-		logger "openslx sound muter: Waited $time seconds for pulseaudio..."
- 	done
-else
-	SYSTEM=alsa
-	logger "openslx sound muter: alsa seems to be installed..."
+if $pipewire && ! $pipepulse && ! $pulseaudio && [ -z "${wpctlbin}" ]; then
+	logger "openslx sound muter: Pipewire detected, but no pipewire-pulse, (native) pulseauadio and wpctl found. Exiting."
+	return 1
 fi
 
 # MUTESOUND: Sound 1=aus, 0=an
-# This is a bit problematic as there is no way to actually know whether
-# a command works within different distributions, esp. alsamixer commands 
-# tend to successfully mute but not unmute. So we (at this stage) just 
-# hammer known commands through - one will work, hopefully.
-case "${MUTESOUND}" in 0)
-		logger "openslx sound muter: Unmuting sound, using ${SYSTEM}."
-		case $SYSTEM in	pulse)
-			XDG_RUNTIME_DIR=/run/user/$(id -u $LOCALUSER) su -c "${PACTL} set-sink-mute 0 0" "${LOCALUSER}"
-			PACTLMUTEERR=$?
-			XDG_RUNTIME_DIR=/run/user/$(id -u $LOCALUSER) su -c "${AMIXER} -q -D pulse sset Master unmute" "${LOCALUSER}"
-			AMIXERMUTEERR=$?
-			XDG_RUNTIME_DIR=/run/user/$(id -u $LOCALUSER) su -c "${PACTL} set-sink-volume 0 ${SOUNDVOL}" "${LOCALUSER}"
-			PACTLVOLERR=$?
-			XDG_RUNTIME_DIR=/run/user/$(id -u $LOCALUSER) su -c "${AMIXER} -D pulse sset Master ${SOUNDVOL}" "${LOCALUSER}"
-			PACTLVOLERR=$?
-			logger "openslx sound muter: Sound hopefully unmuted, pactl: ${PACTLMUTEERR}, amixer: ${AMIXERMUTEERR}."
-			logger "openslx sound muter: Volume set, pactl: ${PACTLVOLERR}, amixer: $AMIXERVOLERR}."
-			;;
-		  alsa)	"${AMIXER} set Master unmute"
-			AMIXERMUTEERR=$?
-			"${AMIXER} set Master ${SOUNDVOL}"
-			AMIXERVOLERR=$?
-			logger "openslx sound muter: Sound hopefully unmuted, amixer: ${AMIXERMUTEERR}."
-			logger "openslx sound muter: Volume set, amixer: ${AMIXERVOLERR}."
-			;;
-		esac
+case "${MUTESOUND}" in 
+	0)	logger "openslx sound muter: Unmuting sound."
+		wpctlmuteopt="$wpctlunmute"; pactlmuteopt="$pactlunmute"; amixermuteopt="$amixerunmute" 
 		;;
-	1)
-	logger "openslx sound muter: Muting sound, using ${SYSTEM}"
-		case "${SYSTEM}" in pulse)
-			XDG_RUNTIME_DIR=/run/user/$(id -u ${LOCALUSER}) su -c "${PACTL} set-sink-mute 0 1" "${LOCALUSER}"
-			PACTLMUTEERR=$?
-			XDG_RUNTIME_DIR=/run/user/$(id -u ${LOCALUSER}) su -c "${AMIXER} -q -D pulse sset Master mute" "${LOCALUSER}"
-			AMIXERMUTEERR=$?
-			logger "openslx sound muter: Sound hopefully unmuted, pactl: ${PACTLMUTEERR}, amixer: ${AMIXERVOLERR}."
-			;;
-		   alsa) "${AMIXER}" set Master mute
-			AMIXERMUTEERR=$?
-			logger "openslx sound muter: Sound hopefully unmuted, amixer: ${AMIXERMUTEERR}."
-			;;
-		esac		;;
-		*)	logger "openslx sound muter: Unknown muteSound option ${MUTESOUND}."
-;;
+	1)	logger "openslx sound muter: Muting sound."
+		wpctlmuteopt="$wpctlmute"; pactlmuteopt="$pactlmute"; amixermuteopt="$amixermute" 
+		;;
+	*)	logger "openslx sound muter: Unknown muteSound option ${MUTESOUND}. Exiting."
+		return 1 ;;
 esac
+
+if [ -n "$wpctlbin" ]; then
+	XDG_RUNTIME_DIR=/run/user/$(id -u $LOCALUSER) su -c "$wpctlbin $wpctlopt $wpctlmuteopt" ${LOCALUSER}
+	wpctlerr=$?
+	logger "openslx sound muter: $wpctlbin $wpctlopt $wpctlmuteopt $LOCALUSER"
+fi
+if [ -n "$pactlbin" ]; then
+	XDG_RUNTIME_DIR=/run/user/$(id -u ${LOCALUSER}) su -c "$pactlbin $pactlopt $pactlmuteopt" ${LOCALUSER}
+	pactlerr=$?
+	logger "openslx sound muter: $pactlbin ${pactlopt} $pactlmuteopt $LOCALUSER"
+fi
+if [ -n "$amixerbin" ]; then
+	XDG_RUNTIME_DIR=/run/user/$(id -u $LOCALUSER) su -c "$amixerbin ${amixeropt} $amixermuteopt" ${LOCALUSER}
+	amixererr=$?
+	logger "openslx sound muter: $amixerbin ${amixeropt} $amixermuteopt" $LOCALUSER
+fi
+
+logger "openslx sound muter: wpctl $wpctlerr, pactl $pactlerr, amixer $amixererr"
 logger "openslx sound muter: end."
 }
+
