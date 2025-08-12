@@ -21,6 +21,38 @@ function already_mounted()
 	return $AUSGANG
 }
 
+function homedir_warning()
+{
+	if [ -d "${USERHOMEDIR}" ]; then 
+		cat <<-HEREDOC > "${USERHOMEDIR}/WARNUNG_LIES_MICH.txt"
+			Achtung:
+			Wenn Sie diese Datei sehen bedeutet das, dass Ihr Netzwerkhome nicht 
+			eingehängt werden konnte. Hier abgelegte Dateien bleiben daher NICHT 
+			erhalten! Speichern Sie Ihre Daten in einem anderen Netzlaufwerk oder 
+			einem externen Datenträger a la USB-Stick.
+		HEREDOC
+		chown "${LOCALUSER}": "${USERHOMEDIR}/WARNUNG_LIES_MICH.txt"
+	
+		cat <<-THEREDOC > "${USERHOMEDIR}/WARNING_READ_ME.txt"
+			Warning:
+			If you see this file, it means that your home network drive could 
+			not be mounted. Files stored here WILL BE LOST after poweroff! 
+			Please save your data to a different network drive or an external 
+			storage device such as a USB stick.
+		THEREDOC
+		chown "${LOCALUSER}": "${USERHOMEDIR}/WARNING_READ_ME.txt"
+		
+		cat <<-SOMEWHEREDOC > "${USERHOMEDIR}/ATTENTION_LISEZ_MOI.txt"
+			Attention!
+			Si vous voyez ce fichier, cela signifie que votre dossier personnel 
+			n'a pas pu être rattaché. Les fichiers déposés ici ne sont PAS 
+			conservés! Enregistrez vos données sur un autre lecteur réseau ou 
+			sur un support externe (clé USB ou autre).
+		SOMEWHEREDOC
+		chown "${LOCALUSER}": "${USERHOMEDIR}/ATTENTION_LISEZ_MOI.txt"
+	fi
+}
+
 function mounter()
 {
 	MOUNTPARAM="$1"
@@ -66,7 +98,8 @@ function mounter()
 					done
 					[ "$AUSGANG" -eq 0 ] && break
 				done
-				[ "$AUSGANG" -eq 0 ]    && logger "openslx sharemapper: ${SHAREPATH} mounted to ${MOUNTDIR} using ${MOUNTOPTS}, cifs $VERSION."
+				
+		[ "$AUSGANG" -eq 0 ]    && logger "openslx sharemapper: ${SHAREPATH} mounted to ${MOUNTDIR} using ${MOUNTOPTS}, cifs $VERSION."
 				;;
 			dav)    while ! echo -e "${USER}\n${PASSWD}" | mount $MOUNTPARAM "$MOUNTOPTS" "$SHAREPATH" "$MOUNTDIR" 2>/dev/null 1>&2; do
 					x=2
@@ -143,6 +176,7 @@ function mount_share()
 function mount_home()
 {
 	logger "openslx sharemapper: home share \"$SHARENAME\" found (for PERSISTENT)."
+	homedir_warning		# Just to leave a WARNING!!! in homedir if not mounted (over)
 	export USER="${GLOBALUSER}"
 	export PASSWD="${PW}"
 	ERRORMSG=""
