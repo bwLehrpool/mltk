@@ -224,7 +224,7 @@ public class TransformationSpecificQemuArchitecture
 			throw new TransformationException( "OS type is not specified!" );
 		} else {
 			if ( !sourceOsType.toString().equals( targetGuest.getOsType().toString() ) ) {
-				throw new TransformationException( "OS type is not supported by the virtualizer!" );
+				throw new TransformationException( "OS type '" + sourceOsType + "' is not supported by the virtualizer!" );
 			}
 		}
 
@@ -246,7 +246,7 @@ public class TransformationSpecificQemuArchitecture
 
 			// check supported domain type
 			if ( targetDomainType == null ) {
-				throw new TransformationException( "Source domain type is not supported by the virtualizer!" );
+				throw new TransformationException( "Source domain type '" + sourceDomainType + "' is not supported by the virtualizer!" );
 			}
 		}
 
