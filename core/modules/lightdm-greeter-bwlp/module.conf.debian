@@ -1,6 +1,7 @@
 #!/bin/bash
 REQUIRED_INSTALLED_PACKAGES="
 	liblightdm-qt5-3-dev
+	qtwebengine5-dev
 "
 
 REQUIRED_CONTENT_PACKAGES="
