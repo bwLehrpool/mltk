@@ -1,6 +1,8 @@
 #!/bin/bash
+REQUIRED_MODULES="
+	qt5core
+"
 REQUIRED_INSTALLED_PACKAGES="
 	libcups2-dev
-	libqt5gui5
 "
 

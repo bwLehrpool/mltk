@@ -1,6 +1,0 @@
-#!/bin/bash
-REQUIRED_INSTALLED_PACKAGES="
-	libcups2-dev
-	libqt5gui5
-"
-
