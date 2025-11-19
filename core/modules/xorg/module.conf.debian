@@ -6,10 +6,8 @@ REQUIRED_INSTALLED_PACKAGES="
 			xserver-xorg$UBUNTU_XORG_PKG_SUFFIX
 			xserver-xorg-core$UBUNTU_XORG_PKG_SUFFIX
 			libgl1-mesa-dri
-			libgl1-mesa-glx
 			libglx0
 			libegl1
-			libegl1-mesa
 			libegl-mesa0
 			xkb-data
 			x11-xkb-utils
@@ -37,13 +35,11 @@ REQUIRED_CONTENT_PACKAGES="
 			xserver-xorg$UBUNTU_XORG_PKG_SUFFIX
 			xserver-xorg-core$UBUNTU_XORG_PKG_SUFFIX
 			libgl1-mesa-dri
-			libgl1-mesa-glx
 			libglx0
 			libglx-mesa0
 			libxcb-glx0
 			@libgbm1
 			libegl1
-			libegl1-mesa
 			libegl-mesa0
 			libgbm1
 			libwayland-client0

@@ -1,6 +1,6 @@
 #!/bin/bash
 REQUIRED_INSTALLED_PACKAGES="
-	libqt5webkit5-dev
+	qtwebengine5-dev
 "
 REQUIRED_CONTENT_PACKAGES="
 	gstreamer1.0-plugins-base
