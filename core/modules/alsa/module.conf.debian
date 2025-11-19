@@ -2,7 +2,7 @@
 REQUIRED_CONTENT_PACKAGES="
 	alsa-utils
 	alsa-tools
-	libasound2
+	libasound2t64
 	libasound2-data
 	libasound2-plugins
 "
