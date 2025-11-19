@@ -1,7 +1,7 @@
 REQUIRED_INSTALLED_PACKAGES="
 	genisoimage
 	glslang-tools
-	iasl
+	acpica-tools
 	kbuild
 	libcap-dev
 	libcurl4-openssl-dev
