@@ -1,0 +1,32 @@
+#!/bin/bash
+
+version=$( "$NEWROOT/opt/openslx/bin/vmware-get-supported-version" )
+
+# Calling directly failed, try to chroot to $NEWROOT and call again
+
+if [ -z "$version" ] || [ "$version" = "fail" ]; then
+	# the vmware helper needs the kmod msr and the tool rdmsr,
+	# /dev, /sys and /proc to properly detect the CPU info.
+
+	declare -a bindmount=( "/dev" "/proc" "/sys" )
+	declare -a bound=()
+	echo "Direct version check failed, trying chroot..."
+
+	cleanup() {
+		for bm in "${bound[@]}"; do
+			umount "${NEWROOT}/${bm}"
+		done
+	}
+	trap cleanup EXIT
+
+	for bm in "${bindmount[@]}"; do
+		mount --bind "$bm" "${NEWROOT}/${bm}" || exit 1
+		bound+=( "$bm" )
+	done
+
+	export PATH="$PATH:/opt/openslx/sbin:/opt/openslx/bin"
+	version="$( chroot "$NEWROOT" vmware-get-supported-version )"
+
+fi
+
+[ -n "$version" ] && [ "$version" = "new" ]

@@ -1,0 +1,235 @@
+#!/bin/bash
+fetch_source() {
+	mkdir -p "${MODULE_WORK_DIR}/src"	|| perror "Could not mkdir src"
+	cde "${MODULE_WORK_DIR}/src"
+
+	local url="https://files.bwlp.ks.uni-freiburg.de/stuff/vmware/VMware-Workstation-${REQUIRED_VERSION}.tgz"
+	download "${url}" "${MODULE_WORK_DIR}/src/VMware.tgz"
+}
+
+build() {
+	local KMOD SHORT PATCH MIN_KERN MAX_KERN bundle vers
+	if [ -s "${MODULE_WORK_DIR}/src/VMware.tgz" ]; then
+		bundle="$( tar -t -f "${MODULE_WORK_DIR}/src/VMware.tgz" \
+			--wildcards "VMware-Workstation-*.bundle" )"
+		[ -z "$bundle" ] && bundle="$( tar -t -f "${MODULE_WORK_DIR}/src/VMware.tgz" \
+			--wildcards "*${REQUIRED_VERSION}*.bundle" )"
+		[ -z "$bundle" ] && bundle="$( tar -t -f "${MODULE_WORK_DIR}/src/VMware.tgz" \
+			--wildcards "*.bundle" )"
+		[ -z "$bundle" ] && perror "Cannot find *.bundle in vmware tgz"
+		tar -C "${MODULE_WORK_DIR}/src" -x -f "${MODULE_WORK_DIR}/src/VMware.tgz" "$bundle" \
+			|| perror "Cannot extract $bundle from VMware.tgz"
+		unlink "${MODULE_WORK_DIR}/src/VMware.tgz"
+		bundle="${MODULE_WORK_DIR}/src/$bundle"
+	else
+		bundle=$( find "${MODULE_WORK_DIR}/src/" -type -f -name "*.bundle" | awk -F/ '{print $NF}' )
+		[ -z "$bundle" ] || perror "Cannot find bundle."
+	fi
+	local DELETE_FILES=$(for LINE in $REQUIRED_VMWARE_DELETIONS; do echo "rm -rf -- '$LINE'"; done)
+
+	local re="-([0-9]+[.H][0-9]+(\.[0-9]+)?)-([0-9]+)\."
+	[[ $bundle =~ $re ]] || perror "Weird filename, $bundle"
+	local OFFICIAL_VERSION=${BASH_REMATCH[1]}
+	local vm_cmp_version="${OFFICIAL_VERSION/H/.}"
+	local BUILD_VERSION=${BASH_REMATCH[3]}
+	if ! (( BUILD_VERSION > 10000 )); then
+		perror "Could not determine vmware build number from downloaded file"
+	fi
+
+	# prepare the build directory with the files needed during the chroot
+	cp "${MODULE_WORK_DIR}/src/$bundle" "${MODULE_BUILD_DIR}/$bundle"
+	local KVER2=$TARGET_KERNEL_SHORT
+	[ ${#KVER2} -gt 4 ] && KVER2=${KVER2%.*}
+	# Try next-lower minor as fallback
+	for vers in "$OFFICIAL_VERSION" "${OFFICIAL_VERSION:0:-1}$(( ${OFFICIAL_VERSION:"-1"} - 1 ))"; do
+		git clone --depth 1 -b "workstation-${vers}" \
+			"https://github.com/mkubecek/vmware-host-modules.git" \
+			"${MODULE_BUILD_DIR}/prepatched" || continue
+		pinfo "Have prepatched kernel modules ($vers)"
+		break
+	done
+	if ! [ -d "${MODULE_BUILD_DIR}/prepatched" ]; then
+		# copy required patches
+		mkdir -p "${MODULE_BUILD_DIR}/patches"
+		for PATCH in "${MODULE_DIR}/patches/"*__*__*.patch; do
+			[ -s "$PATCH" ] || continue
+			parse_patch_name "$PATCH"
+			if [ -z "${MIN_KERN}" ] || [ -z "${MAX_KERN}" ]; then
+				perror "Could not parse patch filename"
+			fi
+			if version_lt "$TARGET_KERNEL_SHORT" "$MIN_KERN" || version_gt "$TARGET_KERNEL_SHORT" "$MAX_KERN"; then
+				pinfo "*NOT* applying $PATCH (min=$MIN_KERN max=$MAX_KERN cmp=$TARGET_KERNEL_SHORT)"
+				continue # Not suitable for our kernel
+			fi
+			if version_lt "$vm_cmp_version" "$MIN_VMWARE" || version_gt "$vm_cmp_version" "$MAX_VMWARE"; then
+				pinfo "*NOT* applying $PATCH (min=$MIN_VMWARE max=$MAX_VMWARE cmp=$vm_cmp_version)"
+				continue # Not suitable for our kernel
+			fi
+			pinfo "Kernel: Applying $PATCH (min=$MIN_KERN max=$MAX_KERN cmp=$TARGET_KERNEL_SHORT)"
+			pinfo "VMware: Applying $PATCH (min=$MIN_VMWARE max=$MAX_VMWARE cmp=$vm_cmp_version)"
+			cp "$PATCH" "${MODULE_BUILD_DIR}/patches/" || perror "Could not copy patch $PATCH to $MODULE_BUILD_DIR/patches"
+		done
+	fi
+
+	# sanity check to see if KERNEL_HEADERS_DIR is set and exists
+	if [ -z "${KERNEL_HEADERS_DIR}" ] || ! [ -e "${KERNEL_HEADERS_DIR}" ]; then
+		perror "KERNEL_HEADERS_DIR ('${KERNEL_HEADERS_DIR}') not found. Was the kernel module built?"
+	fi
+
+	# build in two steps, to be able to use mltk function while patching modules
+	mkdir -p "${MODULE_BUILD_DIR}/usr/local/bin"
+	# This is required as there are still some uname calls in the Makefiles, EVEN THOUGH
+	# YOU SPECIFY ANOTHER KERNEL via -k below. Building will fail for a 5.x kernel if you
+	# run on a system with a 4.x kernel.
+	cat > "${MODULE_BUILD_DIR}/usr/local/bin/uname" <<-EOF
+	#!/bin/sh
+	if [ "\$1" = "-r" ]; then
+		echo '${TARGET_KERNEL_LONG}'
+	else
+		/bin/uname "\$@" || /usr/bin/uname "\$@"
+	fi
+	EOF
+	chmod +x "${MODULE_BUILD_DIR}/usr/local/bin/uname"
+	pinfo "Installing vmware per chroot..."
+	chroot_run "${MODULE_BUILD_DIR}" <<-EOF
+		perror() {
+			echo "[ERROR ERROR] " "\$@" >&6
+			exit 1
+		}
+		# PS1='\[\e[1;33m\](chroot) \u@\h:\w\$ \[\e[1;32m\]' /bin/bash -norc	# un-comment for debugging within chroot
+		$DELETE_FILES
+		yes | sh /"${bundle}" --eulas-agreed --console --required
+		set -x
+		# Patch kernel modules
+		# check if we need to patch modules
+		if cd /prepatched; then
+			echo "Found prepatched directory"
+			for file in *-only; do
+				[ -d "\$file" ] || continue
+				KMOD=\${file%-only}.tar
+				tar cf "/usr/lib/vmware/modules/source/\$KMOD" "\$file/" || perror "repacking prepatched \$file failed"
+			done
+		fi
+		# check if we need to patch modules
+		cd "/usr/lib/vmware/modules/source" \
+			|| perror "Could not cd to '/usr/lib/vmware/modules/source'"
+		for file in /patches/*.patch; do
+			[ -s "\$file" ] || continue
+			SHORT="\$(basename "\${file%%__*}")"
+			[ -d "/prepatched/\${SHORT}-only" ] && continue
+			KMOD="\${SHORT}.tar"
+			echo "Applying patch \$file"
+			[ -s "\$KMOD" ] || perror "Kmod \$KMOD does not exist"
+			[ ! -d "\${SHORT}-only" ] && tar xf "\$KMOD"
+			[ ! -d "\${SHORT}-only" ] && perror "untar of \$KMOD failed."
+			cde "\${SHORT}-only"
+			if ! patch -p1 < "\$file"; then
+				cd ..
+				rm -rf -- "\${SHORT}-only"
+				perror "Applying \$file failed."
+			fi
+			cd ..
+			if [ -d "\${SHORT}-only" ]; then
+				tar cf "\$KMOD" "\${SHORT}-only/" || perror "repacking of \$KMOD failed."
+				rm -rf -- "\${SHORT}-only"
+			fi
+		done
+		vmware-modconfig --console --build-mod -k "${TARGET_KERNEL_LONG}" vmnet $(which gcc) "${KERNEL_HEADERS_DIR}/include" vmplayer vmnet || perror "vmnet build failed"
+		vmware-modconfig --console --build-mod -k "${TARGET_KERNEL_LONG}" vmmon $(which gcc) "${KERNEL_HEADERS_DIR}/include" vmplayer vmmon || perror "vmmon build failed"
+	EOF
+
+	cde "${MODULE_WORK_DIR}"
+
+	# cleanup unneeded files
+	rm -rf -- "${MODULE_BUILD_DIR}/etc/vmware-installer"
+	rm -rf -- "${MODULE_BUILD_DIR}/usr/lib/vmware-installer"
+	rm -rf -- "${MODULE_BUILD_DIR}/usr/lib/vmware-ovftool"
+	unlink "${MODULE_BUILD_DIR}/$bundle"
+
+	# write vmware.conf config file to be later sourced by vmware/run-virt.include.
+	mkdir -p "${MODULE_BUILD_DIR}/opt/openslx/vmchooser/plugins/vmware/" || perror "Could not mkdir "${MODULE_BUILD_DIR}/opt/openslx/vmchooser/plugins/vmware/"."
+
+	cat > "${MODULE_BUILD_DIR}/opt/openslx/vmchooser/plugins/vmware/vmware.conf" <<-EOF
+	# configuration file written by vmware/module.build
+	vmnet0=true
+	vmnet1=192.168.101.1/24
+	vmnet1nat=true
+	vmnet8=192.168.102.1/24
+	vmware_version=$OFFICIAL_VERSION
+	vmware_build=${BUILD_VERSION}
+	maxhardwareversion=${OFFICIAL_VERSION%%.*}
+	EOF
+
+	# Patch system-wide vmware config
+	sed -i '/^installerDefaults.autoSoftwareUpdateEnabled/d;
+		/^installerDefaults.componentDownloadEnabled/d;
+		/^installerDefaults.dataCollectionEnabled/d;
+		/^acceptEULA/d;
+		/^acceptOVFEULA/d
+		' "${MODULE_BUILD_DIR}/etc/vmware/config"
+
+	cat >> "${MODULE_BUILD_DIR}/etc/vmware/config" <<-HEREDOC
+		installerDefaults.autoSoftwareUpdateEnabled = "no"
+		installerDefaults.componentDownloadEnabled = "no"
+		installerDefaults.dataCollectionEnabled = "no"
+		acceptEULA = "yes"
+		acceptOVFEULA = "yes"
+	HEREDOC
+	# XXX: If the previous lines are missing, i.e. if vmware wants you to accept the EULAs first, it
+	# will try to read these files:
+	# /usr/share/doc/vmware-player/EULA
+	# /usr/lib/vmware-ovftool/vmware.eula
+	# If it cannot open these files (as we deleted them) it will crash with a SIGABRT (signal 6)
+	# coming from an uncaught exeception in libglibmm's file_get_contents
+
+	# Patch vmware-vmx to always enable USB autoconnect for VMs
+	gcc -o "${MODULE_WORK_DIR}/patsch" "${MODULE_DIR}/usb-patcher.c" || perror "USB patscher build failed"
+		"${MODULE_WORK_DIR}/patsch" "${MODULE_BUILD_DIR}/usr/lib/vmware/bin/vmware-vmx" || perror "Patsching vmware-vmx failed"
+}
+
+post_copy() {
+	# FIXME: gconftool is copied without dependencies
+	tarcopy "$(find /usr/lib/ /usr/lib64 -name gconv -type d)" "$TARGET_BUILD_DIR"
+
+	# Update Icon cache for vmplayer, older versions had the version in their names, newer do not...
+	for guid in gtk-update-icon-cache{,-3.0} fail; do
+		if [ "$guid" = "fail" ]; then
+			pwarning "Updating icon cache failed."
+			break
+		fi
+		"$guid" "${TARGET_BUILD_DIR}/usr/share/icons/hicolor/"
+	done
+
+	# fix vmware-usbarbitrator bug
+	date +'%Y.%m.%d' >"${TARGET_BUILD_DIR}/etc/arch-release"
+
+	mkdir -p "$TARGET_BUILD_DIR/lib/modules/vmware/"
+	cp "${MODULE_BUILD_DIR}/lib/modules/$TARGET_KERNEL_LONG/vmplayer/"* "$TARGET_BUILD_DIR/lib/modules/vmware/" || perror "Could not cp vmware modules to target!"
+
+}
+
+# Output info encoded in filename via KMOD, MIN/MAX_KERN and MIN/MAX_VMWARE
+parse_patch_name() {
+	[ $# -ne 1 ] && perror "parse_patch_name: Wrong parameter count."
+	local PATCH="$1"
+	# Module
+	local SHORT=$(echo "$PATCH" | sed -r 's/^([^_]+)__.*$/\1/g')
+	KMOD="${SHORT}.tar"
+	# Kernel restriction
+	MIN_KERN=$(echo "$PATCH" | sed -r 's/^[^_]+__([0-9\.]+)-[0-9\.]+__[^_]+\.patch$/\1/g')
+	[[ "$MIN_KERN" == /* ]] && MIN_KERN=$(echo "$PATCH" | sed -r 's/^[^_]+__([0-9\.]+)__[^_]+\.patch$/\1/g')
+	MAX_KERN=$(echo "$PATCH" | sed -r 's/^[^_]+__[0-9\.]+-([0-9\.]+)__[^_]+\.patch$/\1/g')
+	[[ "$MAX_KERN" == /* ]] && MAX_KERN=$(echo "$PATCH" | sed -r 's/^[^_]+__([0-9\.]+)__[^_]+\.patch$/\1/g')
+	[[ "$MIN_KERN" == /* ]] && MIN_KERN=
+	[[ "$MAX_KERN" == /* ]] && MAX_KERN=
+	# vmware restriction
+	MIN_VMWARE=$(echo "$PATCH" | sed -r 's/^[^_]+__[^_]+__([0-9\.H]+)-[^_]+\.patch$/\1/g')
+	[[ "$MIN_VMWARE" == /* ]] && MIN_VMWARE=$(echo "$PATCH" | sed -r 's/^[^_]+__[^_]+__([0-9\.H]+)\.patch$/\1/g')
+	MAX_VMWARE=$(echo "$PATCH" | sed -r 's/^[^_]+__[^_]+__[^_]+-([0-9\.H]+)\.patch$/\1/g')
+	[[ "$MAX_VMWARE" == /* ]] && MAX_VMWARE=$(echo "$PATCH" | sed -r 's/^[^_]+__[^_]+__([0-9\.H]+)\.patch$/\1/g')
+	[[ "$MIN_VMWARE" == /* ]] && MIN_VMWARE=
+	[[ "$MAX_VMWARE" == /* ]] && MAX_VMWARE=
+	MIN_VMWARE="${MIN_VMWARE/H/.}"
+	MAX_VMWARE="${MAX_VMWARE/H/.}"
+}
+
