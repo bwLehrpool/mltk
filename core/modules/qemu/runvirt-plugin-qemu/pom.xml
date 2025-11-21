@@ -92,12 +92,6 @@
       <scope>compile</scope>
     </dependency>
     <dependency>
-      <groupId>com.ginsberg</groupId>
-      <artifactId>junit5-system-exit</artifactId>
-      <version>[1.0,2.0)</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
       <groupId>org.libvirt</groupId>
       <artifactId>libvirt</artifactId>
       <version>[0.5,1.0)</version>
@@ -163,7 +157,7 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-surefire-plugin</artifactId>
-        <version>3.0.0-M5</version>
+        <version>3.5.4</version>
       </plugin>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
