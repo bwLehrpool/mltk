@@ -1,22 +1,16 @@
 #!/bin/bash
 REQUIRED_INSTALLED_PACKAGES="
-	python3
-	debhelper
-	dh-python
 	gettext
-	python3-distutils
-	python3-docutils
-	cpio
-	genisoimage
-	gir1.2-libosinfo-1.0
 	gir1.2-gtksource-3.0
+	gir1.2-libosinfo-1.0
 	libglib2.0-bin
+	pycodestyle
+	pylint
 	python3-argcomplete
+	python3-docutils
 	python3-gi
 	python3-gi-cairo
 	python3-libxml2
 	python3-pytest
 	python3-requests
-	pylint
-	pycodestyle
 "

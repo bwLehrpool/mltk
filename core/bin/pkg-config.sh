@@ -57,6 +57,12 @@ function pkg_config_patch_sysroot() {
 				OUTPUT_PATCHED+=("$(pkg_config_process_dir "-L" "${PARAM##-L}")")
 				;;
 			*)
+				if ! [ -e "$PARAM" ] && [ "$PARAM" = "${PARAM##${PKG_CONFIG_SYSROOT_DIR}}" ]; then
+					PARAM="${PKG_CONFIG_SYSROOT_DIR}${PARAM}"
+				fi
+				if ! [ -e "$PARAM" ]; then
+					PARAM="${PARAM##${PKG_CONFIG_SYSROOT_DIR}}"
+				fi
 				OUTPUT_PATCHED+=("${PARAM}")
 				;;
 		esac

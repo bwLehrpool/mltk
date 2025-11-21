@@ -1,64 +1,47 @@
 #!/bin/bash
 REQUIRED_INSTALLED_PACKAGES="
-	gcc
-	python3
-	meson
-	ninja-build
-	bash-completion
 	debhelper
-	dh-apparmor
-	libxml2-dev
-	libncurses5-dev
-	libreadline-dev
-	zlib1g-dev
-	libgcrypt20-dev
-	libgnutls28-dev
-	libsasl2-dev
-	libxen-dev
-	lvm2
-	open-iscsi
-	libparted-dev
-	parted
-	libdevmapper-dev
-	uuid-dev
-	libudev-dev
-	libattr1-dev
-	libpciaccess-dev
-	libjson-c-dev
 	kmod
-	policykit-1
-	libcurl4-gnutls-dev
-	libpolkit-gobject-1-dev
+	libapparmor-dev
+	libattr1-dev
+	libaudit-dev
 	libcap-ng-dev
+	libcurl4-gnutls-dev
+	libdbus-1-dev
+	libdevmapper-dev
+	libfuse-dev
+	libgcrypt20-dev
+	libglusterfs-dev
+	libgnutls28-dev
+	libjson-c-dev
+	libncurses5-dev
 	libnl-3-dev
 	libnl-route-3-dev
-	libyajl-dev
-	libpcap0.8-dev
 	libnuma-dev
-	numad
-	radvd
+	libparted-dev
+	libpcap0.8-dev
+	libpciaccess-dev
+	libpolkit-gobject-1-dev
+	librados-dev
+	librbd-dev
+	libreadline-dev
 	libsanlock-dev
-	libaudit-dev
+	libsasl2-dev
 	libselinux1-dev
-	libapparmor-dev
-	libdbus-1-dev
-	nfs-common
+	libtirpc-dev
+	libudev-dev
+	libxen-dev
+	libxml2-dev
+	libxml2-utils
+	libyajl-dev
+	libzfslinux-dev
+	meson
+	ninja-build
+	parted
+	python3-docutils
 	systemtap-sdt-dev
+	uuid-dev
 	xsltproc
 	zfsutils-linux
-	libzfslinux-dev
-	po-debconf
-	librbd-dev
-	librados-dev
-	libglusterfs-dev
-	libfuse-dev
-	augeas-tools
-	libxml2-utils
-	dnsmasq-base
-	openssh-client
-	netcat-openbsd
-	iptables
-	libtirpc-dev
-	genxdr
-	python3-docutils
+	zlib1g-dev
 "
