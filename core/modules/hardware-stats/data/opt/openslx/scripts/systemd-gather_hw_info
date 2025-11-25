@@ -5,6 +5,7 @@
 # This script gathers information about the hardware and configuration and reports it back to the server
 
 . /opt/openslx/config
+. /opt/openslx/bin/slx-tools
 
 export LANG=C.UTF-8
 export LC_ALL=C.UTF-8
