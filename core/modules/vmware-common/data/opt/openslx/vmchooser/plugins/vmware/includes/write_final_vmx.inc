@@ -286,6 +286,10 @@ setup_graphics() {
 			sed -i 's/^svga\.graphicsMemoryKB.*$/svga.graphicsMemoryKB = "'"$vram"'"/' "${TMPCONFIG}"
 		fi
 	fi
+	if lsmod | grep -q ^nvidia; then
+		echo 'mks.enableVulkanPresentation = "FALSE"' >> "${TMPCONFIG}"
+		echo 'mks.vk.gpuHeapSizeMB = "0"' >> "${TMPCONFIG}"
+	fi
 }
 
 finalize_hardware() {
