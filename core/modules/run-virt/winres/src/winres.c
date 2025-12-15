@@ -177,9 +177,10 @@ static void CALLBACK tmrResolution(HWND hWnd, UINT uMsg, UINT_PTR idEvent, DWORD
 	static BOOL bInProc = FALSE;
 	if (!bInProc) {
 		bInProc = TRUE;
-		setResolution();
-		KillTimer(hWnd, tmrRes);
-		tmrRes = 0;
+		if (setResolution() == 0) {
+			KillTimer(hWnd, tmrRes);
+			tmrRes = 0;
+		}
 		bInProc = FALSE;
 	}
 }
@@ -683,6 +684,7 @@ static int setResolution()
 	static int callCount = -1;
 
 	callCount++;
+	alog("setResolution %d", callCount);
 	if (nres == -1 || callCount > 10) // We've been here before and consider config invalid, or are done
 		return 0;
 
@@ -734,6 +736,7 @@ static int setResolution()
 	check = isResolutionFine(res, nres);
 	if (check == 0)
 		return 0; // Yay! Save the hassle.
+	alog("At res switch, counter at %d", callCount);
 	switch (callCount % 3) {
 		case 0:
 			// Use WinAPI first
@@ -750,7 +753,7 @@ static int setResolution()
 		default:
 			// Legacy WinAPI (single screen only)
 			ret = setResWinLegacy(res, nres);
-			if (ret == 0 && nres > 1 && callCount == 2) {
+			if (ret == 0 && nres > 1 && callCount <= 2) {
 				// Legacy winapi worked, but if we have more than one screen, pretend it failed
 				// the first time, so maybe one of the methods above will work if we call them again
 				// (Looking at you, VMwareResolutionSet)
@@ -775,7 +778,9 @@ static int isResolutionFine(struct resolution *res, int nres)
 			dalog("Could not query current resolution for old Windows.");
 			return ENOTSUP;
 		}
-		return res[0].w == mode.dmPelsWidth && res[0].h == mode.dmPelsHeight;
+		if (res[0].w == mode.dmPelsWidth && res[0].h == mode.dmPelsHeight)
+			return 0;
+		return EAGAIN;
 	}
 	// Modern/multi-screen aware approach
 	DISPLAY_DEVICEW screen = { .cb = sizeof(screen) };
@@ -855,6 +860,8 @@ static int setResModern(void)
 	UINT32 flags = QDC_ALL_PATHS;
 	LONG result = ERROR_SUCCESS;
 	UINT32 pathCount = 400, modeCount = 400, npi = 0;
+
+	dalog("WinAPI setResModern");
 
 	result = queryDisplayConf(flags, &pathCount, paths, &modeCount, modes, NULL);
 	if (result != ERROR_SUCCESS) {
@@ -946,7 +953,7 @@ static int setResWinMulti(struct resolution *res, int nres)
 	int chret;
 	long int sx = 0;
 	BOOL ok = TRUE;
-	dalog("WinAPI multiscreen");
+	dalog("WinAPI setResWinMulti");
 	// XXX Debug
 	EDMTYPE edm = (EDMTYPE)GetProcAddress(hUser32, "EnumDisplayMonitors");
 	if (edm != NULL) {
@@ -957,6 +964,7 @@ static int setResWinMulti(struct resolution *res, int nres)
 	DISPLAY_DEVICEW screen = { .cb = sizeof(screen) };
 	DWORD screenNum = 0;
 	while (edd(NULL, screenNum++, &screen, 0)) {
+		dalog("Trying monitor no %d", (int)screenNum);
 		DEVMODEW mode = { .dmSize = sizeof(mode) };
 		int query = EnumDisplaySettingsW(screen.DeviceName, ENUM_CURRENT_SETTINGS, &mode);
 		if (query == 0) {
@@ -1004,7 +1012,7 @@ static int setResWinMulti(struct resolution *res, int nres)
 
 static int setResWinLegacy(struct resolution *res, int nres)
 {
-	dalog("Using legacy single-screen WinAPI");
+	dalog("WinAPI setResWinLegacy");
 	// Legacy single screen
 	DEVMODE mode = { .dmSize = sizeof(mode) };
 	// MSDN recommends to fill the struct first by querying....
@@ -1034,6 +1042,8 @@ static int setResWinLegacy(struct resolution *res, int nres)
 static int setResVMware(struct resolution *res, int nres)
 {
 	static wchar_t path[MAX_PATH] = L"";
+
+	dalog("WinAPI setResVMware");
 	if (path[0] == 0) {
 		StringCchPrintfW(path, MAX_PATH, L"%s\\VMware\\VMware Tools\\VMwareResolutionSet.exe", programsPath);
 		if (!fileExists(path)) {
