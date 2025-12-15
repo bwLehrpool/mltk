@@ -1,9 +1,10 @@
 #!/bin/bash
 REQUIRED_CONTENT_PACKAGES="
-	msr-tools
 	dmidecode
-	util-linux
-	python3-netifaces
+	fdisk
 	iproute2
+	msr-tools
+	python3-netifaces
+	util-linux
 "
 
