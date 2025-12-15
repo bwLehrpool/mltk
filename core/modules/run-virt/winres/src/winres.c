@@ -178,7 +178,11 @@ static void CALLBACK tmrResolution(HWND hWnd, UINT uMsg, UINT_PTR idEvent, DWORD
 	if (!bInProc) {
 		bInProc = TRUE;
 		if (setResolution() == 0) {
+			dalog("Killing resolution timer %d %d", (int)tmrRes, (int)idEvent);
 			KillTimer(hWnd, tmrRes);
+			if (idEvent != tmrRes) {
+				KillTimer(hWnd, idEvent);
+			}
 			tmrRes = 0;
 		}
 		bInProc = FALSE;
