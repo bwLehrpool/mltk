@@ -36,14 +36,14 @@ run_plugin() {
 
 	# setup RW image access for operation
 	local vm_diskfile
-	if notempty VM_DISKFILE_RO; then
+	if notempty VM_DISKFILE_RW; then
+		# use supplied RW disk image from run-virt
+		vm_diskfile="${VM_DISKFILE_RW}"
+	elif notempty VM_DISKFILE_RO; then
 		# create copy-on-write layer for readonly image
 		vm_diskfile="${TMPDIR}/$(basename ${VM_DISKFILE_RO}).cow.qcow2"
 		local vm_diskfile_type="$(qemu-img info --output=json ${VM_DISKFILE_RO} | jq -r '.format')"
 		qemu-img create -F "${vm_diskfile_type}" -b "${VM_DISKFILE_RO}" -f qcow2 "${vm_diskfile}"
-	elif notempty VM_DISKFILE_RW; then
-		# use supplied RW disk image from run-virt
-		vm_diskfile="${VM_DISKFILE_RW}"
 	fi
 
 	# setup GPU passthrough and obtain PCI addresses and IDs if passthrough is enabled

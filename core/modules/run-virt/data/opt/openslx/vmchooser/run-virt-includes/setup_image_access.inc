@@ -186,7 +186,7 @@ setup_image_access_default() {
 	fi
 
 	# VM_DISKFILE_RO will be empty if dnbd3 is not used or failed to connect.
-	if isempty VM_DISKFILE_RO; then
+	if isempty VM_DISKFILE_RW && isempty VM_DISKFILE_RO; then
 		# try to fallback to access the image via NFS/CIFS filesystem
 		writelog "Trying fallback image access via NFS/CIFS..."
 		setup_fallback
