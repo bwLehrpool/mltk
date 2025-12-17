@@ -110,6 +110,8 @@ cp /tmp/udhcpclog /opt/openslx/config.tgz.list \
 	/tmp/remote_log_check-* \
 	/opt/openslx/pam/slx-ldap.d/* \
 	/opt/openslx/vmchooser/config/udhcpd-nat1.conf* \
+	/sys/block/dnbd0/net/rid \
+	/sys/block/dnbd0/net/alt_servers \
 	static/ 2> /dev/null
 sed -r 's/^([^=]*PASS[^=]*)=.*$/\1=<removed>/' "/opt/openslx/config" > "static/config"
 echo -n "."
