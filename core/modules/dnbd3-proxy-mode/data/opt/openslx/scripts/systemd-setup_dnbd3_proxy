@@ -198,8 +198,8 @@ else
 	(( MAX_REPLICATION_SIZE < 100 )) && MAX_REPLICATION_SIZE=100
 
 	# If we seem to have additional interfaces, wait a bit to make sure they get configured
-	sleep 1
-	numifs=$( systemctl list-units --legend=false "udhcpc@*" | wc -l )
+	numifs=0
+	for i in /sys/class/net/*/device; do (( numifs++ )); done
 	if (( numifs > 1 )); then
 		echo "Waiting a bit since I see $numifs interfaces"
 		sleep 10
