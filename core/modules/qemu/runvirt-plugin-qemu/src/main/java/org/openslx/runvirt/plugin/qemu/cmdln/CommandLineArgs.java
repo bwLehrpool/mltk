@@ -184,6 +184,11 @@ public class CommandLineArgs
 	{
 		return this.cmdLn.hasOption( CmdLnOption.VALIDATE.getShortOption() );
 	}
+	
+	public boolean isPersistentModeEnabled()
+	{
+		return this.cmdLn.hasOption( CmdLnOption.PERSISTENT.getShortOption() );
+	}
 
 	/**
 	 * Returns the state of the command line option {@link CmdLnOption#DEBUG_PTH}.
@@ -482,7 +487,7 @@ public class CommandLineArgs
 
 		return retval;
 	}
-
+	
 	/**
 	 * Returns the state whether a passthrough of a NVIDIA GPU is requested.
 	 * Do this by checking the vendor ID of each PCI device that's being passed
@@ -558,6 +563,7 @@ public class CommandLineArgs
 		MANAGER     ( '2', "manager",     0, "Force using virt-manager even if not in debug mode" ),
 		VALIDATE    ( '3', "validate",    0, "Validate input file only, exit immediately with exit code 0 on success, 42 otherwise" ),
 		USBREDIR    ( '4', "usbredir",    1, "Add USB auto-redirect option to virt-viewer call. Can be passed multiple times." ),
+		PERSISTENT  ( '5', "persistent",  0, "VM is running in persistent mode, don't sacrifice safety for speed" ),
 		VM_MAC0     ( 'a', "vmmac0",      1, "MAC address for the first network interface" ),
 		DEBUG       ( 'b', "debug",       1, "Enable or disable debug mode" ),
 		VM_NCPUS    ( 'c', "vmncpus",     1, "Number of virtual CPUs for the virtual machine" ),

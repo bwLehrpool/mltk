@@ -119,6 +119,7 @@ run_plugin() {
 	notempty PARALLEL0 && [ -w "${PARALLEL0}" ] \
 	                           && VIRTCMDOPTS+=( "-vmparallel0" "${PARALLEL0}" )
 	notempty pt_gpu_mdev_id    && VIRTCMDOPTS+=( "-vmilmdevid0" "${pt_gpu_mdev_id}" )
+	notempty VM_DISKFILE_RW    && VIRTCMDOPTS+=( "-persistent" )
 
 	if $DEBUG; then
 		VIRTCMDOPTS+=( "-xmledit" )

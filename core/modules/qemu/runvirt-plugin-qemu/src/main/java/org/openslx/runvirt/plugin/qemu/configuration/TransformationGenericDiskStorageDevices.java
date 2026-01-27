@@ -5,7 +5,6 @@ import java.util.ArrayList;
 import org.openslx.libvirt.domain.Domain;
 import org.openslx.libvirt.domain.device.Disk.BusType;
 import org.openslx.libvirt.domain.device.Disk.StorageType;
-import org.openslx.libvirt.domain.device.DiskFloppy;
 import org.openslx.libvirt.domain.device.DiskStorage;
 import org.openslx.runvirt.plugin.qemu.cmdln.CommandLineArgs;
 import org.openslx.virtualization.configuration.VirtualizationConfigurationQemuUtils;
@@ -58,20 +57,20 @@ public class TransformationGenericDiskStorageDevices extends TransformationGener
 	 *           selected.
 	 * @throws TransformationException transformation has failed.
 	 */
-	private void transformDiskStorageDevice( Domain config, String fileName, int index ) throws TransformationException
+	private void transformDiskStorageDevice( Domain config, String fileName, int index, boolean safe ) throws TransformationException
 	{
 		final ArrayList<DiskStorage> devices = config.getDiskStorageDevices();
-		final DiskStorage disk = VirtualizationConfigurationQemuUtils.getArrayIndex( devices, index );
+		DiskStorage disk = VirtualizationConfigurationQemuUtils.getArrayIndex( devices, index );
 
 		if ( disk == null ) {
 			if ( fileName != null && !fileName.isEmpty() ) {
 				// storage device does not exist, so create new storage device
 				final BusType devBusType = BusType.VIRTIO;
 				final String targetDevName = VirtualizationConfigurationQemuUtils.createDeviceName( config, devBusType );
-				final DiskFloppy newDisk = config.addDiskFloppyDevice();
-				newDisk.setBusType( devBusType );
-				newDisk.setTargetDevice( targetDevName );
-				newDisk.setStorage( StorageType.FILE, fileName );
+				disk = config.addDiskStorageDevice();
+				disk.setBusType( devBusType );
+				disk.setTargetDevice( targetDevName );
+				disk.setStorage( StorageType.FILE, fileName );
 			}
 		} else {
 			// storage device exists, so update existing storage device
@@ -83,6 +82,9 @@ public class TransformationGenericDiskStorageDevices extends TransformationGener
 				disk.setStorage( StorageType.FILE, fileName );
 			}
 		}
+		if ( !safe ) {
+			disk.setDriverCacheMode( "unsafe" );
+		}
 	}
 
 	@Override
@@ -92,7 +94,7 @@ public class TransformationGenericDiskStorageDevices extends TransformationGener
 		this.validateInputs( config, args );
 
 		// alter storage device
-		this.transformDiskStorageDevice( config, args.getVmDiskFileNameHDD0(), 0 );
+		this.transformDiskStorageDevice( config, args.getVmDiskFileNameHDD0(), 0, args.isPersistentModeEnabled() );
 
 		// remove all additional disk storage devices
 		final ArrayList<DiskStorage> devices = config.getDiskStorageDevices();

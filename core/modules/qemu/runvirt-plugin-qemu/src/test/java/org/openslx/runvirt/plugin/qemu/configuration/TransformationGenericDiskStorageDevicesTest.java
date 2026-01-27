@@ -37,6 +37,7 @@ public class TransformationGenericDiskStorageDevicesTest
 		final DiskStorage diskDeviceAfterTransformation = devicesAfterTransformation.get( 0 );
 		assertEquals( StorageType.FILE, diskDeviceAfterTransformation.getStorageType() );
 		assertEquals( TransformationTestUtils.DEFAULT_VM_HDD0, diskDeviceAfterTransformation.getStorageSource() );
+		assertEquals( "unsafe", diskDeviceAfterTransformation.getDriverCacheMode() );
 
 		assertDoesNotThrow( () -> config.validateXml() );
 	}
