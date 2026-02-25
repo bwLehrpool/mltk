@@ -1,6 +1,22 @@
 #!/bin/bash
 
-# Do not rename/move this script, or change fwtool.c accordingly
+# Do not rename/move this script
+# If you ever do, change fwtool.c accordingly
+
+# Script to set up our runvirt iptables chains for firewalling the running virtual machine
+# Ruleset is a simple format with oe or more lines like this:
+# $DIR $REMOTE $PORT $ACTION
+# $DIR is either IN or OUT, designating the chain it will be added to
+# If $REMOTE is "*", it will be the default policy if nothing else matches, otherwise it's an IP address or hostname
+# If $ACTION is "ACCEPT", the rule means "allow", anything else is interpreted as reject/drop
+# If $PORT is 0, it means any port/protocol, otherwise $PORT has be be 1~65535 and will match TCP and UDP
+
+# If $REMOTE is a hostname, we also enable dns filtering:
+# We'll redirect any DNS requests from the VM to a local dnsmasq that will only resolve allowed hostnames.
+# Additionally, when using a reject-all approach with whitelisted DNS names, we run a detached loop that
+# periodically resolves all the whitelisted DNS names, and keeps adding iptables ACCEPT rules for any newly
+# resolved IPs. This is to account for addresses that use DNS load-balancers and will resolve to different
+# addresses over time.
 
 [ "$UID" = "0" ] || exit 1
 
@@ -176,7 +192,9 @@ unset dns_list
 declare -A dns_list
 
 # prepearetool $DIR $DEST $PORT $ACTION
-# Will modify global arrays IPLINE[12](with)?
+# Will modify global param arrays to ip(6)tables:
+# IPLINE1, IPLINE2, IPLINE2with
+# returns <> 0 if any of the parameters were invalid
 preparetool() {
 	local front=
 	local chain
@@ -248,11 +266,12 @@ if ! (
 			echo "Ignoring invalid rule: '$DIR $DEST $PORT $ACTION'"
 			continue
 		fi
+		# Prepare the iptables call parameters, skip rule if invalid
 		preparetool "$DIR" "$DEST" "$PORT" "$ACTION" || continue
 		both=
 		# See if it's a hostname potentially
 		if ! [[ $DEST =~ $V6 || $DEST =~ $V4 ]]; then
-			dns_list["$DEST"]+=":$ACTION $DIR $PORT"
+			# Hostname
 			if [ "$DIR" != OUT ] || [ -z "$dnsmasq" ] || [ "$PORT" != 0 ]; then
 				both=1 # Not outgoing, dnsmasq not found, or specific port - cannot do on DNS level
 			elif [[ $DEST =~ $ILLEGAL_DNS ]] && [ "$DEST" != '*' ]; then
@@ -271,7 +290,7 @@ if ! (
 						fi
 						both=1
 					else
-						# A host - map to 0.0.0.0
+						# A host - map to NXDOMAIN
 						echo "address=/$DEST/" >> "$DNSCFG"
 					fi
 				else
@@ -291,6 +310,9 @@ if ! (
 				fi
 			fi
 			[ -z "$dig" ] && both=1
+			if ! [[ $DEST =~ $ILLEGAL_DNS ]] && [ -n "$both" ]; then
+				dns_list["$DEST"]+=":$ACTION $DIR $PORT"
+			fi
 		fi
 		if [ -n "$both" ] || [[ $DEST =~ $V6 ]]; then # IPv6?
 			calltool ip6tables "$PORT" "$ACTION"
@@ -346,7 +368,7 @@ if ! (
 		chmod +x "$DNS_IPT_FILE"
 		digargs=( -p "$DNSPORT" "@127.0.0.1" )
 	fi
-	# Background worker adding IPs over time...
+	# Background worker adding IPs over time, used for DNS round-robin domains
 	if [ -n "$PARENTPID" ] && (( ${#dns_list[@]} > 0 )) && [ -n "$dig" ]; then
 		echo "Running background DNS monitor"
 		exec 2> /tmp/dns-monitor
@@ -367,7 +389,7 @@ if ! (
 				for ip in $ips; do
 					[ -n "${known["$ip:$ruleset"]}" ] && continue
 					known["$ip:$ruleset"]=1
-					preparetool "$dir" "$ip" "$port" "$action"
+					preparetool "$dir" "$ip" "$port" "$action" || continue
 					calltool "$1" "$port" "$action"
 				done
 			done
@@ -375,16 +397,22 @@ if ! (
 		# Remember IPs we already added here
 		sleep 5 # dnsmasq startup
 		declare -A known
+		ctr=0
 		while [ -d "/proc/$PARENTPID" ]; do
-			for domain in "${!dns_list[@]}"; do
+			(( ++ctr % 6 == 0 )) && for domain in "${!dns_list[@]}"; do
 				# Resolve all
 				ips=$( dig "${digargs[@]}" +short "$domain" A )
 				[ $? = 0 ] && mangle_addrs iptables
 				ips=$( dig "${digargs[@]}" +short "$domain" AAAA )
 				[ $? = 0 ] && mangle_addrs ip6tables
 			done # Loop over domains
-			sleep 31
+			sleep 5
 		done # While main process still running
+		rm -f -- "$DNS_IPT_FILE"
+	elif [ -s "$DNSCFG" ] && [ -n "$PARENTPID" ]; then
+		while [ -d "/proc/$PARENTPID" ]; do
+			sleep 5
+		done
 		rm -f -- "$DNS_IPT_FILE"
 	fi & # Background poller
 ); then
