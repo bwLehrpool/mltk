@@ -16,7 +16,8 @@ fetch_source() {
 }
 
 build() {
-	local bundle destdir builddir version
+	local bundle destdir builddir version major
+	declare -a kmods
 	pdebug "--- chroot ---------------------------------------------------------------------"
 	pdebug "-                                                                              -"
 	pdebug "-   Notice: This may take a while!                                             -"
@@ -35,6 +36,7 @@ build() {
 		bundle="${MODULE_WORK_DIR}/src/${version}.run"
 		builddir="${MODULE_BUILD_DIR}/${version}"
 		destdir="${builddir}/NVIDIA"
+		major="${version%%.*}"
 
 		pdebug "Unpacking NVidia-Installer ..."
 		[ -d "$destdir" ] && rm -rf "$destdir"
@@ -94,7 +96,9 @@ build() {
 		NVIDIA_MODULES="${MODULE_BUILD_DIR}/lib/modules/nvidia/${version}"
 		mkdir -p "$NVIDIA_MODULES"
 		pinfo "Copying kernel modules..."
-		for file in nvidia.ko nvidia-uvm.ko nvidia-modeset.ko nvidia-drm.ko; do
+		kmods=( nvidia.ko nvidia-uvm.ko nvidia-modeset.ko nvidia-drm.ko )
+		(( major >= 580 )) && kmods+=( nvidia-peermem.ko )
+		for file in "${kmods[@]}"; do
 			RESULT=$(find "$builddir/NVIDIA/kernel" -name "$file" | head -n 1)
 			[ -z "$RESULT" ] && perror "Could not find built module $file in ./NVIDIA/kernel"
 			pinfo "Fetching ${file}..."
@@ -105,7 +109,7 @@ build() {
 		mkdir -p "${MODULE_BUILD_DIR}/drm.cfg.d"
 		drmfile="${MODULE_BUILD_DIR}/drm.cfg.d/$(( filenum++ ))-nvidia-$version"
 		cat > "$drmfile" <<-BLOFF
-			@nvidia-${version}            acpi_ipmi nvidia/$version/nvidia.ko nvidia/$version/nvidia-uvm.ko nvidia/$version/nvidia-modeset.ko nvidia/$version/nvidia-drm.ko
+			@nvidia-${version}            acpi_ipmi ${kmods[*]/#/"nvidia/$version/"}
 			@nvidia-${version}_fallback   nouveau
 		BLOFF
 		if ! [ -s "${builddir}/supportedchips.html" ]; then
