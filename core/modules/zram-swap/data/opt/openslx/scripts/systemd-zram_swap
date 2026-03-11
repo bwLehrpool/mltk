@@ -1,7 +1,7 @@
 #!/bin/ash
 # -----------------------------------------------------------------------------
 #
-# Copyright (c) 2013..2018 bwLehrpool-Projektteam
+# Copyright (c) 2013..2026 bwLehrpool-Projektteam
 #
 # This program/file is free software distributed under the GPL version 2.
 # See https://www.gnu.org/licenses/old-licenses/gpl-2.0-standalone.html
@@ -18,49 +18,46 @@
 
 #############################################################################
 
-# Already done?
-if grep -q '^/dev/zram' "/proc/swaps"; then
-	echo "Already have zram swap, bailing out"
-	exit 0
-fi
-
 # Add zram swap
 
-# Determine non-zram swap size
-disk_swap="$( gawk 'BEGIN{a=0} $1 ~ /^\/dev\// && $1 !~ /^\/dev\/zram/ {a+= $3} END{print a}' /proc/swaps )"
+read_swap_config() {
+	# Determine non-zram swap size
+	disk_swap_kb="$( gawk 'BEGIN{a=0} $1 !~ /^\/zram/ && $1 !~ /^\/dev\/zram/ {a+= $3} END{print a}' /proc/swaps )"
+	# total swap
+	total_swap_kb="$( gawk 'BEGIN{a=0} $1 ~ /^\// {a+= $3} END{print a}' /proc/swaps )"
+}
 
-# If zswap is available and we have a swap partition on disk, do not add
-# zram swap, as having a tiered swap doesn't make sense then.
-# Use a sensible lower bound here, if we have a tiny swap partition, still use zram
-if [ "$disk_swap" -ge 2048000 ]; then # ~2 GB (in KB)
+configure_zswap() {
+	# Enable zswap only if we're not using any zram as swap, as that would be redundant
+	if [ "$total_swap_kb" = "$disk_swap_kb" ]; then
+		modprobe zswap
+		echo 1 > /sys/module/zswap/parameters/enabled
+	else
+		echo 0 > /sys/module/zswap/parameters/enabled
+		# Increase min free memory so we have enough mem available when trying to move
+		# something to zram swap. We want 1%, or at least 64MiB
+		local current_min_free_kb want_min_free_kb
+		current_min_free_kb=$(cat "/proc/sys/vm/min_free_kbytes")
+		want_min_free_kb=$(( total_mem_kb / 100 ))
+		[ "$want_min_free_kb" -gt 65536 ] || want_min_free_kb=65536 # minimum 64M
+		[ "$want_min_free_kb" -lt 524800 ] || want_min_free_kb=524800 # maximum 512M
+		if [ "$current_min_free_kb" -lt "$want_min_free_kb" ]; then
+			echo "$want_min_free_kb" > "/proc/sys/vm/min_free_kbytes"
+		fi
+	fi
+}
+
+read_swap_config
+# If we already have >= 2GB swap, do nothing
+if [ "$total_swap_kb" -ge 2048000 ]; then # ~2 GB (in KB)
 	echo "Not setting up zram swap as swap partition is in use."
-	echo 1 > /sys/module/zswap/parameters/enabled
+	configure_zswap
 	exit 0
-fi
-
-echo 0 > /sys/module/zswap/parameters/enabled
-
-# Count physical CPUs
-CPUS=$(cat /sys/devices/system/cpu/cpu*/topology/thread_siblings_list | sort -u | wc -l) # cat for *
-if [ -z "$CPUS" ]; then
-	echo "ERROR: Could not determine CPU core count"
-else
-	CPUS=1
-fi
-
-KERN=$(uname -r)
-if [ "${KERN%%.*}" -le 4 ]; then
-	DEVS=$CPUS
-	[ "$DEVS" -gt "16" ] && DEVS=16 # zram can only handle up to 32 devices, the system can apparently even just handle 29 swap partitions, so use a reasonable upper limit
-	STREAMS=
-else
-	DEVS=1
-	STREAMS=$CPUS
 fi
 
 if [ -e "/sys/class/zram-control/hot_add" ]; then
 	: # nothing to do, loaded and hot_add available
-elif ! modprobe zram "num_devices=$DEVS"; then
+elif ! modprobe zram "num_devices=2"; then # one spare for whatever
 	echo "ERROR: Could not load zram module"
 	exit 1
 fi
@@ -68,29 +65,34 @@ fi
 # Go for it
 
 make_swap () {
-	[ $# -ne 3 ] && echo "make_swap: Wrong parameter count $#" && return 1
-	local USE="$1"
+	if ! [ $# -eq 2 ]; then
+		echo "make_swap: Wrong parameter count $#"
+		return 1
+	fi
+	local zram_size_bytes="$1"
 	local DEV="$2"
-	local STREAMS="$3"
-	echo "$USE" > "/sys/block/zram${DEV}/disksize" || return 1
-	[ -n "$STREAMS" ] && echo "$STREAMS" > "/sys/block/zram${DEV}/max_comp_streams"
+	echo "$zram_size_bytes" > "/sys/block/zram${DEV}/disksize" || return 1
 	(
 		mkswap "/dev/zram${DEV}"
 		swapon "/dev/zram${DEV}" -p 1000 # high priority (in case we have hdd swap 0x82, prefer zram)
 	) &
 }
 
-TOTAL=$(grep ^MemTotal /proc/meminfo | awk '{print $2}')
-USE=$(( TOTAL / ( 2 * DEVS ) ))
-echo "Have $CPUS cores, $TOTAL kb mem, use $USE kb zram swap each for $DEVS devices."
-USE=$(( USE * 1024 ))
+total_mem_kb=$( awk '{ if ($1 == "MemTotal:") { print $2; exit } }' /proc/meminfo )
+use_kb=$(( total_mem_kb / 2 - disk_swap_kb ))
+if ! [ "$use_kb" -gt "$(( total_mem_kb / 8 ))" ]; then # catch NaN through negation
+	use_kb=$(( total_mem_kb / 8 ))
+fi
+echo "Have $total_mem_kb kb mem, create $use_kb kb zram swap."
+zram_size_bytes=$(( use_kb * 1024 ))
+DEVS=1
 DEV=0
 NUM=0
 FAILS=0
 while [ "$NUM" -lt "$DEVS" ]; do
 	if [ -e "/sys/block/zram${DEV}" ]; then
 		if ! [ -e "/sys/block/zram${DEV}/initstate" ] || [ "$(cat "/sys/block/zram${DEV}/initstate")" = 0 ]; then
-			if make_swap "$USE" "$DEV" "$STREAMS"; then
+			if make_swap "$zram_size_bytes" "$DEV"; then
 				NUM=$(( NUM + 1 ))
 			fi
 		fi
@@ -101,7 +103,7 @@ while [ "$NUM" -lt "$DEVS" ]; do
 			echo "ERROR: Cannot hot_add another zram device"
 			break
 		fi
-		if make_swap "$USE" "$DEV" "$STREAMS"; then
+		if make_swap "$zram_size_bytes" "$DEV"; then
 			NUM=$(( NUM + 1 ))
 		else
 			FAILS=$(( FAILS + 1 ))
@@ -117,18 +119,12 @@ while [ "$NUM" -lt "$DEVS" ]; do
 	fi
 done
 
-# Increase min free memory so we have enough mem available when trying to move
-# something to zram swap. We want 1%, or at least 64MiB
-CURRENT=$(cat "/proc/sys/vm/min_free_kbytes")
-TOTAL=$(awk '{ if ($1 == "MemTotal:") { print $2; exit } }' /proc/meminfo)
-WANT=$(( TOTAL / 100 ))
-[ "$WANT" -gt 65535 ] || WANT=65535 # minimum 64M
-if [ "$CURRENT" -lt "$WANT" ]; then
-	echo "$WANT" > "/proc/sys/vm/min_free_kbytes"
-fi
-
 # Wait, so we don't trigger swap.target too early
 wait
+
+# Finally, enable zswap if we created at least one zram device
+read_swap_config
+configure_zswap
 
 exit 0
 
