@@ -43,6 +43,7 @@ trap 'rm -f -- "$RULES" "$AUTORULES" "$REMOTERULES" "$LOGFILE"' EXIT
 . /opt/openslx/config
 
 declare -rg DNS_IPT_FILE="/opt/openslx/iptables/rules.d/00-dnsblock"
+declare -rg DNS_IPT_TEMP="$( mktemp )"
 
 # Create/reset all our chains
 rm -f -- "$DNS_IPT_FILE"
@@ -108,24 +109,9 @@ dnslist="$( (
 	awk '$1 == "nameserver" {print $2}' /etc/resolv.conf
 	resolvectl dns
 	grep -Po '(?<=^server=)[^/].*' /etc/dnsmasq.conf /etc/dnsmasq.d/*
-) | grep -Po '\S+' | sort -u )"
+) | grep -Po '\S+' | grep -P "$V4|$V6" | grep -vP '^(127\.|\[?::1\]?$)' | sort -u )"
 
-# Auto-allow via iptables-helper
-dnsscript=$( mktemp )
-echo "#!/bin/ash" > "$dnsscript"
-for ip in $dnslist; do
-	if [[ $ip =~ $V4 ]]; then
-		tool=iptables
-	elif [[ $ip =~ $V6 ]]; then
-		tool=ip6tables
-	else
-		continue
-	fi
-	echo "$tool -w -A OUTPUT -d $ip -p udp --dport 53 -j ACCEPT"
-	echo "$tool -w -A OUTPUT -d $ip -p tcp --dport 53 -j ACCEPT"
-done >> "$dnsscript"
-chmod +x "$dnsscript"
-mv "$dnsscript" "/opt/openslx/iptables/rules.d/"
+echo "DNSList: $dnslist"
 
 # sssd
 sssd="$( < /etc/sssd/sssd.conf  grep -P '^\s*ldap_(backup_)?uri\s*=' | sed -r 's/^[^=]*=//' )"
@@ -243,6 +229,15 @@ preparetool() {
 	return 0
 }
 
+calltool_check() {
+	local dupargs=( "$@" )
+	if [[ "${dupargs[1]}" == -A ]]; then
+		dupargs[1]="-C"
+		"$TOOL" "${dupargs[@]}" && return 0
+	fi
+	"$TOOL" "$@"
+}
+
 # calltool <iptables> $PORT $ACTION
 calltool() {
 	local TOOL="$1"
@@ -250,10 +245,10 @@ calltool() {
 	local ACTION="$3"
 	if [ "$PORT" = 0 ]; then
 		[ "$ACTION" = "REJECT" ] && "$TOOL" "${IPLINE1[@]}" -p tcp "${IPLINE2with[@]}"
-		"$TOOL" "${IPLINE1[@]}" "${IPLINE2[@]}"
+		calltool_check "${IPLINE1[@]}" "${IPLINE2[@]}"
 	else
-		"$TOOL" "${IPLINE1[@]}" -p tcp "${IPLINE2with[@]}"
-		"$TOOL" "${IPLINE1[@]}" -p udp "${IPLINE2[@]}"
+		calltool_check "${IPLINE1[@]}" -p tcp "${IPLINE2with[@]}"
+		calltool_check "${IPLINE1[@]}" -p udp "${IPLINE2[@]}"
 	fi
 }
 
@@ -272,8 +267,8 @@ if ! (
 		# See if it's a hostname potentially
 		if ! [[ $DEST =~ $V6 || $DEST =~ $V4 ]]; then
 			# Hostname
-			if [ "$DIR" != OUT ] || [ -z "$dnsmasq" ] || [ "$PORT" != 0 ]; then
-				both=1 # Not outgoing, dnsmasq not found, or specific port - cannot do on DNS level
+			if [ "$DIR" != OUT ] || [ -z "$dnsmasq" ]; then
+				both=1 # Not outgoing, or dnsmasq not found - cannot do on DNS level
 			elif [[ $DEST =~ $ILLEGAL_DNS ]] && [ "$DEST" != '*' ]; then
 				both=1 # Not a legal hostname and not wildcard (w/c = default rule)
 			fi
@@ -306,12 +301,14 @@ if ! (
 						for dnsip in $dnslist; do
 							echo "server=/$DEST/$dnsip"
 						done >> "$DNSCFG"
+						# Periodically look up anything that's a hostname and should be allowed
+						dns_list["$DEST"]+=":$ACTION $DIR $PORT"
 					fi
 				fi
 			fi
-			[ -z "$dig" ] && both=1
-			if ! [[ $DEST =~ $ILLEGAL_DNS ]] && [ -n "$both" ]; then
-				dns_list["$DEST"]+=":$ACTION $DIR $PORT"
+			if [ -z "$dig" ]; then
+				# No DNS monitor possible, add to iptables and hope for the best
+				both=1
 			fi
 		fi
 		if [ -n "$both" ] || [[ $DEST =~ $V6 ]]; then # IPv6?
@@ -356,7 +353,7 @@ if ! (
 		fi
 		# Redirect UDP:53 to dnsmasq on whatever port
 		# physdev /sys/class/net/br0/brif/
-		cat >> "$DNS_IPT_FILE" <<-EOF
+		cat >> "$DNS_IPT_TEMP" <<-EOF
 		iptables -t nat -A PREROUTING -p tcp --dport 53 -j REDIRECT --to-port "$DNSPORT"
 		iptables -t nat -A PREROUTING -p udp --dport 53 -j REDIRECT --to-port "$DNSPORT"
 		ip6tables -t nat -A PREROUTING -p tcp --dport 53 -j REDIRECT --to-port "$DNSPORT" \
@@ -365,14 +362,40 @@ if ! (
 			|| ip6tables -A FORWARD -p udp --dport 53 -j DROP
 		true
 		EOF
-		chmod +x "$DNS_IPT_FILE"
 		digargs=( -p "$DNSPORT" "@127.0.0.1" )
 	fi
-	# Background worker adding IPs over time, used for DNS round-robin domains
+
+	block_dns=
 	if [ -n "$PARENTPID" ] && (( ${#dns_list[@]} > 0 )) && [ -n "$dig" ]; then
+		block_dns=1
+	fi
+
+	# Auto-allow via iptables-helper
+	for ip in $dnslist; do
+		if [[ $ip =~ $V4 ]]; then
+			tool=iptables
+		elif [[ $ip =~ $V6 ]]; then
+			tool=ip6tables
+		else
+			continue
+		fi
+		if [ -n "$block_dns" ]; then
+			echo "$tool -w -A OUTPUT -d $ip -p udp --dport 53 -j ACCEPT"
+			echo "$tool -w -A OUTPUT -d $ip -p tcp --dport 53 -j ACCEPT"
+		fi >> "$DNS_IPT_TEMP"
+		if [ -z "$block_dns" ] && preparetool "OUT" "$ip" "53" "ACCEPT"; then
+			calltool "$tool" "53" "ACCEPT"
+		fi
+	done
+
+	chmod +x "$DNS_IPT_TEMP"
+	mv -f -- "$DNS_IPT_TEMP" "$DNS_IPT_FILE"
+
+	# Background worker adding IPs over time, used for DNS round-robin domains
+	if [ -n "$block_dns" ]; then
 		echo "Running background DNS monitor"
-		exec 2> /tmp/dns-monitor
-		set -x
+		#exec 2> /tmp/dns-monitor
+		#set -x
 		# mangle_addrs <iptables>
 		# Expects $known, $dns_list, $domain and $ips to be set
 		mangle_addrs() {
@@ -409,7 +432,7 @@ if ! (
 			sleep 5
 		done # While main process still running
 		rm -f -- "$DNS_IPT_FILE"
-	elif [ -s "$DNSCFG" ] && [ -n "$PARENTPID" ]; then
+	else
 		while [ -d "/proc/$PARENTPID" ]; do
 			sleep 5
 		done

@@ -8,7 +8,6 @@ import shlex
 import argparse
 import tempfile
 import shutil
-import threading
 import time
 import ipaddress
 import urllib.request
@@ -27,15 +26,24 @@ def run_command(cmd: List[str], check: bool = True, capture_output: bool = False
     try:
         result = subprocess.run(cmd, check=check, capture_output=capture_output, text=True)
         return result
-    except subprocess.CalledProcessError as e:
+    except (subprocess.CalledProcessError, FileNotFoundError) as e:
         if check:
             print(f"Command failed: {' '.join(cmd)}", file=sys.stderr)
-            if e.stderr:
+            if hasattr(e, 'stderr') and e.stderr:
                 print(e.stderr, file=sys.stderr)
+        if isinstance(e, FileNotFoundError):
+            # Create a mock result with a non-zero returncode for consistency
+            return subprocess.CompletedProcess(cmd, returncode=127, stdout="", stderr=str(e))
         return e
 
 def parse_shell_config(path: str) -> Dict[str, str]:
-    """Parse a shell configuration file and return a dictionary of variables."""
+    """
+    Parse a shell configuration file.
+    NOTE FOR FUTURE DEVS: This is a simple parser and DOES NOT handle shell
+    parameter expansion, substitutions, or subshells (e.g., VAR=${OTHER:-default}).
+    If the config becomes complex, consider sourcing it in a subshell and
+    exporting to JSON instead.
+    """
     config = {}
     if not os.path.exists(path):
         return config
@@ -147,8 +155,9 @@ class FirewallManager:
 
     def setup_chains(self):
         """Initialize and hook custom iptables chains."""
-        if os.path.exists(DNS_IPT_FILE):
-            os.remove(DNS_IPT_FILE)
+        for f in [DNS_IPT_FILE, "/opt/openslx/iptables/rules.d/10-dns-allow"]:
+            if os.path.exists(f):
+                os.remove(f)
             
         for tool in ['iptables', 'ip6tables']:
             for suffix in ['INPUT', 'OUTPUT', 'INPUT-sub', 'OUTPUT-sub']:
@@ -169,12 +178,16 @@ class FirewallManager:
                     run_command([tool, '-w', '-A', base_chain, flag, interface, '-j', target])
             
             # Allow loopback
-            run_command([tool, '-w', '-A', 'runvirt-INPUT', '-i', 'lo', '-j', 'ACCEPT'])
-            run_command([tool, '-w', '-A', 'runvirt-OUTPUT', '-o', 'lo', '-j', 'ACCEPT'])
+            if run_command([tool, '-w', '-C', 'runvirt-INPUT', '-i', 'lo', '-j', 'ACCEPT'], check=False).returncode != 0:
+                run_command([tool, '-w', '-A', 'runvirt-INPUT', '-i', 'lo', '-j', 'ACCEPT'])
+            if run_command([tool, '-w', '-C', 'runvirt-OUTPUT', '-o', 'lo', '-j', 'ACCEPT'], check=False).returncode != 0:
+                run_command([tool, '-w', '-A', 'runvirt-OUTPUT', '-o', 'lo', '-j', 'ACCEPT'])
             
             # Jump to subchains
-            run_command([tool, '-w', '-A', 'runvirt-INPUT', '-j', 'runvirt-INPUT-sub'])
-            run_command([tool, '-w', '-A', 'runvirt-OUTPUT', '-j', 'runvirt-OUTPUT-sub'])
+            if run_command([tool, '-w', '-C', 'runvirt-INPUT', '-j', 'runvirt-INPUT-sub'], check=False).returncode != 0:
+                run_command([tool, '-w', '-A', 'runvirt-INPUT', '-j', 'runvirt-INPUT-sub'])
+            if run_command([tool, '-w', '-C', 'runvirt-OUTPUT', '-j', 'runvirt-OUTPUT-sub'], check=False).returncode != 0:
+                run_command([tool, '-w', '-A', 'runvirt-OUTPUT', '-j', 'runvirt-OUTPUT-sub'])
             
         return True
 
@@ -224,31 +237,14 @@ class FirewallManager:
                 except OSError:
                     pass
         
-        self.dns_servers = sorted(list(dns_ips))
-        
-        # Create dns allow script
-        try:
-            with tempfile.NamedTemporaryFile(mode='w', delete=False) as tf:
-                tf.write("#!/bin/ash\n")
-                for ip in self.dns_servers:
-                    version = get_ip_version(ip)
-                    if version == 4:
-                        tool = 'iptables'
-                    elif version == 6:
-                        tool = 'ip6tables'
-                    else:
-                        continue
-                    tf.write(f"{tool} -w -A OUTPUT -d {ip} -p udp --dport 53 -j ACCEPT\n")
-                    tf.write(f"{tool} -w -A OUTPUT -d {ip} -p tcp --dport 53 -j ACCEPT\n")
-                temp_name = tf.name
-            
-            os.chmod(temp_name, 0o755)
-            # Use a more descriptive name
-            target_path = "/opt/openslx/iptables/rules.d/10-dns-allow"
-            shutil.move(temp_name, target_path)
-        except Exception as e:
-            print(f"Failed to create DNS allow rules: {e}", file=sys.stderr)
-            # Not fatal enough to exit 7? Bash doesn't check this specifically.
+        # Filter out loopback and invalid IPs
+        self.dns_servers = []
+        for ip in sorted(list(dns_ips)):
+            version = get_ip_version(ip)
+            if not version: continue
+            if version == 4 and ip.startswith('127.'): continue
+            if version == 6 and (ip == '::1' or ip == '[::1]'): continue
+            self.dns_servers.append(ip)
 
         # SSSD
         if os.path.exists('/etc/sssd/sssd.conf'):
@@ -344,7 +340,7 @@ class FirewallManager:
             # Bash logic for 'both'
             both = False
             if is_hostname:
-                if direction != "OUT" or not dnsmasq_available or port != "0" or ILLEGAL_DNS.search(dest):
+                if direction != "OUT" or not dnsmasq_available or ILLEGAL_DNS.search(dest):
                     both = True
                 if not dig_available:
                     both = True
@@ -373,7 +369,7 @@ class FirewallManager:
                         dns_config_lines.append(f"address=/{dest}/")
 
             if is_hostname and not ILLEGAL_DNS.search(dest):
-                if both:
+                if action == "ACCEPT":
                     if dest not in self.dns_list:
                         self.dns_list[dest] = []
                     self.dns_list[dest].append((action, direction, port))
@@ -401,13 +397,27 @@ class FirewallManager:
                     for dnsip in self.dns_servers:
                         f.write(f"server={dnsip}\n")
             
-            # DNS NAT Redirection
+            # DNS Redirection and dynamic allow rules
+            block_dns = (self.parent_pid and self.dns_list and dig_available)
+            
             with open(DNS_IPT_FILE, 'w') as f:
                 f.write(f"iptables -t nat -A PREROUTING -p tcp --dport 53 -j REDIRECT --to-port {self.dnsport}\n")
                 f.write(f"iptables -t nat -A PREROUTING -p udp --dport 53 -j REDIRECT --to-port {self.dnsport}\n")
                 f.write(f"ip6tables -t nat -A PREROUTING -p tcp --dport 53 -j REDIRECT --to-port {self.dnsport} || ip6tables -A FORWARD -p tcp --dport 53 -j DROP\n")
                 f.write(f"ip6tables -t nat -A PREROUTING -p udp --dport 53 -j REDIRECT --to-port {self.dnsport} || ip6tables -A FORWARD -p udp --dport 53 -j DROP\n")
+                
+                if block_dns:
+                    for ip in self.dns_servers:
+                        version = get_ip_version(ip)
+                        tool = "iptables" if version == 4 else "ip6tables"
+                        f.write(f"{tool} -w -A OUTPUT -d {ip} -p udp --dport 53 -j ACCEPT\n")
+                        f.write(f"{tool} -w -A OUTPUT -d {ip} -p tcp --dport 53 -j ACCEPT\n")
+            
             os.chmod(DNS_IPT_FILE, 0o755)
+
+            if not block_dns:
+                for ip in self.dns_servers:
+                    self.apply_iptables("iptables" if get_ip_version(ip) == 4 else "ip6tables", "OUT", ip, "53", "ACCEPT")
 
             # Block DoH servers
             doh_servers_path = '/opt/openslx/vmchooser/data/doh-servers'
@@ -443,19 +453,45 @@ class FirewallManager:
         if port == "0":
             if action == "REJECT":
                 # For REJECT, we add a tcp-reset rule first
-                tcp_args = args + ['-p', 'tcp', '-j', 'REJECT', '--reject-with', 'tcp-reset']
-                run_command([tool] + tcp_args, check=False)
-            run_command([tool] + args + ['-j', action], check=False)
+                tcp_args = args.copy()
+                tcp_args[tcp_args.index('-I' if front else '-A') + 1] = chain # Keep chain
+                tcp_args += ['-p', 'tcp', '-j', 'REJECT', '--reject-with', 'tcp-reset']
+                # Check for existence
+                check_args = tcp_args.copy()
+                check_idx = check_args.index('-I' if front else '-A')
+                check_args[check_idx] = '-C'
+                if front: check_args.pop(check_idx + 2) # Remove '1' for -C
+                if run_command([tool] + check_args, check=False).returncode != 0:
+                    run_command([tool] + tcp_args, check=False)
+            
+            final_args = args + ['-j', action]
+            check_args = final_args.copy()
+            check_idx = check_args.index('-I' if front else '-A')
+            check_args[check_idx] = '-C'
+            if front: check_args.pop(check_idx + 2)
+            if run_command([tool] + check_args, check=False).returncode != 0:
+                run_command([tool] + final_args, check=False)
         else:
             # TCP with reset if REJECT
             tcp_args = args + ['-p', 'tcp', '--dport', port, '-j', action]
             if action == "REJECT":
                 tcp_args += ['--reject-with', 'tcp-reset']
-            run_command([tool] + tcp_args, check=False)
+            
+            check_args = tcp_args.copy()
+            check_idx = check_args.index('-I' if front else '-A')
+            check_args[check_idx] = '-C'
+            if front: check_args.pop(check_idx + 2)
+            if run_command([tool] + check_args, check=False).returncode != 0:
+                run_command([tool] + tcp_args, check=False)
             
             # UDP
             udp_args = args + ['-p', 'udp', '--dport', port, '-j', action]
-            run_command([tool] + udp_args, check=False)
+            check_args = udp_args.copy()
+            check_idx = check_args.index('-I' if front else '-A')
+            check_args[check_idx] = '-C'
+            if front: check_args.pop(check_idx + 2)
+            if run_command([tool] + check_args, check=False).returncode != 0:
+                run_command([tool] + udp_args, check=False)
 
     def dns_monitor_loop(self):
         """Periodically resolve hostnames and update iptables rules for identified IPs."""
@@ -487,11 +523,12 @@ class FirewallManager:
             ctr += 1
             time.sleep(5)
         
-        if os.path.exists(DNS_IPT_FILE):
-            try:
-                os.remove(DNS_IPT_FILE)
-            except OSError:
-                pass
+        for f in [DNS_IPT_FILE, "/opt/openslx/iptables/rules.d/10-dns-allow"]:
+            if os.path.exists(f):
+                try:
+                    os.remove(f)
+                except OSError:
+                    pass
 
 class ArgumentParser(argparse.ArgumentParser):
     def error(self, message):
@@ -507,6 +544,10 @@ def main():
     parser.add_argument("parentpid", nargs="?", help="PID of the VM process")
     
     args = parser.parse_args()
+
+    # Validation: Ensure dnsport is present if dnscfg is provided
+    if args.dnscfg and not args.dnsport:
+        parser.error("DNSPORT is required if DNSCFG is provided.")
     
     if not is_root():
         sys.exit(1)
@@ -540,8 +581,6 @@ def main():
     if args.parentpid and (manager.dns_list or manager.dnscfg_path):
         # Start background monitor
         # In bash it was: ... &
-        # We can use a daemon thread if the main process is supposed to exit, 
-        # but wait, if the main process exits, the daemon thread also exits.
         # So we should fork if we want it to stay alive.
         
         try:
