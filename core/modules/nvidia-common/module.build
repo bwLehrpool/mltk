@@ -97,7 +97,8 @@ build() {
 		mkdir -p "$NVIDIA_MODULES"
 		pinfo "Copying kernel modules..."
 		kmods=( nvidia.ko nvidia-uvm.ko nvidia-modeset.ko nvidia-drm.ko )
-		(( major >= 580 )) && kmods+=( nvidia-peermem.ko )
+		# Not actually needed, but exists now
+		#(( major >= 580 )) && kmods+=( nvidia-peermem.ko )
 		for file in "${kmods[@]}"; do
 			RESULT=$(find "$builddir/NVIDIA/kernel" -name "$file" | head -n 1)
 			[ -z "$RESULT" ] && perror "Could not find built module $file in ./NVIDIA/kernel"
