@@ -298,9 +298,13 @@ if ! (
 						both=1
 					else
 						# specifically map to our DNS servers
-						for dnsip in $dnslist; do
-							echo "server=/$DEST/$dnsip"
-						done >> "$DNSCFG"
+						{
+							for dnsip in $dnslist; do
+								echo "server=/$DEST/$dnsip"
+							done
+							# Block subdomains by default
+							echo "server=/*.$DEST/"
+						} >> "$DNSCFG"
 						# Periodically look up anything that's a hostname and should be allowed
 						dns_list["$DEST"]+=":$ACTION $DIR $PORT"
 					fi
