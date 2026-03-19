@@ -9,6 +9,7 @@ download_metadata() {
 	local EXTRA_ERROR=
 	local DOWNLOADED_VMX="$CONFDIR/vmx"
 	declare -rg TMPCONFIG="$CONFDIR/vmx_modified"
+	DMSD_SESSION_ID=
 
 	# Run hooks
 	if run_hooks "download" "$CONFDIR"; then
@@ -64,7 +65,7 @@ $EXTRA_ERROR" cleanexit 1
 
 download_metadata_default() {
 	local TRIES WLOG TMPFILE RET ERRCODE CMDLINE
-	local cow_token argx
+	local argx
 	# Sanity checks
 	if ! check_dep curl; then
 		writelog "Could not find 'curl' in PATH: $PATH"
@@ -74,12 +75,12 @@ download_metadata_default() {
 	# Admin-mode (Edit-Mode)
 	argx=
 	if is_on "$VMCHOOSER_ADMIN_MODE"; then
-		cow_token=$( cat "/run/user/$( id -u )/cow-token" )
-		if isempty cow_token; then
+		DMSD_SESSION_ID=$( cat "/run/user/$( id -u )/cow-token" )
+		if isempty DMSD_SESSION_ID; then
 			writelog "No cow token found in edit mode"
 			EXIT_TYPE=user EXIT_REASON="Admin-Modus aktiviert, aber kein cow-token vorgefunden." cleanexit 1
 		fi
-		argx="?cow-user=$cow_token&cow-type=$VMCHOOSER_ADMIN_TYPE"
+		argx="?cow-user=$DMSD_SESSION_ID&cow-type=$VMCHOOSER_ADMIN_TYPE"
 	fi
 
 	# Try new unified .tar.gz way
