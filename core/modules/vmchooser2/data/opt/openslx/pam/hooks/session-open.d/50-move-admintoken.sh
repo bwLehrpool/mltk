@@ -14,7 +14,7 @@ if [ "$PAM_SERVICE" != "su" ] && [ "$PAM_SERVICE" != "sudo" ]; then
 			chmod 0700 "$udir"
 			chown "${USER_UID}:${USER_GID}" "$udir"
 		fi
-		mv -f "$file" "$udir/cow-token"
-		chown "$USER_UID" "$udir/cow-token"
+		mv -f "$file" "$udir/dmsd-session"
+		chown "$USER_UID" "$udir/dmsd-session"
 	fi
 fi

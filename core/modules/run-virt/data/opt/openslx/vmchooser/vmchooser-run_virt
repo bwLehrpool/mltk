@@ -193,7 +193,7 @@ main() {
 		cntr=0
 		while true; do
 			writelog "Launching CoW-GUI"
-			cowgui --cow-session "$DMSD_COW_SESSION" --user-session "$DMSD_SESSION_ID" --url "$cowurl" --pid "$DNBD3_PID" --status "$TMPDIR/cow/status" && break
+			cowgui --cow-session "$DMSD_COW_SESSION" --user-session "$DMSD_SESSION_JSON" --url "$cowurl" --pid "$DNBD3_PID" --status "$TMPDIR/cow/status" && break
 			# Unclean exit, let's see if it's worth relaunching
 			state="$( curl -m 3 -sS -L "$cowurl/status/$DMSD_COW_SESSION" | jq -r .state )"
 			[ -z "$state" ] && break
