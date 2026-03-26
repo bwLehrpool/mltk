@@ -152,7 +152,16 @@ if is_on "$SLX_BROWSER_INSECURE"; then
 	chromium_args+=( "--allow-running-insecure-content" "--ignore-certificate-errors" )
 fi
 if is_on "$SLX_BROWSER_HWVIDEO"; then
-	chromium_args+=( "--enable-features=VaapiVideoDecoder,VaapiIgnoreDriverChecks,VaapiVideoDecodeLinuxGL" )
+	# These are not enough anymore on ~8th gen Intel CPUs using iHD driver, using the one below...
+	#chromium_args+=( "--enable-features=VaapiVideoDecoder,VaapiIgnoreDriverChecks,VaapiVideoDecodeLinuxGL" )
+	chromium_args+=(
+		"--ozone-platform-hint=auto"
+		"--use-gl=angle"
+		"--use-angle=vulkan"
+		"--enable-features=VaapiVideoEncoder,Vulkan,VulkanFromANGLE,DefaultANGLEVulkan,UseMultiPlaneFormatForHardwareVideo,VaapiIgnoreDriverChecks"
+	)
+	# Above leads to s/w only decode on older intel (~4th gen), but the commented-out variant from before
+	# leads to completely broken playback, so I guess this here is better? To be checked on nvidia and AMD tho...
 fi
 
 # Wait until cert store is fully populated
