@@ -93,6 +93,10 @@ if [ -n "$SLX_SCREEN_SAVER_TIMEOUT" ]; then
 	EXTRA+=( "--allow-screensaver-disable" )
 fi
 
+if [ -s "/run/user/$(id -u)/dmsd-session" ]; then
+	EXTRA+=( "--dmsd-session" "$( cat "/run/user/$(id -u)/dmsd-session" )" )
+fi
+
 set +x
 exec vmchooser.real "$@" --url "$URL" --fullscreen --tab "$TAB" --start-uuid "$SLX_EXAM_START" "${EXTRA[@]}"
 
