@@ -1,0 +1,20 @@
+#!/bin/ash
+
+# Sourced as session-close and Xsetup hook
+
+runvirt_fw_clear () {
+	local a b
+	for a in "" "-sub"; do
+		for b in "INPUT" "OUTPUT"; do
+			iptables -w -F "runvirt-$b$a"
+			ip6tables -w -F "runvirt-$b$a"
+		done
+	done
+}
+
+if [ "$PAM_TTY" = ":0" ]; then
+	runvirt_fw_clear > /dev/null 2>&1
+fi
+
+true
+
