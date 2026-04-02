@@ -130,7 +130,7 @@ build() {
 				elif [[ "$mode" = 2 ]] && [[ "$line" =~ $regex ]]; then
 					mode=0
 					dev="${BASH_REMATCH[1]}"
-					dev="${dev~~}"
+					dev="${dev,,}"
 					if [ -n "${pciids[$dev]}" ]; then
 						pdebug "$dev already handled"
 					else
