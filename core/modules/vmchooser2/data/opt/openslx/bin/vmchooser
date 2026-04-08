@@ -93,8 +93,11 @@ if [ -n "$SLX_SCREEN_SAVER_TIMEOUT" ]; then
 	EXTRA+=( "--allow-screensaver-disable" )
 fi
 
-if [ -s "/run/user/$(id -u)/dmsd-session" ]; then
-	EXTRA+=( "--dmsd-session" "$( cat "/run/user/$(id -u)/dmsd-session" )" )
+dmsdFile="/run/user/$(id -u)/dmsd-session"
+if [ -s "$dmsdFile" ]; then
+	DMSD_SESSION_ID=$( < "$dmsdFile"  jq -r .authToken )
+	[ -z "$DMSD_SESSION_ID" ] && DMSD_SESSION_ID=$( cat "$dmsdFile" )
+	EXTRA+=( "--cow-token" "$DMSD_SESSION_ID" )
 fi
 
 set +x

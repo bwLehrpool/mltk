@@ -189,11 +189,25 @@ main() {
 	if [ -n "$DMSD_COW_SESSION" ]; then
 		vmpidfile="$( mktemp -p "/run/user/$( id -u )" )"
 		cowurl="${SLX_VMCHOOSER_BASE_URL//"/vmchooser/"/"/cow/"}"
+		satip=$( getent hosts satellite.bwlehrpool | awk '{print $1}' )
+		[ -z "$satip" ] && satip="${SLX_REMOTE_SSL}"
+		[ -z "$satip" ] && satip="${SLX_KCL_SERVERS}"
+		[ -z "$satip" ] && satip="${SLX_PXE_SERVER_IP}"
+		# Pass lecture in EDIT mode, in COPY mode we expect to get new
+		# image base id in JSON metadata from dmsd (in cowgui)
+		lecture=
+		if [ "${VMCHOOSER_ADMIN_TYPE}" = "EDIT" ]; then
+			lecture="${IMGUUID}"
+		fi
 		(
 		cntr=0
 		while true; do
 			writelog "Launching CoW-GUI"
-			cowgui --cow-session "$DMSD_COW_SESSION" --user-session "$DMSD_SESSION_JSON" --url "$cowurl" --pid "$DNBD3_PID" --status "$TMPDIR/cow/status" && break
+			cowgui --cow-session "$DMSD_COW_SESSION" --user-session "$DMSD_SESSION_JSON" \
+				--url "$cowurl" --pid "$DNBD3_PID" --status "$TMPDIR/cow/status" \
+				--satellite "$satip" --webgui "https://bwlp-masterserver.ruf.uni-freiburg.de/suite/" \
+				--lecture-id "$lecture" \
+				&& break
 			# Unclean exit, let's see if it's worth relaunching
 			state="$( curl -m 3 -sS -L "$cowurl/status/$DMSD_COW_SESSION" | jq -r .state )"
 			[ -z "$state" ] && break

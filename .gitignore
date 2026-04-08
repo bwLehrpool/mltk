@@ -21,3 +21,4 @@ test
 **/winres/tmp/
 **/winres/winres.exe
 /tmp/nfscache
+__pycache__/

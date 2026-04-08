@@ -80,8 +80,8 @@ download_metadata_default() {
 			# Legacy format?
 			DMSD_SESSION_ID=$( cat "$dmsdFile" )
 		else
-			# New format - get remaining stuff
-			DMSD_SESSION_JSON=$( cat "$dmsdFile" )
+			# New format - remember to pass to cowgui
+			DMSD_SESSION_JSON="$dmsdFile"
 		fi
 		if isempty DMSD_SESSION_ID; then
 			writelog "No cow token found in edit mode"
@@ -89,7 +89,7 @@ download_metadata_default() {
 		fi
 		argx="?cow-user=${DMSD_SESSION_ID}&cow-type=${VMCHOOSER_ADMIN_TYPE}"
 	fi
-	rm -f -- "$dmsdFile"
+	#rm -f -- "$dmsdFile"
 
 	# Try new unified .tar.gz way
 	TMPFILE="$TMPDIR/metadata.tgz"
