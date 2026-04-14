@@ -7,11 +7,12 @@ build() {
 	local SRCDIR="${MODULE_WORK_DIR}/src/libvirt-glib"
 	cde "${SRCDIR}"
 
-	meson build \
+	meson setup \
 		--prefix="/usr" \
 		--sysconfdir="/etc" \
 		--libexecdir="/usr/libexec" \
 		--localstatedir="/var" \
+		build \
 		-Dtests=disabled \
 		-Ddocs=disabled || perror "'meson' failed."
 	ninja -v -C build || perror "'ninja' failed."

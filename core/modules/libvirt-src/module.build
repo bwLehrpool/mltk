@@ -32,12 +32,10 @@ build() {
 
 	sed -i 's/-Wdeprecated-declarations/-Wno-deprecated-declarations/' meson.build
 
-	meson build \
-		--prefix="/usr" \
-		--sysconfdir="/etc" \
-		--libexecdir="/usr/libexec" \
-		--localstatedir="/var" \
-		-Dsystem=true \
+	meson setup \
+		--prefix="/usr/local" \
+		build \
+		-Dsystem=false \
 		-Dtests=disabled \
 		-Ddocs=enabled \
 		-Dwireshark_dissector=disabled \
@@ -50,8 +48,8 @@ build() {
 		-Ddriver_vbox=enabled \
 		-Ddriver_vmware=enabled \
 		-Ddriver_remote=enabled || perror "'meson' failed."
-	ninja -v -C build || perror "'ninja' failed."
-	ninja -v -C build install || perror "'ninja install' failed."
+	ninja -C build || perror "'ninja' failed."
+	ninja -C build install || perror "'ninja install' failed."
 
 	# delete default libvirt network
 	rm "/etc/libvirt/qemu/networks/autostart/default.xml"
