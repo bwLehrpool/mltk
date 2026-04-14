@@ -16,7 +16,9 @@ bash <<"HEREDOC"
     XRANDR=$( mktemp )
     TMP=$( mktemp )
     TF=$( mktemp )
+    BG=$( mktemp )
     xrandr --verbose > "$XRANDR"
+    beamergui 2> "$BG" >&2
 
     OUTPUTNAMES=$( < "$XRANDR"  grep -E "[[:digit:]]+mm x [[:digit:]]+mm" | awk '{print $1}' )
 
@@ -25,11 +27,12 @@ bash <<"HEREDOC"
         < "$XRANDR"  grep -Pzo "\n${output}\N*connected\N*\n(\s+\N*\n)+" > "$TMP"
         echo -e -n "$( < "$TMP"  grep -Eao '[0-9a-f]{32}' | sed -r ':a;N;$!ba;s/[^0-9a-f]//gI;s/([0-9a-f]{2})/\\x\1/gI' )" > "$TF"
         MODEL_NAME=$( < "$TF"  parse-edid | grep -m 1 -E '^\s*ModelName' | sed -r 's/^[^"]*"(.*)"[^"]*$/\1/;s/^\s+//;s/\s+$//' )
-        NATIVE_RES=$( < "$TMP"  grep -Fa ' +preferred' | awk '{print $1}' )
+        NATIVE_RES=$( < "$BG"  awk -v "output=${output}" '$1 == "Determined" && $8 == "x" && $5 == "\"" output "\"" {print $7 "x" $9}' )
+        [ -z "$NATIVE_RES" ] && NATIVE_RES=$( < "$TMP"  grep -Fa ' +preferred' | awk '{print $1}' )
         POSTDATA+=( "-dscreen[${output}][name]=${MODEL_NAME}" "-dscreen[${output}][resolution]=${NATIVE_RES}" )
     done
 
-    rm -f -- "$TF" "$XRANDR" "$TMP"
+    rm -f -- "$TF" "$XRANDR" "$TMP" "$BG"
     # Note, the report is sent only on the first X startup, and we actually use the event server-side
     # to determine when we reach the graphical login screen for simple performance measurements, so
     # keep that in mind if you ever fiddle around here.
