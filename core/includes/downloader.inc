@@ -145,15 +145,17 @@ autoclone () {
 				git clone --depth 1 -b "$branch" "$url" "$dstdir/$dst" && break
 				pwarning "[Try $i] Could not clone $url branch $branch"
 				sleep 10
+			elif [ -z "$checkout" ]; then
+				git clone --depth 1 "$url" "$dstdir/$dst" && break
+				pwarning "[Try $i] Could not clone $url"
+				sleep 10
 			else
 				if ! git clone "$url" "$dstdir/$dst"; then
 					pwarning "[Try $i] Could not clone $url"
 					sleep 10
-				elif [ -n "$checkout" ]; then
+				else
 					git -C "$dstdir/$dst" checkout "$checkout" && break
 					perror "Could not checkout $checkout from $url"
-				else
-					break
 				fi
 			fi
 			if (( i == 3 )) && ! [[ $url == https://github.com/* ]]; then
