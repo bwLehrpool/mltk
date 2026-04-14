@@ -23,6 +23,7 @@ build() {
 		--with-openssl \
 		--with-tpm2 || perror "'configure' failed."
 	make || perror "'make' failed."
+	make install || perror "'make install' failed."
 
 	cde "${SRCDIR_BIN}"
 
@@ -38,11 +39,11 @@ build() {
 		--with-gnutls \
 		--with-seccomp || perror "'configure' failed."
 	make || perror "'make' failed."
-	DESTDIR="${DSTDIR}" make install || perror "'make install' failed."
+	make install || perror "'make install' failed."
 
 	# change group and permissions for libvirt-tpm members
-	chgrp "${LIBVIRT_STPM_GRP}" "${DSTDIR}/var/lib/swtpm-localca"
-	chmod 775 "${DSTDIR}/var/lib/swtpm-localca"
+	chgrp "${LIBVIRT_STPM_GRP}" "/var/lib/swtpm-localca"
+	chmod 775 "/var/lib/swtpm-localca"
 }
 
 post_copy() {
