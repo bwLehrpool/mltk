@@ -55,6 +55,9 @@ build() {
 	rm "/etc/libvirt/qemu/networks/autostart/default.xml"
 	rm "/etc/libvirt/qemu/networks/default.xml"
 
+	# So libvirt can find the efi firmware etc.
+	ln -ns "/usr/share/qemu" "/usr/local/share/qemu"
+
 	# delete installed test files
 	rm -rf "/usr/share/augeas"
 }
