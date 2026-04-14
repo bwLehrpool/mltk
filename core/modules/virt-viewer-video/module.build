@@ -12,7 +12,7 @@ build() (
 	# Part 0: gstreamer
 	SRCDIR="${MODULE_WORK_DIR}/src/gstreamer"
 	cde "${SRCDIR}"
-	CXXFLAGS="-std=c++20" meson setup
+	CXXFLAGS="-std=c++20" meson setup \
 		--prefix="$prefix" \
 			build \
 		-Dbad=enabled \
