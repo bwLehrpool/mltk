@@ -1,24 +1,27 @@
 #!/bin/bash
 REQUIRED_INSTALLED_PACKAGES="
+	bison
 	debhelper
-	gcc
-	gstreamer1.0-plugins-bad
-	intel-media-va-driver-non-free
-	intltool
-	libffi-dev
+	flex
+	gettext
+	libcairo2-dev
+	libcurl4-openssl-dev
+	libdrm-dev
 	libglib2.0-dev
-	libgovirt-dev
-	libgstreamer-plugins-bad1.0-dev
-	libgstreamer-plugins-base1.0-dev
-	libgstreamer1.0-dev
 	libgtk-3-dev
-	libgtk-vnc-2.0-dev
-	libspice-client-gtk-3.0-dev
+	libgudev-1.0-dev
+	libjpeg-dev
+	libopus-dev
+	liborc-0.4-dev
+	libssl-dev
 	libva-dev
-	libva-wayland2
-	libvte-dev
-	libxml2-dev
+	libvpl-dev
+	libwayland-dev
 	meson
+	nasm
 	ninja-build
+	patchelf
 	python3
+	python3-pyparsing
+	python3-six
 "

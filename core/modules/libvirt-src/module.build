@@ -28,7 +28,6 @@ fetch_source() {
 
 build() {
 	local SRCDIR="${MODULE_WORK_DIR}/src/libvirt"
-	local DSTDIR="${MODULE_BUILD_DIR}"
 	cde "${SRCDIR}"
 
 	sed -i 's/-Wdeprecated-declarations/-Wno-deprecated-declarations/' meson.build
@@ -52,27 +51,14 @@ build() {
 		-Ddriver_vmware=enabled \
 		-Ddriver_remote=enabled || perror "'meson' failed."
 	ninja -v -C build || perror "'ninja' failed."
-	DESTDIR="${DSTDIR}" ninja -v -C build install || perror "'ninja install' failed."
+	ninja -v -C build install || perror "'ninja install' failed."
 
 	# delete default libvirt network
-	rm "${DSTDIR}/etc/libvirt/qemu/networks/autostart/default.xml"
-	rm "${DSTDIR}/etc/libvirt/qemu/networks/default.xml"
+	rm "/etc/libvirt/qemu/networks/autostart/default.xml"
+	rm "/etc/libvirt/qemu/networks/default.xml"
 
-	# delete installed test and documentation files
-	rm -rf "${DSTDIR}/usr/share/augeas"
-	rm -rf "${DSTDIR}/usr/share/doc/libvirt"
-
-	# patch library directory in pkg-config files
-	sed -i 's/^libdir=.*$/libdir=\/usr\/lib\/x86_64-linux-gnu/g' "${DSTDIR}/usr/lib64/pkgconfig/libvirt.pc"
-	sed -i 's/^libdir=.*$/libdir=\/usr\/lib\/x86_64-linux-gnu/g' "${DSTDIR}/usr/lib64/pkgconfig/libvirt-admin.pc"
-	sed -i 's/^libdir=.*$/libdir=\/usr\/lib\/x86_64-linux-gnu/g' "${DSTDIR}/usr/lib64/pkgconfig/libvirt-lxc.pc"
-	sed -i 's/^libdir=.*$/libdir=\/usr\/lib\/x86_64-linux-gnu/g' "${DSTDIR}/usr/lib64/pkgconfig/libvirt-qemu.pc"
-
-	# delete non-empty run folder to prevent mltk from stopping
-	local dir
-	for dir in "run" "var/run"; do
-		rm -rf -- "${DSTDIR}/$dir" || perror "${DSTDIR}/$dir exists could not be killed"
-	done
+	# delete installed test files
+	rm -rf "/usr/share/augeas"
 }
 
 post_copy() {
