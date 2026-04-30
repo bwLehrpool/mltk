@@ -1,0 +1,4 @@
+#!/bin/sh
+
+command -v i3-sensible-terminal > /dev/null 2>&1 && exec i3-sensible-terminal
+exec xterm

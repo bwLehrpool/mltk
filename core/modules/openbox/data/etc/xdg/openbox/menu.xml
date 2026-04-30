@@ -7,7 +7,7 @@
 
 <menu id="root-menu" label="Openbox 3">
   <item label="Terminal">
-    <action name="Execute"><execute>xterm</execute></action>
+    <action name="Execute"><execute>slxterm</execute></action>
   </item>
   <item label="vmChooser">
     <action name="Execute"><execute>vmchooser</execute></action>
@@ -24,6 +24,17 @@
   <item label="Exit">
     <action name="Exit" />
   </item>
+</menu>
+
+<menu id="my-client-menu">
+  <item label="Restore"><action name="Unshade"/></item>
+  <item label="Move"><action name="Move"/></item>
+  <item label="Resize"><action name="Resize"/></item>
+  <item label="Iconify"><action name="Iconify"/></item>
+  <item label="Maximize"><action name="Maximize"/></item>
+  <!-- Shade would normally be here; leaving it out removes it -->
+  <separator/>
+  <item label="Close"><action name="Close"/></item>
 </menu>
 
 </openbox_menu>
