@@ -106,6 +106,8 @@ echo -n "..."
 
 cp /tmp/udhcpclog /opt/openslx/config.tgz.list \
 	/etc/resolv.conf \
+	/etc/hosts \
+	/etc/hostname \
 	/tmp/xsession-log-* \
 	/tmp/remote_log_check-* \
 	/opt/openslx/pam/slx-ldap.d/* \
