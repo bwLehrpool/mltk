@@ -253,9 +253,9 @@ case "$1" in
 				fi
 				if [ -z "$dns_fqdn" ]; then
 					# Try currently set fqdn
-					dns_fqdn="$( hostname -f )"
+					dns_fqdn="$( cat /proc/sys/kernel/hostname )"
 				fi
-				if [ -z "$dns_fqdn" ]; then
+				if [ -z "$dns_fqdn" ] || [ "$dns_fqdn" = "localhost" ]; then
 					if [ -s "/etc/hostname" ]; then
 						dns_fqdn="$( head -n 1 /etc/hostname )"
 					else
@@ -264,15 +264,19 @@ case "$1" in
 					fi
 				fi
 				# finally, if dns_fqdn was set to anything, apply it
+				dns_fqdn="${dns_fqdn// /}"
 				if [ -n "$dns_fqdn" ]; then
 					dns_short="${dns_fqdn%%.*}"
-					echo "$dns_short" > "/proc/sys/kernel/hostname"
-					echo "$dns_short" > "/etc/hostname"
-					if [ -z "$SLX_HOSTNAME" ]; then
-						echo "# Config written by openslx-dhcp-script (1)" >> /opt/openslx/config
-						echo "SLX_HOSTNAME='$dns_short'" >> /opt/openslx/config
-					elif [ "$SLX_HOSTNAME" != "$dns_short" ]; then
-						sed -i "s/^\(SLX_HOSTNAME=\).*$/\1'$dns_short'/" /opt/openslx/config
+					if [ -n "$dns_short" ]; then
+						echo "Setting new hostname to '$hostname' ($dns_fqdn)"
+						echo "$dns_short" > "/proc/sys/kernel/hostname"
+						echo "$dns_short" > "/etc/hostname"
+						if [ -z "$SLX_HOSTNAME" ]; then
+							echo "# Config written by openslx-dhcp-script (1)" >> /opt/openslx/config
+							echo "SLX_HOSTNAME='$dns_short'" >> /opt/openslx/config
+						elif [ "$SLX_HOSTNAME" != "$dns_short" ]; then
+							sed -i "s/^\(SLX_HOSTNAME=\).*$/\1'$dns_short'/" /opt/openslx/config
+						fi
 					fi
 				fi
 
