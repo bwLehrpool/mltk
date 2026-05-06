@@ -18,10 +18,13 @@ fetch_source() {
 		|| perror "Failed to update submodules recursivly!"
 }
 
-build() {
+build() (
 	local SRCDIR="${MODULE_WORK_DIR}/src/qemu"
 	local DSTDIR="${MODULE_BUILD_DIR}"
 	cde "${SRCDIR}"
+
+	python3 -m venv "${MODULE_BUILD_DIR}/venv" || perror "Cannot make venv"
+	. "${MODULE_BUILD_DIR}/venv/bin/activate"
 
 	./configure \
 		--prefix="/usr" \
@@ -50,7 +53,7 @@ build() {
 		--disable-werror \
 		--audio-drv-list="pa,alsa" \
 		--enable-modules || perror "'configure' failed."
-	make || perror "'make' failed."
+	make -j || perror "'make' failed."
 	DESTDIR="${DSTDIR}" make install || perror "'make install' failed."
 
 	# change permissions for the bridge helper
@@ -63,7 +66,7 @@ build() {
 	if [ -d "${DSTDIR}/var/run" ] && ! [ -L "${DSTDIR}/var/run" ]; then
 		rmdir "${DSTDIR}/var/run" || perror "${DSTDIR}/var/run exists and is not empty"
 	fi
-}
+)
 
 post_copy() {
 	:
