@@ -7,11 +7,8 @@ build() {
 	local SRCDIR="${MODULE_WORK_DIR}/src/libvirt-python"
 	cde "${SRCDIR}"
 
-	python3 setup.py build || perror "'setup.py build' failed."
-	python3 setup.py install \
-		--prefix "/usr" \
-		--install-layout "deb" \
-		--install-lib "/usr/lib/python3/dist-packages" || perror "'setup.py install' failed."
+	python3 -m pip install . --prefix=/usr --no-build-isolation --root-user-action=ignore \
+		|| perror "Cannot pip install libvirt-python"
 
 	rm -rf -- "/usr/lib/python3/dist-packages/__pycache__"
 }

@@ -5,4 +5,5 @@ REQUIRED_INSTALLED_PACKAGES="
 	dh-python
 	pkg-config
 	python3-all-dev
+	python3-pip
 "

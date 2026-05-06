@@ -50,6 +50,7 @@ build() {
 		-Ddriver_remote=enabled || perror "'meson' failed."
 	ninja -C build || perror "'ninja' failed."
 	ninja -C build install || perror "'ninja install' failed."
+	ldconfig
 
 	# delete default libvirt network
 	rm "/etc/libvirt/qemu/networks/autostart/default.xml"
