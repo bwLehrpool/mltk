@@ -18,6 +18,7 @@ TOOLS=(
 	"slx-brightness -l"
 	"brctl show"
 	"ip a"
+	fbset
 )
 
 URLS="
@@ -104,7 +105,7 @@ for srv in $SLX_NTP_SERVER 0.de.pool.ntp.org; do
 done
 echo -n "..."
 
-cp /tmp/udhcpclog /opt/openslx/config.tgz.list \
+cp -n -- /tmp/udhcpclog /opt/openslx/config.tgz.list \
 	/etc/resolv.conf \
 	/etc/hosts \
 	/etc/hostname \
@@ -118,9 +119,16 @@ cp /tmp/udhcpclog /opt/openslx/config.tgz.list \
 sed -r 's/^([^=]*PASS[^=]*)=.*$/\1=<removed>/' "/opt/openslx/config" > "static/config"
 echo -n "."
 
-for file in /root/.xsession-errors /home/*/.xsession-errors; do
+for file in \
+		/root/.xsession-errors \
+		/home/*/.xsession-errors \
+		/sys/kernel/debug/dri/0000:*/i915_gpu_info \
+; do
 	[ -f "$file" ] || continue
-	cp "$file" "static/${file////_}" #/////////777-7-7
+	dest="${file////_}"
+	dest="${dest#_home}"
+	dest="${dest#_sys_kernel_debug_dri_0000:}"
+	cp -n -- "$file" "static/${dest}" #/////////777-7-7
 done
 
 echo -n "."
