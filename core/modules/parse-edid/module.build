@@ -1,13 +1,24 @@
 #!/bin/bash
 
 fetch_source() {
-	:
+	autoclone
 }
 
 build() {
+	# Make parse-edid
 	mkdir -p "$MODULE_BUILD_DIR/opt/openslx/bin"
-	# Make read-edid
 	gcc -o "${MODULE_BUILD_DIR}/opt/openslx/bin/parse-edid" "${MODULE_DIR}/source/parse-edid/parse-edid.c" || perror "Compiling parse-edid failed."
+	# Make edid-decode
+	local ver
+	declare srcdir="${MODULE_WORK_DIR}/src/v4l-utils"
+	cde "$srcdir"
+	ver="$( grep -m1 -P -o "(?<=version: ')[^']+" meson.build || echo "unknown" )"
+	sed "s/%VERSION%/${ver}/" "${MODULE_DIR}/source/edid-decode/Makefile" \
+		> "utils/edid-decode/Makefile" || perror "Cannot patch edid-decode Makefile"
+	cde "utils/edid-decode"
+	make -j || perror "Could not compile edid-decode"
+	mkdir -p "${MODULE_BUILD_DIR}/usr/local/bin" || perror "Cannot make bin"
+	mv "edid-decode" "${MODULE_BUILD_DIR}/usr/local/bin/" || perror "edid-decode bin not found"
 }
 post_copy() {
 	:

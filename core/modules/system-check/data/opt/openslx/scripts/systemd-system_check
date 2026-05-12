@@ -1,22 +1,42 @@
 #!/bin/bash
+# shellcheck disable=SC1090
 #
 # Kind of a generic message generation thing. Hooks in /opt/openslx/system-check/hooks.d
-# are passed the location of the lightdm warning file on execution. They can either
-# ignore it (e.g. for remote logging purposes) or just append tags to that file.
+# should write appropriate tags to be displayed to stdout.
 # The tags are defined in /opt/openslx/system-check/tags and will be replaced
 # by their localized version automatically.
 
 . /opt/openslx/bin/slx-tools
 
 declare -rg root_dir="/opt/openslx/system-check"
-generate_messages() {
-	local lang f hook_dir lang_dir dm_warning_tmp dm_warning_file
-	hook_dir="${root_dir}/hooks.d"
-	lang_dir=
+declare -rg active_tags_file="/run/hw-warnings.tags"
+
+##
+# Read the combined file containing all tags to be displayed, and convert to human readable logfile
+render_logfile() {
+	local lang_dir lang f dm_warning_file blacklist color do_contact tag rest
+	declare -a tag_with_params
+
+	# Determine which file to put final messages into
+	dm_warning_file="$1"
+	[ -z "$dm_warning_file" ] && dm_warning_file="$( \
+		awk -F'=' '$1 == "greeter-message-file" {print $2}' \
+			/etc/lightdm/qt-lightdm-greeter.conf /etc/lightdm/qt-lightdm-greeter.conf.d/* \
+			| tail -n 1)"
+	[ -z "$dm_warning_file" ] && dm_warning_file="/run/hw-warnings.log"
+
+	# Anything to do at all?
+	if [ -e "$dm_warning_file" ] && [ -e "$active_tags_file" ] \
+			&& [ "$dm_warning_file" -nt "$active_tags_file" ]; then
+		return 0
+	fi
 
 	# determine lang. Ignore current environment to make sure we use the system setting
+	lang_dir=
 	for f in "/etc/default/locale" "/etc/environment"; do
-		lang="$( unset LANG; . "$f" &> /dev/null; [ -n "$LANG" ] && echo "${LANG:0:2}" || echo "${LANGUAGE}" )"
+		lang="$( unset LANG LANGUAGE; . "$f" &> /dev/null;
+			[ -n "$LANG" ] && echo "${LANG:0:2}" \
+			|| echo "${LANGUAGE}" )"
 		if [ -d "${root_dir}/lang/${lang}" ]; then
 			lang_dir="${root_dir}/lang/${lang}"
 			break
@@ -24,13 +44,37 @@ generate_messages() {
 	done
 	[ -z "$lang_dir" ] && lang_dir="${root_dir}/lang/en"
 
-	# Determine which file to put final messages into
-	dm_warning_file="$( \
-		awk -F'=' '$1 == "greeter-message-file" {print $2}' \
-		/etc/lightdm/qt-lightdm-greeter.conf /etc/lightdm/qt-lightdm-greeter.conf.d/* \
-		| tail -n 1)"
-	[ -z "$dm_warning_file" ] && dm_warning_file="/run/hw-warnings.log"
-	dm_warning_tmp="$(mktemp)"
+	# process all tags in active_tags_file to readable text
+	# check in /opt/openslx/messages/{lang,tags}
+	blacklist="${root_dir}/blacklist"
+	while read -r tag rest; do
+		IFS='|' read -r -a tag_with_params <<< "$tag"
+		# blacklisted?
+		grep -qFx "${tag_with_params[0]}" "$blacklist" && continue
+		# "meta" info?
+		[ -s "${root_dir}/tags/${tag_with_params[0]}" ] && \
+			. "${root_dir}/tags/${tag_with_params[0]}"
+		print_tag "${color:-000000}" "${tag_with_params[@]}" \
+			>> "$dm_warning_file"
+		# contact?
+		[ -n "$contact" ] && do_contact="yes"
+	done < "$active_tags_file"
+
+	# add contact footer if needed
+	local support_tag="slx-contact-support"
+	if [ -n "$do_contact" ]; then
+		[ -s "${root_dir}/tags/${support_tag}" ] && \
+			. "${root_dir}/tags/${support_tag}"
+		print_tag "${color:-000000}" "${support_tag}" \
+			>> "$dm_warning_file"
+	fi
+}
+
+##
+# Call all the hooks to gather relevant tags
+generate_messages() {
+	local hook_dir file
+	hook_dir="${root_dir}/hooks.d"
 
 	# Run hooks that will generate all the warnings
 	if [ ! -d "$hook_dir" ]; then
@@ -41,35 +85,8 @@ generate_messages() {
 		[ -s "$file" ] || continue
 		[ -x "$file" ] || continue
 		"$file" &
-	done > "$dm_warning_tmp"
+	done > "$active_tags_file"
 	wait
-	# post-process, dm_warning_tmp contains just tags now
-	# check in /opt/openslx/messages/{lang,tags}
-	local blacklist="${root_dir}/blacklist"
-	local color do_contact
-	while read -r tag rest; do
-		old_IFS="$IFS"
-		IFS='|' tag_with_params=($tag)
-		IFS="$old_IFS"
-		# blacklisted?
-		grep -qFx "${tag_with_params[0]}" "$blacklist" && continue
-		# "meta" info?
-		[ -s "${root_dir}/tags/${tag_with_params[0]}" ] && \
-			. "${root_dir}/tags/${tag_with_params[0]}"
-		print_tag "${color:-000000}" "${tag_with_params[@]}" \
-			>> "$dm_warning_file"
-		# contact?
-		[ -n "$contact" ] && do_contact="yes"
-	done < "$dm_warning_tmp"
-
-	# add contact footer if needed
-	local support_tag="slx-contact-support"
-	if [ -n "$do_contact" ]; then
-		[ -s "${root_dir}/tags/${support_tag}" ] && \
-			. "${root_dir}/tags/${support_tag}"
-		print_tag "${color:-000000}" "${support_tag}" \
-			>> "$dm_warning_file"
-	fi
 }
 
 # print_tag <prefix> <file> <vars...>
@@ -102,6 +119,19 @@ print_tag() {
 	done < "$file"
 }
 
-generate_messages
-exit 0
+case "$1" in
+--generate)
+	shift
+	generate_messages "$@"
+	;;
+--render)
+	shift
+	render_logfile "$@"
+	;;
+*)
+	echo "Unknown option: $1"
+	exit 1
+	;;
+esac
 
+exit 0

@@ -1,0 +1,2 @@
+* The graphics output is not hardware-accelerated (%1%). This indicates a driver issue.
+If possible, please update the bwLehrpool version in use, or contact support.

@@ -18,18 +18,37 @@ bash <<"HEREDOC"
     TF=$( mktemp )
     BG=$( mktemp )
     xrandr --verbose > "$XRANDR"
-    beamergui 2> "$BG" >&2
+    beamergui &> "$BG"
 
     OUTPUTNAMES=$( < "$XRANDR"  grep -E "[[:digit:]]+mm x [[:digit:]]+mm" | awk '{print $1}' )
 
     declare -a POSTDATA
     for output in ${OUTPUTNAMES}; do
+        # Put only current screen's xrandr data into $TMP
         < "$XRANDR"  grep -Pzo "\n${output}\N*connected\N*\n(\s+\N*\n)+" > "$TMP"
+        # Convert hex-dumped EDID of current screen to binary, write to $TF
         echo -e -n "$( < "$TMP"  grep -Eao '[0-9a-f]{32}' | sed -r ':a;N;$!ba;s/[^0-9a-f]//gI;s/([0-9a-f]{2})/\\x\1/gI' )" > "$TF"
         MODEL_NAME=$( < "$TF"  parse-edid | grep -m 1 -E '^\s*ModelName' | sed -r 's/^[^"]*"(.*)"[^"]*$/\1/;s/^\s+//;s/\s+$//' )
-        NATIVE_RES=$( < "$BG"  awk -v "output=${output}" '$1 == "Determined" && $8 == "x" && $5 == "\"" output "\"" {print $7 "x" $9}' )
-        [ -z "$NATIVE_RES" ] && NATIVE_RES=$( < "$TMP"  grep -Fa ' +preferred' | awk '{print $1}' )
-        POSTDATA+=( "-dscreen[${output}][name]=${MODEL_NAME}" "-dscreen[${output}][resolution]=${NATIVE_RES}" )
+        # Get what Xorg considers the preferred resolution of the screen
+        X_RES=$( < "$TMP"  grep -Fa ' +preferred' | awk '{print $1}' )
+        # Fallback to beamergui
+        [ -z "$X_RES" ] && X_RES=$( < "$BG"  awk -v "output=${output}" '$1 == "Determined" && $8 == "x" && $5 == "\"" output "\"" {print $7 "x" $9}' )
+        # Fallback to currently set resolution
+        [ -z "$X_RES" ] && X_RES=$( < "$TMP"  grep -Fa ' *current' | awk '{print $1}' )
+        # Get actual preferred resolution of screen:
+        # Print preferred timings, assume largest one
+        NATIVE_RES=$( < "$TF"  edid-decode -s -p \
+            | grep -A20 '^Preferred Video Timing' \
+            | awk '{for (i = 2; i <= 3; ++i) if ($i ~ /[0-9]+x[0-9]+/) { split($i, a, "x"); t=a[1]*a[2]; if (t>x) {x=t; res=$i;}}} END{print res }' )
+        # Otherwise, print native resolutions, which as of 2026-05 doesn't take into account the DisplayID block if present
+        [ -z "$NATIVE_RES" ] && NATIVE_RES=$( < "$TF"  edid-decode -s -n | grep -A1 -m1 '^Native Video Resolution' | tail -n 1 | xargs )
+        # Just mirror what Xorg reports
+        [ -z "$NATIVE_RES" ] && NATIVE_RES="${X_RES}"
+        POSTDATA+=( "-dscreen[${output}][name]=${MODEL_NAME}" "-dscreen[${output}][resolution]=${NATIVE_RES}" "-dscreen[${output}][x_res]=${X_RES}" )
+        # If native resolution not found in xrandr outputs, add warning to lightdm
+        if ! grep -q "^ *${NATIVE_RES}.*Hz" "$TMP"; then
+            echo "slx-screen-not-native|${MODEL_NAME//|/.} (${output})|${X_RES}|${NATIVE_RES}" >> "/run/hw-warnings.tags"
+        fi
     done
 
     rm -f -- "$TF" "$XRANDR" "$TMP" "$BG"
@@ -37,6 +56,12 @@ bash <<"HEREDOC"
     # to determine when we reach the graphical login screen for simple performance measurements, so
     # keep that in mind if you ever fiddle around here.
     curl -m 4 -sS --data "uuid=$UUID" --data "type=~screens" "${POSTDATA[@]}" "$SLX_REMOTE_LOG"
+
+    # Check hwaccel too here
+    if glxinfo -B 2>&1 | grep -q -F -e "Device: llvmpipe" -e "Accelerated: no"; then
+        what=$( glxinfo -B | awk '$1 == "Device:" {print $2; exit}' )
+        echo "slx-x-slow|${what//|/.}" >> "/run/hw-warnings.tags"
+    fi
 
 HEREDOC
 ) &

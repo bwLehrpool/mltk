@@ -1,0 +1,3 @@
+* The monitor/projector %1% is only being driven at a resolution of %2%, even though the native resolution is %3%.
+Please check whether a low-quality cable is being used, for example in the case of a DP -> HDMI adapter. However, even with "standard" cables there are different standards and quality levels.
+With older hardware, it is also possible that higher resolutions are not supported, or are only possible when using specific ports/connectors.

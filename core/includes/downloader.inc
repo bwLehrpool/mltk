@@ -129,9 +129,11 @@ autoclone () {
 	mkdir -p "$dstdir" || perror "Could not create $dstdir"
 	for url in $REQUIRED_GIT; do
 		branch=
+		# checkout is ||, slow
 		checkout="${url#*||}"
 		if [ "$checkout" = "$url" ]; then
 			checkout=
+			# branch is |, fast (if supported by server)
 			branch="${url#*|}"
 			[ "$branch" = "$url" ] && branch=
 		fi
@@ -142,14 +144,17 @@ autoclone () {
 		for i in {1..4} fail; do
 			[ "$i" = "fail" ] && perror "Could not clone."
 			if [ -n "$branch" ]; then
+				# Branch set, try shallow clone using -b
 				git clone --depth 1 -b "$branch" "$url" "$dstdir/$dst" && break
 				pwarning "[Try $i] Could not clone $url branch $branch"
 				sleep 10
 			elif [ -z "$checkout" ]; then
+				# No branch or checkout set, just do shallow clone of def branch
 				git clone --depth 1 "$url" "$dstdir/$dst" && break
 				pwarning "[Try $i] Could not clone $url"
 				sleep 10
 			else
+				# Checkout is set, i.e. -b doesn't work: clone then checkout
 				if ! git clone "$url" "$dstdir/$dst"; then
 					pwarning "[Try $i] Could not clone $url"
 					sleep 10

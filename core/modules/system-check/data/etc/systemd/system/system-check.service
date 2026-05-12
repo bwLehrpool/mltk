@@ -7,5 +7,5 @@ After=gather-hw-info.service
 
 [Service]
 Type=oneshot
-ExecStart=/opt/openslx/scripts/systemd-system_check
+ExecStart=/opt/openslx/scripts/systemd-system_check --generate
 RemainAfterExit=yes

@@ -1,0 +1,3 @@
+* Der Bildschirm/Beamer %1% wird nur mit einer Auflösung von %2% angesteuert, obwohl die native Auflösung %3% ist.
+Prüfen Sie, ob ein minderwertiges Kabel genutzt wird, z.B. im Fall eines DP -> HDMI Adapters; aber auch bei "normalen" Kabeln gibt es unterschiedliche Standards.
+Bei älterer Hardware ist es auch möglich, dass eine Ausgabe höherer Auflösungen nicht oder nur unter Verwendung bestimmter Anschlüsse möglich ist.
