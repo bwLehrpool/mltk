@@ -52,6 +52,7 @@ render_logfile() {
 		# blacklisted?
 		grep -qFx "${tag_with_params[0]}" "$blacklist" && continue
 		# "meta" info?
+		unset color contact
 		[ -s "${root_dir}/tags/${tag_with_params[0]}" ] && \
 			. "${root_dir}/tags/${tag_with_params[0]}"
 		print_tag "${color:-000000}" "${tag_with_params[@]}" \
@@ -92,9 +93,9 @@ generate_messages() {
 # print_tag <prefix> <file> <vars...>
 print_tag() {
 	[ "$#" -ge 2 ] || return 1
-	regex_imatch "$1" '^[0-9a-f]{6}$' || return 1
 	local prefix="$1"
 	shift
+	regex_imatch "$prefix" '^[0-9a-f]{6}$' || prefix="ff00ff"
 	# since we fully pass the parsed tag as array, the first param
 	# is the tag name, the rest are the variables to substitute %i% with.
 	local tag="$1"
