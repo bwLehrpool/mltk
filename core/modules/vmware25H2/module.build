@@ -27,10 +27,10 @@ build() {
 	fi
 	local DELETE_FILES=$(for LINE in $REQUIRED_VMWARE_DELETIONS; do echo "rm -rf -- '$LINE'"; done)
 
-	local re="-([0-9]+[.H][0-9]+(\.[0-9]+)?)-([0-9]+)\."
+	local re="-([0-9]+[.H][0-9]+([.u][0-9]+)?)-([0-9]+)\."
 	[[ $bundle =~ $re ]] || perror "Weird filename, $bundle"
 	local OFFICIAL_VERSION=${BASH_REMATCH[1]}
-	local vm_cmp_version="${OFFICIAL_VERSION/H/.}"
+	local vm_cmp_version="${OFFICIAL_VERSION//[a-zA-Z]/.}"
 	local BUILD_VERSION=${BASH_REMATCH[3]}
 	if ! (( BUILD_VERSION > 10000 )); then
 		perror "Could not determine vmware build number from downloaded file"
