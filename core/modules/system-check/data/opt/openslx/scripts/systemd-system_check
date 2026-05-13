@@ -14,7 +14,7 @@ declare -rg active_tags_file="/run/hw-warnings.tags"
 ##
 # Read the combined file containing all tags to be displayed, and convert to human readable logfile
 render_logfile() {
-	local lang_dir lang f dm_warning_file blacklist color do_contact tag rest
+	local lang_dir lang f dm_warning_file blacklist color do_contact tag
 	declare -a tag_with_params
 
 	# Determine which file to put final messages into
@@ -47,7 +47,7 @@ render_logfile() {
 	# process all tags in active_tags_file to readable text
 	# check in /opt/openslx/messages/{lang,tags}
 	blacklist="${root_dir}/blacklist"
-	while read -r tag rest; do
+	while read -r tag; do
 		IFS='|' read -r -a tag_with_params <<< "$tag"
 		# blacklisted?
 		grep -qFx "${tag_with_params[0]}" "$blacklist" && continue
