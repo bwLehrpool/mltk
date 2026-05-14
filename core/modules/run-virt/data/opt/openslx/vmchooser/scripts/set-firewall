@@ -327,12 +327,7 @@ if ! (
 	if [ -s "$DNSCFG" ]; then
 		# Try to disable DoH
 		echo "address=/use-application-dns.net/" >> "$DNSCFG" # firefox
-		# Block known servers from https://github.com/curl/curl/wiki/DNS-over-HTTPS
-		# Copy table only, run
-		# grep -oP '(?<=https://)\S+(?=/)' /tmp/doh.html | sort -u
-		# to get list, then translate to IP addresses:
-		# for ...; do host "$i" | grep -oP '(?<= address ).*' | sort -u
-		# (then check for invalid/private addresses)
+		# To update list, use the script in root-dir of run-virt module
 		for DEST in $( cat /opt/openslx/vmchooser/data/doh-servers ); do
 			if [[ $DEST =~ $V6 ]]; then
 				ip6tables -w -I runvirt-OUTPUT 1 -d "$DEST" -p tcp --dport 443 \
