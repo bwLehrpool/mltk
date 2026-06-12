@@ -41,9 +41,20 @@ readonly LOGFILE="$(mktemp -p "$TMPDIR")"
 token="${USER_PASSWORD#shib=}"
 readonly token
 
+maybe_browser=
+if [ "$token" != "${USER_PASSWORD}" ]; then
+	# Password was shib=xxxx token style - must be browser-based login
+	maybe_browser=1
+elif [ -z "$USER_PASSWORD" ]; then
+	# No password, probably account check - see /etc/passwd field 5 (gecos) for hint
+	tmpvar=$( < /etc/passwd  awk -F: -v user="$PAM_USER" '$1 == user {print $5; exit}' )
+	tmpvar="${tmpvar##*@}"
+	[ "$tmpvar" = "browser" ] && maybe_browser=1
+fi
+
 # Determine mode: ECP or Embedded Browser
 mode=
-if [ "$token" != "${USER_PASSWORD}" ]; then
+if [ -n "$maybe_browser" ]; then
 	IDP_QUERY_URL="$( awk -F= '$1 ~ /^shib-url\s*$/ {print $2}' \
 		/etc/lightdm/qt-lightdm-greeter.conf \
 		/etc/lightdm/qt-lightdm-greeter.conf.d/*.conf \
