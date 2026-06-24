@@ -6,7 +6,7 @@ import java.util.List;
 
 import org.openslx.libvirt.capabilities.Capabilities;
 import org.openslx.libvirt.domain.Domain;
-import org.openslx.libvirt.domain.device.Device;
+import org.openslx.libvirt.domain.DomainUtils;
 import org.openslx.libvirt.domain.device.Graphics.ListenType;
 import org.openslx.libvirt.domain.device.GraphicsSpice;
 import org.openslx.libvirt.domain.device.HostdevPci;
@@ -200,20 +200,9 @@ public class TransformationSpecificQemuPciPassthrough
 			final String errorMsg = "IOMMU support is not available on the hypervisor but required for GPU passthrough!";
 			throw new TransformationException( errorMsg );
 		}
-		// Check config for PCI addresses already in use
-		int inUse[] = new int[ 64 ];
-		inUse[0] = Integer.MAX_VALUE;
-		inUse[1] = Integer.MAX_VALUE;
-		for ( Device dev : config.getDevices() ) {
-			HostdevPciDeviceAddress target = dev.getPciTarget();
-			if ( target == null )
-				continue;
-			if ( target.getPciDomain() != 0 || target.getPciBus() != 0 )
-				continue; // Ignore non-primary bus
-			if ( target.getPciDevice() >= inUse.length )
-				continue;
-			inUse[target.getPciDevice()] = Integer.MAX_VALUE;
-		}
+
+		// Build PCI slot usage map and assign slots for passthrough devices
+		int[] inUse = DomainUtils.buildPciSlotUsageMap( config );
 
 		// passthrough PCI devices of the GPU
 		for ( final HostdevPciDeviceAddress pciDeviceAddress : pciDeviceAddresses ) {
@@ -223,7 +212,7 @@ public class TransformationSpecificQemuPciPassthrough
 			if ( pciDeviceAddress.getPciFunction() == 0 && pciDeviceAddresses.size() > 1 ) {
 				pciDevice.setMultifunction( true );
 			}
-			int devAddr = getFreeAddr( inUse, pciDeviceAddress );
+			int devAddr = DomainUtils.findFreePciDeviceSlot( inUse, pciDeviceAddress );
 			pciDevice.setPciTarget( new HostdevPciDeviceAddress( 0, devAddr, pciDeviceAddress.getPciFunction() ) );
 		}
 
@@ -258,24 +247,5 @@ public class TransformationSpecificQemuPciPassthrough
 				config.setFeatureKvmHiddenState( true );
 			}
 		}
-	}
-
-	private int getFreeAddr( int[] inUse, HostdevPciDeviceAddress pciDeviceAddress )
-	{
-		// Use first free one. Usually 00:02:00 is primary VGA
-		int devAddr;
-		int firstFree = -1;
-		int lookup = (pciDeviceAddress.getPciDomain() << 16)
-				| (pciDeviceAddress.getPciBus() << 8)
-				| (pciDeviceAddress.getPciDevice());
-		for ( devAddr = 0; devAddr < inUse.length; ++devAddr ) {
-			if ( firstFree == -1 && inUse[devAddr] == 0 ) {
-				firstFree = devAddr;
-			} else if ( inUse[devAddr] == lookup ) {
-				return devAddr;
-			}
-		}
-		inUse[firstFree] = lookup;
-		return firstFree;
 	}
 }
