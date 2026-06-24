@@ -548,6 +548,20 @@ public class CommandLineArgs
 	}
 
 	/**
+	 * Returns the argument of the command line option {@link CmdLnOption#VM_DSPLCOUNT}.
+	 *
+	 * @return argument of the command line option {@link CmdLnOption#VM_DSPLCOUNT}, or 0 if not specified.
+	 */
+	public int getDisplayCount()
+	{
+		final String displayCountArg = this.getArgument( CmdLnOption.VM_DSPLCOUNT );
+		if ( displayCountArg == null ) {
+			return 0; // 0 means "auto-detect based on existing devices"
+		}
+		return Util.parseInt( displayCountArg, 1 );
+	}
+
+	/**
 	 * Command line options for the run-virt QEMU plugin (command line tool).
 	 * 
 	 * @author Manuel Bentele
@@ -564,6 +578,7 @@ public class CommandLineArgs
 		VALIDATE    ( '3', "validate",    0, "Validate input file only, exit immediately with exit code 0 on success, 42 otherwise" ),
 		USBREDIR    ( '4', "usbredir",    1, "Add USB auto-redirect option to virt-viewer call. Can be passed multiple times." ),
 		PERSISTENT  ( '5', "persistent",  0, "VM is running in persistent mode, don't sacrifice safety for speed" ),
+		VM_DSPLCOUNT( '6', "displaycount",1, "Number of virtual display adapters (QXL devices) to create" ),
 		VM_MAC0     ( 'a', "vmmac0",      1, "MAC address for the first network interface" ),
 		DEBUG       ( 'b', "debug",       1, "Enable or disable debug mode" ),
 		VM_NCPUS    ( 'c', "vmncpus",     1, "Number of virtual CPUs for the virtual machine" ),

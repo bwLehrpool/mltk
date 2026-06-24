@@ -3,11 +3,13 @@ package org.openslx.runvirt.plugin.qemu.configuration;
 import java.util.List;
 
 import org.openslx.libvirt.domain.Domain;
+import org.openslx.libvirt.domain.DomainUtils;
 import org.openslx.libvirt.domain.device.Graphics.ListenType;
 import org.openslx.libvirt.domain.device.GraphicsSpice;
 import org.openslx.libvirt.domain.device.GraphicsSpice.ImageCompression;
 import org.openslx.libvirt.domain.device.GraphicsSpice.StreamingMode;
 import org.openslx.libvirt.domain.device.GraphicsVnc;
+import org.openslx.libvirt.domain.device.HostdevPciDeviceAddress;
 import org.openslx.libvirt.domain.device.Video;
 import org.openslx.libvirt.domain.device.Video.Model;
 import org.openslx.runvirt.plugin.qemu.Util;
@@ -84,7 +86,15 @@ public class TransformationSpecificQemuGraphics
 		return newGraphicsSpiceDevice;
 	}
 
-	private void adjustVideoMemory( Domain config )
+	/**
+	 * Adjust display devices to match requested count and ensure proper memory settings.
+	 * - If displayCount > 0: add or remove QXL devices to match exactly
+	 * - If displayCount == 0: keep existing devices, just adjust memory settings
+	 *
+	 * @param config domain configuration to adjust
+	 * @param displayCount requested number of display adapters (0 = auto/keep existing)
+	 */
+	private void adjustDisplayDevices( Domain config, int displayCount )
 	{
 		// adjust vgamem, so higher resolutions work properly
 		List<Video> list = config.getVideoDevices();
@@ -107,6 +117,52 @@ public class TransformationSpecificQemuGraphics
 				}
 			}
 		}
+
+		// Adjust number of QXL devices if requested
+		if ( displayCount > 0 ) {
+			// Count existing QXL devices
+			int qxlCount = 0;
+			for ( Video dev : list ) {
+				if ( dev.getModel() == Model.QXL ) {
+					qxlCount++;
+				}
+			}
+
+			// Build PCI slot usage map for collision-free assignment
+			int[] inUse = DomainUtils.buildPciSlotUsageMap( config );
+
+			// Add more QXL devices if needed
+			int deviceCounter = 2; // Start from 2 to avoid lookup=0 which conflicts with "free slot" marker
+			while ( qxlCount < displayCount ) {
+				Video qxl = config.addVideoDevice();
+				qxl.setModel( Model.QXL );
+				// Set minimum VGA memory for proper resolution support
+				qxl.setVgaMem( Util.roundToNearestPowerOf2( MIN_VGA_MEM ) );
+				qxl.setRam( Util.roundToNearestPowerOf2( MIN_VGA_MEM * 4 ) );
+				qxl.setVRam( Util.roundToNearestPowerOf2( MIN_VGA_MEM * 2 ) );
+
+				// Assign a collision-free PCI slot using unique dummy addresses
+				// Each device gets a unique device number to ensure different lookup values
+				HostdevPciDeviceAddress dummyAddr = new HostdevPciDeviceAddress( 0, deviceCounter++, 0 );
+				int slot = DomainUtils.findFreePciDeviceSlot( inUse, dummyAddr );
+				qxl.setPciTarget( new HostdevPciDeviceAddress( 0, slot, 0 ) );
+
+				qxlCount++;
+			}
+
+			// Remove excess QXL devices if we have too many
+			// Remove from the end to avoid index shifting issues
+			while ( qxlCount > displayCount ) {
+				for ( int i = list.size() - 1; i >= 0; i-- ) {
+					Video dev = list.get( i );
+					if ( dev.getModel() == Model.QXL ) {
+						dev.remove();
+						qxlCount--;
+						break;
+					}
+				}
+			}
+		}
 	}
 
 	@Override
@@ -121,7 +177,7 @@ public class TransformationSpecificQemuGraphics
 			graphicsVncDevice.remove();
 		}
 
-		// convert all SPICE graphics devices to local SPICE graphics devices
+		// Remove all existing SPICE devices
 		boolean isOGL = false;
 		for ( final GraphicsSpice graphicsSpiceDevice : config.getGraphicSpiceDevices() ) {
 			// save state of configured OpenGL option
@@ -129,8 +185,9 @@ public class TransformationSpecificQemuGraphics
 			// remove VNC graphics device
 			graphicsSpiceDevice.remove();
 		}
-		// in case vmem is low, adjust to support large resolutions (4k+)
-		this.adjustVideoMemory( config );
+
+		// Adjust display device config
+		this.adjustDisplayDevices( config, args.getDisplayCount() );
 		
 		// finally, add one SPICE graphics device with local Unix domain socket access
 		this.addLocalSpiceGraphics( config, isOGL );
