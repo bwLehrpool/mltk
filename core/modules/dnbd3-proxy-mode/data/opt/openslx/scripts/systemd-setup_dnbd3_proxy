@@ -210,7 +210,7 @@ else
 	fi
 	add_alt_server 'all' "Config, for client and server" ${SLX_DNBD3_PUBLIC}
 	add_alt_server 'replication' "Config, for replication only" ${SLX_DNBD3_PRIVATE}
-	add_alt_server 'client' "Local address from interface list" ${MY_IPS}
+	add_alt_server 'client' "Local address from interface list" "${MY_IPS[@]}"
 
 	rm -f "/opt/openslx/iptables/rules.d/99-dnbd3"
 	# now create iptables helper rules
