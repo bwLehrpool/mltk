@@ -202,9 +202,12 @@ else
 	for i in /sys/class/net/*/device; do (( numifs++ )); done
 	if (( numifs > 1 )); then
 		echo "Waiting a bit since I see $numifs interfaces"
-		sleep 10
+		sleep 30
 	fi
-	MY_IPS=$( ip a | grep '^\s*inet\s' | awk '$2 !~ /^127\./ {print $2}' | awk -F/ '{print $1}' )
+	mapfile -t MY_IPS < <( ip a | grep '^\s*inet\s' | awk '$2 !~ /^127\./ {print $2}' | awk -F/ '{print $1}' )
+	if (( numifs > 1 )); then
+		echo "Found ${#MY_IPS[@]} configured interfaces"
+	fi
 	add_alt_server 'all' "Config, for client and server" ${SLX_DNBD3_PUBLIC}
 	add_alt_server 'replication' "Config, for replication only" ${SLX_DNBD3_PRIVATE}
 	add_alt_server 'client' "Local address from interface list" ${MY_IPS}
@@ -266,6 +269,7 @@ sparseFiles=${DNBD3_SPARSE}
 removeMissingImages=false
 uplinkTimeout=5000
 clientTimeout=15000
+closeUnusedFd=true
 pretendClient=${DNBD3_PRETEND_CLIENT}
 autoFreeDiskSpaceDelay=${DNBD3_AUTOFREE}h
 
