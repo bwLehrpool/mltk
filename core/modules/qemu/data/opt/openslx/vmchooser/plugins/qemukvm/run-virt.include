@@ -120,6 +120,7 @@ run_plugin() {
 	                           && VIRTCMDOPTS+=( "-vmparallel0" "${PARALLEL0}" )
 	notempty pt_gpu_mdev_id    && VIRTCMDOPTS+=( "-vmilmdevid0" "${pt_gpu_mdev_id}" )
 	notempty VM_DISKFILE_RW    && VIRTCMDOPTS+=( "-persistent" )
+	notempty DISPLAY_COUNT     && VIRTCMDOPTS+=( "-displaycount" "$DISPLAY_COUNT" )
 
 	if $DEBUG; then
 		VIRTCMDOPTS+=( "-xmledit" )
