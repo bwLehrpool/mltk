@@ -3,8 +3,11 @@
 wfile="/run/user/$(id -u)/virt-viewer-wins"
 
 if [ "$1" = "pre" ]; then
-	# Find all vmware windows currently visible
-	WINDOWS=$( xdotool search --onlyvisible --class virt-viewer )
+	# Find all virt-viewer windows currently visible
+	WINDOWS=$(
+		xdotool search --onlyvisible --class virt-viewer
+		xdotool search --onlyvisible --class remote-viewer
+	)
 	[ -z "$WINDOWS" ] && exit 0
 	for window in $WINDOWS; do
 		xdotool windowminimize $window
@@ -21,11 +24,14 @@ if [ "$1" = "pre" ]; then
 fi
 
 if [ "$1" = "post" ]; then
-	# let's restore vmware
+	(
+	# let's restore virt-viewer
+	sleep 1
 	WINDOWS=$(sort -u "$wfile")
 	for window in $WINDOWS; do
 		xdotool windowmap $window
 	done
+	) &
 fi
 
 exit 0
