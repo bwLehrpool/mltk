@@ -18,6 +18,8 @@ create_vmhome_preferences_file() {
 		pref.downloadPermission = "DENY"
 		pref.vmplayer.downloadPermission = "DENY"
 		pref.vmplayer.webUpdateOnStartup = "FALSE"
+		pref.workstation.downloadPermission = "DENY"
+		pref.workstation.webUpdateOnStartup = "FALSE"
 		pref.lastUpdateCheckSec = "$(date +%s)"
 		# hints
 		pref.tip.startup = "FALSE"
@@ -48,6 +50,8 @@ create_vmhome_preferences_file() {
 		pref.fullscreen.toolbarPixels = "0"
 		pref.vmplayer.fullscreen.autohide = "TRUE"
 		pref.vmplayer.fullscreen.nobar = $nobar
+		pref.workstation.fullscreen.autohide = "TRUE"
+		pref.workstation.fullscreen.nobar = $nobar
 		pref.grabOnMouseClick = "TRUE"
 		pref.grabOnKeyPress = "TRUE"
 		pref.motionGrab = "TRUE"
@@ -58,6 +62,8 @@ create_vmhome_preferences_file() {
 		pref.autoFitGuestToWindow = "TRUE"
 		pref.vmplayer.exit.vmAction = "poweroff"
 		pref.vmplayer.confirmOnExit = "TRUE"
+		pref.workstation.exit.vmAction = "poweroff"
+		pref.workstation.confirmOnExit = "TRUE"
 		pref.backgroundOnClose = "FALSE"
 		pref.trayicon.enabled = "FALSE"
 		pref.keyboardAndMouse.vmHotKey.enabled = "FALSE"
@@ -68,6 +74,7 @@ create_vmhome_preferences_file() {
 		
 		# eula
 		pref.vmplayer.firstRunDismissedVersion = "$vmware_version"
+		pref.workstation.firstRunDismissedVersion = "$vmware_version"
 		pref.eula.count = "2"
 		pref.eula0.product = "VMware Player"
 		pref.eula0.build = "$vmware_build"
