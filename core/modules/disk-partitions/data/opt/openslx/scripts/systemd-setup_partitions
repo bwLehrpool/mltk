@@ -62,7 +62,7 @@ get_mount_options () {
 			declare -ag "${2}=(-o nocheck)"
 			;;
 		ext4)
-			declare -ag "${2}=(-o 'errors=remount-ro,data=ordered,relatime,quota')"
+			declare -ag "${2}=(-o 'errors=remount-ro,data=ordered,relatime,quota,nodiscard')"
 			;;
 		*)
 			declare -ag "${2}=()"
@@ -335,6 +335,13 @@ if [ -n "$DO_PERSISTENT" ]; then
 			if ! mount -v -t ext4 "${mopts[@]}" "${PART_DEV}" "$MOUNT_POINT_45" &> "$logfile"; then
 				slxlog --sync "partition-45-newmount" "Cannot mount $PART_DEV with ext4 right after formatting" "$logfile"
 				continue
+			fi
+			s=$( date +%s )
+			fstrim "$MOUNT_POINT_45"
+			e=$( date +%s )
+			if (( e - s > 5 )); then
+				slxlog --sync "partition-45-fstrim" "fstrim for ID45 $PART_DEV took $(( e - s )) seconds!"
+				echo "WARNING: fstrim for ID45 $PART_DEV took $(( e - s )) seconds!"
 			fi
 		fi
 		# Mount success -- clean up lost+found
