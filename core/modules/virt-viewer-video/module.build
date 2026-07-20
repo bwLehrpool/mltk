@@ -54,6 +54,7 @@ build() (
 		build \
 		-Dwayland-protocols=enabled \
 		-Dbuiltin-mjpeg=false \
+		-Dusbredir=enabled \
 		-Dopus=enabled \
 		-Dgtk=enabled || perror "meson for spice-gtk failed"
 	ninja -C build install || perror "ninja for spice-gtk failed"
@@ -71,6 +72,8 @@ build() (
 		-Dvnc=enabled \
 		-Dlibvirt=enabled || perror "'meson' for virt-viewer failed."
 	ninja -v -C build install || perror "'ninja install' failed."
+	# suid for usb helper
+	chmod +s /usr/libexec/spice-client-glib-usb-acl-helper || perror "suid for the usb-redir helper failed"
 )
 
 post_copy() {

@@ -15,6 +15,8 @@ REQUIRED_INSTALLED_PACKAGES="
 	libopus-dev
 	liborc-0.4-dev
 	libssl-dev
+	libusbredirhost-dev
+	libusbredirparser-dev
 	libva-dev
 	libvpl-dev
 	libwayland-dev

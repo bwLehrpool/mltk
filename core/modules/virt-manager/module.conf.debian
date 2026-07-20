@@ -3,6 +3,7 @@ REQUIRED_INSTALLED_PACKAGES="
 	gettext
 	gir1.2-gtksource-3.0
 	gir1.2-libosinfo-1.0
+	gir1.2-spiceclientgtk-3.0
 	libglib2.0-bin
 	pycodestyle
 	pylint
