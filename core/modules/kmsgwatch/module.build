@@ -1,0 +1,12 @@
+#/Bin/bash
+
+fetch_source() {
+	:
+}
+
+build() {
+	mkdir -p "${MODULE_BUILD_DIR}/opt/openslx/sbin"
+	CGO_ENABLED=0 go/bin/go build -o "${MODULE_BUILD_DIR}/opt/openslx/sbin/kmsgwatch" \
+		"${MODULE_DIR}/src/kmsgwatch.go" \
+		|| perror "Cannot build kmsgforward"
+}
