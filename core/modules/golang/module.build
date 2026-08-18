@@ -1,0 +1,16 @@
+#!/bin/bash
+
+fetch_source() {
+	mkdir -p "${MODULE_WORK_DIR}/src"   || perror "Could not mkdir src"
+	curl -fL https://go.dev/dl/ \
+		| grep -Eom1 "/dl/go[^\"']+.linux-${PLATFORM_DPKG}.tar.gz" \
+		| xargs -i curl -fL https://go.dev{} \
+		> "${MODULE_WORK_DIR}/src/go.tgz" \
+		|| perror "Cannot fetch go"
+	[ -s "${MODULE_WORK_DIR}/src/go.tgz" ] || perror "Downloaded go is empty"
+}
+
+build() {
+	rm -rf -- "/usr/local/go"
+	tar -C "/usr/local" -x -f "${MODULE_WORK_DIR}/src/go.tgz" || perror "Cannot untar go"
+}
