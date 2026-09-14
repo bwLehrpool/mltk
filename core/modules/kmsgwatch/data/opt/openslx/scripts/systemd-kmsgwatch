@@ -1,0 +1,43 @@
+#!/bin/bash
+
+# Prepare a non-swappable tmpfs for the binary and chroot
+mkdir -p /opt/openslx/noswap
+mount -t tmpfs -o noswap,size=16M nothing /opt/openslx/noswap || exit 1
+cp -f /opt/openslx/sbin/kmsgwatch /opt/openslx/noswap/kmsgwatch || exit 1
+
+# Determine relevant disks to monitor for I/O errors.
+# We don't want to report any disk error, as this would include USB sticks users
+# yank out prematurely.
+disks=( /dev/mapper/root )
+while read -r disk _; do
+	[ "$disk" = "Filename" ] && continue
+	[ -b "$disk" ] || disk="/dev/$disk"
+	[ -b "$disk" ] || continue
+	disks+=( "$disk" )
+done < /proc/swaps
+
+devices=( $( for disk in "${disks[@]}"; do
+	lsblk --inverse --json "$disk" \
+		| jq -r '.. | objects | select(.type == "disk") | .name'
+done | sort -u ) )
+
+args=()
+
+for device in "${devices[@]}"; do
+	[[ $device == loop* ]] && continue
+	[[ $device == xloop* ]] && continue
+	[[ $device == nbd* ]] && continue
+	[[ $device == dnbd* ]] && continue
+	args+=( -match "I/O error, dev (${device}[a-z0-9]*),@@DISK \$1 has I/O errors" )
+done
+
+. /opt/openslx/config
+
+# Launch
+exec /opt/openslx/noswap/kmsgwatch \
+	-url "${SLX_REMOTE_LOG}" \
+	-uuid "$( cat /etc/system-uuid )" \
+	-type kmsg \
+	-chroot /opt/openslx/noswap \
+	-match 'BUG: Bad page state in process@@MEM $0' \
+	"${args[@]}"
