@@ -11,6 +11,12 @@ fetch_source() {
 }
 
 build() {
+	local bin
 	rm -rf -- "/usr/local/go"
 	tar -C "/usr/local" -x -f "${MODULE_WORK_DIR}/src/go.tgz" || perror "Cannot untar go"
+	mkdir -p "/usr/local/bin"
+	for bin in go gofmt; do
+		[ -s "/usr/local/go/bin/$bin" ] || perror "$bin not found in /usr/local/go/bin"
+		ln -s "/usr/local/go/bin/$bin" "/usr/local/bin/$bin" || perror "Cannot symlink $bin"
+	done
 }
