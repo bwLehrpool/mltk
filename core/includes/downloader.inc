@@ -141,7 +141,7 @@ autoclone () {
 		dst="${url##*/}"
 		dst="${dst%.git}"
 		pinfo "Cloning $url to $dst"
-		for i in {1..4} fail; do
+		for i in {1..5} fail; do
 			[ "$i" = "fail" ] && perror "Could not clone."
 			if [ -n "$branch" ]; then
 				# Branch set, try shallow clone using -b
@@ -163,8 +163,12 @@ autoclone () {
 					perror "Could not checkout $checkout from $url"
 				fi
 			fi
-			if (( i == 3 )) && ! [[ $url == https://github.com/* ]]; then
-				# Failed three times, let's see if there's a github mirror
+			if (( i == 3 )) && ! [[ $url == *://github.com/* ]]; then
+				url=${url//https:/git:}
+				url=${url//http:/git:}
+			fi
+			if (( i == 4 )) && ! [[ $url == *://github.com/* ]]; then
+				# Failed four times, let's see if there's a github mirror
 				name="${url##*/}"
 				[[ $name == *.git ]] || name="${name}.git"
 				url="https://github.com/mirror/$name"
