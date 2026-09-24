@@ -1,0 +1,6 @@
+[Unit]
+Description=kmsg watch daemon
+
+[Service]
+ExecStart=/opt/openslx/scripts/systemd-kmsgwatch
+Type=simple
