@@ -89,7 +89,7 @@ if [ -s /etc/system-uuid ]; then
 fi
 
 submitlog () {
-	if [ -n "$EXTRA" ] && [ -r "$EXTRA" ] && [ -s "$EXTRA" ] && [ "$(stat -c %s "$EXTRA")" -lt "60000" ]; then # valid file attachment
+	if [ -n "$EXTRA" ] && [ -r "$EXTRA" ] && [ -s "$EXTRA" ] && [ "$(stat -c %s "$EXTRA")" -lt "240000" ]; then # valid file attachment
 		curl --data-urlencode "uuid=$UUID" --data-urlencode "type=$TYPE" --data-urlencode "description=$MSG" --data-urlencode "longdesc@$EXTRA" "$SLX_REMOTE_LOG" >> "$CURLLOG" 2>&1
 	elif [ -z "$EXTRA" ]; then # no attachment
 		curl --data-urlencode "uuid=$UUID" --data-urlencode "type=$TYPE" --data-urlencode "description=$MSG" "$SLX_REMOTE_LOG" >> "$CURLLOG" 2>&1
