@@ -1,17 +1,6 @@
 services:
-  - name: red-ipv6
-    addr: "[::1]:12345"
-    handler:
-      type: red
-      chain: chain-0
-      metadata:
-        sniffing: true
-        sniffing.fallback: true
-    listener:
-      type: red
-
-  - name: red-ipv4
-    addr: "127.0.0.1:12345"
+  - name: redir-0
+    addr: ":12345"
     handler:
       type: red
       chain: chain-0

@@ -137,6 +137,9 @@ fi
 
 	echo "iptables -t nat -A PREROUTING -i nat1 -p tcp -j REDSOCKS"
 	echo "iptables -t nat -A OUTPUT -o br0 -p tcp -j REDSOCKS"
+	# Block both ports, as we have to listen on 0.0.0.0 for the VMs
+	echo "iptables -A INPUT -i br0 -p tcp --dport 12345 -j DROP"
+	echo "iptables -A INPUT -i br0 -p tcp --dport 12346 -j DROP"
 } > "$tfile"
 
 chmod +x "$tfile"
