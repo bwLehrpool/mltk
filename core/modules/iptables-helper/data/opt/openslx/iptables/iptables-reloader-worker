@@ -76,6 +76,23 @@ reload_rules () {
 	done
 
 	# TODO: IPv6 (in general)
+	ip6tables -P INPUT DROP
+	ip6tables -P FORWARD DROP
+	ip6tables -P OUTPUT ACCEPT
+	# Allow loopback
+	ip6tables -A INPUT -i lo -j ACCEPT
+	# Allow established and related connections
+	ip6tables -A INPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+	# Basic ICMPv6 stuff
+	ip6tables -A INPUT -p ipv6-icmp --icmpv6-type 1 -j ACCEPT
+	ip6tables -A INPUT -p ipv6-icmp --icmpv6-type 2 -j ACCEPT
+	ip6tables -A INPUT -p ipv6-icmp --icmpv6-type 3 -j ACCEPT
+	ip6tables -A INPUT -p ipv6-icmp --icmpv6-type 4 -j ACCEPT
+	# Neighbor Discovery
+	ip6tables -A INPUT -p ipv6-icmp --icmpv6-type 133 -j ACCEPT
+	ip6tables -A INPUT -p ipv6-icmp --icmpv6-type 134 -j ACCEPT
+	ip6tables -A INPUT -p ipv6-icmp --icmpv6-type 135 -j ACCEPT
+	ip6tables -A INPUT -p ipv6-icmp --icmpv6-type 136 -j ACCEPT
 
 	# Apply
 	local LOGFILE=$(mktemp)
