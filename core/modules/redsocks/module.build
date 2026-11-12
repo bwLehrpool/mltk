@@ -5,10 +5,16 @@ fetch_source () {
 }
 
 build () {
-	cde "$MODULE_WORK_DIR/src/redsocks"
-	make || perror "make failed."
-	mkdir -p "$MODULE_BUILD_DIR/sbin"
-	cp "redsocks" "$MODULE_BUILD_DIR/sbin/" || perror "Could not copy redsocks binary to build dir"
+	local i
+	cde "$MODULE_WORK_DIR/src/gost/cmd/gost"
+	while read -r i || [ -n "$i" ]; do
+		i=${i//"/"/'\/'} # / '\/''"\ // \ """'\\/
+		sed -i "/${i}/d" "register.go"
+	done < "${MODULE_DIR}/gost.disable"
+	go build --ldflags="-s -w" || perror "Compiling gost failed"
+	mkdir -p "$MODULE_BUILD_DIR/usr/local/sbin"
+	cp "gost" "$MODULE_BUILD_DIR/usr/local/sbin/" \
+		|| perror "Could not copy gost binary to build dir"
 }
 
 post_copy() {

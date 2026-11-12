@@ -1,0 +1,15 @@
+[Unit]
+Description=HAProxy Load Balancer
+Documentation=man:haproxy(1)
+Documentation=file:/usr/share/doc/haproxy/configuration.txt.gz
+DefaultDependencies=no
+Before=shutdown.target
+ConditionPathExists=/etc/proxy/haproxy.cfg
+
+[Service]
+User=redsocks
+ExecStart=/usr/sbin/haproxy -Ws -f /etc/proxy/haproxy.cfg
+KillMode=mixed
+Restart=always
+SuccessExitStatus=143
+Type=notify

@@ -1,0 +1,11 @@
+[Unit]
+Description=Transparent redirector of any TCP connection to proxy
+DefaultDependencies=no
+Before=shutdown.target
+ConditionPathExists=/etc/proxy/gost.yml
+
+[Service]
+Type=simple
+User=redsocks
+ExecStart=/usr/local/sbin/gost -C /etc/proxy/gost.yml
+Restart=always

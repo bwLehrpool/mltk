@@ -6,4 +6,7 @@
 [ "$SLX_PROXY_MODE" = "off" ] && exit 0
 [ -z "$SLX_PROXY_IP" ] && exit 0
 
+# Make sure the remote proxy is reachable
+
+ip6tables -A OUTPUT -d "$SLX_PROXY_IP" -p tcp --dport "$SLX_PROXY_PORT" -j ACCEPT
 iptables -A OUTPUT -d "$SLX_PROXY_IP" -p tcp --dport "$SLX_PROXY_PORT" -j ACCEPT

@@ -1,0 +1,48 @@
+services:
+  - name: red-ipv6
+    addr: "[::1]:12345"
+    handler:
+      type: red
+      chain: chain-0
+      metadata:
+        sniffing: true
+        sniffing.fallback: true
+    listener:
+      type: red
+
+  - name: red-ipv4
+    addr: "127.0.0.1:12345"
+    handler:
+      type: red
+      chain: chain-0
+      metadata:
+        sniffing: true
+        sniffing.fallback: true
+    listener:
+      type: red
+
+chains:
+  - name: chain-0
+    hops:
+      - name: hop-0
+        nodes:
+          # Plain HTTP
+          - name: http-proxy
+            addr: "127.0.0.1:12346"
+            connector:
+              type: http
+            dialer:
+              type: tcp
+            matcher:
+              rule: 'Proto("http")'
+
+          # Everything else
+          - name: socks5-proxy
+            addr: "%PROXY_IP%:%PROXY_PORT%"
+            connector:
+              type: %PROXY_TYPE%
+            dialer:
+              type: tcp
+            matcher:
+              rule: '!Proto("http")'
+

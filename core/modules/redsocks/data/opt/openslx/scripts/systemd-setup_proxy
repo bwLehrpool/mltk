@@ -3,90 +3,145 @@
 
 . /opt/openslx/config || echo "Error sourcing config for setup_proxy"
 
-[ -z "$SLX_PROXY_MODE" -o "x$SLX_PROXY_MODE" == "xoff" ] && echo "proxy mode disabled." && exit 0
-
-PROXY=off
-if [ "$SLX_PROXY_MODE" == "on" ]; then
-	PROXY=on
-elif [ "$SLX_PROXY_MODE" == "auto" -a -n "$SLX_PXE_CLIENT_IP" ]; then
-	# auto detection: check if it is actually needed
-	RET=$(curl -L -m 2 -s http://www.google.de/ | grep -o google | wc -l)
-	if [ $RET -lt 20 ]; then
-		sleep 4
-		RET=$(curl -L -m 5 -s http://www.google.de/ | grep -o google | wc -l)
-	fi
-	[ $RET -gt 20 ] && echo "Auto detect: Internet is reachable without proxy." && exit 0
-	PROXY=on
+if [[ -z "$SLX_PROXY_MODE" || "$SLX_PROXY_MODE" == "off" ]]; then
+	echo "proxy mode disabled."
+	exit 0
+fi
+if [[ -z "$SLX_PROXY_IP" || -z "$SLX_PROXY_PORT" ]]; then
+	echo "ERROR: proxy IP or proxy port not set."
+	exit 1
 fi
 
-[ "$PROXY" == "off" ] && echo "Proxy mode not required." && exit 0
-echo "Setting up transparent proxying via $SLX_PROXY_IP"
+# Transform legacy proxy variables (redsocks) to modern ones (gost/haproxy)
+case "$SLX_PROXY_TYPE" in
+http*)
+	proxy_type=http
+	;;
+socks[45])
+	proxy_type="$SLX_PROXY_TYPE"
+	;;
+*)
+	echo "ERROR: Invalid proxy type: $SLX_PROXY_TYPE"
+	exit 1
+	;;
+esac
 
-sed -i "s/%%PROXY_IP%%/$SLX_PROXY_IP/g;s/%%PROXY_PORT%%/$SLX_PROXY_PORT/g;s/%%PROXY_TYPE%%/$SLX_PROXY_TYPE/g" /etc/redsocks.conf
+test_http () {
+	local RET
+	# do not use grep -c here, as it counts lines, not individual matches
+	RET=$( curl -4 -m 2 -v "$@" http://google.de/ 2>&1 \
+		| grep -F -i -e '302 Moved' -e '301 Moved' -e 'Server: gws' -e 'google' | wc -l )
+	# it might make sense to re-evaluate this every now and then; as of 2026 this returns 11
+	(( RET > 6 ))
+}
 
-mkdir -p /run/redsocks
-chown redsocks:redsocks /run/redsocks
-systemctl start redsocks
+test_https() {
+	local RET
+	# do not use grep -c here, as it counts lines, not individual matches
+	RET=$( curl -4 -m 2 -v "$@" https://google.de/ 2>&1 \
+		| grep -F -i -e '302 Moved' -e '301 Moved' -e 'Server: gws' -e 'google' | wc -l )
+	# it might make sense to re-evaluate this every now and then; as of 2026 this returns 15
+	(( RET > 10 ))
+}
+
+# If mode is "auto", do connectivity test
+if [[ "$SLX_PROXY_MODE" == "auto" ]]; then
+	# auto detection: check if it is actually needed
+	if test_http --retry-max-time 5 --retry 3 --retry-delay 2 \
+			|| test_https --retry-max-time 5 --retry 3 --retry-delay 2; then
+		echo "Auto detect: Internet is reachable without proxy."
+		exit 0
+	fi
+fi
+
+echo "Setting up transparent proxying via $SLX_PROXY_IP ($SLX_PROXY_TYPE)"
+
+if [[ "$proxy_type" = "http" ]]; then
+	declare -i re_test=0
+	logfile=$( mktemp )
+	. /opt/openslx/bin/slx-tools
+	# Use cached test results if available, to speed up setup
+	pconf_load proxy
+	while (( re_test++ < 2 )); do
+		if is_on "$p_tunnel_80"; then
+			if test_http -v --proxytunnel -x "http://${SLX_PROXY_IP}:${SLX_PROXY_PORT}" \
+					&>> "$logfile"; then
+				break
+			fi
+			p_tunnel_80="OFF"
+		else
+			if test_http -v -x "http://${SLX_PROXY_IP}:${SLX_PROXY_PORT}" \
+				&>> "$logfile"; then
+				break
+			fi
+			p_tunnel_80="ON"
+		fi
+	done
+	if (( re_test >= 3 )); then
+		slxlog --sync --delete --echo "proxy-http" "Cannot reach plain HTTP google. Neither direct proxy request nor tunnel work." "$logfile" &
+		p_tunnel_80="OFF"
+	else
+		unlink "$logfile"
+	fi
+	pconf_save proxy p_tunnel_80
+fi
+
+# gost config
+sed "s/%PROXY_IP%/${SLX_PROXY_IP}/g;s/%PROXY_PORT%/${SLX_PROXY_PORT}/g;s/%PROXY_TYPE%/${proxy_type}/g" /etc/proxy/gost.template.yml > /etc/proxy/gost.yml
+systemctl --no-block start gost.service
+
+declare -a haports=()
+# HAproxy config if required
+if [[ "$proxy_type" == "http" ]] && ! is_on "$p_tunnel_80"; then
+	# use haproxy to rewrite to abolute URI
+	sed "s/%PROXY_IP%/${SLX_PROXY_IP}/g;s/%PROXY_PORT%/${SLX_PROXY_PORT}/g" \
+		/etc/proxy/haproxy.template.cfg > /etc/proxy/haproxy.cfg
+	systemctl --no-block start haproxy.service
+	haports=( 80 81 8000 8008 8080 8081 8088 8090 8888 )
+fi
 
 tfile="/opt/openslx/iptables/10-redsocks-proxy"
 
-cat > "$tfile" <<HEREDOCBROWN
-#!/bin/ash
-
-iptables -t nat -N REDSOCKS 2>/dev/null
-iptables -t nat -F REDSOCKS
-iptables -t nat -A REDSOCKS -d "$SLX_PROXY_IP" -j RETURN
-iptables -t nat -A REDSOCKS -d 0.0.0.0/8 -j RETURN
-iptables -t nat -A REDSOCKS -d 10.0.0.0/8 -j RETURN
-iptables -t nat -A REDSOCKS -d 127.0.0.0/8 -j RETURN
-iptables -t nat -A REDSOCKS -d 169.254.0.0/16 -j RETURN
-iptables -t nat -A REDSOCKS -d 172.16.0.0/12 -j RETURN
-iptables -t nat -A REDSOCKS -d 192.168.0.0/16 -j RETURN
-iptables -t nat -A REDSOCKS -d 224.0.0.0/4 -j RETURN
-iptables -t nat -A REDSOCKS -d 240.0.0.0/4 -j RETURN
-HEREDOCBROWN
-
+# Bypass destinations: Private LANs
+declare -a dests=( "$SLX_PROXY_IP" "0.0.0.0/8" "10.0.0.0/8" "127.0.0.0/8" "169.254.0.0/16"
+	"172.16.0.0/12" "192.168.0.0/16" "224.0.0.0/4" "240.0.0.0/4" )
+# From routing table
+mapfile -t -O "${#dests[@]}" dests \
+	< <( ip r s | awk '$1 ~ /^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+/ {print $1}' )
+# Server
 if [ -n "$SLX_PXE_SERVER_IP" ]; then
-	# Exclude boot server; we wouldn't be here if it weren't reachable directly
-	echo "iptables -t nat -A REDSOCKS -d '$SLX_PXE_SERVER_IP' -j RETURN" >> "$tfile"
+	dests+=( "$SLX_PXE_SERVER_IP" )
 fi
-
+# Admin-provided list
 if [ -n "$SLX_PROXY_BLACKLIST" ]; then
-	for ADDR in $SLX_PROXY_BLACKLIST; do
-		echo "iptables -t nat -A REDSOCKS -d '$ADDR' -j RETURN"
-	done >> "$tfile"
+	mapfile -t -O "${#dests[@]}" dests < <( echo "$SLX_PROXY_BLACKLIST" | sed -r 's/\s+/\n/g' )
 fi
 
-# Append alias for satellite server, used for HTTPS
-SLX_PROXY_BLACKLIST="$SLX_PROXY_BLACKLIST satellite.bwlehrpool"
-mkdir -p "/etc/profile.d"
-rm -f -- "/etc/profile.d/99-proxy.sh"
+{
+	echo "#!/bin/ash"
+	echo ""
+	echo "iptables -t nat -N REDSOCKS 2>/dev/null"
+	echo "iptables -t nat -F REDSOCKS"
 
-if [ "${SLX_PROXY_TYPE:0:5}" = "http-" ]; then
-	# transparent proxying for HTTP -- DOES NOT WORK, might give 400 Bad Request
-	#echo "iptables -t nat -A REDSOCKS -p tcp --dport 80 -j DNAT --to-destination ${SLX_PROXY_IP}:${SLX_PROXY_PORT}" >> "$tfile"
-	for var in http_proxy HTTP_PROXY all_proxy ALL_PROXY; do
-		echo "export ${var}='http://${SLX_PROXY_IP}:${SLX_PROXY_PORT}/'"
-	done >> "/etc/profile.d/99-proxy.sh"
-fi
-# No proxy - always set
-for var in no_proxy NO_PROXY; do
-	echo -n "export ${var}='${SLX_PXE_SERVER_IP}"
-	for ADDR in $SLX_PROXY_BLACKLIST; do
-		echo -n ", $ADDR"
+	# Exceptions
+	for host in "${dests[@]}"; do
+		echo "iptables -t nat -A REDSOCKS -d \"$host\" -j RETURN"
 	done
-	echo "'"
-done >> "/etc/profile.d/99-proxy.sh"
 
-cat >> "$tfile" <<HEREDOCBROWN
-iptables -t nat -A REDSOCKS -p tcp -j REDIRECT --to-port 12345
+	# HTTP via HAproxy?
+	for port in "${haports[@]}"; do
+		echo "iptables -t nat -A REDSOCKS -p tcp --dport \"$port\" -j REDIRECT --to-port 12346"
+	done
 
-iptables -t nat -A PREROUTING -i nat1 -p tcp -j REDSOCKS
-iptables -t nat -A OUTPUT -o br0 -p tcp -j REDSOCKS
-iptables -A INPUT -i br0 -p tcp --dport 12345 -j DROP
-HEREDOCBROWN
+	echo "iptables -t nat -A REDSOCKS -p tcp -j REDIRECT --to-port 12345"
+
+	echo "iptables -t nat -A PREROUTING -i nat1 -p tcp -j REDSOCKS"
+	echo "iptables -t nat -A OUTPUT -o br0 -p tcp -j REDSOCKS"
+} > "$tfile"
 
 chmod +x "$tfile"
+
+wait
 
 mv -f -- "$tfile" "/opt/openslx/iptables/rules.d/10-redsocks-proxy"
 

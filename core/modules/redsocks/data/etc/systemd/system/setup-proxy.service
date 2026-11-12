@@ -1,6 +1,7 @@
 [Unit]
 Description=Proxy setup detection
 Before=shutdown.target
+Before=haproxy.service gost.service
 DefaultDependencies=no
 
 [Service]
