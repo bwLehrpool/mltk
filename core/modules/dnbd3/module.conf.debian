@@ -7,6 +7,6 @@ REQUIRED_CONTENT_PACKAGES="
 REQUIRED_INSTALLED_PACKAGES="
 	cmake
 	zlib1g-dev
-	libfuse-dev
+	libfuse3-dev
 	libjansson-dev
 "

@@ -8,7 +8,7 @@ REQUIRED_INSTALLED_PACKAGES="
 	cmake
 	clang-format
 	zlib1g-dev
-	libfuse-dev
+	libfuse3-dev
 	fuse
 	libjansson-dev
 "
