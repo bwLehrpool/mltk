@@ -81,7 +81,8 @@ setup_dnbd3_common () {
 		trap 'writelog "[dnbd3-fuse] Received QUIT"; kill -SIGQUIT $dnbd3pid' SIGQUIT
 		startup="$( date +%s )"
 		while [ "$( date +%s )" -lt "$(( startup + 4 ))" ]; do
-			dnbd3-fuse -f -o allow_other,max_readahead=262144 -h "${SLX_DNBD3_SERVERS}" -i "${SRC_IMG_RELATIVE}" "$@" "${DNBD3_MOUNT_POINT}" &> "${dnbd3_tmplog}" &
+			rm -f -- "${TMPDIR}/cow/meta" "${TMPDIR}/cow/data"
+			dnbd3-fuse -f -o allow_other -h "${SLX_DNBD3_SERVERS}" -i "${SRC_IMG_RELATIVE}" "$@" "${DNBD3_MOUNT_POINT}" &> "${dnbd3_tmplog}" &
 			dnbd3pid=$!
 			wait "$dnbd3pid"
 			RET=$?
